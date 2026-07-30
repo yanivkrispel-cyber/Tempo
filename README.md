@@ -21,7 +21,7 @@ tempo/
 
 ## Prerequisites
 
-- .NET 9 SDK
+- .NET 10 SDK
 - Node.js 22+
 - PNPM 10+
 - Docker & Docker Compose
