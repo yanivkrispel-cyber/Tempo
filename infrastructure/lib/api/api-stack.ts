@@ -1,0 +1,140 @@
+import { CfnOutput, Duration, Stack, StackProps } from "aws-cdk-lib";
+import { AccessLogFormat } from "aws-cdk-lib/aws-apigateway";
+import {
+  CorsHttpMethod,
+  HttpApi,
+  HttpMethod,
+  HttpStage,
+  LogGroupLogDestination
+} from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpUserPoolAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
+import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import { IUserPool, IUserPoolClient } from "aws-cdk-lib/aws-cognito";
+import { Construct } from "constructs";
+import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
+import { resolveDotNetLambdaCode } from "../constructs/dotnet-lambda-code";
+import { createLogGroup } from "../constructs/log-group-defaults";
+import { TempoFunction } from "../constructs/lambda-defaults";
+import { applyStandardTags } from "../constructs/tagging";
+
+export interface ApiStackProps extends StackProps {
+  readonly config: TempoEnvironmentConfig;
+  readonly userPool: IUserPool;
+  readonly userPoolClients: IUserPoolClient[];
+  /** Git commit SHA (or "local"), surfaced by the health endpoint's `version` field. */
+  readonly buildVersion: string;
+}
+
+const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
+  JSON.stringify({
+    requestId: "$context.requestId",
+    routeKey: "$context.routeKey",
+    status: "$context.status",
+    responseLatency: "$context.responseLatency",
+    integrationLatency: "$context.integrationLatency",
+    sourceIp: "$context.identity.sourceIp",
+    userAgent: "$context.identity.userAgent",
+    authorizerPrincipal: "$context.authorizer.principalId",
+    errorMessage: "$context.error.message"
+  })
+);
+
+/**
+ * API Gateway HTTP API + the Tempo.Api Lambda (ADR-0004, ADR-0002). This
+ * phase only requires GET /api/v1/health (public) plus the minimum
+ * technical plumbing to prove Cognito JWT authentication end to end
+ * (GET /api/v1/me, protected) - both are needed to satisfy the required
+ * smoke tests in LLD section 38 ("Cognito token can call an authenticated
+ * test endpoint", "Unauthenticated request receives 401").
+ *
+ * The API Lambda is intentionally NOT VPC-attached in this phase: neither
+ * route touches Aurora, so there is no reason to pay for VPC cold starts or
+ * interface endpoints yet (see networking/network-stack.ts for the fuller
+ * networking decision). It therefore receives no database secret access.
+ */
+export class ApiStack extends Stack {
+  public readonly httpApi: HttpApi;
+  public readonly apiFunction: TempoFunction;
+
+  constructor(scope: Construct, id: string, props: ApiStackProps) {
+    super(scope, id, props);
+    const { config } = props;
+
+    this.apiFunction = new TempoFunction(this, "ApiFunction", config, {
+      functionName: resourceName(config, "api"),
+      component: "api",
+      description: "Tempo.Api - thin HTTP entry point behind API Gateway HTTP API",
+      code: resolveDotNetLambdaCode("Tempo.Api"),
+      handler: "Tempo.Api",
+      memoryMb: config.lambda.apiMemoryMb,
+      timeoutSeconds: config.lambda.apiTimeoutSeconds,
+      reservedConcurrentExecutions: config.lambda.apiReservedConcurrency,
+      environment: {
+        BUILD_VERSION: props.buildVersion
+      }
+    });
+
+    const authorizer = new HttpUserPoolAuthorizer("CognitoAuthorizer", props.userPool, {
+      userPoolClients: props.userPoolClients,
+      authorizerName: resourceName(config, "cognito-jwt-authorizer")
+    });
+
+    this.httpApi = new HttpApi(this, "HttpApi", {
+      apiName: config.apiName,
+      description: "Tempo HTTP API (Amazon API Gateway HTTP API, per ADR-0004)",
+      createDefaultStage: false,
+      corsPreflight: {
+        allowOrigins: [...config.corsAllowedOrigins],
+        allowMethods: [
+          CorsHttpMethod.GET,
+          CorsHttpMethod.POST,
+          CorsHttpMethod.PUT,
+          CorsHttpMethod.PATCH,
+          CorsHttpMethod.DELETE,
+          CorsHttpMethod.OPTIONS
+        ],
+        allowHeaders: ["Content-Type", "Authorization", "X-Correlation-Id"],
+        allowCredentials: false,
+        maxAge: Duration.hours(1)
+      }
+    });
+
+    const integration = new HttpLambdaIntegration("ApiIntegration", this.apiFunction.function);
+
+    this.httpApi.addRoutes({
+      path: "/api/v1/health",
+      methods: [HttpMethod.GET],
+      integration
+    });
+
+    this.httpApi.addRoutes({
+      path: "/api/v1/me",
+      methods: [HttpMethod.GET],
+      integration,
+      authorizer
+    });
+
+    const accessLogGroup = createLogGroup(this, "AccessLogGroup", config, {
+      logGroupName: `/aws/apigateway/${config.apiName}`
+    });
+
+    new HttpStage(this, "DefaultStage", {
+      httpApi: this.httpApi,
+      stageName: "$default",
+      autoDeploy: true,
+      throttle: { rateLimit: 50, burstLimit: 100 },
+      detailedMetricsEnabled: true,
+      accessLogSettings: {
+        destination: new LogGroupLogDestination(accessLogGroup),
+        format: ACCESS_LOG_FORMAT
+      }
+    });
+
+    new CfnOutput(this, "HttpApiUrl", {
+      description: "Base URL for the Tempo HTTP API - read by the deployment smoke test",
+      value: this.httpApi.apiEndpoint
+    });
+
+    applyStandardTags(this, config, "api");
+  }
+}
