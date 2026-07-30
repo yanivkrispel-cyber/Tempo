@@ -14,6 +14,8 @@ namespace Tempo.DatabaseMigrator;
 /// </summary>
 public static partial class BootstrapRoles
 {
+    private static readonly NpgsqlCommandBuilder QuoteBuilder = new();
+
     public static async Task RunAsync(
         string masterConnectionString,
         string databaseName,
@@ -31,15 +33,15 @@ public static partial class BootstrapRoles
         await UpsertRoleAsync(connection, migratorCredentials, log, cancellationToken);
         await UpsertRoleAsync(connection, applicationCredentials, log, cancellationToken);
 
-        var quotedDatabase = NpgsqlCommandBuilder.QuoteIdentifier(databaseName);
+        var quotedDatabase = QuoteBuilder.QuoteIdentifier(databaseName);
 
         await ExecuteAsync(
             connection,
-            $"GRANT CREATE, CONNECT ON DATABASE {quotedDatabase} TO {NpgsqlCommandBuilder.QuoteIdentifier(migratorCredentials.Username)}",
+            $"GRANT CREATE, CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(migratorCredentials.Username)}",
             cancellationToken);
         await ExecuteAsync(
             connection,
-            $"GRANT CONNECT ON DATABASE {quotedDatabase} TO {NpgsqlCommandBuilder.QuoteIdentifier(applicationCredentials.Username)}",
+            $"GRANT CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(applicationCredentials.Username)}",
             cancellationToken);
 
         log.LogInformation(
@@ -54,7 +56,7 @@ public static partial class BootstrapRoles
         IUpgradeLog log,
         CancellationToken cancellationToken)
     {
-        var quotedRole = NpgsqlCommandBuilder.QuoteIdentifier(credential.Username);
+        var quotedRole = QuoteBuilder.QuoteIdentifier(credential.Username);
 
         // The password is interpolated directly because PostgreSQL DDL (CREATE
         // ROLE / ALTER ROLE) cannot be parameterized. This is only safe because

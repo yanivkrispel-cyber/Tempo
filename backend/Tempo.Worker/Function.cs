@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
@@ -16,6 +17,7 @@ namespace Tempo.Worker;
 /// all behavior lives in Consumers/SqsMessageDispatcher and its per-queue
 /// handlers so they stay unit-testable without a Lambda runtime.
 /// </summary>
+[SuppressMessage("Design", "CA1716", Justification = "Class name is the deployed Lambda handler; infrastructure/lib/async/messaging-stack.ts references 'Tempo.Worker.Function::FunctionHandler' by name.")]
 public class Function
 {
     private static readonly ILogger Logger = new LoggerConfiguration()

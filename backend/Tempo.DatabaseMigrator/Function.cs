@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.Serialization.SystemTextJson;
@@ -10,8 +11,6 @@ using Serilog.Formatting.Compact;
 
 namespace Tempo.DatabaseMigrator;
 
-public sealed record MigrationRequest;
-
 public sealed record MigrationResponse(bool Successful, string[] AppliedScripts);
 
 /// <summary>
@@ -22,7 +21,8 @@ public sealed record MigrationResponse(bool Successful, string[] AppliedScripts)
 /// function error, which the calling `aws lambda invoke` step treats as a
 /// failed deployment step.
 /// </summary>
-public class Function
+[SuppressMessage("Design", "CA1716", Justification = "Class name is the deployed Lambda handler; infrastructure/lib/data/database-stack.ts references 'Tempo.DatabaseMigrator.Function::FunctionHandler' by name.")]
+public static class Function
 {
     private static readonly ILogger Logger = new LoggerConfiguration()
         .Enrich.FromLogContext()
@@ -30,7 +30,7 @@ public class Function
         .WriteTo.Console(new RenderedCompactJsonFormatter())
         .CreateLogger();
 
-    public async Task<MigrationResponse> FunctionHandler(MigrationRequest request, ILambdaContext context)
+    public static async Task<MigrationResponse> FunctionHandler(object? request, ILambdaContext context)
     {
         using var secretsClient = new AmazonSecretsManagerClient();
 
@@ -64,7 +64,7 @@ public class Function
         secret.RootElement.GetProperty("username").GetString()!,
         secret.RootElement.GetProperty("password").GetString()!);
 
-    private static async Task<JsonDocument> GetSecretAsync(IAmazonSecretsManager client, string secretArn)
+    private static async Task<JsonDocument> GetSecretAsync(AmazonSecretsManagerClient client, string secretArn)
     {
         var response = await client.GetSecretValueAsync(new GetSecretValueRequest { SecretId = secretArn });
         return JsonDocument.Parse(response.SecretString);

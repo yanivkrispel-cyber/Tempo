@@ -37,13 +37,18 @@ try
     app.MapHealthEndpoints();
     app.MapMeEndpoints();
 
-    app.Run();
+    await app.RunAsync();
 }
 finally
 {
-    Log.CloseAndFlush();
+    await Log.CloseAndFlushAsync();
 }
 
 // Exposes the implicit Program class to Tempo.UnitTests' WebApplicationFactory<Program>.
-public partial class Program;
+public partial class Program
+{
+    protected Program()
+    {
+    }
+}
 
