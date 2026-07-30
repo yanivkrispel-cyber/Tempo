@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tempo.Contracts", "backend\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tempo.Worker", "backend\Tempo.Worker\Tempo.Worker.csproj", "{AFAD53C9-E099-4EA5-86A6-89A69CC67694}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tempo.Platform", "backend\Tempo.Platform\Tempo.Platform.csproj", "{54021117-9661-4DCA-BF78-7F5380C9DFE2}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tempo.DatabaseMigrator", "backend\Tempo.DatabaseMigrator\Tempo.DatabaseMigrator.csproj", "{5B009370-9DB5-4A7E-92E8-F88539EF5595}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tempo.UnitTests", "tests\Tempo.UnitTests\Tempo.UnitTests.csproj", "{8B7348D2-3B6C-4A55-AB2E-066CEFD8FCB8}"
@@ -39,6 +41,10 @@ Global
 		{8B7348D2-3B6C-4A55-AB2E-066CEFD8FCB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B7348D2-3B6C-4A55-AB2E-066CEFD8FCB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B7348D2-3B6C-4A55-AB2E-066CEFD8FCB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54021117-9661-4DCA-BF78-7F5380C9DFE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54021117-9661-4DCA-BF78-7F5380C9DFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54021117-9661-4DCA-BF78-7F5380C9DFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54021117-9661-4DCA-BF78-7F5380C9DFE2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
