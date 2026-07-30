@@ -51,7 +51,7 @@ External SaaS providers are permitted only as business integrations or specializ
 | Email | Amazon SES |
 | Observability | Amazon CloudWatch + AWS X-Ray/OpenTelemetry |
 | Infrastructure as Code | AWS CDK |
-| Backup | AWS Backup and service-native backups |
+| Backup and recovery | Aurora automated backups/PITR, S3 versioning/lifecycle, and AWS Backup where centralized policy adds value |
 
 ## Consequences
 
@@ -77,7 +77,8 @@ External SaaS providers are permitted only as business integrations or specializ
 - Avoid Kubernetes unless an accepted ADR demonstrates necessity.
 - Avoid multi-region architecture before defined business requirements.
 - External providers require security, privacy and data-flow review.
-- Every AWS resource is created through Infrastructure as Code.
+- Every persistent production AWS resource is created through Infrastructure as Code. Emergency manual changes must be recorded and codified immediately afterward.
+- AWS service versions, quotas, regional availability and prices are revalidated at implementation and quarterly architecture reviews.
 - Production changes must be auditable.
 
 ## Review Trigger

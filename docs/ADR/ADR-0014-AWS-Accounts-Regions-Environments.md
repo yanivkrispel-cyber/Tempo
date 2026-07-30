@@ -25,7 +25,7 @@ For a very small initial team, development and staging may temporarily share a n
 
 ## Primary Region
 
-Use `eu-central-1` as the initial primary application region, subject to final legal/data-residency review and service availability.
+Use `eu-central-1` as the initial primary application region, subject to final legal/data-residency review, current service availability and price review. CloudFront certificates are provisioned in `us-east-1` where AWS requires it.
 
 ## Region Rules
 

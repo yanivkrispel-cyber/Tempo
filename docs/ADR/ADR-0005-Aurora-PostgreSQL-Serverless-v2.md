@@ -19,7 +19,7 @@ Use Amazon Aurora PostgreSQL Serverless v2 as the primary transactional database
 
 ### Development and test
 
-- Minimum capacity: 0 ACU where supported.
+- Minimum capacity: 0 ACU only on Aurora PostgreSQL engine versions that support auto-pause.
 - Auto-pause enabled.
 - Maximum capacity kept low and controlled.
 - No reader instance by default.
@@ -34,7 +34,7 @@ Use Amazon Aurora PostgreSQL Serverless v2 as the primary transactional database
 - Point-in-time recovery enabled.
 - Deletion protection enabled.
 - Encryption with KMS.
-- Automated backups and restore tests.
+- Automated backups, point-in-time recovery and recurring restore tests.
 
 ### Production growth stage
 
@@ -85,6 +85,10 @@ Rejected as the default because it increases operations and migrations significa
 - Aurora may be more expensive than small RDS instances at certain steady loads.
 - Auto-pause is unsuitable for latency-sensitive production.
 
+## Implementation Gate
+
+Before provisioning production, Platform Engineering must compare the current monthly cost of the selected Aurora Serverless v2 capacity range with an appropriately sized RDS PostgreSQL instance. Aurora remains the default unless the measured cost difference is material and RDS satisfies the same SLO, recovery and scaling requirements.
+
 ## Review Trigger
 
-Compare Aurora cost/performance with RDS PostgreSQL after real production usage is available.
+Compare Aurora cost/performance with RDS PostgreSQL after real production usage is available, and whenever database compute becomes a top-three AWS cost item.

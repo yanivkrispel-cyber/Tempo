@@ -13,7 +13,7 @@ Amazon Cognito user pools operate as an OpenID Connect identity provider and sup
 
 ## Decision
 
-Use Amazon Cognito User Pools for customer and staff authentication.
+Use Amazon Cognito User Pools with the Essentials feature plan for customer and staff authentication. Use managed login initially unless product UX requirements justify a custom login implementation.
 
 Tempo remains the source of truth for:
 
@@ -44,7 +44,7 @@ Cognito remains the source of truth for:
 
 ## Security Requirements
 
-- MFA available; mandatory for platform operators and privileged accounts.
+- MFA available; mandatory for platform operators and privileged tenant accounts. Passkeys and choice-based authentication may be enabled after client compatibility and recovery flows are validated.
 - Secure password/recovery policy where password login is enabled.
 - Token validation checks issuer, audience, signature and expiry.
 - Revocation/security-version strategy for sensitive account changes.

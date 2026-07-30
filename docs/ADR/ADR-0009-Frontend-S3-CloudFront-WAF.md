@@ -16,7 +16,7 @@ Host the Business Admin Web, Client PWA and Platform Admin Web using:
 - Private Amazon S3 buckets for build artifacts.
 - Amazon CloudFront distributions.
 - Origin Access Control between CloudFront and S3.
-- AWS WAF for edge protection.
+- AWS WAF for production edge protection. Non-production usage is enabled only when security testing or exposure justifies the recurring cost.
 - Amazon Route 53 for DNS.
 - AWS Certificate Manager for TLS certificates.
 

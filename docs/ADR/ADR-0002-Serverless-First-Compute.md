@@ -27,14 +27,14 @@ The backend remains a modular monolith at the code and domain level. Deployment 
 
 ## Runtime Rules
 
-- Use the current supported .NET LTS runtime selected by the implementation ADR.
+- Use the .NET 10 managed runtime as defined by ADR-0016.
 - Functions are stateless.
 - Reuse SDK and database connections across warm invocations safely.
 - Apply reserved concurrency to database-connected workloads.
 - Use provisioned concurrency only after measured latency justifies the cost.
 - All I/O supports cancellation and timeout.
 - Long-running jobs checkpoint and split into bounded work.
-- Functions that do not require VPC resources remain outside the VPC.
+- Functions that do not require private VPC resources remain outside the VPC. Network placement for database-connected and provider-connected functions follows ADR-0017.
 
 ## Alternatives Considered
 

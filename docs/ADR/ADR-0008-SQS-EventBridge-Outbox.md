@@ -70,3 +70,6 @@ Database transaction
 - Additional operational tables and replay tools.
 - Eventual consistency must be represented in UX and tests.
 - Duplicate handling is mandatory, not optional.
+## EventBridge Scheduler Clarification
+
+Use EventBridge Scheduler for durable one-time and recurring schedules. Do not use in-process timers for business-critical reminders, subscription actions or maintenance.

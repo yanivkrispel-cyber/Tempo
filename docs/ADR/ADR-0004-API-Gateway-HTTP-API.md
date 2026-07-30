@@ -23,8 +23,8 @@ API Gateway owns:
 
 - Public HTTPS endpoint.
 - Route mapping.
-- JWT authorizer integration where suitable.
-- CORS policy.
+- JWT authorizer integration for Cognito access-token validation where suitable.
+- Explicit CORS policy. Preflight routes must remain unauthenticated when required by the selected route model.
 - stage configuration.
 - request throttling and quotas where supported.
 - access logs.
@@ -62,4 +62,4 @@ Not selected by default due to cost and complexity. It may be used for a specifi
 
 - Lower operational burden and automatic scaling.
 - API feature selection must remain within HTTP API capabilities.
-- Domain authorization cannot be delegated entirely to API Gateway.
+- Domain and tenant authorization cannot be delegated entirely to API Gateway. API Gateway validates token authenticity and optional OAuth scopes; Tempo evaluates current membership, permissions and resource scope.

@@ -58,3 +58,9 @@ Logs are structured JSON and have retention policies by environment/data categor
 - Low integration overhead.
 - CloudWatch costs must be controlled through retention and metric discipline.
 - OpenTelemetry preserves a future path to another backend if required.
+## Cost Controls
+
+- Explicit retention per log group; no indefinite retention by default.
+- High-cardinality business identifiers must not become metric dimensions.
+- Sampling is configurable for traces.
+- Debug logging is disabled in production unless temporarily approved.
