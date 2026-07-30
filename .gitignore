@@ -1,0 +1,51 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.vs/
+*.crashreport.xml
+[Dd]ebug/
+[Rr]elease/
+*.nupkg
+*.snk
+**/*.trx
+TestResults/
+[Bb]uild/
+
+## Node / PNPM
+node_modules/
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+.pnpm-store/
+pnpm-lock.yaml
+
+## IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+.ionide/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Docker
+*.env
+docker-compose.override.yml
+
+## Secrets
+**/*.secret.*
+**/appsettings.Local*
+
+## Infrastructure
+infrastructure/bin/*
+infrastructure/lib/*
+!infrastructure/bin/.gitkeep
+!infrastructure/lib/.gitkeep

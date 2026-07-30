@@ -1,0 +1,17 @@
+# Default owners
+* @your-org/leads
+
+# Backend
+/backend/ @your-org/backend-team
+
+# Frontend
+/apps/ @your-org/frontend-team
+
+# Infrastructure
+/infrastructure/ @your-org/platform-team
+
+# Contracts
+/contracts/ @your-org/backend-team @your-org/platform-team
+
+# Documentation
+/docs/ @your-org/leads
