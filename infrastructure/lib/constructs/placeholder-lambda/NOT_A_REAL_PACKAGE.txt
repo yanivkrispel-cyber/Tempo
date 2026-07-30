@@ -1,0 +1,11 @@
+This directory is a placeholder CDK asset, not a real Lambda deployment package.
+
+It exists only so `cdk synth`/`cdk diff`/CDK unit tests can run on a machine
+that has not built the .NET backend (e.g. no .NET SDK installed). See
+lib/constructs/dotnet-lambda-code.ts: resolveDotNetLambdaCode() falls back to
+this folder when the real `dotnet publish` output for a project does not
+exist yet.
+
+Deploying a function that resolved to this placeholder will not run real
+application code. CI's deploy-development.yml always runs `dotnet publish`
+before `cdk deploy`, so this fallback is never used for an actual deployment.
