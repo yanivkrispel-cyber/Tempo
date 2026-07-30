@@ -25,6 +25,34 @@ deployed by this change set):
 
 **Not included in this phase** (see the completion report for why): S3/CloudFront/Route 53/ACM/WAF (`StorageStack`/`FrontendStack`) - no root domain was provided and frontend hosting is explicitly deferrable per the Phase 0 scope.
 
+## Local AWS credentials (SSO)
+
+`cdk diff`/`cdk deploy` need AWS credentials for account `687239340846`
+(`eu-central-1`). Configure an SSO profile once:
+
+```bash
+aws configure sso --profile tempo-dev
+# SSO start URL: https://d-99674d7b12.awsapps.com/start
+# SSO region:    eu-central-1
+# (browser login, then pick the 687239340846 / AdministratorAccess account+role)
+# Default client Region: eu-central-1
+```
+
+Set it as your default profile so you don't need `--profile` on every
+command:
+
+```bash
+# bash/zsh (~/.bashrc, ~/.zshrc)
+export AWS_PROFILE=tempo-dev
+
+# PowerShell ($PROFILE)
+$env:AWS_PROFILE = "tempo-dev"
+```
+
+SSO sessions expire (per org policy); re-run `aws sso login --profile
+tempo-dev` (or `aws configure sso --profile tempo-dev` again) once
+`aws sts get-caller-identity` starts failing with an expired-token error.
+
 ## Commands
 
 Run from the repository root unless noted:
