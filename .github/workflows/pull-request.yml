@@ -1,0 +1,136 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  NODE_VERSION: "22"
+
+jobs:
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: dotnet restore
+        run: dotnet restore Tempo.sln
+
+      - name: dotnet build
+        run: dotnet build Tempo.sln --configuration Release --no-restore
+
+      - name: dotnet test
+        run: dotnet test Tempo.sln --configuration Release --no-build --logger "trx" --results-directory TestResults
+
+      - name: Check for vulnerable NuGet packages
+        run: dotnet list Tempo.sln package --vulnerable --include-transitive
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dotnet-test-results
+          path: TestResults
+
+  infrastructure:
+    name: Infrastructure (CDK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check infrastructure
+        run: pnpm --filter @tempo/infrastructure run build
+
+      - name: CDK unit tests
+        run: pnpm --filter @tempo/infrastructure test
+
+      - name: cdk synth (dev, staging, production configuration)
+        run: pnpm --filter @tempo/infrastructure run synth
+
+      - name: cdk diff (informational - no AWS credentials on pull_request)
+        run: echo "cdk diff requires AWS credentials; it runs against the real account only in deploy-development.yml."
+
+  frontend:
+    name: Frontend workspaces
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and test frontend workspaces
+        # No-op until apps/* are scaffolded (Phase 0 is backend/infra only) -
+        # pnpm --recursive skips workspace packages without the script.
+        run: |
+          pnpm --recursive run build
+          pnpm --recursive run test
+
+  contracts:
+    name: Contract validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate OpenAPI specs (if any exist yet)
+        run: |
+          shopt -s nullglob
+          files=(contracts/openapi/*.yaml contracts/openapi/*.yml contracts/openapi/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No OpenAPI files yet - nothing to validate."
+            exit 0
+          fi
+          npx --yes @redocly/cli@latest lint "${files[@]}"
+
+      - name: Validate event schemas (if any exist yet)
+        run: |
+          shopt -s nullglob
+          files=(contracts/schemas/*.json contracts/events/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No event/schema files yet - nothing to validate."
+            exit 0
+          fi
+          for f in "${files[@]}"; do
+            echo "Validating $f is well-formed JSON"
+            node -e "JSON.parse(require('fs').readFileSync('$f', 'utf8'))"
+          done
+
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
