@@ -18,6 +18,7 @@ public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory) 
         var response = await client.GetAsync("/api/v1/health");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
 
         var body = await response.Content.ReadFromJsonAsync<HealthResponse>();
 

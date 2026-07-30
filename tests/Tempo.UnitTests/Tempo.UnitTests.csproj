@@ -3,6 +3,10 @@
   <PropertyGroup>
     <RootNamespace>Tempo.UnitTests</RootNamespace>
     <IsPackable>false</IsPackable>
+    <!-- CA1707 (no underscores in identifiers) conflicts with the standard
+         xUnit Method_Scenario_ExpectedBehavior test naming convention used
+         throughout this project. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
