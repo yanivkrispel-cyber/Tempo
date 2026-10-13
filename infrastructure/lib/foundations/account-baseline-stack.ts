@@ -28,38 +28,40 @@ export class AccountBaselineStack extends Stack {
     super(scope, id, props);
     const { config } = props;
 
+    // ADR-0021: the budget exists to catch the first cent, not to cap spend.
+    // One alert on any actual charge, one when the month is forecast to pass
+    // the budget. Budgets without actions cost nothing.
+    const alertSubscribers = [{ subscriptionType: "EMAIL", address: config.cost.alertEmail }];
     new CfnBudget(this, "MonthlyCostBudget", {
       budget: {
         budgetName: resourceName(config, "monthly-cost-budget"),
         budgetType: "COST",
         timeUnit: "MONTHLY",
         budgetLimit: {
-          amount: config.environmentName === "prod" ? 1000 : 200,
+          amount: config.cost.monthlyBudgetUsd,
           unit: "USD"
         }
       },
-      notificationsWithSubscribers: config.observability.alarmEmail
-        ? [
-            {
-              notification: {
-                notificationType: "ACTUAL",
-                comparisonOperator: "GREATER_THAN",
-                threshold: 80,
-                thresholdType: "PERCENTAGE"
-              },
-              subscribers: [{ subscriptionType: "EMAIL", address: config.observability.alarmEmail }]
-            },
-            {
-              notification: {
-                notificationType: "FORECASTED",
-                comparisonOperator: "GREATER_THAN",
-                threshold: 100,
-                thresholdType: "PERCENTAGE"
-              },
-              subscribers: [{ subscriptionType: "EMAIL", address: config.observability.alarmEmail }]
-            }
-          ]
-        : undefined
+      notificationsWithSubscribers: [
+        {
+          notification: {
+            notificationType: "ACTUAL",
+            comparisonOperator: "GREATER_THAN",
+            threshold: 0.01,
+            thresholdType: "ABSOLUTE_VALUE"
+          },
+          subscribers: alertSubscribers
+        },
+        {
+          notification: {
+            notificationType: "FORECASTED",
+            comparisonOperator: "GREATER_THAN",
+            threshold: 100,
+            thresholdType: "PERCENTAGE"
+          },
+          subscribers: alertSubscribers
+        }
+      ]
     });
 
     const anomalyMonitor = new CfnAnomalyMonitor(this, "CostAnomalyMonitor", {
@@ -68,15 +70,20 @@ export class AccountBaselineStack extends Stack {
       monitorDimension: "SERVICE"
     });
 
-    if (config.observability.alarmEmail) {
-      new CfnAnomalySubscription(this, "CostAnomalySubscription", {
-        subscriptionName: resourceName(config, "cost-anomaly-subscription"),
-        frequency: "DAILY",
-        monitorArnList: [anomalyMonitor.attrMonitorArn],
-        subscribers: [{ type: "EMAIL", address: config.observability.alarmEmail }],
-        threshold: 50
-      });
-    }
+    new CfnAnomalySubscription(this, "CostAnomalySubscription", {
+      subscriptionName: resourceName(config, "cost-anomaly-subscription"),
+      frequency: "DAILY",
+      monitorArnList: [anomalyMonitor.attrMonitorArn],
+      subscribers: [{ type: "EMAIL", address: config.cost.alertEmail }],
+      // Any anomaly with a total impact of $1 or more (ADR-0020 amendment).
+      thresholdExpression: JSON.stringify({
+        Dimensions: {
+          Key: "ANOMALY_TOTAL_IMPACT_ABSOLUTE",
+          Values: ["1"],
+          MatchOptions: ["GREATER_THAN_OR_EQUAL"]
+        }
+      })
+    });
 
     applyStandardTags(this, config, "account-baseline");
   }

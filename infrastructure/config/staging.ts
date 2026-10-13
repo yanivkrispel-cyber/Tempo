@@ -44,6 +44,11 @@ const stagingConfig: TempoEnvironmentConfig = {
     alarmEmail: "aws-alerts@tempo.example"
   },
 
+  cost: {
+    monthlyBudgetUsd: 1,
+    alertEmail: "aws-alerts@tempo.example"
+  },
+
   networking: {
     maxAzs: 2,
     natGatewayEnabled: false
