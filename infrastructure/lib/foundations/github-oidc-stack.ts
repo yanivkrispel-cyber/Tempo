@@ -68,6 +68,27 @@ export class GitHubOidcStack extends Stack {
       })
     );
 
+    // After `cdk deploy`, the workflow runs two steps with this role's own
+    // credentials: the migrator, which runs only as an explicit deployment
+    // step (LLD section 11), and the smoke test's queue check (LLD section
+    // 38). Each grant names the one resource it needs.
+    this.deploymentRole.addToPolicy(
+      new PolicyStatement({
+        sid: "InvokeDatabaseMigrator",
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          `arn:aws:lambda:${config.region}:${config.accountId}:function:${resourceName(config, "database-migrator")}`
+        ]
+      })
+    );
+    this.deploymentRole.addToPolicy(
+      new PolicyStatement({
+        sid: "SmokeTestQueue",
+        actions: ["sqs:GetQueueUrl", "sqs:SendMessage", "sqs:GetQueueAttributes"],
+        resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "smoke-test")}`]
+      })
+    );
+
     applyStandardTags(this, config, "github-oidc");
   }
 }
