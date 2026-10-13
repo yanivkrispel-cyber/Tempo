@@ -1,8 +1,10 @@
 packages:
   - "apps/*"
   - "infrastructure"
+# esbuild's install script only verifies the platform binary that pnpm already
+# installs from esbuild's optionalDependencies, so it is not needed.
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: false
 minimumReleaseAgeExclude:
   - aws-cdk-lib@2.262.2
   - aws-cdk@2.1134.0

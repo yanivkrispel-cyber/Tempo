@@ -2,7 +2,9 @@ name: Pull Request
 
 on:
   pull_request:
-    branches: [main]
+    # feature/aws-foundation collects the small Phase 0 fix PRs before its
+    # single PR to main (status page decision D4); drop it once that merges.
+    branches: [main, feature/aws-foundation]
 
 permissions:
   contents: read
@@ -125,6 +127,11 @@ jobs:
   security:
     name: Security scans
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # gitleaks-action lists the PR's commits through the GitHub API; with
+      # contents: read alone that call fails with "Resource not accessible by integration".
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:

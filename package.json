@@ -1,6 +1,7 @@
 {
   "name": "tempo",
   "private": true,
+  "packageManager": "pnpm@11.5.0",
   "scripts": {
     "dev": "pnpm --recursive --parallel run dev",
     "build": "pnpm --recursive run build",
