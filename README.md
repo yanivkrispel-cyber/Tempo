@@ -46,7 +46,10 @@ docker compose -f docker-compose.local.yml up -d
 # Run the API (Kestrel locally; auto-detects Lambda when deployed)
 dotnet run --project backend/Tempo.Api
 
-# Run the database migrator locally (see backend/Tempo.DatabaseMigrator)
+# Run the database migrator locally (see backend/Tempo.DatabaseMigrator).
+# SSL is off by default here because the docker-compose PostgreSQL has no TLS;
+# set DATABASE_SSL_MODE=Require for a database that needs it. The deployed
+# Lambda always requires SSL.
 DATABASE_HOST=localhost DATABASE_PORT=5432 DATABASE_NAME=tempo \
   DATABASE_MASTER_USERNAME=tempo DATABASE_MASTER_PASSWORD=tempo \
   dotnet run --project backend/Tempo.DatabaseMigrator
