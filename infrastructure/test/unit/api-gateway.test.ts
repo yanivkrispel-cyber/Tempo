@@ -52,3 +52,25 @@ describe("API Gateway is an HTTP API, never a REST API (ADR-0004)", () => {
     });
   });
 });
+
+describe("The API validates Cognito access tokens itself (ADR-0004 amendment)", () => {
+  const template = stackTemplate("Api");
+
+  it("passes the user pool issuer and the accepted app clients to the API function", () => {
+    const functions = Object.values(template.findResources("AWS::Lambda::Function")).filter(
+      (f) => f.Properties.FunctionName === "tempo-dev-api"
+    );
+    expect(functions).toHaveLength(1);
+    const variables = functions[0].Properties.Environment.Variables;
+
+    expect(JSON.stringify(variables.COGNITO_ISSUER)).toContain("https://");
+    expect(JSON.stringify(variables.COGNITO_ISSUER)).toContain("ProviderName");
+    expect(JSON.stringify(variables.COGNITO_CLIENT_IDS)).toContain("Fn::Join");
+  });
+
+  it("allows the X-Tempo-Authorization header in CORS", () => {
+    template.hasResourceProperties("AWS::ApiGatewayV2::Api", {
+      CorsConfiguration: Match.objectLike({ AllowHeaders: Match.arrayWith(["X-Tempo-Authorization"]) })
+    });
+  });
+});

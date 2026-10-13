@@ -70,7 +70,11 @@ export class ApiStack extends Stack {
       timeoutSeconds: config.lambda.apiTimeoutSeconds,
       reservedConcurrentExecutions: config.lambda.apiReservedConcurrency,
       environment: {
-        BUILD_VERSION: props.buildVersion
+        BUILD_VERSION: props.buildVersion,
+        // The API validates Cognito access tokens itself (ADR-0004
+        // amendment), so it needs the issuer and the accepted app clients.
+        COGNITO_ISSUER: `https://${props.userPool.userPoolProviderName}`,
+        COGNITO_CLIENT_IDS: props.userPoolClients.map((client) => client.userPoolClientId).join(",")
       }
     });
 
@@ -93,7 +97,7 @@ export class ApiStack extends Stack {
           CorsHttpMethod.DELETE,
           CorsHttpMethod.OPTIONS
         ],
-        allowHeaders: ["Content-Type", "Authorization", "X-Correlation-Id"],
+        allowHeaders: ["Content-Type", "Authorization", "X-Tempo-Authorization", "X-Correlation-Id"],
         allowCredentials: false,
         maxAge: Duration.hours(1)
       }
