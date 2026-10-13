@@ -29,8 +29,9 @@ import "@tempo/design-system/components.css";
 ```
 
 Set the document direction and language: `<html dir="rtl" lang="he">` (Hebrew is the default locale; LTR works with
-the same CSS because everything is written with logical properties). Theme: nothing set follows the OS;
-`data-theme="light"` or `data-theme="dark"` on `<html>` forces one. Persist the user's pick, never the OS value.
+the same CSS because everything is written with logical properties). Theme: the app is light. Nothing set means light;
+the OS theme is never followed. `data-theme="dark"` on `<html>` switches to dark only from an explicit user choice,
+which the app persists.
 
 React components in `src/shared/design-system/` of each app are thin wrappers that render these classes and own
 behaviour (focus management, aria, keyboard). They never restyle a primitive; a visual change goes here, once.

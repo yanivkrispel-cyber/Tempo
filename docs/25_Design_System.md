@@ -41,10 +41,12 @@ Rejected on the way (recorded in the options page): the flat SaaS base (readable
 
 ## 3. Themes
 
-**Decision:** Light and dark ship together from day one. Every color token has both values; the contrast check in
+**Decision:** Light is the face of the product (Kris, 2026-10-13). Every screen, preview, mock and marketing
+image is light. The generated CSS is light by default and does not follow the OS theme. Dark exists as a complete,
+contrast-checked token set and is applied only when a user explicitly chooses it (`data-theme="dark"` on `<html>`,
+persisted by the app); it must stay legible but it is not the design reference. The contrast check in
 `scripts/check-tokens.mjs` runs on both themes and blocks CI on any text/ground pair under 4.5:1 (3:1 for borders,
-icons and focus rings). Nothing in the apps follows the OS theme blindly: the user's choice, when made, is stored
-and wins.
+icons and focus rings).
 
 ## 4. RTL
 

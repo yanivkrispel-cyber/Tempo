@@ -3,10 +3,10 @@
 //
 // Output shape:
 //   :root                  every token, light values, --font-* families, --text-* type styles
-//   @media (prefers-color-scheme: dark) :root:not([data-theme="light"])   dark values
-//   :root[data-theme="dark"]                                             dark values again
-//   .text-<style> classes                                                one per type style
-// Apps set data-theme="light" | "dark" on <html> to force a theme; nothing set follows the OS.
+//   [data-theme="dark"]    dark values (on <html>, or on any wrapper to theme a region)
+//   .text-<style> classes  one per type style
+// Light is the product's face (Kris, 2026-10-13): nothing set = light. The OS theme is NOT followed;
+// dark applies only when the app sets data-theme="dark" explicitly from a user choice.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -55,14 +55,7 @@ for (const theme of rest) {
   for (const fam of ["color", "shadow"]) {
     for (const tok of themed(fam)) block.push(`  ${cssName(tok.name)}: ${valueFor(tok, theme)};`);
   }
-  if (theme === "dark") {
-    lines.push(`@media (prefers-color-scheme: dark) {`);
-    lines.push(`  :root:not([data-theme="light"]) {`);
-    lines.push(...block.map((l) => "  " + l));
-    lines.push(`  }`);
-    lines.push(`}`);
-  }
-  lines.push(`:root[data-theme="${theme}"] {`);
+  lines.push(`[data-theme="${theme}"] {`);
   lines.push(...block);
   lines.push(`}`);
 }

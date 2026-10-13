@@ -1,5 +1,5 @@
 <!doctype html>
-<html dir="rtl" lang="he">
+<html dir="rtl" lang="he" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -44,11 +44,10 @@
     <div>
       <div class="tp-eyebrow">TEMPO · DESIGN SYSTEM · v0.2</div>
       <h1>מערכת העיצוב של Tempo</h1>
-      <p class="tp-muted" style="margin-top:6px;max-width:60ch">חומר אחד, שני כיוונים: מה שמוגבה נוגעים בו, מה ששקוע כותבים בו. בלי קווי מתאר, בלי צבע מיותר. ערכת הנושא עוקבת אחרי מערכת ההפעלה, או נבחרת כאן.</p>
+      <p class="tp-muted" style="margin-top:6px;max-width:60ch">חומר אחד, שני כיוונים: מה שמוגבה נוגעים בו, מה ששקוע כותבים בו. בלי קווי מתאר, בלי צבע מיותר. האפליקציה בהירה. כהה קיים רק לבדיקה שהוא תקין.</p>
     </div>
     <div class="tp-seg" role="group" aria-label="ערכת נושא">
-      <button class="tp-seg__opt" type="button" data-theme-pick="" aria-pressed="true">מערכת</button>
-      <button class="tp-seg__opt" type="button" data-theme-pick="light" aria-pressed="false">בהיר</button>
+      <button class="tp-seg__opt" type="button" data-theme-pick="light" aria-pressed="true">בהיר</button>
       <button class="tp-seg__opt" type="button" data-theme-pick="dark" aria-pressed="false">כהה</button>
     </div>
   </div>
@@ -331,7 +330,7 @@
   for (const b of document.querySelectorAll('[data-theme-pick]')) {
     b.addEventListener('click', () => {
       const v = b.dataset.themePick;
-      if (v) root.setAttribute('data-theme', v); else root.removeAttribute('data-theme');
+      root.setAttribute('data-theme', v);
       for (const o of document.querySelectorAll('[data-theme-pick]')) o.setAttribute('aria-pressed', String(o === b));
     });
   }
@@ -344,7 +343,7 @@
   const inkFor = n => /soft$|^surface|^canvas$|^on-|^line$|^highlight$|^shade$/.test(n) ? 'var(--ink)' : (n.endsWith('-ink') || /^ink/.test(n) || n === 'line-strong') ? 'var(--surface)' : 'var(--on-brand)';
   sw.innerHTML = names.map(n => `<div class="sp-sw" style="background:var(--${n});color:${inkFor(n)}"><bdi style="font-weight:600">${n}</bdi><code data-var="${n}"></code></div>`).join('');
   const refresh = () => { const cs = getComputedStyle(root); for (const c of sw.querySelectorAll('[data-var]')) c.textContent = cs.getPropertyValue('--' + c.dataset.var).trim(); };
-  refresh(); new MutationObserver(refresh).observe(root, { attributes: true }); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refresh);
+  refresh(); new MutationObserver(refresh).observe(root, { attributes: true });
 </script>
 </body>
 </html>
