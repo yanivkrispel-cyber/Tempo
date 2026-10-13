@@ -13,9 +13,10 @@ using Tempo.Worker.Consumers.SmokeTest;
 namespace Tempo.Worker;
 
 /// <summary>
-/// tempo-{env}-worker-outbox. A thin Lambda entry point (LLD section 8) -
-/// all behavior lives in Consumers/SqsMessageDispatcher and its per-queue
-/// handlers so they stay unit-testable without a Lambda runtime.
+/// tempo-{env}-worker-outbox. A thin Lambda entry point (LLD section 8) for
+/// the single work queue - all behavior lives in Consumers/SqsMessageDispatcher
+/// and its per-message-type handlers so they stay unit-testable without a
+/// Lambda runtime.
 /// </summary>
 [SuppressMessage("Design", "CA1716", Justification = "Class name is the deployed Lambda handler; infrastructure/lib/async/messaging-stack.ts references 'Tempo.Worker.Function::FunctionHandler' by name.")]
 public class Function
@@ -26,8 +27,13 @@ public class Function
         .WriteTo.Console(new RenderedCompactJsonFormatter())
         .CreateLogger();
 
-    private readonly SqsMessageDispatcher _dispatcher =
-        new(Logger, new OutboxMessageHandler(Logger), new SmokeTestMessageHandler(Logger));
+    private readonly SqsMessageDispatcher _dispatcher = new(
+        Logger,
+        new Dictionary<string, IQueueMessageHandler>(StringComparer.Ordinal)
+        {
+            [MessageTypes.OutboxPublish] = new OutboxMessageHandler(Logger),
+            [MessageTypes.SmokeTest] = new SmokeTestMessageHandler(Logger)
+        });
 
     public Task<SQSBatchResponse> FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)
         => _dispatcher.HandleAsync(sqsEvent, context);

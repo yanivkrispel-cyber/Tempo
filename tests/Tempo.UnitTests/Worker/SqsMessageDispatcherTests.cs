@@ -10,18 +10,25 @@ namespace Tempo.UnitTests.Worker;
 
 public sealed class SqsMessageDispatcherTests
 {
+    private const string WorkQueueArn = "arn:aws:sqs:eu-central-1:123456789012:tempo-dev-work";
+
     private static readonly ILogger Logger = new LoggerConfiguration().CreateLogger();
 
+    private readonly IQueueMessageHandler outboxHandler = Substitute.For<IQueueMessageHandler>();
+    private readonly IQueueMessageHandler smokeTestHandler = Substitute.For<IQueueMessageHandler>();
+
+    private SqsMessageDispatcher Dispatcher() => new(
+        Logger,
+        new Dictionary<string, IQueueMessageHandler>
+        {
+            [MessageTypes.OutboxPublish] = outboxHandler,
+            [MessageTypes.SmokeTest] = smokeTestHandler
+        });
+
     [Fact]
-    public async Task HandleAsync_RoutesToOutboxHandler_ForOutboxQueueMessages()
+    public async Task HandleAsync_RoutesToOutboxHandler_ForOutboxPublishMessages()
     {
-        var outboxHandler = Substitute.For<IQueueMessageHandler>();
-        var smokeTestHandler = Substitute.For<IQueueMessageHandler>();
-        var dispatcher = new SqsMessageDispatcher(Logger, outboxHandler, smokeTestHandler);
-
-        var sqsEvent = BuildEvent("arn:aws:sqs:eu-central-1:123456789012:tempo-dev-outbox-publish", "msg-1");
-
-        var response = await dispatcher.HandleAsync(sqsEvent, FakeContext());
+        var response = await Dispatcher().HandleAsync(BuildEvent(Record("msg-1", MessageTypes.OutboxPublish)), FakeContext());
 
         response.BatchItemFailures.Should().BeEmpty();
         await outboxHandler.Received(1).HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>());
@@ -29,40 +36,43 @@ public sealed class SqsMessageDispatcherTests
     }
 
     [Fact]
-    public async Task HandleAsync_RoutesToSmokeTestHandler_ForSmokeTestQueueMessages()
+    public async Task HandleAsync_RoutesToSmokeTestHandler_ForSmokeTestMessages()
     {
-        var outboxHandler = Substitute.For<IQueueMessageHandler>();
-        var smokeTestHandler = Substitute.For<IQueueMessageHandler>();
-        var dispatcher = new SqsMessageDispatcher(Logger, outboxHandler, smokeTestHandler);
-
-        var sqsEvent = BuildEvent("arn:aws:sqs:eu-central-1:123456789012:tempo-dev-smoke-test", "msg-2");
-
-        await dispatcher.HandleAsync(sqsEvent, FakeContext());
+        await Dispatcher().HandleAsync(BuildEvent(Record("msg-2", MessageTypes.SmokeTest)), FakeContext());
 
         await smokeTestHandler.Received(1).HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>());
         await outboxHandler.DidNotReceive().HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>());
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("no-such-type")]
+    public async Task HandleAsync_ReportsBatchItemFailure_ForMissingOrUnknownMessageType(string? messageType)
+    {
+        var response = await Dispatcher().HandleAsync(BuildEvent(Record("untyped", messageType)), FakeContext());
+
+        response.BatchItemFailures.Should().ContainSingle(f => f.ItemIdentifier == "untyped");
+        await outboxHandler.DidNotReceive().HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>());
+        await smokeTestHandler.DidNotReceive().HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>());
+    }
+
     [Fact]
     public async Task HandleAsync_ReportsBatchItemFailure_WhenHandlerThrows_WithoutFailingWholeBatch()
     {
-        var outboxHandler = Substitute.For<IQueueMessageHandler>();
         outboxHandler
             .HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>())
             .Returns<Task>(_ => throw new InvalidOperationException("simulated poison message"));
-        var smokeTestHandler = Substitute.For<IQueueMessageHandler>();
-        var dispatcher = new SqsMessageDispatcher(Logger, outboxHandler, smokeTestHandler);
 
         var sqsEvent = new SQSEvent
         {
             Records =
             [
-                Record("arn:aws:sqs:eu-central-1:123456789012:tempo-dev-outbox-publish", "bad-message"),
-                Record("arn:aws:sqs:eu-central-1:123456789012:tempo-dev-smoke-test", "good-message")
+                Record("bad-message", MessageTypes.OutboxPublish),
+                Record("good-message", MessageTypes.SmokeTest)
             ]
         };
 
-        var response = await dispatcher.HandleAsync(sqsEvent, FakeContext());
+        var response = await Dispatcher().HandleAsync(sqsEvent, FakeContext());
 
         response.BatchItemFailures.Should().ContainSingle(f => f.ItemIdentifier == "bad-message");
         await smokeTestHandler.Received(1).HandleAsync(Arg.Any<SQSEvent.SQSMessage>(), Arg.Any<string>(), Arg.Any<ILambdaContext>());
@@ -71,26 +81,26 @@ public sealed class SqsMessageDispatcherTests
     [Fact]
     public async Task HandleAsync_UsesCorrelationIdMessageAttribute_WhenPresent()
     {
-        IQueueMessageHandler outboxHandler = Substitute.For<IQueueMessageHandler>();
-        var smokeTestHandler = Substitute.For<IQueueMessageHandler>();
-        var dispatcher = new SqsMessageDispatcher(Logger, outboxHandler, smokeTestHandler);
+        var record = Record("msg-3", MessageTypes.OutboxPublish);
+        record.MessageAttributes["CorrelationId"] = new SQSEvent.MessageAttribute { StringValue = "propagated-correlation-id", DataType = "String" };
 
-        var record = Record("arn:aws:sqs:eu-central-1:123456789012:tempo-dev-outbox-publish", "msg-3");
-        record.MessageAttributes = new Dictionary<string, SQSEvent.MessageAttribute>
-        {
-            ["CorrelationId"] = new() { StringValue = "propagated-correlation-id", DataType = "String" }
-        };
-
-        await dispatcher.HandleAsync(new SQSEvent { Records = [record] }, FakeContext());
+        await Dispatcher().HandleAsync(BuildEvent(record), FakeContext());
 
         await outboxHandler.Received(1).HandleAsync(record, "propagated-correlation-id", Arg.Any<ILambdaContext>());
     }
 
-    private static SQSEvent BuildEvent(string eventSourceArn, string messageId) =>
-        new() { Records = [Record(eventSourceArn, messageId)] };
+    private static SQSEvent BuildEvent(SQSEvent.SQSMessage record) => new() { Records = [record] };
 
-    private static SQSEvent.SQSMessage Record(string eventSourceArn, string messageId) =>
-        new() { MessageId = messageId, EventSourceArn = eventSourceArn, Body = "{}" };
+    private static SQSEvent.SQSMessage Record(string messageId, string? messageType)
+    {
+        var attributes = new Dictionary<string, SQSEvent.MessageAttribute>();
+        if (messageType is not null)
+        {
+            attributes[SqsMessageDispatcher.MessageTypeAttribute] = new SQSEvent.MessageAttribute { StringValue = messageType, DataType = "String" };
+        }
+
+        return new SQSEvent.SQSMessage { MessageId = messageId, EventSourceArn = WorkQueueArn, Body = "{}", MessageAttributes = attributes };
+    }
 
     private static ILambdaContext FakeContext()
     {

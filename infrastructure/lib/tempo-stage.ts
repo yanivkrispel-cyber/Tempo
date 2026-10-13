@@ -8,8 +8,6 @@ import { SecurityStack } from "./security/security-stack";
 import { IdentityStack } from "./identity/identity-stack";
 import { DatabaseStack } from "./data/database-stack";
 import { MessagingStack } from "./async/messaging-stack";
-import { EventsStack } from "./async/events-stack";
-import { SchedulerStack } from "./async/scheduler-stack";
 import { ApiStack } from "./api/api-stack";
 import { ObservabilityStack } from "./observability/observability-stack";
 
@@ -51,13 +49,10 @@ export class TempoStage extends Stage {
       lambdaDbSecurityGroup: network.lambdaDbSecurityGroup
     });
 
-    const events = new EventsStack(this, "Events", { config, env });
-    const messaging = new MessagingStack(this, "Messaging", { config, env, eventBus: events.eventBus });
-    new SchedulerStack(this, "Scheduler", {
-      config,
-      env,
-      smokeTestQueue: messaging.smokeTestQueue.queue
-    });
+    // ADR-0008 amendment: one work queue. An EventBridge bus is added only
+    // for real fan-out, and Scheduler schedules (outbox sweeper, canary)
+    // arrive with the outbox and edge work.
+    const messaging = new MessagingStack(this, "Messaging", { config, env });
 
     const api = new ApiStack(this, "Api", {
       config,

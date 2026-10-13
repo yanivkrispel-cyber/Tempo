@@ -6,7 +6,7 @@
  * Verifies, against a real deployed environment:
  *   1. GET /api/v1/health returns 200 with the expected JSON contract.
  *   2. GET /api/v1/me (protected) returns 401 without a token.
- *   3. A message sent to the smoke-test SQS queue is drained by the worker
+ *   3. A smoke-test message sent to the work queue is drained by the worker
  *      Lambda within 60 seconds. Needs AWS CLI credentials that may call
  *      sqs:GetQueueUrl, sqs:SendMessage and sqs:GetQueueAttributes on that
  *      queue (the GitHub deployment role has exactly these). Any failure,
@@ -114,8 +114,8 @@ function awsCli(args) {
 }
 
 async function checkQueueIsDrained(environment, region) {
-  const queueName = `tempo-${environment}-smoke-test`;
-  console.log(`→ sending a test message to ${queueName}`);
+  const queueName = `tempo-${environment}-work`;
+  console.log(`→ sending a smoke-test message to ${queueName}`);
 
   let queueUrl;
   try {
@@ -123,7 +123,20 @@ async function checkQueueIsDrained(environment, region) {
       awsCli(["sqs", "get-queue-url", "--queue-name", queueName, "--region", region])
     ).QueueUrl;
     const marker = `smoke-test-${Date.now()}`;
-    awsCli(["sqs", "send-message", "--queue-url", queueUrl, "--message-body", marker, "--region", region]);
+    // The worker routes on the MessageType attribute; an untyped message would be dead-lettered.
+    const attributes = JSON.stringify({ MessageType: { DataType: "String", StringValue: "smoke-test" } });
+    awsCli([
+      "sqs",
+      "send-message",
+      "--queue-url",
+      queueUrl,
+      "--message-body",
+      marker,
+      "--message-attributes",
+      attributes,
+      "--region",
+      region
+    ]);
   } catch (error) {
     // A missing queue or missing permission is a broken deployment, not a reason to skip.
     fail(`could not send a test message to ${queueName} (${error.message.trim()})`);
@@ -152,7 +165,7 @@ async function checkQueueIsDrained(environment, region) {
     ).Attributes;
     remaining = Number(attributes.ApproximateNumberOfMessages) + Number(attributes.ApproximateNumberOfMessagesNotVisible);
     if (remaining === 0) {
-      console.log("✓ smoke-test queue message was drained by the worker Lambda");
+      console.log("✓ smoke-test message on the work queue was drained by the worker Lambda");
       return true;
     }
   }
