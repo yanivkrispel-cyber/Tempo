@@ -48,9 +48,9 @@ behaviour (focus management, aria, keyboard). They never restyle a primitive; a 
 4. **Numbers are tabular.** `body` sets `tabular-nums`; keep it in tables and stats. Hebrew text with Latin or
    numbers inside: wrap the Latin in `<bdi>` or `.tp-ltr`, write ranges in words ("בין 8 ל-12"), never with a dash.
 5. **Touch targets are 44px** even when the control looks 32px (`--touch-min`).
-6. **Focus is visible** everywhere: the 2px `--focus` ring, offset 2px. Do not remove outlines.
-7. **White label changes two tokens** (`brand`, `brand-soft`, plus the derived hover/pressed/ink) and the logo.
-   A tenant color that fails 4.5:1 with `on-brand` is darkened by the brand resolver, not shipped.
+6. **Focus is visible** everywhere: the reference's blue glow (`shadow-focus`, a 3px halo plus a 14px glow). Do not remove it.
+7. **White label changes the sage set only** (`brand`, `brand-light`, `brand-hover`, `brand-glow`, `brand-pressed`,
+   `brand-soft`, `brand-ink`, `brand-deep`) and the logo. Rose, taupe and the grounds never change per tenant.
 8. **Motion is short** (120 to 280ms) and respects `prefers-reduced-motion`.
 
 ## Editing tokens
