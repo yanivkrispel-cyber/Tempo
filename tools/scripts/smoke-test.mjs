@@ -7,8 +7,11 @@
  *   1. GET /api/v1/health returns 200 with the expected JSON contract.
  *   2. GET /api/v1/me (protected) returns 401 without a token.
  *   3. A message sent to the smoke-test SQS queue is drained by the worker
- *      Lambda (best-effort - requires AWS CLI credentials with permission
- *      to send to the queue and read the worker's CloudWatch Logs).
+ *      Lambda within 60 seconds. Needs AWS CLI credentials that may call
+ *      sqs:GetQueueUrl, sqs:SendMessage and sqs:GetQueueAttributes on that
+ *      queue (the GitHub deployment role has exactly these). Any failure,
+ *      including missing permissions, fails the smoke test; pass
+ *      --skip-queue-check to leave this check out deliberately.
  *
  * Usage:
  *   node tools/scripts/smoke-test.mjs --api-url https://xxxx.execute-api.eu-central-1.amazonaws.com \
@@ -119,40 +122,43 @@ async function checkQueueIsDrained(environment, region) {
     queueUrl = JSON.parse(
       awsCli(["sqs", "get-queue-url", "--queue-name", queueName, "--region", region])
     ).QueueUrl;
+    const marker = `smoke-test-${Date.now()}`;
+    awsCli(["sqs", "send-message", "--queue-url", queueUrl, "--message-body", marker, "--region", region]);
   } catch (error) {
-    console.warn(`  skipping queue check: could not resolve queue URL (${error.message})`);
-    return true;
+    // A missing queue or missing permission is a broken deployment, not a reason to skip.
+    fail(`could not send a test message to ${queueName} (${error.message.trim()})`);
+    return false;
   }
 
-  const marker = `smoke-test-${Date.now()}`;
-  awsCli(["sqs", "send-message", "--queue-url", queueUrl, "--message-body", marker, "--region", region]);
-
-  // Give the SQS -> Lambda event source mapping time to poll and process.
-  await sleep(15_000);
-
-  const attributes = JSON.parse(
-    awsCli([
-      "sqs",
-      "get-queue-attributes",
-      "--queue-url",
-      queueUrl,
-      "--attribute-names",
-      "ApproximateNumberOfMessages",
-      "--region",
-      region
-    ])
-  );
-
-  const remaining = Number(attributes.Attributes.ApproximateNumberOfMessages);
-  if (remaining > 0) {
-    console.warn(
-      `  warning: ${remaining} message(s) still visible on ${queueName} after 15s - the worker may be cold-starting or behind. Not failing the smoke test on this alone.`
-    );
-  } else {
-    console.log("✓ smoke-test queue message was drained by the worker Lambda");
+  // The worker's event source mapping long-polls the queue. A message counts
+  // as drained when it is neither visible nor in flight; a cold start can take
+  // several seconds, so poll for up to a minute.
+  const deadline = Date.now() + 60_000;
+  let remaining = Number.NaN;
+  while (Date.now() < deadline) {
+    await sleep(5_000);
+    const attributes = JSON.parse(
+      awsCli([
+        "sqs",
+        "get-queue-attributes",
+        "--queue-url",
+        queueUrl,
+        "--attribute-names",
+        "ApproximateNumberOfMessages",
+        "ApproximateNumberOfMessagesNotVisible",
+        "--region",
+        region
+      ])
+    ).Attributes;
+    remaining = Number(attributes.ApproximateNumberOfMessages) + Number(attributes.ApproximateNumberOfMessagesNotVisible);
+    if (remaining === 0) {
+      console.log("✓ smoke-test queue message was drained by the worker Lambda");
+      return true;
+    }
   }
 
-  return true;
+  fail(`${remaining} message(s) still on ${queueName} after 60s - the worker did not process the test message`);
+  return false;
 }
 
 async function main() {

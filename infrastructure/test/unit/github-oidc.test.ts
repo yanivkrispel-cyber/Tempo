@@ -36,7 +36,7 @@ describe("GitHub OIDC deployment role trust (ADR-0011)", () => {
     expect(sub).not.toMatch(/^repo:\*/);
   });
 
-  it("only assumes the CDK bootstrap roles, never a broad admin policy", () => {
+  it("deploys through the CDK bootstrap roles, never a broad admin policy", () => {
     template.hasResourceProperties(
       "AWS::IAM::Policy",
       Match.objectLike({
@@ -50,5 +50,25 @@ describe("GitHub OIDC deployment role trust (ADR-0011)", () => {
         })
       })
     );
+  });
+
+  function deploymentRoleStatements(): Array<{ Sid?: string; Action: string | string[]; Resource: unknown }> {
+    const policies = Object.values(template.findResources("AWS::IAM::Policy"));
+    return policies.flatMap((p) => p.Properties.PolicyDocument.Statement);
+  }
+
+  it("may invoke only the database migrator function", () => {
+    const invoke = deploymentRoleStatements().filter((s) => [s.Action].flat().includes("lambda:InvokeFunction"));
+
+    expect(invoke).toHaveLength(1);
+    expect(invoke[0].Resource).toBe("arn:aws:lambda:eu-central-1:687239340846:function:tempo-dev-database-migrator");
+  });
+
+  it("may use only the smoke-test queue, and only to send and inspect", () => {
+    const sqs = deploymentRoleStatements().filter((s) => [s.Action].flat().some((a) => a.startsWith("sqs:")));
+
+    expect(sqs).toHaveLength(1);
+    expect([sqs[0].Action].flat().sort()).toEqual(["sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"]);
+    expect(sqs[0].Resource).toBe("arn:aws:sqs:eu-central-1:687239340846:tempo-dev-smoke-test");
   });
 });

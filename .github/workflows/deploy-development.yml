@@ -81,17 +81,20 @@ jobs:
 
       - name: Run database migration (deployment-role invocation only)
         run: |
-          aws lambda invoke \
+          # The function's own response goes to migration-response.json; an
+          # unhandled exception is reported in the CLI output as FunctionError.
+          INVOKE_RESULT=$(aws lambda invoke \
             --function-name tempo-dev-database-migrator \
             --invocation-type RequestResponse \
             --payload '{}' \
             --cli-binary-format raw-in-base64-out \
             --region ${{ env.AWS_REGION }} \
-            migration-response.json
+            migration-response.json)
 
+          echo "$INVOKE_RESULT"
           cat migration-response.json
 
-          if grep -q '"FunctionError"' migration-response.json 2>/dev/null; then
+          if echo "$INVOKE_RESULT" | grep -q '"FunctionError"'; then
             echo "::error::Database migration failed - see migration-response.json above"
             exit 1
           fi
