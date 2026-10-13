@@ -17,9 +17,7 @@ deployed by this change set):
 | `Security` | IAM Access Analyzer (account) |
 | `Identity` | Cognito User Pool + 3 browser app clients (admin-web, client-web, platform-admin-web) |
 | `Database` | Aurora PostgreSQL Serverless v2, Secrets Manager credentials, Tempo.DatabaseMigrator Lambda |
-| `Events` | Custom EventBridge bus |
-| `Messaging` | SQS queues + DLQs, Tempo.Worker Lambda, smoke-test EventBridge rule |
-| `Scheduler` | EventBridge Scheduler foundation (disabled by default) |
+| `Messaging` | One SQS work queue + DLQ, Tempo.Worker Lambda routing by `MessageType` (ADR-0008 amendment) |
 | `Api` | API Gateway HTTP API, Tempo.Api Lambda, Cognito JWT authorizer |
 | `Observability` | CloudWatch alarms + dashboard |
 

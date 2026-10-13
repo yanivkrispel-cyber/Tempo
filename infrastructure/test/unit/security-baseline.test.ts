@@ -40,40 +40,33 @@ describe("Prohibited services and NAT Gateway (section 27/29)", () => {
 describe("SQS queues (ADR-0008, LLD section 15/34.2)", () => {
   const template = stackTemplate("Messaging");
 
+  it("has exactly one work queue and its DLQ (ADR-0008 amendment)", () => {
+    const names = Object.values(template.findResources("AWS::SQS::Queue")).map((q) => q.Properties.QueueName).sort();
+    expect(names).toEqual(["tempo-dev-work", "tempo-dev-work-dlq"]);
+  });
+
   it("every queue is encrypted", () => {
     template.allResourcesProperties("AWS::SQS::Queue", { SqsManagedSseEnabled: true });
   });
 
-  it("every business queue has a DLQ with a bounded redrive policy", () => {
+  it("the work queue has a DLQ with a bounded redrive policy", () => {
     template.hasResourceProperties("AWS::SQS::Queue", {
-      QueueName: "tempo-dev-outbox-publish",
-      RedrivePolicy: Match.objectLike({ maxReceiveCount: Match.anyValue() })
-    });
-    template.hasResourceProperties("AWS::SQS::Queue", {
-      QueueName: "tempo-dev-smoke-test",
+      QueueName: "tempo-dev-work",
       RedrivePolicy: Match.objectLike({ maxReceiveCount: Match.anyValue() })
     });
   });
 
   it("visibility timeout is greater than the worker Lambda timeout (60s dev)", () => {
-    template.hasResourceProperties("AWS::SQS::Queue", {
-      QueueName: "tempo-dev-outbox-publish",
-      VisibilityTimeout: Match.anyValue()
-    });
     const queues = template.findResources("AWS::SQS::Queue", {
-      Properties: { QueueName: "tempo-dev-outbox-publish" }
+      Properties: { QueueName: "tempo-dev-work" }
     });
     const [queue] = Object.values(queues);
     expect(queue.Properties.VisibilityTimeout).toBeGreaterThan(60);
   });
 
-  it("long polling is enabled on both consumer-facing queues", () => {
+  it("long polling is enabled on the work queue", () => {
     template.hasResourceProperties("AWS::SQS::Queue", {
-      QueueName: "tempo-dev-outbox-publish",
-      ReceiveMessageWaitTimeSeconds: 20
-    });
-    template.hasResourceProperties("AWS::SQS::Queue", {
-      QueueName: "tempo-dev-smoke-test",
+      QueueName: "tempo-dev-work",
       ReceiveMessageWaitTimeSeconds: 20
     });
   });

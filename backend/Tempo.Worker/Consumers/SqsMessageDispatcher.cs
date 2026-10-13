@@ -5,40 +5,44 @@ using Serilog;
 namespace Tempo.Worker.Consumers;
 
 /// <summary>
-/// Routes each SQS record to the handler for its source queue and reports
-/// partial batch failures (LLD section 15.3 / 12.4) - a failed item is
-/// listed in <see cref="SQSBatchResponse.BatchItemFailures"/> so only that
-/// message is retried/DLQ'd; it is never silently acknowledged as
-/// successful, and one bad message never fails the whole batch.
+/// Routes each record of the single work queue (ADR-0008 amendment) to the
+/// handler for its message type, read from the <see cref="MessageTypeAttribute"/>
+/// message attribute, and reports partial batch failures (LLD section
+/// 15.3 / 12.4): a failed item is listed in
+/// <see cref="SQSBatchResponse.BatchItemFailures"/> so only that message is
+/// retried and eventually dead-lettered. A message without a known type
+/// fails the same way; it is never silently acknowledged, and one bad
+/// message never fails the whole batch.
 /// </summary>
-public sealed class SqsMessageDispatcher(ILogger logger, IQueueMessageHandler outboxHandler, IQueueMessageHandler smokeTestHandler)
+public sealed class SqsMessageDispatcher(ILogger logger, IReadOnlyDictionary<string, IQueueMessageHandler> handlers)
 {
+    public const string MessageTypeAttribute = "MessageType";
+
     public async Task<SQSBatchResponse> HandleAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
         var failures = new List<SQSBatchResponse.BatchItemFailure>();
 
         foreach (var record in sqsEvent.Records)
         {
-            var correlationId = ExtractCorrelationId(record) ?? context.AwsRequestId;
+            var correlationId = ExtractAttribute(record, "CorrelationId") ?? context.AwsRequestId;
+            var messageType = ExtractAttribute(record, MessageTypeAttribute);
 
             try
             {
-                if (record.EventSourceArn.EndsWith("smoke-test", StringComparison.OrdinalIgnoreCase))
+                if (messageType is null || !handlers.TryGetValue(messageType, out var handler))
                 {
-                    await smokeTestHandler.HandleAsync(record, correlationId, context);
+                    throw new InvalidOperationException($"No handler for message type '{messageType ?? "(missing)"}'.");
                 }
-                else
-                {
-                    await outboxHandler.HandleAsync(record, correlationId, context);
-                }
+
+                await handler.HandleAsync(record, correlationId, context);
             }
             catch (Exception ex)
             {
                 logger.Error(
                     ex,
-                    "Failed to process message {MessageId} from {EventSourceArn}. CorrelationId={CorrelationId}",
+                    "Failed to process message {MessageId} of type {MessageType}. CorrelationId={CorrelationId}",
                     record.MessageId,
-                    record.EventSourceArn,
+                    messageType,
                     correlationId);
                 failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = record.MessageId });
             }
@@ -47,10 +51,10 @@ public sealed class SqsMessageDispatcher(ILogger logger, IQueueMessageHandler ou
         return new SQSBatchResponse(failures);
     }
 
-    private static string? ExtractCorrelationId(SQSEvent.SQSMessage record)
+    private static string? ExtractAttribute(SQSEvent.SQSMessage record, string name)
     {
         if (record.MessageAttributes is not null &&
-            record.MessageAttributes.TryGetValue("CorrelationId", out var attribute))
+            record.MessageAttributes.TryGetValue(name, out var attribute))
         {
             return attribute.StringValue;
         }
