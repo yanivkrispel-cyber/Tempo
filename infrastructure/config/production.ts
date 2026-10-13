@@ -43,6 +43,7 @@ const productionConfig: TempoEnvironmentConfig = {
   observability: {
     enableTracing: true,
     logRetentionDays: 90,
+    alarmsEnabled: true,
     alarmNotificationsEnabled: true,
     alarmEmail: "aws-alerts@tempo.example"
   },

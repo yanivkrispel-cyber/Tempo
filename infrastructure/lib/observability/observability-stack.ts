@@ -40,6 +40,49 @@ export class ObservabilityStack extends Stack {
     super(scope, id, props);
     const { config } = props;
 
+    if (config.observability.alarmsEnabled) {
+      this.addAlarms(config, props);
+    }
+
+    new Dashboard(this, "Dashboard", {
+      dashboardName: resourceName(config, "dashboard"),
+      widgets: [
+        [
+          new GraphWidget({
+            title: "API Gateway - requests / errors / latency",
+            left: [props.httpApi.metricCount(), props.httpApi.metricServerError(), props.httpApi.metricClientError()],
+            right: [props.httpApi.metricLatency({ statistic: "p99" })]
+          })
+        ],
+        [
+          new GraphWidget({
+            title: "Lambda - errors / throttles",
+            left: [
+              props.apiFunction.metricErrors(),
+              props.workerFunction.metricErrors(),
+              props.migratorFunction.metricErrors()
+            ],
+            right: [
+              props.apiFunction.metricThrottles(),
+              props.workerFunction.metricThrottles(),
+              props.migratorFunction.metricThrottles()
+            ]
+          })
+        ],
+        [
+          new GraphWidget({
+            title: "Aurora - connections / capacity",
+            left: [props.cluster.metricDatabaseConnections()],
+            right: [props.cluster.metric("ServerlessDatabaseCapacity", { statistic: "Maximum" })]
+          })
+        ]
+      ]
+    });
+
+    applyStandardTags(this, config, "observability");
+  }
+
+  private addAlarms(config: TempoEnvironmentConfig, props: ObservabilityStackProps): void {
     const alarmAction = this.buildAlarmAction(config);
 
     const api5xxAlarm = new Alarm(this, "Api5xxAlarm", {
@@ -110,43 +153,6 @@ export class ObservabilityStack extends Stack {
         alarm.addAlarmAction(alarmAction);
       }
     }
-
-    new Dashboard(this, "Dashboard", {
-      dashboardName: resourceName(config, "dashboard"),
-      widgets: [
-        [
-          new GraphWidget({
-            title: "API Gateway - requests / errors / latency",
-            left: [props.httpApi.metricCount(), props.httpApi.metricServerError(), props.httpApi.metricClientError()],
-            right: [props.httpApi.metricLatency({ statistic: "p99" })]
-          })
-        ],
-        [
-          new GraphWidget({
-            title: "Lambda - errors / throttles",
-            left: [
-              props.apiFunction.metricErrors(),
-              props.workerFunction.metricErrors(),
-              props.migratorFunction.metricErrors()
-            ],
-            right: [
-              props.apiFunction.metricThrottles(),
-              props.workerFunction.metricThrottles(),
-              props.migratorFunction.metricThrottles()
-            ]
-          })
-        ],
-        [
-          new GraphWidget({
-            title: "Aurora - connections / capacity",
-            left: [props.cluster.metricDatabaseConnections()],
-            right: [props.cluster.metric("ServerlessDatabaseCapacity", { statistic: "Maximum" })]
-          })
-        ]
-      ]
-    });
-
-    applyStandardTags(this, config, "observability");
   }
 
   private buildAlarmAction(config: TempoEnvironmentConfig): SnsAction | undefined {

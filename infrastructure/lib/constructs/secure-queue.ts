@@ -56,9 +56,17 @@ export class SecureQueue extends Construct {
       }
     });
 
+    if (config.observability.alarmsEnabled) {
+      this.addAlarms(props.queueName, visibilityTimeout);
+    }
+
+    applyStandardTags(this, config, props.component);
+  }
+
+  private addAlarms(queueName: string, visibilityTimeout: Duration): void {
     new Alarm(this, "DeadLetterMessagesAlarm", {
-      alarmName: `${props.queueName}-dlq-messages`,
-      alarmDescription: `One or more messages landed in the DLQ for ${props.queueName}`,
+      alarmName: `${queueName}-dlq-messages`,
+      alarmDescription: `One or more messages landed in the DLQ for ${queueName}`,
       metric: this.deadLetterQueue.metricApproximateNumberOfMessagesVisible({
         period: Duration.minutes(5),
         statistic: "Maximum"
@@ -70,8 +78,8 @@ export class SecureQueue extends Construct {
     });
 
     new Alarm(this, "OldestMessageAgeAlarm", {
-      alarmName: `${props.queueName}-oldest-message-age`,
-      alarmDescription: `Oldest message in ${props.queueName} is not being processed in time`,
+      alarmName: `${queueName}-oldest-message-age`,
+      alarmDescription: `Oldest message in ${queueName} is not being processed in time`,
       metric: this.queue.metricApproximateAgeOfOldestMessage({
         period: Duration.minutes(5),
         statistic: "Maximum"
@@ -81,7 +89,5 @@ export class SecureQueue extends Construct {
       comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
       treatMissingData: TreatMissingData.NOT_BREACHING
     });
-
-    applyStandardTags(this, config, props.component);
   }
 }

@@ -41,6 +41,9 @@ const developmentConfig: TempoEnvironmentConfig = {
   observability: {
     enableTracing: true,
     logRetentionDays: 14,
+    // ADR-0012 amendment: no alarms in development. The ten free alarms are
+    // shared by the whole Organization and are kept for production.
+    alarmsEnabled: false,
     // No approved alarm channel provided for dev yet; production requires this to be true.
     alarmNotificationsEnabled: false,
     alarmEmail: undefined

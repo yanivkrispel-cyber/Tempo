@@ -19,7 +19,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
       apiReservedConcurrency: 10,
       workerReservedConcurrency: 5
     },
-    observability: { enableTracing: true, logRetentionDays: 14, alarmNotificationsEnabled: false, alarmEmail: undefined },
+    observability: { enableTracing: true, logRetentionDays: 14, alarmsEnabled: false, alarmNotificationsEnabled: false, alarmEmail: undefined },
     cost: { monthlyBudgetUsd: 1, alertEmail: "alerts@example.com" },
     networking: { maxAzs: 2, natGatewayEnabled: false },
     github: { owner: "yanivkrispel-cyber", repo: "Tempo", allowedBranch: "main", githubEnvironment: undefined },
@@ -80,7 +80,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: false,
           aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })
       )
@@ -94,7 +94,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: true, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })
       )
@@ -108,7 +108,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           aurora: { minAcu: 0, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })
       )
@@ -122,7 +122,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmNotificationsEnabled: false, alarmEmail: undefined },
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: false, alarmEmail: undefined },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })
       )
@@ -136,7 +136,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: undefined }
         })
       )
@@ -149,10 +149,32 @@ describe("validateEnvironmentConfig", () => {
     ).toThrow(/domainName/);
   });
 
+  it("rejects production with alarms turned off", () => {
+    expect(() =>
+      validateEnvironmentConfig(
+        baseConfig({
+          environmentName: "prod",
+          enableDeletionProtection: true,
+          aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: false, alarmNotificationsEnabled: false, alarmEmail: undefined },
+          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
+        })
+      )
+    ).toThrow(/production requires observability.alarmsEnabled/);
+  });
+
+  it("rejects alarm notifications when alarms are turned off", () => {
+    expect(() =>
+      validateEnvironmentConfig(
+        baseConfig({ observability: { enableTracing: true, logRetentionDays: 14, alarmsEnabled: false, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" } })
+      )
+    ).toThrow(/requires observability.alarmsEnabled/);
+  });
+
   it("rejects alarmNotificationsEnabled without an alarm email", () => {
     expect(() =>
       validateEnvironmentConfig(
-        baseConfig({ observability: { enableTracing: true, logRetentionDays: 14, alarmNotificationsEnabled: true, alarmEmail: undefined } })
+        baseConfig({ observability: { enableTracing: true, logRetentionDays: 14, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: undefined } })
       )
     ).toThrow(/alarmEmail/);
   });
