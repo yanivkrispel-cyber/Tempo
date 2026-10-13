@@ -27,14 +27,15 @@ deployed by this change set):
 
 ## Local AWS credentials (SSO)
 
-`cdk diff`/`cdk deploy` need AWS credentials for account `687239340846`
-(`eu-central-1`). Configure an SSO profile once:
+`cdk diff`/`cdk deploy` need AWS credentials for the dev account `254631022581`
+(`tempo-dev`, `eu-central-1`). The Organization's management account,
+`687239340846`, never hosts workloads. Configure an SSO profile once:
 
 ```bash
 aws configure sso --profile tempo-dev
 # SSO start URL: https://d-99674d7b12.awsapps.com/start
 # SSO region:    eu-central-1
-# (browser login, then pick the 687239340846 / AdministratorAccess account+role)
+# (browser login, then pick the 254631022581 (tempo-dev) / AdministratorAccess account+role)
 # Default client Region: eu-central-1
 ```
 
@@ -86,8 +87,8 @@ or unsafely-defaulted values) and `config/{development,staging,production}.ts`
 (the per-environment values). Secrets are never stored here - only ARNs,
 account IDs and non-secret settings.
 
-`development.ts` holds the real values provided for this phase (AWS account
-`687239340846`, region `eu-central-1`, GitHub repo
+`development.ts` holds the real values for this phase (AWS account
+`254631022581`, region `eu-central-1`, GitHub repo
 `yanivkrispel-cyber/Tempo`). `staging.ts` and `production.ts` use placeholder
 account IDs (`000000000000`) and placeholder domains (`*.tempo.example`) -
 they exist so `cdk synth` can validate their safety invariants (deletion
@@ -128,15 +129,16 @@ before `cdk deploy`.
 2. Bootstrap the CDK toolkit in the target account/region (one-time, needs
    an administrator, not GitHub Actions):
    ```bash
-   npx cdk bootstrap aws://687239340846/eu-central-1
+   npx cdk bootstrap aws://254631022581/eu-central-1 --bootstrap-kms-key-id AWS_MANAGED_KEY
    ```
 3. Deploy `TempoDev/GitHubOidc` once with administrator credentials so the
-   deployment role exists before CI first tries to assume it:
+   deployment role exists before CI first tries to assume it. Stacks inside a
+   Stage are selected by path; `TempoDev-GitHubOidc` matches no stack:
    ```bash
-   npx cdk deploy TempoDev-GitHubOidc
+   npx cdk deploy 'TempoDev/GitHubOidc'
    ```
 4. No GitHub repository secrets are needed - `deploy-development.yml`
-   assumes `arn:aws:iam::687239340846:role/tempo-dev-github-deploy` via
+   assumes `arn:aws:iam::254631022581:role/tempo-dev-github-deploy` via
    OIDC. The trust policy restricts assumption to
    `repo:yanivkrispel-cyber/Tempo:ref:refs/heads/main` only.
 

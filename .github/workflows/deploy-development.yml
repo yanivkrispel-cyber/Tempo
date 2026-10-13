@@ -17,7 +17,7 @@ env:
   DOTNET_VERSION: "10.0.x"
   NODE_VERSION: "22"
   AWS_REGION: eu-central-1
-  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::687239340846:role/tempo-dev-github-deploy
+  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::254631022581:role/tempo-dev-github-deploy
 
 jobs:
   deploy:

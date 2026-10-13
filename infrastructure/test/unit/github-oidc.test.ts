@@ -61,7 +61,7 @@ describe("GitHub OIDC deployment role trust (ADR-0011)", () => {
     const invoke = deploymentRoleStatements().filter((s) => [s.Action].flat().includes("lambda:InvokeFunction"));
 
     expect(invoke).toHaveLength(1);
-    expect(invoke[0].Resource).toBe("arn:aws:lambda:eu-central-1:687239340846:function:tempo-dev-database-migrator");
+    expect(invoke[0].Resource).toBe("arn:aws:lambda:eu-central-1:254631022581:function:tempo-dev-database-migrator");
   });
 
   it("may use only the smoke-test queue, and only to send and inspect", () => {
@@ -69,6 +69,6 @@ describe("GitHub OIDC deployment role trust (ADR-0011)", () => {
 
     expect(sqs).toHaveLength(1);
     expect([sqs[0].Action].flat().sort()).toEqual(["sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"]);
-    expect(sqs[0].Resource).toBe("arn:aws:sqs:eu-central-1:687239340846:tempo-dev-smoke-test");
+    expect(sqs[0].Resource).toBe("arn:aws:sqs:eu-central-1:254631022581:tempo-dev-smoke-test");
   });
 });

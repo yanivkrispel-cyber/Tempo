@@ -3,14 +3,15 @@ import { TempoEnvironmentConfig, validateEnvironmentConfig } from "./environment
 /**
  * Development environment configuration.
  *
- * AWS account/region/GitHub identity are the values provided for the Phase 0
- * AWS foundation slice. Root domain and hosted zone are not configured, so
+ * The dev environment runs in its own member account, tempo-dev
+ * (254631022581, created 2026-10-13, status page decision D1), never in the
+ * Organization's management account. Root domain and hosted zone are not configured, so
  * featureFlags.enableCustomDomain stays false and the HTTP API uses its
  * default execute-api endpoint.
  */
 const developmentConfig: TempoEnvironmentConfig = {
   environmentName: "dev",
-  accountId: "687239340846",
+  accountId: "254631022581",
   region: "eu-central-1",
 
   apiName: "tempo-dev-http-api",
