@@ -20,6 +20,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
       workerReservedConcurrency: 5
     },
     observability: { enableTracing: true, logRetentionDays: 14, alarmNotificationsEnabled: false, alarmEmail: undefined },
+    cost: { monthlyBudgetUsd: 1, alertEmail: "alerts@example.com" },
     networking: { maxAzs: 2, natGatewayEnabled: false },
     github: { owner: "yanivkrispel-cyber", repo: "Tempo", allowedBranch: "main", githubEnvironment: undefined },
     featureFlags: { enableCustomDomain: false, enableFrontendHosting: false, enableWaf: false },

@@ -46,6 +46,13 @@ const developmentConfig: TempoEnvironmentConfig = {
     alarmEmail: undefined
   },
 
+  // ADR-0021: $1 budget that alerts on the first cent; alerts go to the
+  // address chosen for decision D2 on 2026-10-13.
+  cost: {
+    monthlyBudgetUsd: 1,
+    alertEmail: "yaniv.krispel+tempo-app@gmail.com"
+  },
+
   networking: {
     maxAzs: 2,
     natGatewayEnabled: false

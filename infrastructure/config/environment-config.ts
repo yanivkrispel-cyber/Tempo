@@ -40,6 +40,14 @@ export interface ObservabilityConfig {
   readonly alarmEmail?: string;
 }
 
+/** Cost guardrails per account (ADR-0020, ADR-0021). */
+export interface CostConfig {
+  /** Monthly AWS Budget in USD. ADR-0021: $1 in every account until there is revenue. */
+  readonly monthlyBudgetUsd: number;
+  /** Receives the budget and Cost Anomaly Detection alerts (status page decision D2). */
+  readonly alertEmail: string;
+}
+
 export interface NetworkingConfig {
   readonly maxAzs: number;
   /** Must default to false. Only enable after an explicit, documented cost/architecture review. */
@@ -80,6 +88,7 @@ export interface TempoEnvironmentConfig {
   readonly aurora: AuroraConfig;
   readonly lambda: LambdaConfig;
   readonly observability: ObservabilityConfig;
+  readonly cost: CostConfig;
   readonly networking: NetworkingConfig;
   readonly github: GitHubDeploymentConfig;
   readonly featureFlags: FeatureFlags;
@@ -151,6 +160,13 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (config.observability.alarmNotificationsEnabled && !config.observability.alarmEmail) {
     errors.push("observability.alarmEmail is required when alarmNotificationsEnabled is true");
+  }
+
+  if (!(config.cost.monthlyBudgetUsd > 0)) {
+    errors.push("cost.monthlyBudgetUsd must be > 0");
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(config.cost.alertEmail)) {
+    errors.push(`cost.alertEmail must be an email address, got "${config.cost.alertEmail}"`);
   }
 
   for (const url of [
