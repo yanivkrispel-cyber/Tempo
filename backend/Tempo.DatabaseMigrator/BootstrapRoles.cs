@@ -7,10 +7,13 @@ namespace Tempo.DatabaseMigrator;
 /// <summary>
 /// Prepares the `application` and `migrator` Postgres roles (LLD section 12:
 /// "Create or prepare database identities for: Master/bootstrap user,
-/// Application user, Migrator user"). CDK provisions the Secrets Manager
-/// secrets holding each role's password; only the master user can actually
-/// issue `CREATE ROLE`, so this runs once, at the start of every migration,
-/// using the master connection.
+/// Application user, Migrator user") and the `platform` schema that holds the
+/// migration journal. CDK provisions the Secrets Manager secrets holding each
+/// role's password; only the master user can actually issue `CREATE ROLE`,
+/// so this runs once, at the start of every migration, using the master
+/// connection. Every step is idempotent and checked from C#, with no
+/// PL/pgSQL `DO` block, so the same bootstrap shape also fits engines without
+/// procedural SQL (Aurora DSQL).
 /// </summary>
 public static partial class BootstrapRoles
 {
@@ -44,6 +47,14 @@ public static partial class BootstrapRoles
             $"GRANT CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(applicationCredentials.Username)}",
             cancellationToken);
 
+        // From PostgreSQL 15 an ordinary role cannot create objects in
+        // `public`, so the migrator gets its own schema for the journal
+        // (LLD section 10.5 lists `platform`).
+        await ExecuteAsync(
+            connection,
+            $"CREATE SCHEMA IF NOT EXISTS {QuoteBuilder.QuoteIdentifier(MigrationJournal.SchemaName)} AUTHORIZATION {QuoteBuilder.QuoteIdentifier(migratorCredentials.Username)}",
+            cancellationToken);
+
         log.LogInformation(
             "Bootstrapped database roles '{0}' (migrator) and '{1}' (application)",
             migratorCredentials.Username,
@@ -58,22 +69,18 @@ public static partial class BootstrapRoles
     {
         var quotedRole = QuoteBuilder.QuoteIdentifier(credential.Username);
 
+        await using var exists = new NpgsqlCommand("SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1", connection);
+        exists.Parameters.Add(new NpgsqlParameter { Value = credential.Username });
+        var roleExists = await exists.ExecuteScalarAsync(cancellationToken) is not null;
+
         // The password is interpolated directly because PostgreSQL DDL (CREATE
         // ROLE / ALTER ROLE) cannot be parameterized. This is only safe because
         // ValidateCredential() above enforces an alphanumeric-only charset,
         // matching how infrastructure/lib/data/database-stack.ts generates
         // these secrets (excludePunctuation: true).
-        var sql = $"""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{credential.Username}') THEN
-                    CREATE ROLE {quotedRole} LOGIN PASSWORD '{credential.Password}';
-                ELSE
-                    ALTER ROLE {quotedRole} WITH PASSWORD '{credential.Password}';
-                END IF;
-            END
-            $$;
-            """;
+        var sql = roleExists
+            ? $"ALTER ROLE {quotedRole} WITH PASSWORD '{credential.Password}'"
+            : $"CREATE ROLE {quotedRole} LOGIN PASSWORD '{credential.Password}'";
 
         await ExecuteAsync(connection, sql, cancellationToken);
         log.LogInformation("Ensured role '{0}' exists", credential.Username);

@@ -11,10 +11,14 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(new RenderedCompactJsonFormatter())
     .CreateLogger();
 
+// docker-compose.local.yml runs PostgreSQL without TLS, so the local default
+// is SSL off. Set DATABASE_SSL_MODE=Require (any Npgsql SslMode name) to
+// point this CLI at a database that needs TLS.
 var endpoint = new DatabaseEndpoint(
     Environment.GetEnvironmentVariable("DATABASE_HOST") ?? "localhost",
-    int.Parse(Environment.GetEnvironmentVariable("DATABASE_PORT") ?? "5432"),
-    Environment.GetEnvironmentVariable("DATABASE_NAME") ?? "tempo");
+    int.Parse(Environment.GetEnvironmentVariable("DATABASE_PORT") ?? "5432", System.Globalization.CultureInfo.InvariantCulture),
+    Environment.GetEnvironmentVariable("DATABASE_NAME") ?? "tempo",
+    Enum.Parse<Npgsql.SslMode>(Environment.GetEnvironmentVariable("DATABASE_SSL_MODE") ?? nameof(Npgsql.SslMode.Disable), ignoreCase: true));
 
 var masterCredentials = (
     Environment.GetEnvironmentVariable("DATABASE_MASTER_USERNAME") ?? "tempo",

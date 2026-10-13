@@ -4,7 +4,12 @@ using Npgsql;
 
 namespace Tempo.DatabaseMigrator;
 
-public sealed record DatabaseEndpoint(string Host, int Port, string DatabaseName);
+/// <summary>
+/// Where the migrator connects. SSL is required by default; only the local
+/// CLI entry point (Program.cs) may turn it off, for the docker-compose
+/// PostgreSQL that runs without TLS.
+/// </summary>
+public sealed record DatabaseEndpoint(string Host, int Port, string DatabaseName, SslMode SslMode = SslMode.Require);
 
 public sealed record MigrationResult(bool Successful, string[] AppliedScripts);
 
@@ -39,6 +44,7 @@ public static class MigrationRunner
         var upgrader = DeployChanges.To
             .PostgresqlDatabase(migratorConnectionString)
             .WithScriptsEmbeddedInAssembly(typeof(MigrationRunner).Assembly)
+            .JournalTo((connectionManager, upgradeLog) => new MigrationJournal(connectionManager, upgradeLog))
             .WithTransaction()
             .LogTo(log)
             .Build();
@@ -67,7 +73,7 @@ public static class MigrationRunner
             Database = endpoint.DatabaseName,
             Username = username,
             Password = password,
-            SslMode = SslMode.Require,
+            SslMode = endpoint.SslMode,
             Timeout = 30
         }.ConnectionString;
 }
