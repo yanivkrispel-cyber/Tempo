@@ -1,4 +1,4 @@
-/* Tempo design system — base layer (Soft UI).
+/* Tempo design system — base layer (Neo-Tactile Soft UI, matched to reference 9d607248).
    Load order in every app: tokens.css → base.css → components.css → app styles.
    Logical properties only, so the same CSS serves RTL (Hebrew, the default) and LTR.
    Set dir="rtl" lang="he" (or dir="ltr") on <html>. */
@@ -20,8 +20,7 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  /* one material: a faint light wash from the top-start corner, the direction every shadow assumes */
-  background: linear-gradient(160deg, var(--surface-hover) 0%, var(--canvas) 38%) fixed, var(--canvas);
+  background: var(--canvas);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -40,7 +39,7 @@ code, kbd, pre {
   direction: ltr;
   unicode-bidi: isolate;
 }
-code { background: var(--surface-sunken); padding: 2px 8px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sunken); }
+code { background: var(--surface-sunken); padding: 2px 8px; border-radius: 6px; }
 img, svg, video { max-width: 100%; display: block; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -57,10 +56,10 @@ bdi { unicode-bidi: isolate; }
 .tp-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* An embossed hairline: the only divider the system draws. */
-.tp-divider { height: 1px; border: 0; margin: 0; background: var(--line); box-shadow: 0 1px 0 var(--highlight); }
+.tp-divider { height: 1px; border: 0; margin: 0; background: var(--line); }
 
-/* One focus ring for everything interactive: solid, 2px, offset, 3:1 on every surface. */
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: inherit; }
+/* One focus ring for everything interactive: the reference's blue glow (3px halo + 14px glow). */
+:focus-visible { outline: none; box-shadow: var(--shadow-focus); border-radius: inherit; }
 :focus:not(:focus-visible) { outline: none; }
 
 ::selection { background: var(--brand-soft); color: var(--brand-ink); }

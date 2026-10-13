@@ -40,10 +40,11 @@ behaviour (focus management, aria, keyboard). They never restyle a primitive; a 
 
 1. **Every color comes from a token.** No hex in app code or in component wrappers. Need a new color: add a token
    with a usage note, run `pnpm lint` (contrast check), then use it.
-2. **One material, two directions.** Objects you touch or read are raised (`shadow-raise`, `shadow-raise-sm`);
-   wells you type in or that hold a track are sunken (`shadow-sunken`). Nothing has a border. Row dividers are
-   embossed hairlines (`.tp-divider`). The brand is a gradient on the one or two things that matter per screen.
+2. **The reference image is the law.** `C:/Dev/Tempo-Design/9d607248922bb2053a1b000d3e7809c3.jpg` defines every
+   color, shadow level and radius; the tokens were sampled from it. Sage is the only action color, rose the only
+   accent, blue only for focus and selection. A new look for a control starts by finding it in the image.
 3. **Status is never hue alone.** Every status chip carries a word; success and danger also differ in lightness.
+   White-on-sage, white-on-rose and white-on-taupe are reference-exact and under AA: labels only, 15px+, 600.
 4. **Numbers are tabular.** `body` sets `tabular-nums`; keep it in tables and stats. Hebrew text with Latin or
    numbers inside: wrap the Latin in `<bdi>` or `.tp-ltr`, write ranges in words ("בין 8 ל-12"), never with a dash.
 5. **Touch targets are 44px** even when the control looks 32px (`--touch-min`).

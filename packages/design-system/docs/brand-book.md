@@ -1,76 +1,87 @@
-Tempo is a scheduling and studio-management platform built in Israel, Hebrew-first, sold white-label to studios, coaches and clinics. The interface has one rule that everything else follows: **one material, two directions.** Every object is cut from the same light material as the page; what you touch or read is raised off it, what you type into is sunken into it, and nothing has a border. Radii are large, spacing is generous, the type is heavy at the top and quiet below. A teal gradient marks the one or two things that matter on a screen; navy is the ink; the week grid of rounded tiles is the signature shape.
+Tempo is a scheduling and studio-management platform built in Israel, Hebrew-first, sold white-label to studios, coaches and clinics. Its interface is the "Neo-Tactile Soft UI" reference board reproduced one to one: a warm off-white page, cream and sand slabs with a gentle lift, taupe base cards and wells pressed softly into the surface, **sage** as the one action color with a mint glow on hover, **dusty rose** for the slider and the single elevated card on a screen, and **blue only for focus and selection**. Radii are small and precise, shadows are soft, highlights are diffused. Nothing shouts; depth and warmth do the work.
 
 Use this page as the rules; the code is `packages/design-system` in the Tempo repository (`tokens/tokens.json` is the same file as this system's tokens, `css/components.css` is this system's bundle). Build screens from the primitives here; add a primitive to the package first, then here, never only in an app.
 
 ## Content fundamentals
 
 - **Hebrew first, right to left.** Every screen is `dir="rtl" lang="he"`. Write all CSS with logical properties; never `left`/`right` in app code. English and Latin tokens inside Hebrew (TP, SMS, a product name, an email) sit in `<bdi>` or `.tp-ltr`. IDs, phone numbers, emails, URLs and code are `dir="ltr"`.
-- **Numbers.** Ranges in words: "בין 8 ל-12", "08:30 עד 09:20". Never a dash, an arrow or × between numbers, they flip in RTL. Tabular numerals everywhere (`body` sets them). Currency after the amount: "240 ₪".
-- **Voice.** Plain, short, second person, present tense. Buttons are verbs ("רישום לשיעור", "שמירה", "ביטול השיעור"), never "אישור" alone. Confirmations are past tense ("השיעור נשמר"). Errors say what happened and what to do next ("אין חיבור לשרת, נסה שוב בעוד רגע"), without apology.
+- **Numbers.** Ranges in words: "בין 8 ל-12", "08:30 עד 09:20". Never a dash, an arrow or × between numbers; they flip in RTL. Tabular numerals everywhere (`body` sets them). Currency after the amount: "240 ₪".
+- **Voice.** Plain, short, second person, present tense. Buttons are verbs ("רישום לשיעור", "שמירה", "ביטול השיעור"), never "אישור" alone. Confirmations are past tense ("השיעור נשמר"). Errors say what happened and what to do next, without apology.
 - **Gender.** Mixed forms with a dot where the subject is unknown ("מדריך.ה", "נרשם.ת"); the organization's configured form when known.
-- **No emoji in UI copy.** Icons carry meaning, words carry the message.
+- **No emoji in UI copy.** Line icons carry meaning, words carry the message.
 - **Dates and times.** `13.10.2026`, `08:30`, day names in full ("ראשון"). The week starts on Sunday.
 
 ## Color
 
-Two themes, always both. Every token below has a light and a dark value; every text token names the grounds it reads on and holds 4.5:1 there (3:1 for marks). Nothing in an app uses a hex value; it uses a token.
+Every value below was sampled from the reference image. Every text token names the grounds it reads on; the derived text tokens hold 4.5:1 there. Three pairs are kept exactly as the reference draws them although they are under AA, and are flagged in their notes: white on sage (`on-brand` on `brand`, 2.4:1), white on rose (`on-rose` on `rose`, 2.6:1), white on taupe (`on-taupe` on `taupe`, 2.8:1). Keep those labels at 15px or larger and 600 weight; never put running text on those fills. The light-blue focus ring is also reference-exact (1.7:1) and relies on its 14px glow to be seen.
 
-**Grounds.** `canvas` is the page and the material. `surface` is a raised object (cards, the rail, dialogs, buttons, chips, event tiles), one shade lighter than the canvas. `surface-sunken` is a well (inputs, tracks, banners, the active rail item). `surface-hover` is the hover of table rows. `surface-overlay` is the scrim. `highlight` and `shade` are the two edges every shadow is made of; they are never used as fills.
+**Grounds.** `canvas` is the page (#f5f4f2). `surface` is the cream slab (dropdowns, dialogs, toasts, the table, the rail). `surface-sand` is the sand slab (cards, stat tiles, event tiles, the class card). `surface-sunken` is a well (inputs, selects, tracks). `surface-hover` is a hovered row. `surface-deep` is the deep tile (empty state, pressed wells). `highlight` and `shade` are the two edges every shadow is made of; never fills.
 
-**Ink.** `ink` for text and icons. `ink-muted` for secondary text, table headers, captions. `ink-faint` only for placeholders, disabled text and decorative icons; it is not readable as body text and is never used for one. `ink-inverse` on ink-filled surfaces (toast, tooltip).
+**Ink.** `ink` for titles and body. `ink-muted` for secondary text, labels, table headers, meta lines. `ink-faint` for placeholders, disabled text and tick marks only. `ink-inverse` is the warm white used on taupe, rose and sage fills.
 
-**Brand.** The brand is a gradient, `brand-light` to `brand` at 135deg, on the primary button, the toggle's on-state, today's date pill, the occupancy ring, the count badge, the member app's hero card and the logo tile; text on it is `on-brand`. Use it on one or two things per screen. `brand-ink` is teal text: the active rail item, the selected segmented option, the selected tab, links. `brand-soft` tints selected table rows only. `brand-deep` is decorative depth, never text. `brand-hover` and `brand-pressed` are the primary button's states.
+**Sage, the action color.** `brand` fills the default button, the toggle's on-track, the step indicator's done dot, today's date, the count badge and the logo tile; `brand-light` tops its subtle vertical gradient; `brand-hover` plus `brand-glow` (the mint halo) is hover; `brand-pressed` with `shadow-sunken` is pressed. `brand-soft` is the done-step fill and sage chips; `brand-ink` is sage text (the active rail item, links, the selected segmented option); `brand-deep` is the done-step line. One sage button per view.
 
-**Status.** Four sets, each a fill (`success`, `warning`, `danger`, `info`) for icons and dots, a soft ground (`…-soft`) for chips and banners, and an ink (`…-ink`) for text on that ground. Status is always a word plus a color, never color alone; success and danger differ in lightness as well as hue. `danger` fills the destructive button, with `on-danger` text.
+**Rose, the accent.** `rose` and `rose-deep` make the elevated card's gradient and the slider's fill and progress fills; the rose button (`tp-btn--rose`) is the elevated card's call to action only. `rose-soft` for rose chips and the slider knob's rim, `rose-ink` for rose text. One elevated card per screen.
 
-**Categories.** Six class-type colors, `cat-teal` … `cat-green`, each with `-soft` and `-ink`. The vertical maps its class types onto them (studio default: yoga, pilates, dance, barre, HIIT, kids). The same type keeps the same category everywhere in the app. Event blocks use the soft ground, the ink text and the fill color as the start edge and the occupancy bar.
+**Taupe, the ground of groups.** `taupe` to `taupe-deep` make the base card (sunken, white text) and the toast's icon tile; `taupe-soft` is the dropdown's hovered item and taupe chips; `taupe-ink` is taupe text and the avatar's initials. `sand` and `sand-deep` are the icon tiles inside base cards, avatars and image placeholders. `icon-dark` is the dark check tile and icons on sand. `disabled` is the disabled button's fill.
 
-**Lines and focus.** `line` only as the embossed hairline between table rows and list items (1px `line` over 1px `highlight`, the `.tp-divider` class). `line-strong` only for marks that must be told apart by an edge (chart axes). No borders on cards, inputs, buttons or chips. `focus` is the one focus ring: 2px solid, 3px offset, on every interactive element, in both themes.
+**Blue, only for focus and selection.** `focus` with `focus-glow` is the focus ring on everything interactive. `selected`, `selected-line` and `selected-ink` are the selected table row, list item or card: light blue ground, a 1.5px blue edge, blue text and check. Blue appears nowhere else.
 
-**White label.** A tenant may replace `brand`, `brand-hover`, `brand-pressed`, `brand-soft`, `brand-ink` and the logo. The resolver verifies `on-brand` on the new `brand` at 4.5:1 and darkens the tenant color until it passes. Every other token is platform-owned.
+**Status.** `success` is sage; `warning` is warm amber; `danger` is rose-red; `info` is the focus blue. Each has a `-soft` ground (chips, banners) and an `-ink` text. Status is always a word plus a color, never color alone; success and danger differ in lightness as well as hue.
+
+**Categories.** Six class-type colors drawn from the same board: `cat-sage`, `cat-rose`, `cat-taupe`, `cat-blue`, `cat-amber`, `cat-mauve`, each with `-soft` and `-ink`. The vertical maps its class types onto them (studio default: yoga, pilates, strength, dance, HIIT, kids). The same type keeps the same category everywhere. Event tiles use the color as the start-edge bar and the fill bar, the ink for the count.
+
+**White label.** A tenant may replace `brand`, `brand-light`, `brand-hover`, `brand-glow`, `brand-pressed`, `brand-soft`, `brand-ink`, `brand-deep` and the logo; the rest is platform-owned. Rose, taupe and the grounds never change per tenant.
 
 ## Typography
 
-One family for the interface, one for data. **Heebo** (Google Fonts, weights 400 to 700, full Hebrew) is `sans`; **IBM Plex Mono** is `mono`, for IDs, API paths and code, always `dir="ltr"`.
+One family for the interface, one for data. **Heebo** (Google Fonts, 400 to 800, full Hebrew) is `sans`, the closest Hebrew-complete grotesk to the reference's face; **IBM Plex Mono** is `mono`, for IDs, API paths and code, always `dir="ltr"`.
 
-Set text with the type styles, not ad-hoc sizes: `display-lg` (44/52, one per screen: the member app greeting, a hero number), `display-sm` (32/40, stat values), `h1` (28/36, page title), `h2` (20/28, card and section titles), `h3` (16/24, event and dialog titles), `body-lg` (16/24, reading text and dialog bodies), `body` (15/22, the default: tables, forms, lists), `body-sm` (13/20, event meta, helper text), `label` (13/18 medium, form labels, table headers, chips, tabs), `caption` (12/16, timestamps and footnotes, in `ink-muted`), `code` (13/20 mono).
+Set text with the type styles, not ad-hoc sizes: `display-lg` (44/52, one per screen), `display-sm` (32/40, stat values), `h1` (28/36, page title), `h2` (20/28, card and section titles), `h3` (16/24, event and dialog titles), `body-lg` (16/24, reading text), `body` (15/22, the default), `body-sm` (13/20, meta and helper text), `label` (13/18 semibold, form labels, table headers, chips, tabs), `caption` (12/16, timestamps, in `ink-muted`), `code` (13/20 mono).
 
-Display is 800, headings are 700, labels are 600, everything else 400 or 500. Display and h1 carry negative tracking. The eyebrow (12px, 600, tracked 0.06em, `ink-muted`) sits above a page title to say where you are. No italics in Hebrew UI. Lines of reading text stay under about 65 characters.
+Display is 800, headings 700, labels 600, everything else 400 or 500. Display and h1 carry slight negative tracking. The eyebrow (12px, 600, tracked, `ink-muted`) sits above a page title. No italics in Hebrew UI. Lines of reading text stay under about 65 characters.
 
-## Spacing, radius, size
+## Spacing, radius, size, borders
 
-A 4px grid, generous. Buttons pad 22px inline; inputs 18px; cards pad `space-6` (24px) on phones and `space-8` (32px) on desktop; cards sit `space-5` apart; sections sit `space-8` apart; the page gutter is `space-4` on phones and `space-8` on desktop, content stops at `content-max` (1200px).
+The reference scales: spacing 4 / 8 / 16 / 24 (extended with 12, 20, 32, 40, 48, 64); radius 4 / 8 / 12 (extended with 16, 20, 28, pill); borders 1 / 1.5 / 2; icons 16 / 20 / 24.
 
-Radii say what a thing is: `radius-sm` (10px) for event tiles and menu items; `radius-md` (14px) for inputs; `radius-lg` (20px) for buttons, banners, toasts and the segmented track; `radius-xl` (28px) for cards, stat tiles, class cards, the rail and the schedule; `radius-2xl` (36px) for dialogs and bottom sheets; `radius-pill` for chips, toggles, avatars, icon buttons and the today marker.
+Buttons pad 20px inline at 42px height (`control-md`); `control-sm` is 34px (inside tables), `control-lg` 50px (member app, dialog footers). Inputs pad 16px. Cards pad `space-5` (20px) on phones and `space-6` (24px) on desktop; stat tiles pad `space-4`; cards sit `space-5` apart; sections `space-8` apart; the page gutter is `space-4` on phones and `space-8` on desktop, content stops at `content-max` (1200px).
 
-Control heights: `control-sm` 36px (inside tables), `control-md` 44px (default), `control-lg` 52px (member app, dialog footers). Every tappable thing has a `touch-min` 44px hit area. The sidebar is a rail of round icon buttons, `sidebar` 88px wide; it expands to 264px with labels on wide screens or on hover.
+Radii say what a thing is: `radius-xs` (4px) ticks and tiny badges; `radius-sm` (8px) icon tiles, chips, menu items, row highlights; `radius-md` (12px) buttons, inputs, selects, event tiles, toasts, banners; `radius-lg` (16px) stat tiles, small cards, the dropdown panel; `radius-xl` (20px) cards, the schedule, the rail, the empty tile; `radius-2xl` (28px) bottom sheets and the phone frame; `radius-pill` toggles, slider knobs, avatars, step dots, count badges.
 
-## Shadows: one material, two directions
+Borders: `border-thin` (1px `line`) on table rows, menu separators and the cream secondary button; `border-mid` (1.5px `selected-line`) on a selected row; `border-thick` (2px) is the elevated card's white rim and the current step's sage ring. Nothing else has a border.
 
-Light comes from the top-start corner. Every shadow is a pair: `shade` toward the bottom-end, `highlight` toward the top-start, plus a 1px inset highlight on the top edge of raised slabs.
+Every tappable thing has a `touch-min` 44px hit area. The sidebar is a rail of 52px icon tiles, `sidebar` 88px wide; it expands to 264px with labels on wide screens or on hover.
 
-**Raised** (`shadow-raise` on cards, the rail, the schedule, class cards, dialogs; `shadow-raise-sm` on buttons, chips, event tiles, avatars, the segmented knob, the toggle knob, the ring's discs): the object stands off the page. **Sunken** (`shadow-sunken` on inputs, the segmented and toggle tracks, progress tracks, banners, the active rail item, the cancelled event): the object is pressed into it. **Brand** (`shadow-brand`): the primary button's teal-tinted raise. **Float** (`shadow-float`): added to raise on things that leave the surface (dialogs, toasts, menus).
+## Shadows: the reference's four levels
 
-Pressing a raised control turns its shadow sunken (`:active`); hovering lifts it 1px. A raised object inside another raised object is fine (a chip in a card); a sunken well inside a sunken well is not. Never add a border to anything that has a shadow.
+Light comes from above. Every shadow pairs a warm `shade` at low alpha below with a diffused `highlight` on top.
+
+- **No shadow** (`shadow-flat`): disabled buttons, chips inside tables.
+- **Soft inner** (`shadow-sunken`): inputs, selects, the toggle track, the base card, the empty tile, pressed buttons, the active rail item.
+- **Gentle lift** (`shadow-raise`; `shadow-raise-sm` for small things): cards, stat tiles, the dropdown, the table, the toast, the rail; chips, event tiles, avatars, knobs, icon tiles.
+- **Elevated float** (`shadow-float`): the elevated card, dialogs, the dropdown while open.
+
+Plus two states: `shadow-brand` is the sage button at rest; `shadow-glow` is its hover (the mint halo); `shadow-focus` is the blue focus glow. Hover lifts a control 1px; press turns its shadow inner. A raised object inside a raised object is fine; a well inside a well is not.
 
 ## Motion
 
-`duration-fast` (120ms) for hover and pressed; `duration-base` (180ms) for toggles, chips and the segmented option moving; `duration-slow` (280ms) for dialogs, sheets and toasts entering. `easing-standard` for anything entering or moving, `easing-exit` for anything leaving. `prefers-reduced-motion` collapses all of it; the skeleton shimmer is the only looping animation.
+`duration-fast` (120ms) for hover and pressed; `duration-base` (180ms) for the toggle, the segmented knob and chips; `duration-slow` (280ms) for dialogs, sheets and toasts entering. `easing-standard` for anything entering or moving, `easing-exit` for anything leaving. `prefers-reduced-motion` collapses all of it; the skeleton shimmer and the loading spinner are the only loops.
 
 ## Layout
 
-Consoles: the rail on the start side, a greeting header (eyebrow date, h1 "בוקר טוב, דנה", search well, round icon buttons, the one primary button), a row of stat tiles, then the schedule beside a class card and its registrants. Content stops at `content-max`; grids wrap to one column below `bp-md`. The week schedule shows seven days from `bp-lg`, three on tablets, one on phones. The member app is a single column: greeting, the brand hero card for the next class, a sunken week strip with a raised today, event tiles, two stat tiles, and the raised bottom tab bar with the gradient action button in its center.
+Consoles: the rail on the start side, a greeting header (eyebrow date, h1, a search well, cream icon tiles, the one sage button), a row of stat tiles that mixes the three card kinds (sand, taupe base, cream, and one rose elevated for the thing that needs attention), then the schedule beside a class card and its registrants. Content stops at `content-max`; grids wrap to one column below `bp-md`. The week schedule shows seven days from `bp-lg`, three on tablets, one on phones. The member app is a single column: greeting, the rose elevated card for the next class, a sunken week strip with a raised today, event tiles, two stat tiles, and the cream bottom tab bar with the sage action tile in its center.
 
 Z-order: `z-dropdown` (menus) < `z-sticky` (headers) < `z-overlay` (scrim) < `z-modal` (dialogs, sheets) < `z-toast`.
 
 ## States every screen defines
 
-Loading (Skeleton in the real layout after 300ms), empty (Empty state naming the thing and its first action), error (Banner with the fix), partial failure (Banner above the data that did load), denied (Empty state that says who to ask), offline (a persistent warning Banner). Selected rows use `brand-soft`; a selected card or class card gets a 2px inset `brand` ring; hovered rows use `surface-hover`; pressed controls go sunken; focused anything shows the `focus` ring.
+Loading (Skeleton in the real layout after 300ms), empty (the deep sunken Empty tile naming the thing and its first action), error (Banner with the fix), partial failure (Banner above the data that did load), denied (Empty tile that says who to ask), offline (a persistent warning Banner). Selected rows, items and cards are blue (`selected`); hovered rows use `surface-hover`; pressed controls go sunken; focused anything shows the blue glow.
 
 ## Iconography
 
-Line icons, 20px (18px inside buttons), 1.8px stroke, round caps and joins, `currentColor`; the `tp-icon` class sets all of it. Draw from Lucide (ISC) and keep the set under one sprite per app; no filled icons, no two-tone, no emoji. A meaningful icon has a text label or `aria-label`; a decorative one is `aria-hidden`.
+Line icons, 20px (16px inline, 24px in the rail and tiles), 1.8px stroke, round caps and joins, `currentColor`; the `tp-icon` class sets all of it. Draw from Lucide (ISC). Icons sit in tiles where the reference puts them: a sand tile inside base cards, a dark tile for checks and confirmations, a taupe tile in toasts. A meaningful icon has a text label or `aria-label`; a decorative one is `aria-hidden`.
 
 ## Logo
 
-No logo file exists yet: set the name in `sans` 800 as plain type ("Tempo") with the gradient rail tile holding a "T" as the placeholder mark, as the rail and the Cover do. Replace both when the mark arrives, without changing any other token.
+No logo file exists yet: set the name in `sans` 800 as plain type ("Tempo") with the sage rail tile holding a "T" as the placeholder mark, as the rail and the Cover do. Replace both when the mark arrives, without changing any other token.

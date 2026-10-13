@@ -1,6 +1,6 @@
 # Design System
 
-> **Status:** Baseline v0.2 (Soft UI tokens and CSS primitives, 2026-10-13)  
+> **Status:** Baseline v0.3 (Neo-Tactile tokens and CSS primitives matched to the reference image, 2026-10-13)  
 > **Audience:** Product, Engineering, Design, AI coding agents  
 > **Scope rule:** The design system is industry-neutral. Vertical-specific visuals (a studio's class categories, a clinic's treatment colors) map onto the generic category and status tokens; they never add tokens of their own.  
 > **Decision policy:** Statements marked **Decision** are normative.
@@ -21,23 +21,24 @@
 
 ## 2. Direction
 
-**Decision (revised 2026-10-13, after the first flat/tactile hybrid was judged not premium enough):** Soft UI
-everywhere, "one material, two directions".
+**Decision (Kris, 2026-10-13, final after two earlier passes):** the interface reproduces the reference image
+`C:/Dev/Tempo-Design/9d607248922bb2053a1b000d3e7809c3.jpg` ("Neo-Tactile Soft UI") one to one, in colors and in
+the design of every control.
 
-- Every object is cut from the same light material as the page. Depth comes from a dual shadow (light from the
-  top-start corner, shade toward the bottom-end), never from a border. Objects you touch or read are raised; wells you
-  type into, tracks and banners are sunken. Row dividers are embossed hairlines.
-- Radii are large (20 to 36px on slabs, pills on anything small), spacing is generous (card padding 24 to 32px),
-  type is heavy at the top of the hierarchy (display 44/800, h1 28/700) and quiet below it.
-- Brand color: a Tempo teal gradient (`brand-light` to `brand`) used on one or two things per screen: the primary
-  button, the toggle on-state, today's date, the occupancy ring, the member app's "next class" card. Ink is deep navy.
-- Type: Heebo for UI (full Hebrew, 400 to 800 on Google Fonts), IBM Plex Mono for IDs and code.
-- Readability is locked by tokens, not by style: every text token meets WCAG AA on the grounds its usage note names,
-  in both themes, enforced in CI.
+- Palette sampled from the image: warm off-white page, cream and sand slabs, taupe base cards, sage as the only
+  action color (mint glow on hover, inner shadow when pressed, taupe-grey when disabled), dusty rose for the slider
+  and the single elevated card per screen, blue only for focus and selection.
+- Shadows follow the image's four levels (none, soft inner, gentle lift, elevated float) plus the hover glow and
+  the focus glow. Radii follow its steps (4 / 8 / 12, extended to 16 / 20 / 28). Borders 1 / 1.5 / 2 where it has
+  them. Icons 16 / 20 / 24, line style.
+- Type: Heebo for UI (closest Hebrew-complete grotesk to the image's face), IBM Plex Mono for IDs and code.
+- Three text-on-fill pairs are kept exactly as the image draws them although they are under WCAG AA (white on
+  sage 2.4:1, on rose 2.6:1, on taupe 2.8:1), as is the light-blue focus ring. They are flagged in the token notes
+  and reported (not failed) by the contrast lint; labels on those fills stay at 15px+ and 600 weight. Every other
+  text token meets AA on the grounds its note names.
 
-Rejected on the way (recorded in the options page): the flat SaaS base (readable but generic), pastel lavender glass
-(unreadable in dense screens, no white label), warm sage clay (clashes with tenant logos). The June 2026 design in
-`C:/Dev/StudioPro/design` is superseded.
+Earlier passes (flat/tactile hybrid, teal Soft UI) are superseded; the options page records them. The June 2026
+design in `C:/Dev/StudioPro/design` is superseded.
 
 ## 3. Themes
 
@@ -70,7 +71,7 @@ tenant color until it passes. All other tokens are platform-owned.
 
 ## 7. Component inventory (v0.1)
 
-Button (primary gradient, secondary raised, ghost, danger, round icon button, three sizes) · Field with Input, Select, Textarea, search
+Button (sage default, cream secondary, ghost, rose CTA, danger, icon tile, loading, three sizes) · Field with Input, Select, Textarea, search
 input · Toggle · Checkbox and Radio · Segmented control · Chip (status, category, count) · Card (flat, raised,
 sunken, selected) · Stat tile and Progress ring · Progress bar · Avatar · Table · Tabs · Sidebar rail and expanded nav · Bottom tab bar · Banner ·
 Toast · Dialog and bottom sheet · Skeleton · Empty state · Week schedule with event tiles · Class card.
