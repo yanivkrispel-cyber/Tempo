@@ -2,10 +2,10 @@
 :root {
   color-scheme: light;
   /* color */
-  --canvas: #e7ecf2;
-  --surface: #e9eef4;
-  --surface-sunken: #dfe5ec;
-  --surface-hover: #eef2f7;
+  --canvas: #e3e8ef;
+  --surface: #edf1f6;
+  --surface-sunken: #dbe1e9;
+  --surface-hover: #f4f7fb;
   --surface-overlay: #0f1f3d80;
   --ink: #0f1f3d;
   --ink-muted: #4d5c76;
@@ -23,7 +23,7 @@
   --brand-deep: #105f68;
   --brand-light: #2a8f92;
   --highlight: #ffffff;
-  --shade: #bfc8d4;
+  --shade: #c0c9d5;
   --info: #018abe;
   --info-soft: #e3f1f8;
   --info-ink: #0b6a95;
@@ -57,11 +57,11 @@
   --cat-green-ink: #256b43;
   /* shadow */
   --shadow-flat: 0 1px 2px #0f1f3d12;
-  --shadow-float: 0 24px 48px -16px #0f1f3d4d, 0 8px 16px -8px #0f1f3d26;
-  --shadow-raise: 12px 12px 28px #bfc8d4, -10px -10px 24px #ffffff, inset 1px 1px 0 #ffffffb3;
-  --shadow-raise-sm: 6px 6px 14px #bfc8d4, -5px -5px 12px #ffffff, inset 1px 1px 0 #ffffffb3;
-  --shadow-sunken: inset 5px 5px 10px #bfc8d4, inset -5px -5px 10px #ffffff;
-  --shadow-brand: 8px 8px 20px #1f737666, -6px -6px 16px #ffffff, inset 1px 1px 0 #ffffff59;
+  --shadow-float: 0 28px 56px -18px #0f1f3d40, 0 8px 16px -8px #0f1f3d1f;
+  --shadow-raise: 16px 16px 36px #c0c9d5, -14px -14px 32px #ffffff, inset 1px 1px 0 #ffffffcc;
+  --shadow-raise-sm: 7px 7px 16px #c0c9d5, -6px -6px 14px #ffffff, inset 1px 1px 0 #ffffffcc;
+  --shadow-sunken: inset 5px 5px 12px #c0c9d5, inset -5px -5px 12px #ffffff;
+  --shadow-brand: 10px 10px 24px #1f737659, -8px -8px 20px #ffffff, inset 1px 1px 0 #ffffff66;
   /* spacing */
   --space-0\.5: 2px;
   --space-1: 4px;
