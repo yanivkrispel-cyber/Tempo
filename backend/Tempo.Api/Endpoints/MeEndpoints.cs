@@ -4,20 +4,15 @@ using Tempo.Contracts.Api.Common;
 namespace Tempo.Api.Endpoints;
 
 /// <summary>
-/// GET /api/v1/me - protected by the API Gateway Cognito JWT authorizer
-/// (infrastructure/lib/api/api-stack.ts). API Gateway rejects unauthenticated
-/// callers with 401 before this Lambda is ever invoked, so this handler only
-/// needs to reflect the caller's token claims back - it does not itself
-/// enforce authentication.
+/// GET /api/v1/me - requires a Cognito access token, validated by the API
+/// itself (DependencyInjection/CognitoAuthentication.cs, ADR-0004 amendment).
+/// The API Gateway JWT authorizer still runs in front of it until the
+/// CloudFront ingress replaces API Gateway; the API no longer depends on it.
 ///
 /// This reflects the raw JWT identity only (sub/email). It is not the
 /// internal user/organization-membership model - that model, and the
 /// business authorization built on top of it, belong to the future
 /// Identity/Membership LLD (docs/01_AWS_Infrastructure_LLD.md section 41).
-///
-/// Relies on Amazon.Lambda.AspNetCoreServer populating HttpContext.User from
-/// the API Gateway JWT authorizer's claims for HTTP API v2 payloads; verify
-/// this against real deployed behavior before building on it further.
 /// </summary>
 public static class MeEndpoints
 {
@@ -43,6 +38,7 @@ public static class MeEndpoints
 
                 return Results.Ok(new MeResponse(subject, email, emailVerified, correlationId));
             })
+            .RequireAuthorization()
             .WithName("GetMe")
             .Produces<MeResponse>()
             .Produces(StatusCodes.Status401Unauthorized);

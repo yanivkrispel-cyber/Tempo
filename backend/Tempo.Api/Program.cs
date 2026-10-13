@@ -26,12 +26,15 @@ try
         .WriteTo.Console(new RenderedCompactJsonFormatter()));
 
     builder.Services.AddTempoApi();
+    builder.Services.AddCognitoAuthentication(builder.Configuration);
 
     var app = builder.Build();
 
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseExceptionHandler();
     app.UseSerilogRequestLogging();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapOpenApi();
     app.MapHealthEndpoints();
