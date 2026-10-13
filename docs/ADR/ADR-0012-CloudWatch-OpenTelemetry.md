@@ -77,7 +77,7 @@ CloudWatch's ten free alarms are pooled across the whole AWS Organization, and e
   4. API p99 duration
   5. DLQ messages visible
   6. Age of the oldest message in the work queue
-  7. A DSQL DPU spike
+  7. A database capacity spike (DPU on Aurora DSQL)
   8. SES bounce rate
   9. SES complaint rate
   10. Canary failure
@@ -86,7 +86,7 @@ CloudWatch's ten free alarms are pooled across the whole AWS Organization, and e
 - **Canary.** EventBridge Scheduler invokes it every five minutes. It calls the API's health endpoint through CloudFront and writes the result to the log. It also keeps one API instance warm.
 - **Tracing.** X-Ray sampling is a fixed 5% with no reservoir. A reservoir would trace almost every request at low traffic, and only the first 100,000 traces a month are free.
 - **Free Tier dashboard.** One CloudWatch dashboard shows usage against each free allowance:
-  - Lambda, SQS, Cognito MAU, DSQL DPU and storage, CloudFront requests and log ingestion;
+  - Lambda, SQS, Cognito MAU, database capacity and storage, CloudFront requests and log ingestion;
   - next to the ADR-0021 tripwires.
 
 The list of required alarms above stays as the list of signals to watch. Any of them that is not one of the ten alarms is watched on the dashboard, not alarmed.

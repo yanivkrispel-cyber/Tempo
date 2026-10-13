@@ -1,3 +1,19 @@
+# ADR Baseline v3.1 - Change Log (2026-10-13)
+
+The owners accepted the council proposal "Tempo Zero" on 2026-10-13. These are the parts that do not depend on the database choice. The database decision, ADR-0022 with the Aurora DSQL spike results, comes in a separate change.
+
+## Added ADRs
+
+- ADR-0021: zero fixed cost until revenue, with tripwires that need owner approval (including hourly backups at 10 active studios).
+
+## Amended ADRs
+
+- ADR-0004: CloudFront plus a Lambda Function URL behind Origin Access Control replaces API Gateway. JWT validation moves into the API.
+- ADR-0008: one SQS work queue and one DLQ, an outbox sweeper on EventBridge Scheduler, and an EventBridge bus only for real fan-out.
+- ADR-0009: WAF in every environment through the CloudFront flat-rate Free plan.
+- ADR-0012: ten production alarms and none in development, 5% trace sampling, a canary and a Free Tier dashboard.
+- ADR-0020: a $1 budget that alerts on the first cent, and Cost Anomaly Detection at $1.
+
 # ADR Baseline v3.0 - Change Log
 
 ## Updated Existing ADRs

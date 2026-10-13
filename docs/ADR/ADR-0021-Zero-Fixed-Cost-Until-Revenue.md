@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-13
 - **Owners:** Founders, Platform Engineering
-- **Related:** ADR-0005, ADR-0009, ADR-0014, ADR-0017, ADR-0019, ADR-0020, ADR-0022
+- **Related:** ADR-0004, ADR-0005, ADR-0008, ADR-0009, ADR-0012, ADR-0014, ADR-0017, ADR-0019, ADR-0020; the database decision follows the Aurora DSQL spike (planned ADR-0022)
 
 ## Context
 
@@ -52,13 +52,13 @@ A tripwire is the point at which Tempo starts paying for something. The "when" c
 | First paying studio | Pilot | GuardDuty in production | About $1–3 per month (estimate) |
 | Sensitive data, such as health declarations | When the feature is built | One customer-managed KMS key for field-level encryption | $1 per month |
 | **10 active studios** | Growth | **The owners are alerted, and backups move from daily to hourly** (owner instruction on council Q5) | About $2–4 per month |
-| DSQL storage passes 1 GB | About 60 studios, after a year | Storage | $0.45 per GB-month |
+| DSQL storage passes 1 GB (if the spike confirms DSQL) | About 60 studios, after a year | Storage | $0.45 per GB-month |
 | Cognito passes 10,000 MAU | About 65 studios | Essentials MAU | $0.015 per MAU |
 | CloudFront passes 1M requests per month, sustained | About 75 studios | Pro plan, or a second distribution | $15 per month, or $0 with a split |
-| DSQL passes 100,000 DPU per month | About 80 studios | DPU | $9.50 per million DPU |
+| DSQL passes 100,000 DPU per month (if the spike confirms DSQL) | About 80 studios | DPU | $9.50 per million DPU |
 | WhatsApp or SMS requested by a studio | On request (council Q7) | Per message, passed through to that studio | Provider price |
 | A contract requires RPO under 24 hours | Large customer | Hourly AWS Backup | About $2–4 per month |
-| RLS, extensions or PITR become mandatory | Regulated vertical | Aurora PostgreSQL (ADR-0022 exit path) | From about $51 per month |
+| RLS, extensions or PITR become mandatory | Regulated vertical | Aurora PostgreSQL | From about $51 per month |
 
 The 10-studio tripwire is the only one that needs a mechanism before it can fire. A daily EventBridge Scheduler job counts active organizations. When the count reaches 10, it notifies the owners by email through SNS, which is free up to 1,000 emails per month. The job is built together with the Organization module.
 
@@ -75,8 +75,8 @@ The 10-studio tripwire is the only one that needs a mechanism before it can fire
 
 - Production does not need idle capacity. Tempo can run pilots without a monthly bill.
 - Some convenience features of the baseline are replaced by cheaper patterns:
-  - The database becomes Aurora DSQL instead of Aurora Serverless v2 (ADR-0022).
-  - There is no VPC, which closes ADR-0017.
+  - The database is planned as Aurora DSQL instead of Aurora Serverless v2. A spike decides it, and the planned ADR-0022 records the result.
+  - If DSQL is confirmed, there is no VPC, and ADR-0017 closes with that ADR.
   - CloudFront Function URLs replace API Gateway.
   - One work queue replaces one queue per job type.
   Each of these replacements has a recorded exit path.
