@@ -3,15 +3,16 @@ import { TempoEnvironmentConfig, validateEnvironmentConfig } from "./environment
 /**
  * Development environment configuration.
  *
- * The dev environment runs in its own member account, tempo-dev
- * (254631022581, created 2026-10-13, status page decision D1), never in the
- * Organization's management account. Root domain and hosted zone are not configured, so
+ * The dev environment runs in the Organization's management account
+ * (687239340846). The member account tempo-dev (254631022581) never finished
+ * AWS activation, so on 2026-10-13 the user moved dev here (status page
+ * decision D1, revised). Root domain and hosted zone are not configured, so
  * featureFlags.enableCustomDomain stays false and the HTTP API uses its
  * default execute-api endpoint.
  */
 const developmentConfig: TempoEnvironmentConfig = {
   environmentName: "dev",
-  accountId: "254631022581",
+  accountId: "687239340846",
   region: "eu-central-1",
 
   apiName: "tempo-dev-http-api",
@@ -53,7 +54,9 @@ const developmentConfig: TempoEnvironmentConfig = {
   // address chosen for decision D2 on 2026-10-13.
   cost: {
     monthlyBudgetUsd: 1,
-    alertEmail: "yaniv.krispel+tempo-app@gmail.com"
+    alertEmail: "yaniv.krispel+tempo-app@gmail.com",
+    // Created by AWS when Cost Explorer was enabled in the management account on 2026-10-13.
+    existingAnomalyMonitorArn: "arn:aws:ce::687239340846:anomalymonitor/2426a559-1df4-4d63-9375-c8fe4ca7a971"
   },
 
   networking: {
