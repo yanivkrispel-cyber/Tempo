@@ -54,6 +54,18 @@ export interface CostConfig {
   readonly alertEmail: string;
 }
 
+/** CloudFormation rejects an AWS::Budgets::Budget notification threshold below this (rule F3034). */
+const MIN_BUDGET_THRESHOLD = 0.1;
+
+/**
+ * The actual-spend alert threshold, as a percent of the budget, that fires on the
+ * first cent (ADR-0021). An absolute $0.01 threshold is below CloudFormation's
+ * minimum, so the alert is a percentage instead: 1% of a $1 budget.
+ */
+export function firstCentAlertPercent(monthlyBudgetUsd: number): number {
+  return 1 / monthlyBudgetUsd;
+}
+
 export interface NetworkingConfig {
   readonly maxAzs: number;
   /** Must default to false. Only enable after an explicit, documented cost/architecture review. */
@@ -173,6 +185,12 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (!(config.cost.monthlyBudgetUsd > 0)) {
     errors.push("cost.monthlyBudgetUsd must be > 0");
+  } else if (firstCentAlertPercent(config.cost.monthlyBudgetUsd) < MIN_BUDGET_THRESHOLD) {
+    errors.push(
+      `cost.monthlyBudgetUsd must be at most ${1 / MIN_BUDGET_THRESHOLD}: the first-cent alert is ` +
+        `${firstCentAlertPercent(config.cost.monthlyBudgetUsd)}% of the budget, and CloudFormation ` +
+        `rejects budget thresholds below ${MIN_BUDGET_THRESHOLD}`
+    );
   }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(config.cost.alertEmail)) {
     errors.push(`cost.alertEmail must be an email address, got "${config.cost.alertEmail}"`);

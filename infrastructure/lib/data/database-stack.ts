@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, Stack, StackProps, Validations } from "aws-cdk-lib";
 import { ISecurityGroup, IVpc, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import {
   AuroraPostgresEngineVersion,
@@ -78,6 +78,14 @@ export class DatabaseStack extends Stack {
       cloudwatchLogsExports: ["postgresql"],
       cloudwatchLogsRetention: logRetention(config.observability.logRetentionDays),
       copyTagsToSnapshot: true
+    });
+    // Rule W9008 checks StorageEncrypted on each AWS::RDS::DBInstance, but Aurora
+    // instances take their encryption from the cluster (storageEncrypted above).
+    // CDK applies an acknowledgement to the rule app-wide, and RDS exists only in
+    // this stack, which Tempo Zero replaces with DSQL (status page step 7).
+    Validations.of(this.cluster).acknowledge({
+      id: "CloudFormation-Validate::W9008",
+      reason: "Aurora cluster instances inherit encryption from the cluster, which sets StorageEncrypted: true"
     });
 
     this.applicationSecret = new Secret(this, "ApplicationSecret", {

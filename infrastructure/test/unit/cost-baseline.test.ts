@@ -25,7 +25,8 @@ describe("Cost baseline: $1 budget that alerts on the first cent (ADR-0020, ADR-
 
     expect(notifications).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ NotificationType: "ACTUAL", Threshold: 0.01, ThresholdType: "ABSOLUTE_VALUE" }),
+        // 1% of the $1 budget is the first cent.
+        expect.objectContaining({ NotificationType: "ACTUAL", Threshold: 1, ThresholdType: "PERCENTAGE" }),
         expect.objectContaining({ NotificationType: "FORECASTED", Threshold: 100, ThresholdType: "PERCENTAGE" })
       ])
     );

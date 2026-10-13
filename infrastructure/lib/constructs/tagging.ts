@@ -1,4 +1,4 @@
-import { Tags } from "aws-cdk-lib";
+import { Stack, Tags } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig } from "../../config/environment-config";
 
@@ -8,6 +8,9 @@ export type DataClassification = "Public" | "Internal" | "Confidential" | "Restr
  * Applies the mandatory Tempo tag set (LLD section 5) to every resource
  * under `scope`. Call once per stack/construct with the component name that
  * stack owns; nested constructs inherit the tags automatically.
+ *
+ * When `scope` is a stack, the stack itself is tagged too. Under the
+ * `@aws-cdk/core:explicitStackTags` flag, Tags.of() no longer tags stacks.
  */
 export function applyStandardTags(
   scope: Construct,
@@ -15,11 +18,17 @@ export function applyStandardTags(
   component: string,
   dataClassification: DataClassification = "Internal"
 ): void {
-  Tags.of(scope).add("Application", "Tempo");
-  Tags.of(scope).add("Environment", config.environmentName);
-  Tags.of(scope).add("ManagedBy", "AWS-CDK");
-  Tags.of(scope).add("Owner", config.tags.owner);
-  Tags.of(scope).add("CostCenter", config.tags.costCenter);
-  Tags.of(scope).add("DataClassification", dataClassification);
-  Tags.of(scope).add("Component", component);
+  const tags: Record<string, string> = {
+    Application: "Tempo",
+    Environment: config.environmentName,
+    ManagedBy: "AWS-CDK",
+    Owner: config.tags.owner,
+    CostCenter: config.tags.costCenter,
+    DataClassification: dataClassification,
+    Component: component
+  };
+  for (const [key, value] of Object.entries(tags)) {
+    Tags.of(scope).add(key, value);
+    if (Stack.isStack(scope)) scope.tags.setTag(key, value);
+  }
 }

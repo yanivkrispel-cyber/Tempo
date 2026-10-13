@@ -178,4 +178,10 @@ describe("validateEnvironmentConfig", () => {
       )
     ).toThrow(/alarmEmail/);
   });
+
+  it("rejects a budget whose first-cent alert falls below CloudFormation's 0.1 threshold minimum", () => {
+    expect(() =>
+      validateEnvironmentConfig(baseConfig({ cost: { monthlyBudgetUsd: 20, alertEmail: "alerts@example.com" } }))
+    ).toThrow(/at most 10/);
+  });
 });
