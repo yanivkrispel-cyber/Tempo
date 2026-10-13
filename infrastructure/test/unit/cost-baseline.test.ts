@@ -41,4 +41,12 @@ describe("Cost baseline: $1 budget that alerts on the first cent (ADR-0020, ADR-
       Dimensions: { Key: "ANOMALY_TOTAL_IMPACT_ABSOLUTE", Values: ["1"], MatchOptions: ["GREATER_THAN_OR_EQUAL"] }
     });
   });
+
+  it("subscribes to the management account's existing AWS services monitor instead of creating a second one", () => {
+    template.resourceCountIs("AWS::CE::AnomalyMonitor", 0);
+    const subscription = Object.values(template.findResources("AWS::CE::AnomalySubscription"))[0];
+    expect(subscription.Properties.MonitorArnList).toEqual([
+      "arn:aws:ce::687239340846:anomalymonitor/2426a559-1df4-4d63-9375-c8fe4ca7a971"
+    ]);
+  });
 });

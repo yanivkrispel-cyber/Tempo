@@ -25,15 +25,18 @@ deployed by this change set):
 
 ## Local AWS credentials (SSO)
 
-`cdk diff`/`cdk deploy` need AWS credentials for the dev account `254631022581`
-(`tempo-dev`, `eu-central-1`). The Organization's management account,
-`687239340846`, never hosts workloads. Configure an SSO profile once:
+`cdk diff`/`cdk deploy` need AWS credentials for the dev account `687239340846`
+(`eu-central-1`). Since 2026-10-13 dev runs in the Organization's management
+account: the member account `tempo-dev` (254631022581) never finished AWS
+activation, so the user moved dev back (status page decision D1, revised).
+Only Tempo stacks live there; nothing touches Organizations, IAM Identity
+Center or Billing. Configure an SSO profile once:
 
 ```bash
-aws configure sso --profile tempo-dev
+aws configure sso --profile tempo-mgmt
 # SSO start URL: https://d-99674d7b12.awsapps.com/start
 # SSO region:    eu-central-1
-# (browser login, then pick the 254631022581 (tempo-dev) / AdministratorAccess account+role)
+# (browser login, then pick the 687239340846 / AdministratorAccess account+role)
 # Default client Region: eu-central-1
 ```
 
@@ -42,14 +45,14 @@ command:
 
 ```bash
 # bash/zsh (~/.bashrc, ~/.zshrc)
-export AWS_PROFILE=tempo-dev
+export AWS_PROFILE=tempo-mgmt
 
 # PowerShell ($PROFILE)
-$env:AWS_PROFILE = "tempo-dev"
+$env:AWS_PROFILE = "tempo-mgmt"
 ```
 
 SSO sessions expire (per org policy); re-run `aws sso login --profile
-tempo-dev` (or `aws configure sso --profile tempo-dev` again) once
+tempo-mgmt` (or `aws configure sso --profile tempo-mgmt` again) once
 `aws sts get-caller-identity` starts failing with an expired-token error.
 
 ## Commands
@@ -86,7 +89,7 @@ or unsafely-defaulted values) and `config/{development,staging,production}.ts`
 account IDs and non-secret settings.
 
 `development.ts` holds the real values for this phase (AWS account
-`254631022581`, region `eu-central-1`, GitHub repo
+`687239340846`, region `eu-central-1`, GitHub repo
 `yanivkrispel-cyber/Tempo`). `staging.ts` and `production.ts` use placeholder
 account IDs (`000000000000`) and placeholder domains (`*.tempo.example`) -
 they exist so `cdk synth` can validate their safety invariants (deletion
@@ -127,7 +130,7 @@ before `cdk deploy`.
 2. Bootstrap the CDK toolkit in the target account/region (one-time, needs
    an administrator, not GitHub Actions):
    ```bash
-   npx cdk bootstrap aws://254631022581/eu-central-1 --bootstrap-kms-key-id AWS_MANAGED_KEY
+   npx cdk bootstrap aws://687239340846/eu-central-1 --bootstrap-kms-key-id AWS_MANAGED_KEY
    ```
 3. Deploy `TempoDev/GitHubOidc` once with administrator credentials so the
    deployment role exists before CI first tries to assume it. Stacks inside a
@@ -136,7 +139,7 @@ before `cdk deploy`.
    npx cdk deploy 'TempoDev/GitHubOidc'
    ```
 4. No GitHub repository secrets are needed - `deploy-development.yml`
-   assumes `arn:aws:iam::254631022581:role/tempo-dev-github-deploy` via
+   assumes `arn:aws:iam::687239340846:role/tempo-dev-github-deploy` via
    OIDC. The trust policy restricts assumption to
    `repo:yanivkrispel-cyber/Tempo:ref:refs/heads/main` only.
 

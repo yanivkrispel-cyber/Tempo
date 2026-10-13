@@ -52,6 +52,13 @@ export interface CostConfig {
   readonly monthlyBudgetUsd: number;
   /** Receives the budget and Cost Anomaly Detection alerts (status page decision D2). */
   readonly alertEmail: string;
+  /**
+   * ARN of an AWS services anomaly monitor that already exists in the account.
+   * An account can hold only one AWS services (DIMENSIONAL/SERVICE) monitor, and
+   * the management account got `Default-Services-Monitor` when Cost Explorer was
+   * enabled there. When set, the baseline subscribes to it instead of creating one.
+   */
+  readonly existingAnomalyMonitorArn?: string;
 }
 
 /** CloudFormation rejects an AWS::Budgets::Budget notification threshold below this (rule F3034). */

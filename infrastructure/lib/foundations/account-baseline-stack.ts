@@ -65,16 +65,19 @@ export class AccountBaselineStack extends Stack {
       ]
     });
 
-    const anomalyMonitor = new CfnAnomalyMonitor(this, "CostAnomalyMonitor", {
-      monitorName: resourceName(config, "cost-anomaly-monitor"),
-      monitorType: "DIMENSIONAL",
-      monitorDimension: "SERVICE"
-    });
+    // One AWS services monitor per account: reuse the account's own when it has one.
+    const anomalyMonitorArn =
+      config.cost.existingAnomalyMonitorArn ??
+      new CfnAnomalyMonitor(this, "CostAnomalyMonitor", {
+        monitorName: resourceName(config, "cost-anomaly-monitor"),
+        monitorType: "DIMENSIONAL",
+        monitorDimension: "SERVICE"
+      }).attrMonitorArn;
 
     new CfnAnomalySubscription(this, "CostAnomalySubscription", {
       subscriptionName: resourceName(config, "cost-anomaly-subscription"),
       frequency: "DAILY",
-      monitorArnList: [anomalyMonitor.attrMonitorArn],
+      monitorArnList: [anomalyMonitorArn],
       subscribers: [{ type: "EMAIL", address: config.cost.alertEmail }],
       // Any anomaly with a total impact of $1 or more (ADR-0020 amendment).
       thresholdExpression: JSON.stringify({
