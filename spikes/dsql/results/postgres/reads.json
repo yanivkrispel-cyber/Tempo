@@ -1,0 +1,46 @@
+{
+  "scenario": "reads",
+  "engine": "Postgres",
+  "count": 100,
+  "results": {
+    "week-schedule": {
+      "latency": {
+        "count": 100,
+        "min": 0.45,
+        "p50": 0.55,
+        "p90": 0.71,
+        "p95": 0.83,
+        "p99": 1.11,
+        "max": 9.54,
+        "mean": 0.68
+      },
+      "avgRows": 40
+    },
+    "member-bookings": {
+      "latency": {
+        "count": 100,
+        "min": 0.44,
+        "p50": 0.54,
+        "p90": 0.68,
+        "p95": 0.77,
+        "p99": 1.16,
+        "max": 2.76,
+        "mean": 0.59
+      },
+      "avgRows": 2.1
+    },
+    "class-roster": {
+      "latency": {
+        "count": 100,
+        "min": 0.42,
+        "p50": 0.5,
+        "p90": 0.65,
+        "p95": 0.71,
+        "p99": 0.83,
+        "max": 3.08,
+        "mean": 0.55
+      },
+      "avgRows": 9.8
+    }
+  }
+}

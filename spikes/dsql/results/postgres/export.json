@@ -1,0 +1,41 @@
+{
+  "scenario": "export",
+  "engine": "Postgres",
+  "results": [
+    {
+      "table": "organizations.organizations",
+      "ok": true,
+      "rows": 2,
+      "bytes": 346,
+      "ms": 7.6
+    },
+    {
+      "table": "organizations.memberships",
+      "ok": true,
+      "rows": 205,
+      "bytes": 33975,
+      "ms": 1.8
+    },
+    {
+      "table": "scheduling.rooms",
+      "ok": true,
+      "rows": 2,
+      "bytes": 190,
+      "ms": 0.7
+    },
+    {
+      "table": "scheduling.class_sessions",
+      "ok": true,
+      "rows": 43,
+      "bytes": 7599,
+      "ms": 1.1
+    },
+    {
+      "table": "scheduling.bookings",
+      "ok": true,
+      "rows": 197,
+      "bytes": 37076,
+      "ms": 4.7
+    }
+  ]
+}

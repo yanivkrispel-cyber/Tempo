@@ -1,0 +1,40 @@
+{
+  "scenario": "book-burst",
+  "engine": "Postgres",
+  "attempts": 100,
+  "capacity": 20,
+  "pass": true,
+  "outcomes": {
+    "full": 80,
+    "booked": 20
+  },
+  "bookedCount": 20,
+  "bookingRows": 20,
+  "distinctMembers": 20,
+  "retries": {
+    "total": 0,
+    "max": 0
+  },
+  "latencyAll": {
+    "count": 100,
+    "min": 27.58,
+    "p50": 126.29,
+    "p90": 152.96,
+    "p95": 155.51,
+    "p99": 159.05,
+    "max": 160.95,
+    "mean": 121.16
+  },
+  "latencyBooked": {
+    "count": 20,
+    "min": 27.58,
+    "p50": 67.89,
+    "p90": 101.12,
+    "p95": 108.64,
+    "p99": 109.53,
+    "max": 109.53,
+    "mean": 68.42
+  },
+  "wallMs": 165.2,
+  "errors": []
+}

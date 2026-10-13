@@ -1,0 +1,7 @@
+{
+  "scenario": "seed",
+  "engine": "Postgres",
+  "members": 200,
+  "sessions": 40,
+  "ms": 244.7
+}

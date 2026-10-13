@@ -1,0 +1,9 @@
+{
+  "scenario": "ping",
+  "engine": "Postgres",
+  "cold": true,
+  "createDataSourceMs": 43.1,
+  "openConnectionMs": 110.8,
+  "firstQueryMs": 34.2,
+  "secondQueryMs": 12.1
+}

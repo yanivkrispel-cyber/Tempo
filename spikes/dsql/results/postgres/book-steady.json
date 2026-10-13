@@ -1,0 +1,30 @@
+{
+  "scenario": "book-steady",
+  "engine": "Postgres",
+  "count": 200,
+  "outcomes": {
+    "booked": 194,
+    "duplicate": 6
+  },
+  "retries": 0,
+  "latencyBooked": {
+    "count": 194,
+    "min": 1.81,
+    "p50": 2.4,
+    "p90": 3.79,
+    "p95": 4.87,
+    "p99": 6.7,
+    "max": 31.24,
+    "mean": 2.9
+  },
+  "latencyAll": {
+    "count": 200,
+    "min": 1.33,
+    "p50": 2.4,
+    "p90": 3.79,
+    "p95": 4.87,
+    "p99": 6.7,
+    "max": 31.24,
+    "mean": 2.9
+  }
+}

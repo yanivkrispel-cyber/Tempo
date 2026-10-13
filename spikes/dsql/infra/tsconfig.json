@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": { "*": ["../../../infrastructure/node_modules/*"] },
+    "typeRoots": ["../../../infrastructure/node_modules/@types"],
+    "types": ["node"]
+  },
+  "include": ["app.ts"]
+}

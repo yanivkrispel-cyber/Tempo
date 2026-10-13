@@ -1,0 +1,21 @@
+{
+  "scenario": "room-overlap",
+  "engine": "Postgres",
+  "attempts": 10,
+  "pass": true,
+  "outcomes": {
+    "created": 1,
+    "overlap": 9
+  },
+  "retries": 0,
+  "latency": {
+    "count": 10,
+    "min": 226.71,
+    "p50": 239.36,
+    "p90": 249.87,
+    "p95": 252.24,
+    "p99": 252.24,
+    "max": 252.24,
+    "mean": 240.75
+  }
+}

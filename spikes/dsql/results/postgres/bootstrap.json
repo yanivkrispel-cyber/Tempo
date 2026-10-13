@@ -1,0 +1,40 @@
+{
+  "scenario": "bootstrap",
+  "engine": "Postgres",
+  "steps": [
+    {
+      "name": "create role tempo_migrator",
+      "sql": "CREATE ROLE tempo_migrator WITH LOGIN PASSWORD \u0027spike\u0027",
+      "Ok": true,
+      "SqlState": null,
+      "Message": null,
+      "ms": 11.6
+    },
+    {
+      "name": "create role tempo_app",
+      "sql": "CREATE ROLE tempo_app WITH LOGIN PASSWORD \u0027spike\u0027",
+      "Ok": true,
+      "SqlState": null,
+      "Message": null,
+      "ms": 5.4
+    },
+    {
+      "name": "schema platform authorization",
+      "Ok": true,
+      "SqlState": null,
+      "Message": null
+    },
+    {
+      "name": "schema organizations authorization",
+      "Ok": true,
+      "SqlState": null,
+      "Message": null
+    },
+    {
+      "name": "schema scheduling authorization",
+      "Ok": true,
+      "SqlState": null,
+      "Message": null
+    }
+  ]
+}

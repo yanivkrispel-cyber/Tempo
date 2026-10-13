@@ -1,0 +1,17 @@
+{
+  "scenario": "migrate",
+  "engine": "Postgres",
+  "transactionMode": "none",
+  "successful": true,
+  "error": null,
+  "errorScript": null,
+  "applied": [],
+  "ms": 176.8,
+  "indexJobs": null,
+  "log": [
+    "info: Beginning database upgrade",
+    "info: Checking whether journal table exists",
+    "info: Fetching list of already executed scripts.",
+    "info: No new scripts need to be executed - completing."
+  ]
+}

@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    Spikes are short-lived experiments that are never deployed to a real
+    environment. They deliberately do not import the repository root
+    Directory.Build.props (warnings as errors, central package versions,
+    lock files, Sonar), so an experiment never forces a change to the
+    production package set.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>
+  </PropertyGroup>
+</Project>
