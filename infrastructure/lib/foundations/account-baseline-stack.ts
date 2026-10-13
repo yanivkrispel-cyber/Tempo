@@ -2,7 +2,7 @@ import { CfnAnomalyMonitor, CfnAnomalySubscription } from "aws-cdk-lib/aws-ce";
 import { CfnBudget } from "aws-cdk-lib/aws-budgets";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
+import { TempoEnvironmentConfig, firstCentAlertPercent, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
 
 export interface AccountBaselineStackProps extends StackProps {
@@ -47,8 +47,9 @@ export class AccountBaselineStack extends Stack {
           notification: {
             notificationType: "ACTUAL",
             comparisonOperator: "GREATER_THAN",
-            threshold: 0.01,
-            thresholdType: "ABSOLUTE_VALUE"
+            // $0.01 as a percent of the budget: CloudFormation rejects absolute thresholds below 0.1.
+            threshold: firstCentAlertPercent(config.cost.monthlyBudgetUsd),
+            thresholdType: "PERCENTAGE"
           },
           subscribers: alertSubscribers
         },

@@ -1,14 +1,17 @@
 import { App } from "aws-cdk-lib";
+import cdkJson from "../../../cdk.json";
 import developmentConfig from "../../../config/development";
 import productionConfig from "../../../config/production";
 import { TempoStage } from "../../../lib/tempo-stage";
 
 /**
  * Synthesizes the dev and prod stages once and shares them across every test
- * file (synthesis is not free - dozens of resources per environment).
+ * file (synthesis is not free - dozens of resources per environment). The app
+ * gets the context from cdk.json, so tests see the same feature flags as
+ * `cdk synth` and fail on the same template validation errors.
  */
 function synthesize() {
-  const app = new App();
+  const app = new App({ context: cdkJson.context });
   const dev = new TempoStage(app, "TestTempoDev", { config: developmentConfig, buildVersion: "test-sha" });
   const prod = new TempoStage(app, "TestTempoProd", { config: productionConfig, buildVersion: "test-sha" });
   app.synth();

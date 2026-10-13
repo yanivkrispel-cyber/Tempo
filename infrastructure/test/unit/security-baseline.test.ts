@@ -141,4 +141,18 @@ describe("Mandatory tags (LLD section 5)", () => {
 
     template.hasResourceProperties("AWS::Lambda::Function", { Tags: expectedTags });
   });
+
+  it("every stack carries the required tag set itself (explicitStackTags is on)", () => {
+    for (const stack of dev.node.findAll().filter(Stack.isStack)) {
+      expect(Object.keys(stack.tags.tagValues()).sort(), stack.stackName).toEqual([
+        "Application",
+        "Component",
+        "CostCenter",
+        "DataClassification",
+        "Environment",
+        "ManagedBy",
+        "Owner"
+      ]);
+    }
+  });
 });
