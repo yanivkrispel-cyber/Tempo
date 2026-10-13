@@ -1,6 +1,6 @@
 # Design System
 
-> **Status:** Baseline (foundation tokens and CSS primitives, 2026-10-13)  
+> **Status:** Baseline v0.2 (Soft UI tokens and CSS primitives, 2026-10-13)  
 > **Audience:** Product, Engineering, Design, AI coding agents  
 > **Scope rule:** The design system is industry-neutral. Vertical-specific visuals (a studio's class categories, a clinic's treatment colors) map onto the generic category and status tokens; they never add tokens of their own.  
 > **Decision policy:** Statements marked **Decision** are normative.
@@ -21,20 +21,23 @@
 
 ## 2. Direction
 
-**Decision:** "Flat base, tactile controls."
+**Decision (revised 2026-10-13, after the first flat/tactile hybrid was judged not premium enough):** Soft UI
+everywhere, "one material, two directions".
 
-- The base is flat and crisp: white surfaces, hairline borders, small radii, navy ink. This is what makes a dense
-  admin console readable, keeps WCAG AA trivial, and lets a tenant color replace one token for white label.
-- The controls are tactile (soft raised, from the reference board's Soft UI images): primary button, toggle,
-  segmented control, class card, progress ring. They sit on the canvas and cast a dual shadow. This is where the
-  product feels like the reference images without paying the readability cost of full neumorphism.
-- Brand color: Tempo teal (`brand` = `#1f7376` light / `#4fb3b6` dark). Ink: deep navy. Both come from the two
-  palette boards in the reference set.
-- Type: Heebo for UI (full Hebrew, five weights on Google Fonts), IBM Plex Mono for IDs and code.
+- Every object is cut from the same light material as the page. Depth comes from a dual shadow (light from the
+  top-start corner, shade toward the bottom-end), never from a border. Objects you touch or read are raised; wells you
+  type into, tracks and banners are sunken. Row dividers are embossed hairlines.
+- Radii are large (20 to 36px on slabs, pills on anything small), spacing is generous (card padding 24 to 32px),
+  type is heavy at the top of the hierarchy (display 44/800, h1 28/700) and quiet below it.
+- Brand color: a Tempo teal gradient (`brand-light` to `brand`) used on one or two things per screen: the primary
+  button, the toggle on-state, today's date, the occupancy ring, the member app's "next class" card. Ink is deep navy.
+- Type: Heebo for UI (full Hebrew, 400 to 800 on Google Fonts), IBM Plex Mono for IDs and code.
+- Readability is locked by tokens, not by style: every text token meets WCAG AA on the grounds its usage note names,
+  in both themes, enforced in CI.
 
-Rejected on the way (recorded in the options page): pure neumorphism (contrast and dark mode), pastel lavender
-glass (unreadable in dense screens, no white label), warm sage clay (clashes with tenant logos). The June 2026
-design in `C:\Dev\StudioPro\design` is superseded and not referenced.
+Rejected on the way (recorded in the options page): the flat SaaS base (readable but generic), pastel lavender glass
+(unreadable in dense screens, no white label), warm sage clay (clashes with tenant logos). The June 2026 design in
+`C:/Dev/StudioPro/design` is superseded.
 
 ## 3. Themes
 
@@ -65,10 +68,13 @@ tenant color until it passes. All other tokens are platform-owned.
 
 ## 7. Component inventory (v0.1)
 
-Button (primary, secondary, outline, ghost, danger, icon, three sizes) · Field with Input, Select, Textarea, search
+Button (primary gradient, secondary raised, ghost, danger, round icon button, three sizes) · Field with Input, Select, Textarea, search
 input · Toggle · Checkbox and Radio · Segmented control · Chip (status, category, count) · Card (flat, raised,
-sunken, selected) · Stat tile and Progress ring · Progress bar · Avatar · Table · Tabs · Sidebar nav · Banner ·
-Toast · Dialog and bottom sheet · Skeleton · Empty state · Week schedule with event blocks · Class card.
+sunken, selected) · Stat tile and Progress ring · Progress bar · Avatar · Table · Tabs · Sidebar rail and expanded nav · Bottom tab bar · Banner ·
+Toast · Dialog and bottom sheet · Skeleton · Empty state · Week schedule with event tiles · Class card.
+
+Two composed reference screens live in `packages/design-system/docs/specimen.html`: the console's weekly schedule and
+the member app home.
 
 Not yet: date picker, time picker, dropdown menu, command palette, charts (use the `dataviz` guidance with these
 tokens when they arrive), data grid virtualization.

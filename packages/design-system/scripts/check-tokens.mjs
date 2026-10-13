@@ -42,6 +42,8 @@ const themes = t.color.themes.map((x) => x.id);
 // text token -> grounds it must read on, with the minimum ratio (4.5 text, 3 large/marks)
 const pairs = [
   ["ink", ["canvas", "surface", "surface-sunken", "surface-hover"], 4.5],
+  ["brand-light", ["canvas"], 3],
+  ["on-brand", ["brand-light"], 3],
   ["ink-muted", ["canvas", "surface", "surface-sunken"], 4.5],
   ["ink-faint", ["surface"], 3],
   ["ink-inverse", ["ink"], 4.5],
