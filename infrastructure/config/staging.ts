@@ -40,6 +40,7 @@ const stagingConfig: TempoEnvironmentConfig = {
   observability: {
     enableTracing: true,
     logRetentionDays: 30,
+    alarmsEnabled: true,
     alarmNotificationsEnabled: true,
     alarmEmail: "aws-alerts@tempo.example"
   },

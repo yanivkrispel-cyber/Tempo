@@ -35,6 +35,12 @@ export interface LambdaConfig {
 export interface ObservabilityConfig {
   readonly enableTracing: boolean;
   readonly logRetentionDays: number;
+  /**
+   * Whether CloudWatch alarms are created at all. The ten free alarms are
+   * pooled across the whole AWS Organization, so development has none and
+   * production keeps them (ADR-0012 amendment, ADR-0021).
+   */
+  readonly alarmsEnabled: boolean;
   readonly alarmNotificationsEnabled: boolean;
   /** Email subscribed to the alarm SNS topic. Required when alarmNotificationsEnabled is true. */
   readonly alarmEmail?: string;
@@ -161,6 +167,9 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
   if (config.observability.alarmNotificationsEnabled && !config.observability.alarmEmail) {
     errors.push("observability.alarmEmail is required when alarmNotificationsEnabled is true");
   }
+  if (config.observability.alarmNotificationsEnabled && !config.observability.alarmsEnabled) {
+    errors.push("observability.alarmNotificationsEnabled requires observability.alarmsEnabled");
+  }
 
   if (!(config.cost.monthlyBudgetUsd > 0)) {
     errors.push("cost.monthlyBudgetUsd must be > 0");
@@ -197,6 +206,9 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     }
     if (config.aurora.minAcu <= 0) {
       errors.push("production requires aurora.minAcu > 0");
+    }
+    if (!config.observability.alarmsEnabled) {
+      errors.push("production requires observability.alarmsEnabled = true");
     }
     if (!config.observability.alarmNotificationsEnabled) {
       errors.push("production requires observability.alarmNotificationsEnabled = true");
