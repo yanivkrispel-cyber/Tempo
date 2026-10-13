@@ -1,0 +1,83 @@
+/* Tempo design system — base layer.
+   Load order in every app: tokens.css → base.css → components.css → app styles.
+   Everything here is written with logical properties so the same CSS serves RTL (Hebrew, the default)
+   and LTR. Set dir="rtl" lang="he" (or dir="ltr") on <html>; never flip with margin-left/right. */
+
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4, p, ul, ol, figure { margin: 0; }
+h1 { font-size: 22px; line-height: 30px; font-weight: 600; text-wrap: balance; }
+h2 { font-size: 18px; line-height: 26px; font-weight: 600; text-wrap: balance; }
+h3 { font-size: 16px; line-height: 24px; font-weight: 600; }
+small { font-size: 13px; line-height: 20px; }
+a { color: var(--brand-ink); text-decoration: none; text-underline-offset: 3px; }
+a:hover { text-decoration: underline; }
+code, kbd, pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+code { background: var(--surface-sunken); padding: 1px 6px; border-radius: var(--radius-sm); }
+img, svg, video { max-width: 100%; display: block; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* Latin inside Hebrew text: wrap in <bdi> or give it .tp-ltr so a following number does not glue to it. */
+bdi { unicode-bidi: isolate; }
+.tp-ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.tp-num { font-variant-numeric: tabular-nums; }
+.tp-muted { color: var(--ink-muted); }
+.tp-caption { font-size: 12px; line-height: 16px; letter-spacing: 0.01em; color: var(--ink-muted); }
+.tp-label { font-size: 13px; line-height: 18px; font-weight: 500; }
+.tp-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* One focus ring for everything interactive: solid, 2px, offset, 3:1 on every surface. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* Selection and scrollbars follow the palette. */
+::selection { background: var(--brand-soft); color: var(--brand-ink); }
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* Page scaffold used by all three apps. */
+.tp-page {
+  padding-block: var(--space-10) var(--space-12);
+  padding-inline: var(--space-4);
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+@media (min-width: 768px) { .tp-page { padding-inline: var(--space-8); } }
+.tp-stack { display: flex; flex-direction: column; gap: var(--space-4); }
+.tp-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.tp-row > * { min-width: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

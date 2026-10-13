@@ -85,6 +85,8 @@ Feature modules import shared infrastructure but not another feature's private i
 
 Define tokens, primitives, patterns, responsiveness, RTL/LTR, accessibility and brand-safe extensions.
 
+**Decision:** tokens and CSS primitives live in `packages/design-system` (`@tempo/design-system`) and are consumed by all three apps; see `25_Design_System.md` for the direction, themes, RTL and accessibility rules. Each app's `shared/design-system/` holds only React wrappers over those primitives.
+
 ## 7. White Label
 
 Allowed: logo, constrained palette, app name, supported font preset, legal links.  

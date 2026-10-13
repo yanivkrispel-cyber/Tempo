@@ -1,0 +1,27 @@
+{
+  "name": "@tempo/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tempo design tokens and CSS primitives shared by admin-web, client-web and platform-admin-web.",
+  "type": "module",
+  "files": [
+    "css",
+    "tokens",
+    "README.md"
+  ],
+  "exports": {
+    "./tokens.css": "./css/tokens.css",
+    "./base.css": "./css/base.css",
+    "./components.css": "./css/components.css",
+    "./tokens.json": "./tokens/tokens.json"
+  },
+  "scripts": {
+    "build": "node scripts/build-tokens.mjs",
+    "dev": "node scripts/build-tokens.mjs",
+    "lint": "node scripts/check-tokens.mjs",
+    "test": "node scripts/check-tokens.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
