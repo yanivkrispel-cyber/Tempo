@@ -36,9 +36,13 @@ export class GitHubOidcStack extends Stack {
     // Trust is restricted to this exact repository and the exact branch (or
     // GitHub Environment, for protected production approval) permitted to
     // deploy this environment - never every branch or every repository.
+    // The repository sends GitHub's immutable subject, which carries the
+    // numeric owner and repository ids; the first deploy from main on
+    // 2026-10-14 failed against the old `repo:<owner>/<repo>` form.
+    const repository = `repo:${config.github.owner}@${config.github.ownerId}/${config.github.repo}@${config.github.repoId}`;
     const subClaim = config.github.githubEnvironment
-      ? `repo:${config.github.owner}/${config.github.repo}:environment:${config.github.githubEnvironment}`
-      : `repo:${config.github.owner}/${config.github.repo}:ref:refs/heads/${config.github.allowedBranch}`;
+      ? `${repository}:environment:${config.github.githubEnvironment}`
+      : `${repository}:ref:refs/heads/${config.github.allowedBranch}`;
 
     this.deploymentRole = new Role(this, "DeploymentRole", {
       roleName: resourceName(config, "github-deploy"),
@@ -86,6 +90,14 @@ export class GitHubOidcStack extends Stack {
         sid: "SmokeTestWorkQueue",
         actions: ["sqs:GetQueueUrl", "sqs:SendMessage", "sqs:GetQueueAttributes"],
         resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work")}`]
+      })
+    );
+    // The smoke test fails when its message lands in the DLQ instead of being processed.
+    this.deploymentRole.addToPolicy(
+      new PolicyStatement({
+        sid: "SmokeTestDeadLetterQueue",
+        actions: ["sqs:GetQueueUrl", "sqs:GetQueueAttributes"],
+        resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work-dlq")}`]
       })
     );
 
