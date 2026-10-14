@@ -41,6 +41,7 @@ try
     app.MapAccountEndpoints();
     app.MapOrganizationEndpoints();
     app.MapInvitationEndpoints();
+    app.MapPlatformEndpoints();
     app.MapEndpointModules();
 
     await app.RunAsync();

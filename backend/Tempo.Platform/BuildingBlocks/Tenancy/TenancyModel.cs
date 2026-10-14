@@ -100,3 +100,16 @@ public interface IAttemptLimiter
 {
     Task CheckAsync(Guid userAccountId, CancellationToken cancellationToken);
 }
+
+/// <summary>A Tempo team member on `/api/v1/platform/*` (docs/26 section 9).</summary>
+public sealed record OperatorContext(Guid OperatorId, string Email, string CorrelationId);
+
+/// <summary>
+/// Finds the registered operator behind an operator-pool token. An operator
+/// row is provisioned by a person with the Cognito `sub` (docs/claude-memory/
+/// backend-patterns.md); a token with no active row gets 403.
+/// </summary>
+public interface IOperatorDirectory
+{
+    Task<(Guid OperatorId, string Email)?> FindActiveAsync(string issuer, string subject, CancellationToken cancellationToken);
+}
