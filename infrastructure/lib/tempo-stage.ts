@@ -52,8 +52,10 @@ export class TempoStage extends Stage {
     });
 
     // ADR-0008 amendment: one work queue. An EventBridge bus is added only
-    // for real fan-out, and Scheduler schedules (outbox sweeper, canary)
-    // arrive with the outbox and edge work.
+    // for real fan-out. The canary schedule lives in the edge stack; the
+    // outbox sweeper schedule arrives with the outbox table (step 7), since
+    // a Scheduler SQS target cannot set the MessageType attribute the worker
+    // routes on.
     const messaging = new MessagingStack(this, "Messaging", { config, env });
 
     const api = new ApiStack(this, "Api", {

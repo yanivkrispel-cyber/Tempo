@@ -1,7 +1,13 @@
 import { Stack } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
-import { AUTH_PATH_PREFIX, AUTH_RATE_LIMIT, GENERAL_RATE_LIMIT } from "../../lib/edge/edge-stack";
+import {
+  AUTH_PATH_PREFIX,
+  AUTH_RATE_LIMIT,
+  CANARY_INTERVAL_MINUTES,
+  GENERAL_RATE_LIMIT,
+  HEALTH_PATH
+} from "../../lib/edge/edge-stack";
 import { dev, prod } from "./helpers/synth";
 
 function stackOf(stage: typeof dev, id: string): Stack {
@@ -95,5 +101,33 @@ describe.each([
         SourceArn: Match.anyValue()
       });
     }
+  });
+
+  it("runs a canary every five minutes that calls the health endpoint through CloudFront", () => {
+    template.hasResourceProperties("AWS::Scheduler::Schedule", {
+      ScheduleExpression: `rate(${CANARY_INTERVAL_MINUTES} minutes)`,
+      Target: Match.objectLike({ RetryPolicy: { MaximumRetryAttempts: 0 } })
+    });
+    const canary = Object.values(template.findResources("AWS::Lambda::Function")).find((fn) =>
+      JSON.stringify(fn.Properties.Environment ?? {}).includes(HEALTH_PATH)
+    );
+    expect(canary).toBeDefined();
+    expect(JSON.stringify(canary?.Properties.Environment.Variables.HEALTH_URL)).toContain("DomainName");
+    template.hasResourceProperties("AWS::Lambda::EventInvokeConfig", { MaximumRetryAttempts: 0 });
+  });
+});
+
+describe("Edge alarms (ADR-0012 amendment)", () => {
+  it("production alarms on CloudFront 5xx and canary failure and notifies a topic in us-east-1", () => {
+    const template = Template.fromStack(stackOf(prod, "Edge"));
+    template.hasResourceProperties("AWS::CloudWatch::Alarm", { Namespace: "AWS/CloudFront", MetricName: "5xxErrorRate" });
+    template.hasResourceProperties("AWS::CloudWatch::Alarm", { MetricName: "Errors", TreatMissingData: "breaching" });
+    template.resourceCountIs("AWS::SNS::Topic", 1);
+  });
+
+  it("development has the canary but no alarms", () => {
+    const template = Template.fromStack(stackOf(dev, "Edge"));
+    template.resourceCountIs("AWS::Scheduler::Schedule", 1);
+    template.resourceCountIs("AWS::CloudWatch::Alarm", 0);
   });
 });

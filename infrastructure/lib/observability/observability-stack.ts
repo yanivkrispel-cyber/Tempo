@@ -4,6 +4,7 @@ import {
   ComparisonOperator,
   Dashboard,
   GraphWidget,
+  Metric,
   TreatMissingData
 } from "aws-cdk-lib/aws-cloudwatch";
 import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -15,6 +16,10 @@ import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
+
+export const API_P99_THRESHOLD_MS = 2000;
+export const SES_BOUNCE_RATE_THRESHOLD = 0.05;
+export const SES_COMPLAINT_RATE_THRESHOLD = 0.001;
 
 export interface ObservabilityStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -28,7 +33,8 @@ export interface ObservabilityStackProps extends StackProps {
 /**
  * Cross-cutting CloudWatch alarms and a starter dashboard (LLD sections 25,
  * 34). Queue-level alarms (DLQ depth, oldest-message age) already live on
- * each SecureQueue and are not duplicated here.
+ * each SecureQueue and are not duplicated here. Development has no alarms
+ * (ADR-0012 amendment).
  *
  * Alarm notifications are optional in development (no approved channel
  * configured yet) but the SNS topic + subscription wiring is real and is
@@ -82,77 +88,100 @@ export class ObservabilityStack extends Stack {
     applyStandardTags(this, config, "observability");
   }
 
+  /**
+   * Six of production's ten alarms (ADR-0012 amendment). The work queue
+   * carries two more (DLQ messages visible, oldest message age) and the edge
+   * stack the last two (CloudFront 5xx rate, canary failure), because
+   * CloudFront's metrics exist only in us-east-1. Every other signal on the
+   * ADR-0012 list is watched on the dashboard.
+   */
   private addAlarms(config: TempoEnvironmentConfig, props: ObservabilityStackProps): void {
     const alarmAction = this.buildAlarmAction(config);
+    const fiveMinutes = Duration.minutes(5);
 
-    const api5xxAlarm = new Alarm(this, "Api5xxAlarm", {
-      alarmName: resourceName(config, "api-5xx"),
-      alarmDescription: "API Gateway is returning server errors",
-      metric: props.httpApi.metricServerError({ period: Duration.minutes(5), statistic: "Sum" }),
-      threshold: 5,
+    // Without a FunctionName dimension Lambda reports these across all
+    // functions in the Region, so one alarm covers every function.
+    const lambdaErrors = new Alarm(this, "LambdaErrorsAlarm", {
+      alarmName: resourceName(config, "lambda-errors"),
+      alarmDescription: "A Lambda function in this Region reported errors",
+      metric: new Metric({ namespace: "AWS/Lambda", metricName: "Errors", statistic: "Sum", period: fiveMinutes }),
+      threshold: 1,
       evaluationPeriods: 1,
       comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       treatMissingData: TreatMissingData.NOT_BREACHING
     });
 
-    const apiLatencyAlarm = new Alarm(this, "ApiLatencyAlarm", {
-      alarmName: resourceName(config, "api-latency-p99"),
-      alarmDescription: "API Gateway p99 latency is elevated",
-      metric: props.httpApi.metricLatency({ period: Duration.minutes(5), statistic: "p99" }),
-      threshold: 2000,
-      evaluationPeriods: 3,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING
-    });
-
-    const functionAlarms = [
-      this.functionAlarms(config, "Api", props.apiFunction, config.lambda.apiTimeoutSeconds),
-      this.functionAlarms(config, "Worker", props.workerFunction, config.lambda.workerTimeoutSeconds),
-      this.functionAlarms(config, "Migrator", props.migratorFunction, 900)
-    ].flat();
-
-    const auroraConnectionsAlarm = new Alarm(this, "AuroraConnectionsAlarm", {
-      alarmName: resourceName(config, "aurora-connections"),
-      alarmDescription: "Aurora connection count is unexpectedly high",
-      metric: props.cluster.metricDatabaseConnections({ period: Duration.minutes(5), statistic: "Maximum" }),
-      threshold: 200,
-      evaluationPeriods: 3,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING
-    });
-
-    const auroraCapacityAlarm = new Alarm(this, "AuroraCapacityAlarm", {
-      alarmName: resourceName(config, "aurora-capacity-near-max"),
-      alarmDescription: "Aurora Serverless v2 capacity is near its configured maximum ACU",
-      metric: props.cluster.metric("ServerlessDatabaseCapacity", { period: Duration.minutes(5), statistic: "Maximum" }),
-      threshold: config.aurora.maxAcu * 0.9,
-      evaluationPeriods: 3,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING
-    });
-
-    const auroraDeadlocksAlarm = new Alarm(this, "AuroraDeadlocksAlarm", {
-      alarmName: resourceName(config, "aurora-deadlocks"),
-      alarmDescription: "Aurora is reporting deadlocks",
-      metric: props.cluster.metricDeadlocks({ period: Duration.minutes(5), statistic: "Sum" }),
+    const lambdaThrottles = new Alarm(this, "LambdaThrottlesAlarm", {
+      alarmName: resourceName(config, "lambda-throttles"),
+      alarmDescription: "A Lambda function in this Region was throttled",
+      metric: new Metric({ namespace: "AWS/Lambda", metricName: "Throttles", statistic: "Sum", period: fiveMinutes }),
       threshold: 0,
       evaluationPeriods: 1,
       comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
       treatMissingData: TreatMissingData.NOT_BREACHING
     });
 
-    for (const alarm of [
-      api5xxAlarm,
-      apiLatencyAlarm,
-      ...functionAlarms,
-      auroraConnectionsAlarm,
-      auroraCapacityAlarm,
-      auroraDeadlocksAlarm
-    ]) {
-      if (alarmAction) {
+    const apiDuration = new Alarm(this, "ApiDurationP99Alarm", {
+      alarmName: resourceName(config, "api-duration-p99"),
+      alarmDescription: `API function p99 duration is above ${API_P99_THRESHOLD_MS} ms`,
+      metric: props.apiFunction.metricDuration({ period: fiveMinutes, statistic: "p99" }),
+      threshold: API_P99_THRESHOLD_MS,
+      evaluationPeriods: 3,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING
+    });
+
+    // Aurora capacity until step 7 replaces the database with the one
+    // ADR-0022 decides. On Aurora DSQL this becomes a DPU spike alarm.
+    const databaseCapacity = new Alarm(this, "DatabaseCapacityAlarm", {
+      alarmName: resourceName(config, "database-capacity"),
+      alarmDescription: "Database capacity is near its configured maximum",
+      metric: props.cluster.metric("ServerlessDatabaseCapacity", { period: fiveMinutes, statistic: "Maximum" }),
+      threshold: config.aurora.maxAcu * 0.9,
+      evaluationPeriods: 3,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING
+    });
+
+    // SES account reputation. AWS reviews an account at a 5% bounce rate or
+    // a 0.1% complaint rate; these alarms fire at those points.
+    const sesBounce = this.sesReputationAlarm(config, "SesBounceRateAlarm", "ses-bounce-rate", "BounceRate", SES_BOUNCE_RATE_THRESHOLD);
+    const sesComplaint = this.sesReputationAlarm(
+      config,
+      "SesComplaintRateAlarm",
+      "ses-complaint-rate",
+      "ComplaintRate",
+      SES_COMPLAINT_RATE_THRESHOLD
+    );
+
+    if (alarmAction) {
+      for (const alarm of [lambdaErrors, lambdaThrottles, apiDuration, databaseCapacity, sesBounce, sesComplaint]) {
         alarm.addAlarmAction(alarmAction);
       }
     }
+  }
+
+  private sesReputationAlarm(
+    config: TempoEnvironmentConfig,
+    id: string,
+    name: string,
+    metric: "BounceRate" | "ComplaintRate",
+    threshold: number
+  ): Alarm {
+    return new Alarm(this, id, {
+      alarmName: resourceName(config, name),
+      alarmDescription: `SES account ${metric} reached ${threshold * 100}%`,
+      metric: new Metric({
+        namespace: "AWS/SES",
+        metricName: `Reputation.${metric}`,
+        statistic: "Maximum",
+        period: Duration.hours(1)
+      }),
+      threshold,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING
+    });
   }
 
   private buildAlarmAction(config: TempoEnvironmentConfig): SnsAction | undefined {
@@ -166,42 +195,5 @@ export class ObservabilityStack extends Stack {
     topic.addSubscription(new EmailSubscription(config.observability.alarmEmail));
 
     return new SnsAction(topic);
-  }
-
-  private functionAlarms(
-    config: TempoEnvironmentConfig,
-    name: string,
-    fn: LambdaFunction,
-    timeoutSeconds: number
-  ): Alarm[] {
-    return [
-      new Alarm(this, `${name}ErrorsAlarm`, {
-        alarmName: resourceName(config, `${name.toLowerCase()}-errors`),
-        alarmDescription: `${name} Lambda is reporting errors`,
-        metric: fn.metricErrors({ period: Duration.minutes(5), statistic: "Sum" }),
-        threshold: 1,
-        evaluationPeriods: 1,
-        comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-        treatMissingData: TreatMissingData.NOT_BREACHING
-      }),
-      new Alarm(this, `${name}ThrottlesAlarm`, {
-        alarmName: resourceName(config, `${name.toLowerCase()}-throttles`),
-        alarmDescription: `${name} Lambda is being throttled`,
-        metric: fn.metricThrottles({ period: Duration.minutes(5), statistic: "Sum" }),
-        threshold: 0,
-        evaluationPeriods: 1,
-        comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-        treatMissingData: TreatMissingData.NOT_BREACHING
-      }),
-      new Alarm(this, `${name}DurationAlarm`, {
-        alarmName: resourceName(config, `${name.toLowerCase()}-duration-near-timeout`),
-        alarmDescription: `${name} Lambda duration is approaching its configured timeout`,
-        metric: fn.metricDuration({ period: Duration.minutes(5), statistic: "Maximum" }),
-        threshold: Duration.seconds(timeoutSeconds * 0.8).toMilliseconds(),
-        evaluationPeriods: 3,
-        comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-        treatMissingData: TreatMissingData.NOT_BREACHING
-      })
-    ];
   }
 }
