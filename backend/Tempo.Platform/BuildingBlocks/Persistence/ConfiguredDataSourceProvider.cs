@@ -26,12 +26,26 @@ public sealed class ConfiguredDataSourceProvider(Func<string, string?> setting) 
 
     private readonly ConcurrentDictionary<DatabaseRole, Lazy<Task<NpgsqlDataSource>>> dataSources = new();
 
-    public async ValueTask<NpgsqlDataSource> GetAsync(DatabaseRole role, CancellationToken cancellationToken) =>
-        await dataSources.GetOrAdd(role, r => new Lazy<Task<NpgsqlDataSource>>(() => BuildAsync(r))).Value.WaitAsync(cancellationToken);
+    public async ValueTask<NpgsqlDataSource> GetAsync(DatabaseRole role, CancellationToken cancellationToken)
+    {
+        var lazy = dataSources.GetOrAdd(role, r => new Lazy<Task<NpgsqlDataSource>>(() => BuildAsync(r)));
+        try
+        {
+            return await lazy.Value.WaitAsync(cancellationToken);
+        }
+        catch when (lazy.Value.IsFaulted)
+        {
+            // A failed build (SSM throttled, a parameter not yet written) is not
+            // cached for the life of the Lambda environment: the next request
+            // tries again.
+            dataSources.TryRemove(new KeyValuePair<DatabaseRole, Lazy<Task<NpgsqlDataSource>>>(role, lazy));
+            throw;
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {
-        foreach (var lazy in dataSources.Values.Where(l => l.IsValueCreated))
+        foreach (var lazy in dataSources.Values.Where(l => l.IsValueCreated && l.Value.IsCompletedSuccessfully))
         {
             await (await lazy.Value).DisposeAsync();
         }
