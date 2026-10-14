@@ -26,5 +26,8 @@
   - `scripts/check-tokens.mjs`, a WCAG contrast lint.
 - The normative doc is `docs/25_Design_System.md`.
 - **Rule:** UI code never uses a hex value. It uses the tokens and the `tp-*` classes.
-- **Missing:** a date and time picker, a dropdown menu, charts, a logo file, and React wrappers once the apps are
-  scaffolded.
+- **React wrappers** live in each app's `src/shared/design-system/` (client-web since #51, #54, #55, #56): they
+  render the `tp-*` classes and own aria, focus and keyboard. Added to the package on 2026-10-15: menu popover, toast
+  region, `tp-calendar`, `tp-slot`, `tp-week`, filter chips, block segmented and tabs, fixed tab bar, `tp-setting`,
+  `tp-btn--ghost-danger`, `tp-bar--sand`. **Missing:** charts, a logo file, and the reference artifact's previews of
+  the new primitives (Kris to review the look).
