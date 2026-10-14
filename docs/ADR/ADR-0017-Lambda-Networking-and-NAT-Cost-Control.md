@@ -1,6 +1,6 @@
 # ADR-0017: Lambda Networking and NAT Cost Control
 
-- **Status:** Proposed
+- **Status:** Superseded by ADR-0022 (2026-10-14): no VPC
 - **Date:** 2026-07-30
 - **Owners:** Architecture, Platform Engineering, Security
 - **Related:** ADR-0002, ADR-0005, ADR-0008, ADR-0013, ADR-0015
@@ -55,3 +55,7 @@ Create endpoints only when their monthly cost is justified by traffic, security 
 ## Acceptance Criteria
 
 This ADR becomes Accepted only after the spike documents monthly cost, latency, failure modes, deployment complexity and local-development impact for the first production traffic estimate.
+
+## Closed 2026-10-14
+
+ADR-0022 removes the VPC. The database is Neon over a public TLS endpoint, so no Lambda function runs in a VPC, and no NAT gateway or interface endpoint exists. If a future service needs private networking, this question opens again as a new ADR.

@@ -1,3 +1,25 @@
+# ADR Baseline v3.2 - Change Log (2026-10-14)
+
+Aurora DSQL could not be created for the account (support case open since 2026-10-13). The owners chose Neon serverless Postgres as the database for good.
+
+## Added ADRs
+
+- ADR-0022: Neon serverless Postgres in Frankfurt, one project per environment, Free plan until the pilot, no VPC, credentials in SSM Parameter Store.
+
+## Superseded or Closed ADRs
+
+- ADR-0005: Aurora Serverless v2 is replaced by ADR-0022.
+- ADR-0017: no VPC, so the NAT question is closed.
+
+## Amended ADRs
+
+- ADR-0001: the database is the one non-AWS vendor.
+- ADR-0006: structural isolation stays primary; RLS is added as a second layer, set per transaction.
+- ADR-0013: Neon's pooler replaces RDS Proxy.
+- ADR-0015: database credentials in SSM SecureString instead of Secrets Manager.
+- ADR-0019: a 6-hour restore window until the pilot, accepted by the owners; the pre-pilot backup choice is recorded.
+- ADR-0021: Neon tripwires replace the DSQL ones.
+
 # ADR Baseline v3.1 - Change Log (2026-10-13)
 
 The owners accepted the council proposal "Tempo Zero" on 2026-10-13. These are the parts that do not depend on the database choice. The database decision, ADR-0022 with the Aurora DSQL spike results, comes in a separate change.

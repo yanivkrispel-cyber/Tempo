@@ -66,3 +66,11 @@ Platform operators use separate roles and audited support sessions. They do not 
 - Cache-key collision.
 - Export and search isolation.
 - Impersonation restrictions.
+
+## Amendment 2026-10-14: Structural Isolation First, RLS as the Second Layer
+
+Council decision Q6 (2026-10-13) made structural isolation the primary control, because Aurora DSQL had no RLS: an immutable `organization_id`, tenant-leading composite primary and foreign keys, and tenant-aware repositories. On Neon (ADR-0022) RLS is available again, and the owners chose on 2026-10-14 to keep both:
+
+- Structural isolation stays mandatory on every tenant-owned table.
+- RLS policies are added as a second layer, so a query that forgets its tenant filter returns nothing instead of another tenant's rows.
+- The API and the Worker connect through Neon's pooler in transaction mode, so the tenant context is set per transaction (`SET LOCAL` or `set_config(..., true)`), never per session.

@@ -1,6 +1,6 @@
 # ADR-0005: Aurora PostgreSQL Serverless v2 as the Primary Transactional Database
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0022 (2026-10-14)
 - **Date:** 2026-07-30
 - **Owners:** Architecture, Data Engineering, Platform Engineering
 - **Related:** ADR-0002, ADR-0006, ADR-0013
@@ -92,3 +92,7 @@ Before provisioning production, Platform Engineering must compare the current mo
 ## Review Trigger
 
 Compare Aurora cost/performance with RDS PostgreSQL after real production usage is available, and whenever database compute becomes a top-three AWS cost item.
+
+## Superseded 2026-10-14
+
+ADR-0022 replaces this decision with Neon serverless Postgres. Aurora Serverless v2 needs a minimum capacity in production, which breaks ADR-0021's zero fixed cost. Aurora stays the exit path if Tempo outgrows Neon (ADR-0022, Review Trigger).

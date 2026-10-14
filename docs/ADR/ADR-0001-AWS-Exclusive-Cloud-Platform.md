@@ -84,3 +84,7 @@ External SaaS providers are permitted only as business integrations or specializ
 ## Review Trigger
 
 Review only if legal, customer-contract, regional-availability or acquisition requirements mandate another cloud or on-premises deployment.
+
+## Amendment 2026-10-14: One Exception for the Database
+
+The transactional database is Neon serverless Postgres (ADR-0022). Neon runs on AWS in `eu-central-1`, but Neon is the vendor, so Tempo is no longer AWS-exclusive for this one component. Aurora DSQL, the AWS option chosen under ADR-0021, could not be created for the account. Everything else stays on AWS. Any further non-AWS service needs its own ADR.
