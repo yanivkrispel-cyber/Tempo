@@ -87,8 +87,12 @@ jobs:
       - name: pnpm install
         run: pnpm install --frozen-lockfile
 
+      - name: API client matches the OpenAPI contract
+        run: pnpm --filter @tempo/api-client run check:generated
+
       - name: Build and test frontend workspaces
-        # apps/* (Vite build + Vitest), packages/* (design-system token check)
+        # apps/* (Vite build + Vitest), packages/* (design-system token check,
+        # api-client type check + Vitest)
         # and infrastructure. pnpm --recursive skips packages without the script.
         run: |
           pnpm --recursive run build

@@ -1,0 +1,27 @@
+{
+  "name": "@tempo/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for the Tempo API, generated from contracts/openapi/tempo-api.v1.yaml. ADR-0024.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "check:generated": "node scripts/generate.mjs --check",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "node scripts/generate.mjs --check && vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.10",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  }
+}
