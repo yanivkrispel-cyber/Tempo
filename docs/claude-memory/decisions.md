@@ -43,3 +43,9 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   studio or joins one. ADR-0023.
 - **D8 operator MFA (2026-10-14):** the Tempo team signs in through a separate Cognito user pool with MFA required
   and no self sign-up. Operators are never organization members. ADR-0023.
+- **D10 operators by `sub` (2026-10-15):** a person registers each operator in `platform_admin.operators` with the
+  Cognito `sub` (steps in `backend-patterns.md`); no link by email, so the API needs no `AdminGetUser` on the
+  operator pool. docs/26 section 9.
+- **D11 `permission.denied` (2026-10-15):** the 403 code when the caller's role does not allow an action.
+- **D12 tokens in the fragment (2026-10-15):** invitation and join links are `<app>/invite#<token>` and
+  `<client app>/join#<code>`, so no server log ever records them; apps send the value in the request body.
