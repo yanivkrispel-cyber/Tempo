@@ -20,18 +20,25 @@ export interface IdentityStackProps extends StackProps {
  * that flow requires a domain regardless of whether the login page itself
  * uses AWS's default styling or a branded page hosted by each app.
  *
- * Known Phase 0 limitation (see completion report): mandatory MFA for
- * platform-admin-web is not enforced per-client here - Cognito applies MFA
- * at the user pool level. Pool-wide MFA is OPTIONAL (TOTP) in this phase;
- * enforcing "MFA required" specifically for platform administrators needs
- * either a pre-token-generation Lambda trigger or a separate user pool, and
- * is deferred to the Identity/Membership LLD phase.
+ * Two pools (ADR-0023). `users` holds studio owners, admins, staff and
+ * clients: self sign-up is on because studio owners onboard themselves, and
+ * a new account gets no tenant access until Tempo grants it. `operators`
+ * holds the Tempo team: no self sign-up, MFA required (TOTP only) and short
+ * sessions. The API accepts each pool's tokens only on its own routes.
  */
 export class IdentityStack extends Stack {
   public readonly userPool: UserPool;
   public readonly adminWebClient: UserPoolClient;
   public readonly clientWebClient: UserPoolClient;
+  public readonly operatorPool: UserPool;
   public readonly platformAdminWebClient: UserPoolClient;
+  /**
+   * The Phase 0 platform-admin client in the customer pool. Kept for one
+   * deploy only: the Api stack imports its id, and CloudFormation cannot
+   * delete or change an export that another stack still uses. Remove it,
+   * and its exportValue below, in the next PR, after this one is deployed.
+   */
+  private readonly legacyPlatformAdminWebClient: UserPoolClient;
 
   constructor(scope: Construct, id: string, props: IdentityStackProps) {
     super(scope, id, props);
@@ -65,33 +72,76 @@ export class IdentityStack extends Stack {
       cognitoDomain: { domainPrefix: `tempo-${config.environmentName}-${config.accountId}` }
     });
 
-    this.adminWebClient = this.addBrowserClient("AdminWebClient", {
+    this.adminWebClient = this.addBrowserClient(this.userPool, "AdminWebClient", {
       clientName: resourceName(config, "admin-web"),
       callbackUrls: config.cognitoCallbackUrls.adminWeb,
       logoutUrls: config.cognitoLogoutUrls.adminWeb
     });
 
-    this.clientWebClient = this.addBrowserClient("ClientWebClient", {
+    this.clientWebClient = this.addBrowserClient(this.userPool, "ClientWebClient", {
       clientName: resourceName(config, "client-web"),
       callbackUrls: config.cognitoCallbackUrls.clientWeb,
       logoutUrls: config.cognitoLogoutUrls.clientWeb
     });
 
-    this.platformAdminWebClient = this.addBrowserClient("PlatformAdminWebClient", {
+    this.legacyPlatformAdminWebClient = this.addBrowserClient(this.userPool, "PlatformAdminWebClient", {
       clientName: resourceName(config, "platform-admin-web"),
       callbackUrls: config.cognitoCallbackUrls.platformAdminWeb,
       logoutUrls: config.cognitoLogoutUrls.platformAdminWeb
+    });
+    this.exportValue(this.legacyPlatformAdminWebClient.userPoolClientId);
+
+    this.operatorPool = new UserPool(this, "OperatorPool", {
+      userPoolName: resourceName(config, "operators"),
+      selfSignUpEnabled: false,
+      signInAliases: { email: true, username: false },
+      autoVerify: { email: true },
+      standardAttributes: {
+        email: { required: true, mutable: true }
+      },
+      passwordPolicy: {
+        minLength: 14,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: true,
+        tempPasswordValidity: Duration.days(1)
+      },
+      mfa: Mfa.REQUIRED,
+      mfaSecondFactor: { otp: true, sms: false },
+      accountRecovery: AccountRecovery.EMAIL_ONLY,
+      deletionProtection: config.enableDeletionProtection,
+      removalPolicy: config.environmentName === "prod" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY
+    });
+
+    this.operatorPool.addDomain("OperatorDomain", {
+      cognitoDomain: { domainPrefix: `tempo-${config.environmentName}-ops-${config.accountId}` }
+    });
+
+    this.platformAdminWebClient = this.addBrowserClient(this.operatorPool, "OperatorPlatformAdminWebClient", {
+      clientName: resourceName(config, "operators-platform-admin-web"),
+      callbackUrls: config.cognitoCallbackUrls.platformAdminWeb,
+      logoutUrls: config.cognitoLogoutUrls.platformAdminWeb,
+      accessTokenValidity: Duration.minutes(15),
+      refreshTokenValidity: Duration.hours(12)
     });
 
     applyStandardTags(this, config, "identity", "Confidential");
   }
 
   private addBrowserClient(
+    userPool: UserPool,
     id: string,
-    props: { clientName: string; callbackUrls: readonly string[]; logoutUrls: readonly string[] }
+    props: {
+      clientName: string;
+      callbackUrls: readonly string[];
+      logoutUrls: readonly string[];
+      accessTokenValidity?: Duration;
+      refreshTokenValidity?: Duration;
+    }
   ): UserPoolClient {
     return new UserPoolClient(this, id, {
-      userPool: this.userPool,
+      userPool,
       userPoolClientName: props.clientName,
       // Browser-based public clients never receive a client secret.
       generateSecret: false,
@@ -103,9 +153,9 @@ export class IdentityStack extends Stack {
         callbackUrls: [...props.callbackUrls],
         logoutUrls: [...props.logoutUrls]
       },
-      accessTokenValidity: Duration.hours(1),
-      idTokenValidity: Duration.hours(1),
-      refreshTokenValidity: Duration.days(30)
+      accessTokenValidity: props.accessTokenValidity ?? Duration.hours(1),
+      idTokenValidity: props.accessTokenValidity ?? Duration.hours(1),
+      refreshTokenValidity: props.refreshTokenValidity ?? Duration.days(30)
     });
   }
 }
