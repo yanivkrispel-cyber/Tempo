@@ -240,7 +240,7 @@ A person has at most one login per studio, and a login has at most one person pe
 
 ## 5. Database
 
-Migration `0003_authorization_people.sql`. Same conventions as docs/26 section 7: UUID v7, `timestamptz`, `version`
+Migration `0005_authorization_people.sql` (Phase 1 ends at `0004_tripwires.sql`). Same conventions as docs/26 section 7: UUID v7, `timestamptz`, `version`
 on mutable rows, tenant-leading primary keys and composite foreign keys, RLS enabled (not forced) with the tenant
 clause.
 
@@ -471,7 +471,7 @@ pool, which MFA enforcement reads.
   `PermissionEvaluator` with the seeded system roles; phone normalization (Israeli mobile and landline, with and
   without `+972`); duplicate detection reasons; merge moves every child row.
 - **Architecture:** every tenant endpoint declares a permission; no code outside `Authorization` reads `authz.*`.
-- **Integration (PostgreSQL 18):** migration 0003 on a database with Phase 1 data produces one assignment and one
+- **Integration (PostgreSQL 18):** migration 0005 on a database with Phase 1 data produces one assignment and one
   person per live membership; RLS on every new table (tenant A cannot see tenant B; no setting reads empty);
   `tempo_app` cannot UPDATE or DELETE consents; system roles cannot be modified by `tempo_app`.
 - **API:** the `09` section 7 matrix with permissions instead of roles: missing permission, correct permission,
@@ -483,7 +483,7 @@ One PR each, in order:
 
 1. This LLD (merged after Kris answers section 14).
 2. OpenAPI contract for section 6.
-3. Migration 0003 with data backfill and the integration tests.
+3. Migration 0005 with data backfill and the integration tests.
 4. Authorization module, `RequirePermission`, `GET /me` additions; all existing routes switch to permissions with
    the Phase 1 matrix tests unchanged.
 5. Roles API and assignments (custom roles only if A-1 says so).
@@ -496,7 +496,7 @@ One PR each, in order:
 
 ## 13. Risks
 
-- **Backfill on prod data.** There is no prod data yet; if Phase 2 lands after the pilot starts, migration 0003 runs
+- **Backfill on prod data.** There is no prod data yet; if Phase 2 lands after the pilot starts, migration 0005 runs
   against real studios and needs a dry run on a Neon branch first.
 - **One more query per request.** The permission union joins three small tables keyed by membership; measure on the
   Neon pooler before step 4 merges.
