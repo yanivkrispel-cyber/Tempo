@@ -63,3 +63,9 @@ Cognito remains the source of truth for:
 - Cognito UX/customization constraints must be managed.
 - Migration away requires identity-linking strategy.
 - Business authorization remains an internal responsibility.
+
+## Amendment 2026-10-14: Two User Pools (ADR-0023)
+
+- Customers (studio owners, admins, staff, clients) use `tempo-{env}-users`, with self sign-up enabled because studio owners onboard themselves. A new account gets no tenant access until it creates a studio or joins one.
+- Platform operators use `tempo-{env}-operators`: MFA required (TOTP), no self sign-up, its own `platform-admin-web` client and shorter sessions.
+- The API accepts each pool's tokens only on its own routes. Details in `docs/26_Identity_Organization_Membership_LLD.md` section 2.

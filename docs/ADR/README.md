@@ -1,6 +1,6 @@
 # Tempo Architecture Decision Records - Current Baseline
 
-- **Version:** 3.2
+- **Version:** 3.3
 - **Date:** 2026-10-14
 - **Cloud Decision:** AWS, except the database (Neon on AWS eu-central-1, ADR-0022)
 - **Architecture Direction:** Serverless-first modular monolith
@@ -25,7 +25,7 @@
 | ADR-0004 | Amazon API Gateway HTTP API for Public APIs | Accepted, amended 2026-10-13: CloudFront + Function URL |
 | ADR-0005 | Aurora PostgreSQL Serverless v2 as the Primary Transactional Database | Superseded by ADR-0022 |
 | ADR-0006 | Shared-Schema Multi-Tenancy with Defense in Depth | Accepted, amended 2026-10-14: structural isolation plus RLS |
-| ADR-0007 | Amazon Cognito for Authentication Behind an Internal Identity Boundary | Accepted |
+| ADR-0007 | Amazon Cognito for Authentication Behind an Internal Identity Boundary | Accepted, amended 2026-10-14: two user pools (ADR-0023) |
 | ADR-0008 | SQS, EventBridge and Transactional Outbox for Asynchronous Work | Accepted, amended 2026-10-13: one work queue |
 | ADR-0009 | S3, CloudFront, WAF and Route 53 for Web Delivery | Accepted, amended 2026-10-13: WAF in every environment |
 | ADR-0010 | AWS CDK in TypeScript for Infrastructure as Code | Accepted |
@@ -41,6 +41,7 @@
 | ADR-0020 | AWS Cost Governance from the First Environment | Accepted, amended 2026-10-13: $1 budget |
 | ADR-0021 | Zero Fixed Cost Until Revenue | Accepted, amended 2026-10-14: Neon tripwires |
 | ADR-0022 | Neon Serverless Postgres as the Primary Transactional Database | Accepted |
+| ADR-0023 | Studio Self-Onboarding and a Separate Operator Identity Pool | Accepted |
 
 ## Decision Summary
 
@@ -52,7 +53,7 @@ Compute: AWS Lambda
 Backend runtime: .NET 10 managed runtime
 Application: Modular Monolith
 Database: Neon serverless Postgres 18 (eu-central-1), pooled endpoint for API/Worker
-Identity: Cognito User Pools Essentials
+Identity: Cognito User Pools Essentials: one pool for studios and clients, one MFA-only pool for operators (ADR-0023)
 Async: one SQS work queue + DLQ, EventBridge Scheduler (outbox sweeper, reminders, canary), Transactional Outbox; EventBridge bus only for fan-out
 Files: S3
 Secrets: SSM Parameter Store SecureString (no Secrets Manager until a tripwire)

@@ -1937,7 +1937,7 @@ Remaining work
 After this AWS infrastructure LLD is implemented, the next LLD is:
 
 ```text
-Identity, Organization and Membership LLD
+Identity, Organization and Membership LLD  (docs/26_Identity_Organization_Membership_LLD.md)
 ```
 
 That phase will define:
