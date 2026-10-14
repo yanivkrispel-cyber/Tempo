@@ -42,6 +42,32 @@ public sealed class PostgresFixture : IAsyncLifetime
         return name;
     }
 
+    /// <summary>
+    /// A master user shaped like a managed service's (Aurora's rds_superuser,
+    /// Neon's neondb_owner): CREATEROLE and owner of its database, but not a
+    /// superuser.
+    /// </summary>
+    public async Task<(string Database, (string Username, string Password) Master)> CreateManagedMasterDatabaseAsync()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var master = ($"tempo_master_{suffix}", Guid.NewGuid().ToString("N"));
+        var database = $"tempo_{suffix}";
+
+        await using var connection = new NpgsqlConnection(container.GetConnectionString());
+        await connection.OpenAsync();
+        foreach (var sql in new[]
+        {
+            $"CREATE ROLE {master.Item1} LOGIN CREATEROLE PASSWORD '{master.Item2}'",
+            $"CREATE DATABASE {database} OWNER {master.Item1}"
+        })
+        {
+            await using var command = new NpgsqlCommand(sql, connection);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        return (database, master);
+    }
+
     public NpgsqlConnection ConnectAsMaster(string database)
     {
         var builder = new NpgsqlConnectionStringBuilder(container.GetConnectionString()) { Database = database };

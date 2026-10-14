@@ -47,6 +47,15 @@ public static partial class BootstrapRoles
             $"GRANT CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(applicationCredentials.Username)}",
             cancellationToken);
 
+        // A managed master user (Aurora's rds_superuser, Neon's neondb_owner)
+        // is not a superuser. From PostgreSQL 16 creating a role grants only
+        // ADMIN on it, not SET, and AUTHORIZATION below needs SET. Granting
+        // SET without INHERIT keeps the master's own privileges unchanged.
+        await ExecuteAsync(
+            connection,
+            $"GRANT {QuoteBuilder.QuoteIdentifier(migratorCredentials.Username)} TO CURRENT_USER WITH INHERIT FALSE, SET TRUE",
+            cancellationToken);
+
         // From PostgreSQL 15 an ordinary role cannot create objects in
         // `public`, so the migrator gets its own schema for the journal
         // (LLD section 10.5 lists `platform`).
