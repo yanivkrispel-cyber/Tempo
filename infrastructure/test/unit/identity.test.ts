@@ -55,13 +55,11 @@ describe.each([
     });
   });
 
-  it("the customer pool has admin-web and client-web, plus the legacy platform client for one deploy", () => {
-    // The legacy client goes in the next PR, once this one is deployed (see IdentityStack).
+  it("the customer pool has only admin-web and client-web", () => {
     const pool = poolLogicalId(template, `tempo-${env}-users`);
     expect(clientNamesOf(template, pool)).toEqual([
       `tempo-${env}-admin-web`,
-      `tempo-${env}-client-web`,
-      `tempo-${env}-platform-admin-web`
+      `tempo-${env}-client-web`
     ]);
   });
 
