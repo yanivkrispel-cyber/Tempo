@@ -1,0 +1,46 @@
+# Backend patterns (Phase 1)
+
+How the API is put together since the Phase 1 building blocks (docs/26 sections 2.2, 6, 7.4 and 8.5).
+
+## Routes
+
+- Never map an authenticated endpoint directly. Use one of the groups in `backend/Tempo.Api/Tenancy/RouteGroups.cs`:
+  - `MapAccountGroup()`: `/api/v1/...`, customer token, no tenant (session, me, creating a studio, joining).
+  - `MapTenantGroup()`: `/api/v1/organizations/{organizationId:guid}/...`, customer token, plus `TenantRouteFilter`.
+    Read the tenant with `TenantRouteFilter.Current(httpContext)`.
+  - `MapPlatformGroup()`: `/api/v1/platform/...`, operator token only.
+- A tenant route that must still answer for a suspended studio carries `AllowWhenOrganizationSuspendedAttribute`
+  as metadata.
+- A module adds its endpoints by registering an `IEndpointModule` in DI; `Program.cs` maps all of them.
+
+## Tokens
+
+- Two JWT bearer schemes, `customer` (the default policy) and `operator` (policy `operator`), in
+  `DependencyInjection/CognitoAuthentication.cs`. Each is configured as a named `CognitoOptions` and a named
+  `JwtBearerOptions`; tests post-configure them by scheme name.
+- A 401 is Problem Details with `code: auth.unauthorized`.
+
+## Errors
+
+- Throw `DomainRuleViolationException(kind, code, title)` from domain or application code. `DomainRuleViolationHandler`
+  maps the kind to the status and writes Problem Details with `code` and `correlationId`.
+- Endpoints that answer a problem directly use `Problems.Result(httpContext, status, code, title)`.
+
+## Database
+
+- Plain Npgsql. `UnitOfWork.BeginAsync(dataSources, role, userAccountId, organizationId, ct)` opens one transaction
+  and sets the RLS values with `is_local = true`. Disposing without `CommitAsync` rolls back. `SetTenantAsync` moves
+  the transaction to a tenant learned part-way (creating a studio, accepting an invitation, joining).
+- Positional parameters (`$1`, `$2`) allow one statement per command.
+- `ConfiguredDataSourceProvider` builds the data sources on first use. Locally: `DATABASE_APP_CONNECTION_STRING` and
+  `DATABASE_PLATFORM_CONNECTION_STRING`. Deployed: `DATABASE_HOST`, `DATABASE_NAME` and the two password parameter
+  names, with the passwords read from SSM once per cold start.
+
+## Tests
+
+- API tests use `tests/Tempo.UnitTests/Api/TestApi.cs`: both pools share one local signing key, and the account and
+  membership directories are NSubstitute substitutes. Extra probe endpoints go in through the constructor.
+- Every test class that starts the API host carries `[Collection(ApiHostGroup.Name)]`. Parallel hosts trip Serilog's
+  static bootstrap logger ("The logger is already frozen"). The real fix in `Program.cs` is still open.
+- Database tests (`tests/Tempo.IntegrationTests/DatabaseMigrator/`) migrate a fresh database per test on one
+  PostgreSQL 18 container per class, seed as the superuser (which bypasses RLS) and connect as the real runtime roles.

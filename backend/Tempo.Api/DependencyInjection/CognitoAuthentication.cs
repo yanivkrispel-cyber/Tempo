@@ -1,21 +1,30 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Tempo.Api.ErrorHandling;
 
 namespace Tempo.Api.DependencyInjection;
 
-/// <summary>Cognito settings for validating access tokens in the API.</summary>
+/// <summary>Cognito settings for validating one user pool's access tokens in the API.</summary>
 public sealed class CognitoOptions
 {
-    /// <summary>The user pool issuer, https://cognito-idp.{region}.amazonaws.com/{userPoolId}. From COGNITO_ISSUER.</summary>
+    /// <summary>The user pool issuer, https://cognito-idp.{region}.amazonaws.com/{userPoolId}.</summary>
     public string? Issuer { get; set; }
 
-    /// <summary>App clients whose access tokens the API accepts. From COGNITO_CLIENT_IDS, comma-separated.</summary>
+    /// <summary>App clients of that pool whose access tokens the API accepts.</summary>
     public IReadOnlyCollection<string> ClientIds { get; set; } = [];
 }
 
 /// <summary>
-/// Validates Cognito access tokens in the API itself (ADR-0004 amendment).
+/// Validates Cognito access tokens in the API itself (ADR-0004 amendment),
+/// with one JWT bearer scheme per user pool (ADR-0023, docs/26 section 2.2):
+/// <see cref="CustomerScheme"/> for studio owners, staff and clients, from
+/// COGNITO_ISSUER and COGNITO_CLIENT_IDS, and <see cref="OperatorScheme"/> for
+/// the Tempo team on `/api/v1/platform/*`, from COGNITO_OPERATOR_ISSUER and
+/// COGNITO_OPERATOR_CLIENT_IDS. A token from the other pool fails the issuer
+/// check, so it gets 401.
+///
 /// Behind CloudFront Origin Access Control the viewer's Authorization header
 /// is replaced by CloudFront's own SigV4 signature, so the token travels in
 /// <see cref="TokenHeader"/>; the standard Authorization header is still
@@ -27,21 +36,39 @@ public static class CognitoAuthentication
 {
     public const string TokenHeader = "X-Tempo-Authorization";
 
+    public const string CustomerScheme = "customer";
+    public const string OperatorScheme = "operator";
+
+    /// <summary>The policy for `/api/v1/platform/*`. Every other route uses the default (customer) policy.</summary>
+    public const string OperatorPolicy = "operator";
+
     public static IServiceCollection AddCognitoAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<CognitoOptions>().Configure(options =>
+        AddPool(services, configuration, CustomerScheme, "COGNITO_ISSUER", "COGNITO_CLIENT_IDS");
+        AddPool(services, configuration, OperatorScheme, "COGNITO_OPERATOR_ISSUER", "COGNITO_OPERATOR_CLIENT_IDS");
+
+        services.AddAuthentication(CustomerScheme)
+            .AddJwtBearer(CustomerScheme)
+            .AddJwtBearer(OperatorScheme);
+
+        services.AddAuthorizationBuilder()
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder(CustomerScheme).RequireAuthenticatedUser().Build())
+            .AddPolicy(OperatorPolicy, policy => policy.AddAuthenticationSchemes(OperatorScheme).RequireAuthenticatedUser());
+
+        return services;
+    }
+
+    private static void AddPool(IServiceCollection services, IConfiguration configuration, string scheme, string issuerKey, string clientIdsKey)
+    {
+        services.AddOptions<CognitoOptions>(scheme).Configure(options =>
         {
-            options.Issuer = configuration["COGNITO_ISSUER"];
-            options.ClientIds = (configuration["COGNITO_CLIENT_IDS"] ?? string.Empty)
+            options.Issuer = configuration[issuerKey];
+            options.ClientIds = (configuration[clientIdsKey] ?? string.Empty)
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         });
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
-        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<IOptions<CognitoOptions>>((jwt, cognito) => Configure(jwt, cognito.Value));
-        services.AddAuthorization();
-
-        return services;
+        services.AddOptions<JwtBearerOptions>(scheme)
+            .Configure<IOptionsMonitor<CognitoOptions>>((jwt, cognito) => Configure(jwt, cognito.Get(scheme)));
     }
 
     private static void Configure(JwtBearerOptions jwt, CognitoOptions cognito)
@@ -73,7 +100,9 @@ public static class CognitoAuthentication
             },
             OnTokenValidated = context =>
             {
-                var options = context.HttpContext.RequestServices.GetRequiredService<IOptions<CognitoOptions>>().Value;
+                var options = context.HttpContext.RequestServices
+                    .GetRequiredService<IOptionsMonitor<CognitoOptions>>()
+                    .Get(context.Scheme.Name);
                 var tokenUse = context.Principal?.FindFirst("token_use")?.Value;
                 var clientId = context.Principal?.FindFirst("client_id")?.Value;
 
@@ -87,6 +116,12 @@ public static class CognitoAuthentication
                 }
 
                 return Task.CompletedTask;
+            },
+            OnChallenge = async context =>
+            {
+                // The contract answers 401 with Problem Details as well.
+                context.HandleResponse();
+                await Problems.WriteAsync(context.HttpContext, StatusCodes.Status401Unauthorized, "auth.unauthorized", "Sign in again.");
             }
         };
     }

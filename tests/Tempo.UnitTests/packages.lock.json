@@ -112,6 +112,11 @@
           "SnapshotRestore.Registry": "1.0.2"
         }
       },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.0.102.8",
+        "contentHash": "90B9Skhl+ORbtWNXrrmGdGhGvAfZiPmZafRYrB/xHelZjePIwPvXioqz9UiiF1vo21eDLzTnXh5EC4RjbNWsFQ=="
+      },
       "Castle.Core": {
         "type": "Transitive",
         "resolved": "5.1.1",
@@ -601,6 +606,7 @@
       "tempo.api": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
           "Amazon.Lambda.AspNetCoreServer.Hosting": "[2.2.0, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.10, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.10, )",
@@ -615,7 +621,10 @@
         "type": "Project"
       },
       "tempo.platform": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Npgsql": "[10.0.3, )"
+        }
       },
       "tempo.worker": {
         "type": "Project",
@@ -662,6 +671,15 @@
         "requested": "[3.0.0, )",
         "resolved": "3.0.0",
         "contentHash": "FTWf7ODv7+hwnqHREYQWntNDJsu4WWtTcEZoji0e5QiChMMrMyfYf07E7flBanolf8dTY6jfVdDfC816uGkzdA=="
+      },
+      "AWSSDK.SimpleSystemsManagement": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.104.1, )",
+        "resolved": "4.0.104.1",
+        "contentHash": "krzwvPcmMBVuBZ1fhruesVZLOTXbIttFMotP81nkwmJ2TI8nk+Mam8fwiwpHAkIdbAUu0QQneK53+bhLzT0X7g==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.8, 5.0.0)"
+        }
       },
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
         "type": "CentralTransitive",
@@ -725,6 +743,15 @@
         "requested": "[2.7.5, )",
         "resolved": "2.7.5",
         "contentHash": "0FA67RSnRM4tcBKqiqVu/HPdZ9+QOKbmeRjxRUGTCjPU4C0bmUhd97Dso7Yild5P7nOV6GxJ2xrK0Kv/O9xp0w=="
+      },
+      "Npgsql": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
+        }
       },
       "Serilog": {
         "type": "CentralTransitive",
