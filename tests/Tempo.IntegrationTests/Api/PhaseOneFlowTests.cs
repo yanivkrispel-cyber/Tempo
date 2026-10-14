@@ -53,16 +53,16 @@ public sealed class PhaseOneFlowTests(PostgresFixture postgres) : IClassFixture<
         var studioId = studio.GetProperty("id").GetGuid();
         var studioPath = $"/api/v1/organizations/{studioId}";
 
-        // 3. Staff by invitation: the link's last segment is the token, sent in the body.
+        // 3. Staff by invitation: the link's fragment is the token, sent in the body.
         var invitation = await SendAsync<JsonElement>(client, HttpMethod.Post, $"{studioPath}/invitations", Customer("owner"), new { email = "staff@example.com", role = "staff" }, HttpStatusCode.Created);
-        var token = invitation.GetProperty("link").GetString()!.Split('/')[^1];
+        var token = invitation.GetProperty("link").GetString()!.Split('#')[^1];
         await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/session", Customer("staff"));
         var staffMembership = await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/invitations/accept", Customer("staff"), new { token });
         staffMembership.GetProperty("role").GetString().Should().Be("staff");
 
         // 4. A client by the join link.
         var joinLink = await SendAsync<JsonElement>(client, HttpMethod.Put, $"{studioPath}/join-link", Customer("owner"));
-        var code = joinLink.GetProperty("link").GetString()!.Split('/')[^1];
+        var code = joinLink.GetProperty("link").GetString()!.Split('#')[^1];
         await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/session", Customer("client"));
         (await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/join", Customer("client"), new { code })).GetProperty("role").GetString().Should().Be("client");
 
