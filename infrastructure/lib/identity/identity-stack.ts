@@ -32,13 +32,6 @@ export class IdentityStack extends Stack {
   public readonly clientWebClient: UserPoolClient;
   public readonly operatorPool: UserPool;
   public readonly platformAdminWebClient: UserPoolClient;
-  /**
-   * The Phase 0 platform-admin client in the customer pool. Kept for one
-   * deploy only: the Api stack imports its id, and CloudFormation cannot
-   * delete or change an export that another stack still uses. Remove it,
-   * and its exportValue below, in the next PR, after this one is deployed.
-   */
-  private readonly legacyPlatformAdminWebClient: UserPoolClient;
 
   constructor(scope: Construct, id: string, props: IdentityStackProps) {
     super(scope, id, props);
@@ -83,13 +76,6 @@ export class IdentityStack extends Stack {
       callbackUrls: config.cognitoCallbackUrls.clientWeb,
       logoutUrls: config.cognitoLogoutUrls.clientWeb
     });
-
-    this.legacyPlatformAdminWebClient = this.addBrowserClient(this.userPool, "PlatformAdminWebClient", {
-      clientName: resourceName(config, "platform-admin-web"),
-      callbackUrls: config.cognitoCallbackUrls.platformAdminWeb,
-      logoutUrls: config.cognitoLogoutUrls.platformAdminWeb
-    });
-    this.exportValue(this.legacyPlatformAdminWebClient.userPoolClientId);
 
     this.operatorPool = new UserPool(this, "OperatorPool", {
       userPoolName: resourceName(config, "operators"),
