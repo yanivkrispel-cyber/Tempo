@@ -25,10 +25,13 @@ const developmentConfig: TempoEnvironmentConfig = {
   // tempo-dev in Frankfurt, created 2026-10-14 (ADR-0022).
   neon: { projectId: "wild-darkness-22822656" },
 
+  // The management account caps Lambda memory at 512 MB (the first deploy on
+  // 2026-10-14 failed with "MemorySize ... less than or equal to 512"). .NET 10
+  // on arm64 runs these handlers well within it.
   lambda: {
-    apiMemoryMb: 1024,
+    apiMemoryMb: 512,
     apiTimeoutSeconds: 30,
-    workerMemoryMb: 1024,
+    workerMemoryMb: 512,
     workerTimeoutSeconds: 60,
     apiReservedConcurrency: 10,
     workerReservedConcurrency: 5
