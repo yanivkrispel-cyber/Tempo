@@ -22,6 +22,9 @@ const developmentConfig: TempoEnvironmentConfig = {
 
   enableDeletionProtection: false,
 
+  // tempo-dev in Frankfurt, created 2026-10-14 (ADR-0022).
+  neon: { projectId: "wild-darkness-22822656" },
+
   lambda: {
     apiMemoryMb: 1024,
     apiTimeoutSeconds: 30,

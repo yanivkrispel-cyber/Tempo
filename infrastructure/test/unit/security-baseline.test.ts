@@ -126,6 +126,35 @@ describe("Database on Neon (ADR-0022)", () => {
   });
 });
 
+describe("Neon usage check (ADR-0022)", () => {
+  const template = stackTemplate("Database");
+
+  it("runs every six hours and reads the dev project", () => {
+    template.hasResourceProperties("AWS::Scheduler::Schedule", {
+      Name: "tempo-dev-neon-usage",
+      ScheduleExpression: "rate(6 hours)"
+    });
+    template.hasResourceProperties("AWS::Lambda::Function", {
+      FunctionName: "tempo-dev-neon-usage",
+      Environment: {
+        Variables: Match.objectLike({
+          NEON_PROJECT_ID: "wild-darkness-22822656",
+          API_KEY_PARAMETER: "/tempo/dev/neon/api-key"
+        })
+      }
+    });
+  });
+
+  it("may publish metrics only to the Tempo/Database namespace", () => {
+    const statements = Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
+      (p) => p.Properties.PolicyDocument.Statement as Array<{ Action: string | string[]; Condition?: unknown }>
+    );
+    const putMetric = statements.filter((s) => [s.Action].flat().includes("cloudwatch:PutMetricData"));
+    expect(putMetric).toHaveLength(1);
+    expect(putMetric[0].Condition).toEqual({ StringEquals: { "cloudwatch:namespace": "Tempo/Database" } });
+  });
+});
+
 describe("Lambda defaults (LLD section 34.3)", () => {
   const apiTemplate = stackTemplate("Api");
 

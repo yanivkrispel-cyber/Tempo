@@ -165,6 +165,22 @@ foreach ($name in 'app-password', 'migrator-password') {
 }
 ```
 
+### Neon API key (for the usage check)
+
+`tempo-<env>-neon-usage` runs every six hours, reads the project's usage in
+the current period from the Neon API and publishes the highest share of a
+Free plan limit as `Tempo/Database NeonFreeLimitPercent`. Production alarms
+at 70% (`tempo-prod-neon-free-limit`). It needs a Neon API key that can
+read the project, in `/tempo/<env>/neon/api-key`. Without it the function
+fails, which shows in the Lambda errors alarm. To store it without echoing
+it:
+
+```powershell
+$key = Read-Host -AsSecureString "Neon API key"
+$plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($key))
+aws ssm put-parameter --name "/tempo/dev/neon/api-key" --type SecureString --value $plain --overwrite --profile tempo-mgmt --region eu-central-1
+```
+
 ## Cost-sensitive decisions
 
 - No VPC, NAT gateway, interface endpoint or Secrets Manager secret
@@ -174,6 +190,8 @@ foreach ($name in 'app-password', 'migrator-password') {
   the compute, so production moves to the Launch plan before the pilot.
 - Database credentials are free standard SSM SecureString parameters on the
   AWS managed `aws/ssm` key.
+- The Neon usage check costs $0: four Lambda runs a day, four Scheduler
+  invocations, and one custom metric (ten are free per account).
 - CloudWatch log retention is explicit everywhere (14 days in dev).
 - IAM Access Analyzer instead of a Config-rule-based baseline (free vs.
   per-configuration-item billing).
@@ -191,5 +209,5 @@ foreach ($name in 'app-password', 'migrator-password') {
   but there is no domain schema yet - by design (LLD section 11: "the goal
   in this phase is the migration mechanism, not the full domain schema").
 - `staging.ts`/`production.ts` use placeholder AWS account IDs and domains.
-- The Neon usage check (production's tenth alarm, at 70% of a Free plan
-  limit) is not built yet; production has nine alarms until it is.
+- The Neon usage check reads only the current billing period. Neon resets
+  usage on the first of the month, so the metric drops then.
