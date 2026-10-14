@@ -23,14 +23,6 @@ const productionConfig: TempoEnvironmentConfig = {
 
   enableDeletionProtection: true,
 
-  aurora: {
-    minAcu: 1,
-    maxAcu: 8,
-    autoPauseEnabled: false,
-    readerCount: 0,
-    backupRetentionDays: 30
-  },
-
   lambda: {
     apiMemoryMb: 1024,
     apiTimeoutSeconds: 30,
@@ -51,11 +43,6 @@ const productionConfig: TempoEnvironmentConfig = {
   cost: {
     monthlyBudgetUsd: 1,
     alertEmail: "aws-alerts@tempo.example"
-  },
-
-  networking: {
-    maxAzs: 2,
-    natGatewayEnabled: false
   },
 
   github: {

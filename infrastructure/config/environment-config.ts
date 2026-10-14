@@ -8,25 +8,12 @@
 
 export type TempoEnvironmentName = "dev" | "stg" | "prod";
 
-export interface AuroraConfig {
-  /** Minimum Aurora Serverless v2 capacity units. 0 enables auto-pause where supported. */
-  readonly minAcu: number;
-  /** Maximum Aurora Serverless v2 capacity units. */
-  readonly maxAcu: number;
-  /** Whether the writer instance may auto-pause when idle (non-production only). */
-  readonly autoPauseEnabled: boolean;
-  /** Number of read replicas (0 in the initial phase for every environment). */
-  readonly readerCount: number;
-  /** Automated backup retention, in days. */
-  readonly backupRetentionDays: number;
-}
-
 export interface LambdaConfig {
   readonly apiMemoryMb: number;
   readonly apiTimeoutSeconds: number;
   readonly workerMemoryMb: number;
   readonly workerTimeoutSeconds: number;
-  /** Reserved concurrency for the API Lambda, bounding Aurora connection pressure. */
+  /** Reserved concurrency for the API Lambda, bounding database connection pressure. */
   readonly apiReservedConcurrency: number;
   /** Reserved concurrency for each SQS-triggered worker Lambda. */
   readonly workerReservedConcurrency: number;
@@ -73,12 +60,6 @@ export function firstCentAlertPercent(monthlyBudgetUsd: number): number {
   return 1 / monthlyBudgetUsd;
 }
 
-export interface NetworkingConfig {
-  readonly maxAzs: number;
-  /** Must default to false. Only enable after an explicit, documented cost/architecture review. */
-  readonly natGatewayEnabled: boolean;
-}
-
 export interface GitHubDeploymentConfig {
   readonly owner: string;
   readonly repo: string;
@@ -114,11 +95,9 @@ export interface TempoEnvironmentConfig {
 
   readonly enableDeletionProtection: boolean;
 
-  readonly aurora: AuroraConfig;
   readonly lambda: LambdaConfig;
   readonly observability: ObservabilityConfig;
   readonly cost: CostConfig;
-  readonly networking: NetworkingConfig;
   readonly github: GitHubDeploymentConfig;
   readonly featureFlags: FeatureFlags;
 
@@ -153,7 +132,7 @@ class EnvironmentConfigError extends Error {
 /**
  * Validates configuration invariants that must never depend on developer
  * discipline alone - production must not silently inherit unsafe development
- * defaults (LLD section 8, ADR-0020 cost governance, ADR-0005 Aurora).
+ * defaults (LLD section 8, ADR-0020 cost governance).
  */
 export function validateEnvironmentConfig(config: TempoEnvironmentConfig): TempoEnvironmentConfig {
   const errors: string[] = [];
@@ -164,23 +143,6 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (config.region !== "eu-central-1") {
     errors.push(`region must be "eu-central-1" per ADR-0014, got "${config.region}"`);
-  }
-
-  if (config.aurora.minAcu < 0 || config.aurora.maxAcu <= 0) {
-    errors.push("aurora.minAcu must be >= 0 and aurora.maxAcu must be > 0");
-  }
-  if (config.aurora.minAcu > config.aurora.maxAcu) {
-    errors.push("aurora.minAcu must not exceed aurora.maxAcu");
-  }
-
-  if (config.networking.natGatewayEnabled) {
-    errors.push(
-      "networking.natGatewayEnabled must be false; NAT Gateway requires explicit ADR-0017 acceptance and review (docs/ADR/ADR-0017)"
-    );
-  }
-
-  if (config.networking.maxAzs < 2) {
-    errors.push("networking.maxAzs must be >= 2 (LLD section 9.1 multi-AZ requirement)");
   }
 
   if (config.observability.logRetentionDays <= 0) {
@@ -233,12 +195,6 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
   if (config.environmentName === "prod") {
     if (!config.enableDeletionProtection) {
       errors.push("production requires enableDeletionProtection = true");
-    }
-    if (config.aurora.autoPauseEnabled) {
-      errors.push("production requires aurora.autoPauseEnabled = false");
-    }
-    if (config.aurora.minAcu <= 0) {
-      errors.push("production requires aurora.minAcu > 0");
     }
     if (!config.observability.alarmsEnabled) {
       errors.push("production requires observability.alarmsEnabled = true");

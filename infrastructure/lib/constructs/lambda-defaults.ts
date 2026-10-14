@@ -9,7 +9,6 @@ import {
   SystemLogLevel,
   Tracing
 } from "aws-cdk-lib/aws-lambda";
-import { ISecurityGroup, IVpc, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig } from "../../config/environment-config";
 import { applyStandardTags, DataClassification } from "./tagging";
@@ -26,15 +25,12 @@ export interface TempoFunctionProps {
   readonly timeoutSeconds: number;
   /**
    * Reserved concurrency. Required for every database-connected function to
-   * bound Aurora connection pressure (LLD section 10.6); omit only for
+   * bound database connection pressure (LLD section 10.6); omit only for
    * functions with no downstream capacity constraint.
    */
   readonly reservedConcurrentExecutions?: number;
   /** Non-secret environment variables only - identifiers and ARNs, never secret values (LLD section 12.5). */
   readonly environment?: Record<string, string>;
-  readonly vpc?: IVpc;
-  readonly vpcSubnets?: SubnetSelection;
-  readonly securityGroups?: ISecurityGroup[];
   readonly dataClassification?: DataClassification;
 }
 
@@ -69,9 +65,6 @@ export class TempoFunction extends Construct {
       applicationLogLevelV2: ApplicationLogLevel.INFO,
       systemLogLevelV2: SystemLogLevel.WARN,
       reservedConcurrentExecutions: props.reservedConcurrentExecutions,
-      vpc: props.vpc,
-      vpcSubnets: props.vpcSubnets,
-      securityGroups: props.securityGroups,
       environment: {
         TEMPO_ENVIRONMENT: config.environmentName,
         TEMPO_REGION: config.region,

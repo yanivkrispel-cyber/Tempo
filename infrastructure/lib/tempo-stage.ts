@@ -3,7 +3,6 @@ import { Construct } from "constructs";
 import { TempoEnvironmentConfig } from "../config/environment-config";
 import { AccountBaselineStack } from "./foundations/account-baseline-stack";
 import { GitHubOidcStack } from "./foundations/github-oidc-stack";
-import { NetworkStack, selectDatabaseSubnets } from "./networking/network-stack";
 import { SecurityStack } from "./security/security-stack";
 import { IdentityStack } from "./identity/identity-stack";
 import { DatabaseStack } from "./data/database-stack";
@@ -37,19 +36,13 @@ export class TempoStage extends Stage {
     new AccountBaselineStack(this, "AccountBaseline", { config, env });
     new GitHubOidcStack(this, "GitHubOidc", { config, env });
 
-    const network = new NetworkStack(this, "Network", { config, env });
     new SecurityStack(this, "Security", { config, env });
 
     const identity = new IdentityStack(this, "Identity", { config, env });
 
-    const database = new DatabaseStack(this, "Database", {
-      config,
-      env,
-      vpc: network.vpc,
-      databaseSubnets: selectDatabaseSubnets(network.vpc),
-      auroraSecurityGroup: network.auroraSecurityGroup,
-      lambdaDbSecurityGroup: network.lambdaDbSecurityGroup
-    });
+    // ADR-0022: the database is Neon, outside AWS, so there is no VPC and no
+    // network stack. This stack holds only the migrator.
+    const database = new DatabaseStack(this, "Database", { config, env });
 
     // ADR-0008 amendment: one work queue. An EventBridge bus is added only
     // for real fan-out. The canary schedule lives in the edge stack; the
@@ -82,8 +75,7 @@ export class TempoStage extends Stage {
       httpApi: api.httpApi,
       apiFunction: api.apiFunction.function,
       workerFunction: messaging.workerFunction.function,
-      migratorFunction: database.migratorFunction.function,
-      cluster: database.cluster
+      migratorFunction: database.migratorFunction.function
     });
   }
 }

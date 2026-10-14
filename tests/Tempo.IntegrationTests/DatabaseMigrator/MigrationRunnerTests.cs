@@ -7,7 +7,7 @@ using Xunit;
 namespace Tempo.IntegrationTests.DatabaseMigrator;
 
 /// <summary>
-/// Runs the real migrator against PostgreSQL 17 (status page blockers 2 and
+/// Runs the real migrator against PostgreSQL 18, the version Neon runs (status page blockers 2 and
 /// 3): role bootstrap as the master user, then DbUp as the least-privileged
 /// migrator role, with the journal in the migrator-owned `platform` schema.
 /// </summary>
@@ -25,7 +25,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
     }
 
     [Fact]
-    public async Task RunAsync_OnFreshPostgres17_AppliesBaselineAndJournalsItInPlatformSchema()
+    public async Task RunAsync_OnFreshPostgres18_AppliesBaselineAndJournalsItInPlatformSchema()
     {
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 

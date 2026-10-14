@@ -10,7 +10,6 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     domainName: undefined,
     hostedZoneId: undefined,
     enableDeletionProtection: false,
-    aurora: { minAcu: 0, maxAcu: 2, autoPauseEnabled: true, readerCount: 0, backupRetentionDays: 7 },
     lambda: {
       apiMemoryMb: 1024,
       apiTimeoutSeconds: 30,
@@ -21,7 +20,6 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     },
     observability: { enableTracing: true, logRetentionDays: 14, alarmsEnabled: false, alarmNotificationsEnabled: false, alarmEmail: undefined },
     cost: { monthlyBudgetUsd: 1, alertEmail: "alerts@example.com" },
-    networking: { maxAzs: 2, natGatewayEnabled: false },
     github: { owner: "yanivkrispel-cyber", repo: "Tempo", allowedBranch: "main", githubEnvironment: undefined },
     featureFlags: { enableCustomDomain: false, enableFrontendHosting: false, enableWaf: false },
     corsAllowedOrigins: ["http://localhost:5173"],
@@ -53,11 +51,6 @@ describe("validateEnvironmentConfig", () => {
     expect(() => validateEnvironmentConfig(baseConfig({ region: "us-east-1" }))).toThrow();
   });
 
-  it("rejects NAT Gateway being enabled", () => {
-    expect(() =>
-      validateEnvironmentConfig(baseConfig({ networking: { maxAzs: 2, natGatewayEnabled: true } }))
-    ).toThrow(/NAT Gateway/);
-  });
 
   it("rejects a wildcard Cognito callback URL", () => {
     expect(() =>
@@ -79,7 +72,6 @@ describe("validateEnvironmentConfig", () => {
         baseConfig({
           environmentName: "prod",
           enableDeletionProtection: false,
-          aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })
@@ -87,33 +79,7 @@ describe("validateEnvironmentConfig", () => {
     ).toThrow(/deletionProtection/i);
   });
 
-  it("rejects production with auto-pause enabled", () => {
-    expect(() =>
-      validateEnvironmentConfig(
-        baseConfig({
-          environmentName: "prod",
-          enableDeletionProtection: true,
-          aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: true, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
-          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
-        })
-      )
-    ).toThrow(/autoPauseEnabled/);
-  });
 
-  it("rejects production with a zero minimum ACU", () => {
-    expect(() =>
-      validateEnvironmentConfig(
-        baseConfig({
-          environmentName: "prod",
-          enableDeletionProtection: true,
-          aurora: { minAcu: 0, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
-          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
-          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
-        })
-      )
-    ).toThrow(/minAcu/);
-  });
 
   it("rejects production without an alarm notification channel", () => {
     expect(() =>
@@ -121,7 +87,6 @@ describe("validateEnvironmentConfig", () => {
         baseConfig({
           environmentName: "prod",
           enableDeletionProtection: true,
-          aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: false, alarmEmail: undefined },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })
@@ -135,7 +100,6 @@ describe("validateEnvironmentConfig", () => {
         baseConfig({
           environmentName: "prod",
           enableDeletionProtection: true,
-          aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: undefined }
         })
@@ -155,7 +119,6 @@ describe("validateEnvironmentConfig", () => {
         baseConfig({
           environmentName: "prod",
           enableDeletionProtection: true,
-          aurora: { minAcu: 1, maxAcu: 8, autoPauseEnabled: false, readerCount: 0, backupRetentionDays: 30 },
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: false, alarmNotificationsEnabled: false, alarmEmail: undefined },
           github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
         })

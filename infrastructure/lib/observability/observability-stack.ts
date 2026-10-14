@@ -10,7 +10,6 @@ import {
 import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
 import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { Function as LambdaFunction } from "aws-cdk-lib/aws-lambda";
-import { DatabaseCluster } from "aws-cdk-lib/aws-rds";
 import { Topic } from "aws-cdk-lib/aws-sns";
 import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
 import { Construct } from "constructs";
@@ -27,7 +26,6 @@ export interface ObservabilityStackProps extends StackProps {
   readonly apiFunction: LambdaFunction;
   readonly workerFunction: LambdaFunction;
   readonly migratorFunction: LambdaFunction;
-  readonly cluster: DatabaseCluster;
 }
 
 /**
@@ -74,13 +72,6 @@ export class ObservabilityStack extends Stack {
               props.migratorFunction.metricThrottles()
             ]
           })
-        ],
-        [
-          new GraphWidget({
-            title: "Aurora - connections / capacity",
-            left: [props.cluster.metricDatabaseConnections()],
-            right: [props.cluster.metric("ServerlessDatabaseCapacity", { statistic: "Maximum" })]
-          })
         ]
       ]
     });
@@ -89,11 +80,12 @@ export class ObservabilityStack extends Stack {
   }
 
   /**
-   * Six of production's ten alarms (ADR-0012 amendment). The work queue
+   * Five of production's ten alarms (ADR-0012 amendment). The work queue
    * carries two more (DLQ messages visible, oldest message age) and the edge
    * stack the last two (CloudFront 5xx rate, canary failure), because
-   * CloudFront's metrics exist only in us-east-1. Every other signal on the
-   * ADR-0012 list is watched on the dashboard.
+   * CloudFront's metrics exist only in us-east-1. The tenth, Neon usage at 70%
+   * of a Free plan limit (ADR-0022), comes with the scheduled usage check.
+   * Every other signal on the ADR-0012 list is watched on the dashboard.
    */
   private addAlarms(config: TempoEnvironmentConfig, props: ObservabilityStackProps): void {
     const alarmAction = this.buildAlarmAction(config);
@@ -131,18 +123,6 @@ export class ObservabilityStack extends Stack {
       treatMissingData: TreatMissingData.NOT_BREACHING
     });
 
-    // Aurora capacity until step 7 replaces the database with the one
-    // ADR-0022 decides. On Aurora DSQL this becomes a DPU spike alarm.
-    const databaseCapacity = new Alarm(this, "DatabaseCapacityAlarm", {
-      alarmName: resourceName(config, "database-capacity"),
-      alarmDescription: "Database capacity is near its configured maximum",
-      metric: props.cluster.metric("ServerlessDatabaseCapacity", { period: fiveMinutes, statistic: "Maximum" }),
-      threshold: config.aurora.maxAcu * 0.9,
-      evaluationPeriods: 3,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING
-    });
-
     // SES account reputation. AWS reviews an account at a 5% bounce rate or
     // a 0.1% complaint rate; these alarms fire at those points.
     const sesBounce = this.sesReputationAlarm(config, "SesBounceRateAlarm", "ses-bounce-rate", "BounceRate", SES_BOUNCE_RATE_THRESHOLD);
@@ -155,7 +135,7 @@ export class ObservabilityStack extends Stack {
     );
 
     if (alarmAction) {
-      for (const alarm of [lambdaErrors, lambdaThrottles, apiDuration, databaseCapacity, sesBounce, sesComplaint]) {
+      for (const alarm of [lambdaErrors, lambdaThrottles, apiDuration, sesBounce, sesComplaint]) {
         alarm.addAlarmAction(alarmAction);
       }
     }

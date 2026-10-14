@@ -27,9 +27,9 @@
 
     <!-- AWS SDK clients (least-privilege, ADR-0015). AWSSDK.EventBridge/SQS
          are added when the outbox worker starts publishing for real. -->
-    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.7" />
+    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.1" />
 
-    <!-- Database / migrator (ADR-0005) -->
+    <!-- Database / migrator (ADR-0022) -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="dbup-postgresql" Version="7.0.1" />
 

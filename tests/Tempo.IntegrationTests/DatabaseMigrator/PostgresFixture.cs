@@ -5,14 +5,14 @@ using Xunit;
 namespace Tempo.IntegrationTests.DatabaseMigrator;
 
 /// <summary>
-/// One PostgreSQL 17 container for the migrator tests, the same major
-/// version as the docker-compose database and Aurora (LLD section 10).
+/// One PostgreSQL 18 container for the migrator tests, the same major
+/// version as the docker-compose database and Neon (ADR-0022).
 /// Each test creates its own database, so tests stay independent while
 /// sharing one container.
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:18-alpine").Build();
 
     public string Host => container.Hostname;
 

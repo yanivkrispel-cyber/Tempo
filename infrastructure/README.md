@@ -13,10 +13,9 @@ deployed by this change set):
 |---|---|
 | `AccountBaseline` | AWS Budgets, Cost Anomaly Detection |
 | `GitHubOidc` | GitHub Actions OIDC provider + per-environment deployment role |
-| `Network` | VPC (2 AZs, private isolated subnets only, no NAT), Lambda/Aurora security groups, Secrets Manager interface endpoint |
 | `Security` | IAM Access Analyzer (account) |
 | `Identity` | Cognito User Pool + 3 browser app clients (admin-web, client-web, platform-admin-web) |
-| `Database` | Aurora PostgreSQL Serverless v2, Secrets Manager credentials, Tempo.DatabaseMigrator Lambda |
+| `Database` | Tempo.DatabaseMigrator Lambda, outside any VPC, reading the Neon credentials from SSM (ADR-0022). The database itself is a Neon project, not a CloudFormation resource |
 | `Messaging` | One SQS work queue + DLQ, Tempo.Worker Lambda routing by `MessageType` (ADR-0008 amendment) |
 | `Api` | API Gateway HTTP API, Tempo.Api Lambda, Cognito JWT authorizer |
 | `Observability` | CloudWatch alarms + dashboard |
@@ -93,8 +92,7 @@ account IDs and non-secret settings.
 `yanivkrispel-cyber/Tempo`). `staging.ts` and `production.ts` use placeholder
 account IDs (`000000000000`) and placeholder domains (`*.tempo.example`) -
 they exist so `cdk synth` can validate their safety invariants (deletion
-protection, no auto-pause, non-zero minimum ACU, alarm notifications,
-protected GitHub environment) without inventing real staging/production
+protection, alarm notifications, protected GitHub environment) without inventing real staging/production
 infrastructure ahead of need. Replace the placeholders before those
 environments are actually deployed.
 
@@ -143,18 +141,39 @@ before `cdk deploy`.
    OIDC. The trust policy restricts assumption to
    `repo:yanivkrispel-cyber/Tempo:ref:refs/heads/main` only.
 
+## Database credentials (one-time per environment, manual)
+
+The database is a Neon project per environment (ADR-0022). The migrator
+reads three SSM SecureString parameters, which CloudFormation cannot create
+and which never pass through CDK, so a person writes them:
+
+| Parameter | Value |
+|---|---|
+| `/tempo/<env>/db/neon-connection-string` | The Neon owner role's `postgresql://` URL on the **direct** endpoint (no `-pooler`) |
+| `/tempo/<env>/db/app-password` | Password of `tempo_app`, letters and digits only |
+| `/tempo/<env>/db/migrator-password` | Password of `tempo_migrator`, letters and digits only |
+
+The migrator sets both role passwords from these values on every run, so
+changing a parameter and redeploying rotates it. In PowerShell, for dev:
+
+```powershell
+foreach ($name in 'app-password', 'migrator-password') {
+  $bytes = [byte[]]::new(24)
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $value = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+  aws ssm put-parameter --name "/tempo/dev/db/$name" --type SecureString --value $value --overwrite --profile tempo-mgmt --region eu-central-1
+}
+```
+
 ## Cost-sensitive decisions
 
-- No NAT Gateway (`networking.natGatewayEnabled` is validated to always be
-  `false`; ADR-0017 remains Proposed pending its cost/failure-mode spike).
-- Aurora Serverless v2: `minAcu: 0`, `maxAcu: 2`, auto-pause after 5 minutes
-  idle in dev.
-- Only one VPC interface endpoint (Secrets Manager) - added because
-  Tempo.DatabaseMigrator runs in the private isolated subnets with no NAT
-  and must reach Secrets Manager; no other endpoints are pre-provisioned.
-- The API Lambda and Worker Lambda are **not** VPC-attached in this phase
-  (no Aurora I/O yet), avoiding VPC cold starts and further endpoint cost
-  until a real database-connected workload exists.
+- No VPC, NAT gateway, interface endpoint or Secrets Manager secret
+  (ADR-0022, ADR-0021). The fixed-cost guard test's allowlist is empty.
+- The database is Neon on the Free plan: $0, with limits per project
+  (100 CU-hours a month, 1 GB, 5 GB egress). Over a limit, Neon suspends
+  the compute, so production moves to the Launch plan before the pilot.
+- Database credentials are free standard SSM SecureString parameters on the
+  AWS managed `aws/ssm` key.
 - CloudWatch log retention is explicit everywhere (14 days in dev).
 - IAM Access Analyzer instead of a Config-rule-based baseline (free vs.
   per-configuration-item billing).
@@ -172,7 +191,5 @@ before `cdk deploy`.
   but there is no domain schema yet - by design (LLD section 11: "the goal
   in this phase is the migration mechanism, not the full domain schema").
 - `staging.ts`/`production.ts` use placeholder AWS account IDs and domains.
-- ADR-0017 (Lambda networking / NAT cost control) is still **Proposed**;
-  this implementation follows its guardrails for development but the
-  production NAT-vs-split-worker decision remains open pending that ADR's
-  spike.
+- The Neon usage check (production's tenth alarm, at 70% of a Free plan
+  limit) is not built yet; production has nine alarms until it is.

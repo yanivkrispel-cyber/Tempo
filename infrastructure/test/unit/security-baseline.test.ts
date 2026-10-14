@@ -90,22 +90,39 @@ describe("Cognito (ADR-0007, LLD section 14/34)", () => {
   });
 });
 
-describe("Aurora PostgreSQL (ADR-0005, LLD section 10/34)", () => {
+describe("Database on Neon (ADR-0022)", () => {
   const template = stackTemplate("Database");
 
-  it("is not publicly accessible", () => {
-    template.hasResourceProperties("AWS::RDS::DBInstance", { PubliclyAccessible: false });
+  it("creates no AWS database, VPC or Secrets Manager secret anywhere", () => {
+    for (const t of allTemplates()) {
+      for (const type of ["AWS::RDS::DBCluster", "AWS::RDS::DBInstance", "AWS::EC2::VPC", "AWS::SecretsManager::Secret"]) {
+        t.resourceCountIs(type, 0);
+      }
+    }
   });
 
-  it("is encrypted at rest", () => {
-    template.hasResourceProperties("AWS::RDS::DBCluster", { StorageEncrypted: true });
-  });
-
-  it("uses only the private isolated subnet group (no public subnets)", () => {
-    template.hasResourceProperties("AWS::RDS::DBSubnetGroup", {
-      DBSubnetGroupDescription: Match.anyValue()
+  it("the migrator runs outside a VPC and gets only parameter names", () => {
+    const [migrator] = Object.values(
+      template.findResources("AWS::Lambda::Function", { Properties: { FunctionName: "tempo-dev-database-migrator" } })
+    );
+    expect(migrator.Properties.VpcConfig).toBeUndefined();
+    expect(migrator.Properties.Environment.Variables).toMatchObject({
+      OWNER_URL_PARAMETER: "/tempo/dev/db/neon-connection-string",
+      APPLICATION_PASSWORD_PARAMETER: "/tempo/dev/db/app-password",
+      MIGRATOR_PASSWORD_PARAMETER: "/tempo/dev/db/migrator-password"
     });
-    template.resourceCountIs("AWS::EC2::NatGateway", 0);
+  });
+
+  it("the migrator may read only its three parameters, without a wildcard", () => {
+    const statements = Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
+      (p) => p.Properties.PolicyDocument.Statement as Array<{ Action: string | string[]; Resource: unknown }>
+    );
+    const ssm = statements.filter((s) => [s.Action].flat().some((a) => a.startsWith("ssm:")));
+    const resources = JSON.stringify(ssm.map((s) => s.Resource));
+    expect(resources).not.toContain("*");
+    for (const name of ["neon-connection-string", "app-password", "migrator-password"]) {
+      expect(resources).toContain(`parameter/tempo/dev/db/${name}`);
+    }
   });
 });
 
