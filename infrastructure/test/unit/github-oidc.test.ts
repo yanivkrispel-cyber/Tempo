@@ -19,7 +19,7 @@ describe("GitHub OIDC deployment role trust (ADR-0011)", () => {
     const statement = deploymentRole!.Properties.AssumeRolePolicyDocument.Statement[0];
     expect(statement.Condition.StringEquals["token.actions.githubusercontent.com:aud"]).toBe("sts.amazonaws.com");
     expect(statement.Condition.StringLike["token.actions.githubusercontent.com:sub"]).toBe(
-      "repo:yanivkrispel-cyber/Tempo:ref:refs/heads/main"
+      "repo:yanivkrispel-cyber@282451313/Tempo@1317067674:ref:refs/heads/main"
     );
   });
 

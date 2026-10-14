@@ -21,7 +21,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     },
     observability: { enableTracing: true, logRetentionDays: 14, alarmsEnabled: false, alarmNotificationsEnabled: false, alarmEmail: undefined },
     cost: { monthlyBudgetUsd: 1, alertEmail: "alerts@example.com" },
-    github: { owner: "yanivkrispel-cyber", repo: "Tempo", allowedBranch: "main", githubEnvironment: undefined },
+    github: { owner: "yanivkrispel-cyber", ownerId: 282451313, repo: "Tempo", repoId: 1317067674, allowedBranch: "main", githubEnvironment: undefined },
     featureFlags: { enableCustomDomain: false, enableFrontendHosting: false, enableWaf: false },
     corsAllowedOrigins: ["http://localhost:5173"],
     cognitoCallbackUrls: {
@@ -74,7 +74,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: false,
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
-          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
+          github: { owner: "x", ownerId: 1, repo: "y", repoId: 2, allowedBranch: "main", githubEnvironment: "production" }
         })
       )
     ).toThrow(/deletionProtection/i);
@@ -89,7 +89,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: false, alarmEmail: undefined },
-          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
+          github: { owner: "x", ownerId: 1, repo: "y", repoId: 2, allowedBranch: "main", githubEnvironment: "production" }
         })
       )
     ).toThrow(/alarmNotificationsEnabled/);
@@ -102,7 +102,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
-          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: undefined }
+          github: { owner: "x", ownerId: 1, repo: "y", repoId: 2, allowedBranch: "main", githubEnvironment: undefined }
         })
       )
     ).toThrow(/githubEnvironment/);
@@ -121,7 +121,7 @@ describe("validateEnvironmentConfig", () => {
           environmentName: "prod",
           enableDeletionProtection: true,
           observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: false, alarmNotificationsEnabled: false, alarmEmail: undefined },
-          github: { owner: "x", repo: "y", allowedBranch: "main", githubEnvironment: "production" }
+          github: { owner: "x", ownerId: 1, repo: "y", repoId: 2, allowedBranch: "main", githubEnvironment: "production" }
         })
       )
     ).toThrow(/production requires observability.alarmsEnabled/);

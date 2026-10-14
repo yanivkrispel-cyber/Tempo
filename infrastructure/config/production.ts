@@ -50,7 +50,9 @@ const productionConfig: TempoEnvironmentConfig = {
 
   github: {
     owner: "yanivkrispel-cyber",
+    ownerId: 282451313,
     repo: "Tempo",
+    repoId: 1317067674,
     allowedBranch: "main",
     githubEnvironment: "production"
   },
