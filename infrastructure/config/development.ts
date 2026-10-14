@@ -60,6 +60,8 @@ const developmentConfig: TempoEnvironmentConfig = {
   github: {
     owner: "yanivkrispel-cyber",
     repo: "Tempo",
+    ownerId: "282451313",
+    repoId: "1317067674",
     allowedBranch: "main",
     githubEnvironment: undefined
   },

@@ -69,6 +69,14 @@ export function firstCentAlertPercent(monthlyBudgetUsd: number): number {
 export interface GitHubDeploymentConfig {
   readonly owner: string;
   readonly repo: string;
+  /**
+   * Numeric GitHub ids of the owner and the repository. The repository uses
+   * GitHub's immutable OIDC subject, `repo:<owner>@<ownerId>/<repo>@<repoId>:...`,
+   * so the deployment role's trust must name them
+   * (`gh api repos/<owner>/<repo>/actions/oidc/customization/sub`).
+   */
+  readonly ownerId: string;
+  readonly repoId: string;
   /** Branch permitted to assume the deployment role for this environment, e.g. "main". */
   readonly allowedBranch: string;
   /** Optional GitHub Environment name for protected-environment approval (required for prod). */
