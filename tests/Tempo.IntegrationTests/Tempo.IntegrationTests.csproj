@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\backend\Tempo.DatabaseMigrator\Tempo.DatabaseMigrator.csproj" />
+    <ProjectReference Include="..\..\backend\Tempo.Platform\Tempo.Platform.csproj" />
   </ItemGroup>
 
 </Project>

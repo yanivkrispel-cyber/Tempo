@@ -4,4 +4,8 @@
     <RootNamespace>Tempo.Platform</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
 </Project>

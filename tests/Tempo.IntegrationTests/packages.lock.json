@@ -285,6 +285,12 @@
           "dbup-postgresql": "[7.0.1, )"
         }
       },
+      "tempo.platform": {
+        "type": "Project",
+        "dependencies": {
+          "Npgsql": "[10.0.3, )"
+        }
+      },
       "Amazon.Lambda.Core": {
         "type": "CentralTransitive",
         "requested": "[3.3.0, )",

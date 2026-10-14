@@ -22,6 +22,7 @@ namespace Tempo.UnitTests.Api;
 /// local signing key stands in for the user pool's JWKS, so every rule runs
 /// without AWS.
 /// </summary>
+[Collection(ApiHostGroup.Name)]
 public sealed class MeEndpointTests : IDisposable
 {
     private const string Issuer = "https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_TestPool";
@@ -37,12 +38,12 @@ public sealed class MeEndpointTests : IDisposable
         factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
             {
-                services.PostConfigure<CognitoOptions>(o =>
+                services.PostConfigure<CognitoOptions>(CognitoAuthentication.CustomerScheme, o =>
                 {
                     o.Issuer = Issuer;
                     o.ClientIds = [AllowedClient];
                 });
-                services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
+                services.PostConfigure<JwtBearerOptions>(CognitoAuthentication.CustomerScheme, o =>
                 {
                     // Stand in for the user pool's /.well-known metadata and JWKS.
                     o.Authority = null;

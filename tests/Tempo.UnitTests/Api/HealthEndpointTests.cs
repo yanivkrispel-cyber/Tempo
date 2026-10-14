@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Tempo.UnitTests.Api;
 
+[Collection(ApiHostGroup.Name)]
 public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
     [Fact]
