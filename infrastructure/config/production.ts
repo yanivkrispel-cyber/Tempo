@@ -23,6 +23,9 @@ const productionConfig: TempoEnvironmentConfig = {
 
   enableDeletionProtection: true,
 
+  // Placeholder until the project exists (ADR-0022: one Neon project per environment).
+  neon: { projectId: "not-created-yet" },
+
   lambda: {
     apiMemoryMb: 1024,
     apiTimeoutSeconds: 30,

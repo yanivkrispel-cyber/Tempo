@@ -19,9 +19,7 @@ describe("Alarm budget (ADR-0012 amendment, ADR-0021)", () => {
     expect(alarmNames(dev)).toEqual([]);
   });
 
-  // ADR-0022 removed the Aurora capacity alarm. The tenth alarm, Neon usage at
-  // 70% of a Free plan limit, arrives with the scheduled usage check.
-  it("production has the alarms ADR-0012 lists, all free", () => {
+  it("production has exactly the ten alarms ADR-0012 lists, all free", () => {
     expect(alarmNames(prod)).toEqual(
       [
         "cloudfront-5xx-rate",
@@ -30,6 +28,7 @@ describe("Alarm budget (ADR-0012 amendment, ADR-0021)", () => {
         "api-duration-p99",
         "work-dlq-messages",
         "work-oldest-message-age",
+        "neon-free-limit",
         "ses-bounce-rate",
         "ses-complaint-rate",
         "canary-failure"

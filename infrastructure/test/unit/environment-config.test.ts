@@ -10,6 +10,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     domainName: undefined,
     hostedZoneId: undefined,
     enableDeletionProtection: false,
+    neon: { projectId: "wild-darkness-22822656" },
     lambda: {
       apiMemoryMb: 1024,
       apiTimeoutSeconds: 30,

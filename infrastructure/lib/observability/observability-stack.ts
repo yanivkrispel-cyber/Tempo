@@ -15,10 +15,13 @@ import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
+import { NEON_USAGE_INTERVAL_HOURS, NEON_USAGE_METRIC } from "../data/database-stack";
 
 export const API_P99_THRESHOLD_MS = 2000;
 export const SES_BOUNCE_RATE_THRESHOLD = 0.05;
 export const SES_COMPLAINT_RATE_THRESHOLD = 0.001;
+/** ADR-0022 tripwire: alert the owners at 70% of any Neon Free plan limit. */
+export const NEON_FREE_LIMIT_ALARM_PERCENT = 70;
 
 export interface ObservabilityStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -72,6 +75,19 @@ export class ObservabilityStack extends Stack {
               props.migratorFunction.metricThrottles()
             ]
           })
+        ],
+        [
+          new GraphWidget({
+            title: "Neon - highest share of a Free plan limit (%)",
+            left: [
+              new Metric({
+                ...NEON_USAGE_METRIC,
+                dimensionsMap: { Environment: config.environmentName },
+                statistic: "Maximum",
+                period: Duration.hours(NEON_USAGE_INTERVAL_HOURS)
+              })
+            ]
+          })
         ]
       ]
     });
@@ -80,12 +96,11 @@ export class ObservabilityStack extends Stack {
   }
 
   /**
-   * Five of production's ten alarms (ADR-0012 amendment). The work queue
+   * Six of production's ten alarms (ADR-0012 amendment). The work queue
    * carries two more (DLQ messages visible, oldest message age) and the edge
    * stack the last two (CloudFront 5xx rate, canary failure), because
-   * CloudFront's metrics exist only in us-east-1. The tenth, Neon usage at 70%
-   * of a Free plan limit (ADR-0022), comes with the scheduled usage check.
-   * Every other signal on the ADR-0012 list is watched on the dashboard.
+   * CloudFront's metrics exist only in us-east-1. Every other signal on the
+   * ADR-0012 list is watched on the dashboard.
    */
   private addAlarms(config: TempoEnvironmentConfig, props: ObservabilityStackProps): void {
     const alarmAction = this.buildAlarmAction(config);
@@ -123,6 +138,24 @@ export class ObservabilityStack extends Stack {
       treatMissingData: TreatMissingData.NOT_BREACHING
     });
 
+    // ADR-0022: Neon suspends the compute over a Free plan limit, so the
+    // owners hear at 70% and move production to the Launch plan. The usage
+    // check runs every six hours; a check that fails shows in lambda-errors.
+    const neonFreeLimit = new Alarm(this, "NeonFreeLimitAlarm", {
+      alarmName: resourceName(config, "neon-free-limit"),
+      alarmDescription: `The Neon project used ${NEON_FREE_LIMIT_ALARM_PERCENT}% of a Free plan limit this period`,
+      metric: new Metric({
+        ...NEON_USAGE_METRIC,
+        dimensionsMap: { Environment: config.environmentName },
+        statistic: "Maximum",
+        period: Duration.hours(NEON_USAGE_INTERVAL_HOURS)
+      }),
+      threshold: NEON_FREE_LIMIT_ALARM_PERCENT,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING
+    });
+
     // SES account reputation. AWS reviews an account at a 5% bounce rate or
     // a 0.1% complaint rate; these alarms fire at those points.
     const sesBounce = this.sesReputationAlarm(config, "SesBounceRateAlarm", "ses-bounce-rate", "BounceRate", SES_BOUNCE_RATE_THRESHOLD);
@@ -135,7 +168,7 @@ export class ObservabilityStack extends Stack {
     );
 
     if (alarmAction) {
-      for (const alarm of [lambdaErrors, lambdaThrottles, apiDuration, sesBounce, sesComplaint]) {
+      for (const alarm of [lambdaErrors, lambdaThrottles, apiDuration, neonFreeLimit, sesBounce, sesComplaint]) {
         alarm.addAlarmAction(alarmAction);
       }
     }

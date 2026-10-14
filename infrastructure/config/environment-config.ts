@@ -8,6 +8,12 @@
 
 export type TempoEnvironmentName = "dev" | "stg" | "prod";
 
+/** The environment's Neon project (ADR-0022). The database itself is not a CloudFormation resource. */
+export interface NeonConfig {
+  /** Neon project id, e.g. `wild-darkness-22822656`. The usage check reads this project. */
+  readonly projectId: string;
+}
+
 export interface LambdaConfig {
   readonly apiMemoryMb: number;
   readonly apiTimeoutSeconds: number;
@@ -95,6 +101,7 @@ export interface TempoEnvironmentConfig {
 
   readonly enableDeletionProtection: boolean;
 
+  readonly neon: NeonConfig;
   readonly lambda: LambdaConfig;
   readonly observability: ObservabilityConfig;
   readonly cost: CostConfig;
@@ -143,6 +150,10 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (config.region !== "eu-central-1") {
     errors.push(`region must be "eu-central-1" per ADR-0014, got "${config.region}"`);
+  }
+
+  if (!/^[a-z0-9-]+$/.test(config.neon.projectId)) {
+    errors.push(`neon.projectId must be a Neon project id, got "${config.neon.projectId}"`);
   }
 
   if (config.observability.logRetentionDays <= 0) {
