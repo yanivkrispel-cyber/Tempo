@@ -10,6 +10,7 @@ import {
 import { HttpUserPoolAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { IUserPool, IUserPoolClient } from "aws-cdk-lib/aws-cognito";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { CfnPermission, FunctionUrlAuthType } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
@@ -22,6 +23,9 @@ export interface ApiStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
   readonly userPool: IUserPool;
   readonly userPoolClients: IUserPoolClient[];
+  /** The Tempo team's pool (ADR-0023); its tokens are accepted only on /api/v1/platform/*. */
+  readonly operatorPool: IUserPool;
+  readonly operatorPoolClients: IUserPoolClient[];
   /** Git commit SHA (or "local"), surfaced by the health endpoint's `version` field. */
   readonly buildVersion: string;
 }
@@ -77,9 +81,21 @@ export class ApiStack extends Stack {
         // The API validates Cognito access tokens itself (ADR-0004
         // amendment), so it needs the issuer and the accepted app clients.
         COGNITO_ISSUER: `https://${props.userPool.userPoolProviderName}`,
-        COGNITO_CLIENT_IDS: props.userPoolClients.map((client) => client.userPoolClientId).join(",")
+        COGNITO_CLIENT_IDS: props.userPoolClients.map((client) => client.userPoolClientId).join(","),
+        COGNITO_OPERATOR_ISSUER: `https://${props.operatorPool.userPoolProviderName}`,
+        COGNITO_OPERATOR_CLIENT_IDS: props.operatorPoolClients.map((client) => client.userPoolClientId).join(",")
       }
     });
+
+    // Account provisioning reads the caller's email from Cognito, because
+    // access tokens carry no email claim (Phase 1 LLD section 2.3). Only the
+    // customer pool, and only this one read.
+    this.apiFunction.function.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["cognito-idp:AdminGetUser"],
+        resources: [props.userPool.userPoolArn]
+      })
+    );
 
     const authorizer = new HttpUserPoolAuthorizer("CognitoAuthorizer", props.userPool, {
       userPoolClients: props.userPoolClients,

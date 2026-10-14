@@ -55,7 +55,9 @@ export class TempoStage extends Stage {
       config,
       env,
       userPool: identity.userPool,
-      userPoolClients: [identity.adminWebClient, identity.clientWebClient, identity.platformAdminWebClient],
+      userPoolClients: [identity.adminWebClient, identity.clientWebClient],
+      operatorPool: identity.operatorPool,
+      operatorPoolClients: [identity.platformAdminWebClient],
       buildVersion: props.buildVersion,
       crossRegionReferences: config.featureFlags.enableFrontendHosting
     });
