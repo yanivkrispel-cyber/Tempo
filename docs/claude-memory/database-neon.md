@@ -22,7 +22,9 @@ ADR-0022 is the source of truth. This file holds the operational facts.
 ## Secrets (SSM Parameter Store, account 687239340846, eu-central-1)
 
 - `/tempo/<env>/db/neon-connection-string`: the direct endpoint, URI form.
-- `/tempo/<env>/db/app-password` and `/tempo/<env>/db/migrator-password`: fixed role passwords.
+- `/tempo/<env>/db/app-password`, `/tempo/<env>/db/platform-password` and `/tempo/<env>/db/migrator-password`: fixed
+  role passwords. The migrator fails if any is missing, so `platform-password` must exist before migration 0002
+  deploys to an environment.
 - `/tempo/<env>/neon/api-key`: used by the usage-check Lambda.
 
 A human writes these values. Claude prepares the command and hands it over.
@@ -31,6 +33,11 @@ A human writes these values. Claude prepares the command and hands it over.
 
 - Runs as a Lambda without a VPC and reads the SSM parameters above. Locally it takes `DATABASE_URL`.
 - Its journal is `platform.schema_versions`. A rerun applies nothing new.
+- Scripts name runtime roles through DbUp variables, `$app_role$` and `$platform_role$`, never literally, so tests can
+  use their own role names. DbUp substitutes any `$word$`, so a dollar-quoted body uses plain `$$`, never `$tag$`.
+- RLS is enabled, not forced: the migrator owns every table and is exempt, which the `SECURITY DEFINER` lookups rely
+  on. Runtime roles own nothing, so RLS always applies to them. Tests: `tests/Tempo.IntegrationTests/DatabaseMigrator/
+  IdentitySchemaTests.cs`.
 - A non-superuser master needs `GRANT migrator TO CURRENT_USER WITH INHERIT FALSE, SET TRUE` (fixed in PR #16).
 - Usage check: the `tempo-<env>-neon-usage` Lambda runs every 6 hours and publishes
   `Tempo/Database NeonFreeLimitPercent`; the prod alarm fires at 70%.

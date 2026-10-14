@@ -5,10 +5,11 @@ using Npgsql;
 namespace Tempo.DatabaseMigrator;
 
 /// <summary>
-/// Prepares the `application` and `migrator` Postgres roles (LLD section 12:
-/// "Create or prepare database identities for: Master/bootstrap user,
-/// Application user, Migrator user") and the `platform` schema that holds the
-/// migration journal. Each role's password is an SSM SecureString parameter
+/// Prepares the `application`, `platform` and `migrator` Postgres roles (LLD
+/// section 12: "Create or prepare database identities for: Master/bootstrap
+/// user, Application user, Migrator user"; the platform role is from
+/// docs/26_Identity_Organization_Membership_LLD.md section 7.2) and the
+/// `platform` schema that holds the migration journal. Each role's password is an SSM SecureString parameter
 /// that a person writes (ADR-0022); only the master user can issue `CREATE ROLE`,
 /// so this runs once, at the start of every migration, using the master
 /// connection. Every step is idempotent and checked from C#, with no
@@ -23,11 +24,13 @@ public static partial class BootstrapRoles
         string masterConnectionString,
         string databaseName,
         (string Username, string Password) applicationCredentials,
+        (string Username, string Password) platformCredentials,
         (string Username, string Password) migratorCredentials,
         IUpgradeLog log,
         CancellationToken cancellationToken)
     {
         ValidateCredential(applicationCredentials);
+        ValidateCredential(platformCredentials);
         ValidateCredential(migratorCredentials);
 
         await using var connection = new NpgsqlConnection(masterConnectionString);
@@ -35,6 +38,7 @@ public static partial class BootstrapRoles
 
         await UpsertRoleAsync(connection, migratorCredentials, log, cancellationToken);
         await UpsertRoleAsync(connection, applicationCredentials, log, cancellationToken);
+        await UpsertRoleAsync(connection, platformCredentials, log, cancellationToken);
 
         var quotedDatabase = QuoteBuilder.QuoteIdentifier(databaseName);
 
@@ -42,10 +46,13 @@ public static partial class BootstrapRoles
             connection,
             $"GRANT CREATE, CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(migratorCredentials.Username)}",
             cancellationToken);
-        await ExecuteAsync(
-            connection,
-            $"GRANT CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(applicationCredentials.Username)}",
-            cancellationToken);
+        foreach (var runtimeRole in new[] { applicationCredentials.Username, platformCredentials.Username })
+        {
+            await ExecuteAsync(
+                connection,
+                $"GRANT CONNECT ON DATABASE {quotedDatabase} TO {QuoteBuilder.QuoteIdentifier(runtimeRole)}",
+                cancellationToken);
+        }
 
         // A managed master user (Aurora's rds_superuser, Neon's neondb_owner)
         // is not a superuser. From PostgreSQL 16 creating a role grants only
@@ -65,9 +72,10 @@ public static partial class BootstrapRoles
             cancellationToken);
 
         log.LogInformation(
-            "Bootstrapped database roles '{0}' (migrator) and '{1}' (application)",
+            "Bootstrapped database roles '{0}' (migrator), '{1}' (application) and '{2}' (platform)",
             migratorCredentials.Username,
-            applicationCredentials.Username);
+            applicationCredentials.Username,
+            platformCredentials.Username);
     }
 
     private static async Task UpsertRoleAsync(

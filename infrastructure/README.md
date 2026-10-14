@@ -144,20 +144,21 @@ before `cdk deploy`.
 ## Database credentials (one-time per environment, manual)
 
 The database is a Neon project per environment (ADR-0022). The migrator
-reads three SSM SecureString parameters, which CloudFormation cannot create
+reads four SSM SecureString parameters, which CloudFormation cannot create
 and which never pass through CDK, so a person writes them:
 
 | Parameter | Value |
 |---|---|
 | `/tempo/<env>/db/neon-connection-string` | The Neon owner role's `postgresql://` URL on the **direct** endpoint (no `-pooler`) |
 | `/tempo/<env>/db/app-password` | Password of `tempo_app`, letters and digits only |
+| `/tempo/<env>/db/platform-password` | Password of `tempo_platform`, the operator console's role (ADR-0023), letters and digits only |
 | `/tempo/<env>/db/migrator-password` | Password of `tempo_migrator`, letters and digits only |
 
-The migrator sets both role passwords from these values on every run, so
+The migrator sets all three role passwords from these values on every run, so
 changing a parameter and redeploying rotates it. In PowerShell, for dev:
 
 ```powershell
-foreach ($name in 'app-password', 'migrator-password') {
+foreach ($name in 'app-password', 'platform-password', 'migrator-password') {
   $bytes = [byte[]]::new(24)
   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
   $value = -join ($bytes | ForEach-Object { $_.ToString('x2') })

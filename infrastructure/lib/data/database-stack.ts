@@ -21,6 +21,8 @@ export const DATABASE_PARAMETERS = {
   ownerUrl: "neon-connection-string",
   /** Password of `tempo_app`, the least-privileged runtime role. Letters and digits only. */
   applicationPassword: "app-password",
+  /** Password of `tempo_platform`, the operator console's role (ADR-0023). Letters and digits only. */
+  platformPassword: "platform-password",
   /** Password of `tempo_migrator`, the schema-owning role. Letters and digits only. */
   migratorPassword: "migrator-password"
 } as const;
@@ -62,11 +64,12 @@ export function databaseParameterName(config: TempoEnvironmentConfig, key: keyof
  * `aws/ssm` key. CloudFormation cannot create SecureString values, and the
  * values must never pass through CDK, so a person writes them (see
  * infrastructure/README.md, "Database credentials"). The function gets read
- * access to exactly these three parameters; the AWS managed key needs no
+ * access to exactly these four parameters; the AWS managed key needs no
  * kms:Decrypt grant.
  *
- * Three identities (LLD section 12): the Neon owner bootstraps the
- * `tempo_migrator` and `tempo_app` roles with the stored passwords on every
+ * Database identities (LLD section 12; docs/26 section 7.2): the Neon owner
+ * bootstraps the `tempo_migrator`, `tempo_app` and `tempo_platform` roles
+ * with the stored passwords on every
  * run (see backend/Tempo.DatabaseMigrator/BootstrapRoles.cs), and DbUp then
  * migrates as `tempo_migrator`.
  */
@@ -84,6 +87,7 @@ export class DatabaseStack extends Stack {
       });
     const ownerUrl = parameter("ownerUrl");
     const applicationPassword = parameter("applicationPassword");
+    const platformPassword = parameter("platformPassword");
     const migratorPassword = parameter("migratorPassword");
 
     this.migratorFunction = new TempoFunction(this, "MigratorFunction", config, {
@@ -100,11 +104,12 @@ export class DatabaseStack extends Stack {
       environment: {
         OWNER_URL_PARAMETER: ownerUrl.parameterName,
         APPLICATION_PASSWORD_PARAMETER: applicationPassword.parameterName,
+        PLATFORM_PASSWORD_PARAMETER: platformPassword.parameterName,
         MIGRATOR_PASSWORD_PARAMETER: migratorPassword.parameterName
       }
     });
 
-    for (const p of [ownerUrl, applicationPassword, migratorPassword]) {
+    for (const p of [ownerUrl, applicationPassword, platformPassword, migratorPassword]) {
       p.grantRead(this.migratorFunction.function);
     }
 
