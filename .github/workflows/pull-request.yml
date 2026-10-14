@@ -2,9 +2,8 @@ name: Pull Request
 
 on:
   pull_request:
-    # feature/aws-foundation collects the small Phase 0 fix PRs before its
-    # single PR to main (status page decision D4); drop it once that merges.
-    branches: [main, feature/aws-foundation]
+    # main is the only long-lived branch; every change reaches it through a PR.
+    branches: [main]
 
 permissions:
   contents: read

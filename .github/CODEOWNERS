@@ -1,17 +1,5 @@
-# Default owners
-* @your-org/leads
-
-# Backend
-/backend/ @your-org/backend-team
-
-# Frontend
-/apps/ @your-org/frontend-team
-
-# Infrastructure
-/infrastructure/ @your-org/platform-team
-
-# Contracts
-/contracts/ @your-org/backend-team @your-org/platform-team
-
-# Documentation
-/docs/ @your-org/leads
+# Every PR needs a review from someone other than its author (CONTRIBUTING.md).
+# Add the second developer's handle next to each path once they accept the invite.
+*                 @yanivkrispel-cyber
+/infrastructure/  @yanivkrispel-cyber
+/docs/ADR/        @yanivkrispel-cyber
