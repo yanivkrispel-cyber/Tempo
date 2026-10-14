@@ -1,5 +1,4 @@
 # Every PR needs a review from someone other than its author (CONTRIBUTING.md).
-# Add the second developer's handle next to each path once they accept the invite.
-*                 @yanivkrispel-cyber
-/infrastructure/  @yanivkrispel-cyber
+*                 @yanivkrispel-cyber @ofirbnaim1
+/infrastructure/  @yanivkrispel-cyber @ofirbnaim1
 /docs/ADR/        @yanivkrispel-cyber

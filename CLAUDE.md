@@ -4,6 +4,13 @@ Claude Code loads this file at the start of every session, on every developer's 
 memory. Personal auto-memory (`~/.claude/projects/...`) stays on one machine and is not shared, so anything the
 other developer needs goes here or in `docs/claude-memory/`.
 
+## Team
+
+| Person | GitHub | Role |
+|---|---|---|
+| Yaniv (Kris) Krispel | `yanivkrispel-cyber` | Project owner. Approves cost, product and architecture decisions. Prefers Hebrew. |
+| Ofir Ben | `ofirbnaim1` | Developer (joined 2026-10-14). Admin on both AWS accounts through his own Identity Center user `ofir`. |
+
 ## What Tempo is
 
 A multi-tenant SaaS for studios (pilates, yoga, fitness): a .NET 10 backend on AWS Lambda, Neon Postgres, a PWA
