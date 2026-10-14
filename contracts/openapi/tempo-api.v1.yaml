@@ -616,8 +616,9 @@ components:
           schema: { $ref: "#/components/schemas/Problem" }
     Forbidden:
       description: |
-        Signed in but not allowed, for example `account.disabled`, `account.email_not_verified`,
-        `membership.suspended`, `organization.suspended`, `invitation.email_mismatch`.
+        Signed in but not allowed, for example `permission.denied` (the caller's role does not allow it),
+        `account.disabled`, `account.email_not_verified`, `membership.suspended`, `organization.suspended`,
+        `invitation.email_mismatch`, `operator.not_registered`.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -838,7 +839,9 @@ components:
             link:
               type: string
               format: uri
-              description: Shown once. The token is the last path segment; the app sends it in the body of preview and accept.
+              description: |
+                Shown once, as `https://<app>/invite#<token>`. The token is in the fragment, which browsers never
+                send to a server; the app reads it and sends it in the body of preview and accept.
 
     InvitationPage:
       type: object
@@ -890,7 +893,12 @@ components:
       type: object
       required: [link, createdAt]
       properties:
-        link: { type: string, format: uri }
+        link:
+          type: string
+          format: uri
+          description: |
+            `https://<client app>/join#<code>`. The code is in the fragment; the app sends it in the body of
+            join preview and join.
         createdAt: { type: string, format: date-time }
 
     AuditEvent:
