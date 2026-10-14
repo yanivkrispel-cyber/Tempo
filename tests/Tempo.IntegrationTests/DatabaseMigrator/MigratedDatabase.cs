@@ -61,23 +61,29 @@ public sealed class MigratedDatabase : IDataSourceProvider, IAsyncDisposable
         return await command.ExecuteScalarAsync();
     }
 
+    /// <summary>How the given runtime role connects to this database.</summary>
+    public string ConnectionString(DatabaseRole role)
+    {
+        var (username, password) = role == DatabaseRole.Application ? app : platform;
+        return new NpgsqlConnectionStringBuilder
+        {
+            Host = postgres.Host,
+            Port = postgres.Port,
+            Database = Name,
+            Username = username,
+            Password = password,
+            SslMode = SslMode.Disable,
+            MaxPoolSize = 4
+        }.ConnectionString;
+    }
+
     public ValueTask<NpgsqlDataSource> GetAsync(DatabaseRole role, CancellationToken cancellationToken)
     {
         lock (dataSources)
         {
             if (!dataSources.TryGetValue(role, out var dataSource))
             {
-                var (username, password) = role == DatabaseRole.Application ? app : platform;
-                dataSource = NpgsqlDataSource.Create(new NpgsqlConnectionStringBuilder
-                {
-                    Host = postgres.Host,
-                    Port = postgres.Port,
-                    Database = Name,
-                    Username = username,
-                    Password = password,
-                    SslMode = SslMode.Disable,
-                    MaxPoolSize = 4
-                }.ConnectionString);
+                dataSource = NpgsqlDataSource.Create(ConnectionString(role));
                 dataSources[role] = dataSource;
             }
 

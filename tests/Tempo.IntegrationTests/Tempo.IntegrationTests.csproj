@@ -17,6 +17,7 @@
     </PackageReference>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Coverlet.Collector">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -26,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\backend\Tempo.DatabaseMigrator\Tempo.DatabaseMigrator.csproj" />
     <ProjectReference Include="..\..\backend\Tempo.Platform\Tempo.Platform.csproj" />
+    <ProjectReference Include="..\..\backend\Tempo.Api\Tempo.Api.csproj" />
   </ItemGroup>
 
 </Project>
