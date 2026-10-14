@@ -1,13 +1,26 @@
 # Tempo AWS Infrastructure Low-Level Design (LLD)
 
-> **Status:** Accepted implementation baseline  
-> **Version:** 1.0  
+> **Status:** Accepted implementation baseline, updated to what was built  
+> **Version:** 1.1 (2026-10-14)    
 > **Audience:** Architecture, Backend, Frontend, DevOps, Security, QA, Codex, Claude and other AI coding agents  
 > **Cloud:** AWS only  
 > **Primary Region:** `eu-central-1`  
 > **Architecture Direction:** Serverless-first modular monolith  
 > **Infrastructure as Code:** AWS CDK in TypeScript  
-> **Related ADRs:** `ADR-0001` through `ADR-0015`, with special emphasis on AWS, Lambda, Aurora PostgreSQL Serverless v2, Cognito, API Gateway HTTP API, SQS, EventBridge, CloudWatch, CDK and environment isolation  
+> **Related ADRs:** `ADR-0001` through `ADR-0023`, with special emphasis on AWS, Lambda, Neon serverless Postgres (ADR-0022), Cognito, API Gateway HTTP API, SQS, EventBridge, CloudWatch, CDK and environment isolation  
+
+> **What changed since version 1.0.** These later decisions replace parts of this document. Where a section below  
+> still disagrees with them, the ADR wins.
+>
+> - **Database:** Neon serverless Postgres outside CloudFormation, not Aurora Serverless v2 (ADR-0022 supersedes
+>   ADR-0005). Sections 9, 10, 11, 25 and 28 are updated.
+> - **Network:** no VPC, NAT or interface endpoints; functions reach Neon over TLS (ADR-0022 closes ADR-0017).
+> - **Secrets:** SSM Parameter Store SecureString under `/tempo/<env>/`, written by a person; no Secrets Manager
+>   (ADR-0015 amendment, ADR-0022).
+> - **Fixed cost:** $0 until revenue (ADR-0021); every billable resource needs the owner's approval.
+> - **Queues:** one work queue, the worker routes on the `MessageType` attribute (ADR-0008 amendment).
+> - **Tokens:** the API validates Cognito access tokens itself, for two pools (ADR-0004 amendment, ADR-0023).
+> - **Phase 1 data model:** `docs/26_Identity_Organization_Membership_LLD.md`.
 
 ---
 
@@ -22,11 +35,11 @@ It specifies:
 - Network topology.
 - Lambda runtime and deployment model.
 - API Gateway configuration.
-- Aurora PostgreSQL Serverless v2.
+- The database connection to Neon serverless Postgres (ADR-0022).
 - SQS and EventBridge.
 - Cognito.
 - S3, CloudFront, Route 53, ACM and WAF.
-- Secrets Manager, Parameter Store and KMS.
+- SSM Parameter Store and KMS.
 - CloudWatch, tracing and alarms.
 - Backup, recovery and operational controls.
 - AWS CDK stack structure.
@@ -58,14 +71,14 @@ flowchart TB
     LAMBDAAPI[Lambda API]
     LAMBDAWORKERS[Lambda Workers]
 
-    AURORA[(Aurora PostgreSQL Serverless v2)]
+    NEON[(Neon Postgres, Frankfurt, outside CloudFormation)]
     S3FILES[S3 Application Files]
     SQS[SQS Queues]
     DLQ[SQS Dead-Letter Queues]
     EVENTBRIDGE[EventBridge]
     SES[Amazon SES]
 
-    SECRETS[Secrets Manager]
+    SECRETS[SSM Parameter Store]
     KMS[AWS KMS]
     CLOUDWATCH[CloudWatch Logs / Metrics / Alarms]
     XRAY[X-Ray / OpenTelemetry]
@@ -79,14 +92,14 @@ flowchart TB
     APIGW --> COGNITO
     APIGW --> LAMBDAAPI
 
-    LAMBDAAPI --> AURORA
+    LAMBDAAPI -->|TLS, pooled endpoint| NEON
     LAMBDAAPI --> S3FILES
     LAMBDAAPI --> SQS
     LAMBDAAPI --> EVENTBRIDGE
 
     SQS --> LAMBDAWORKERS
     EVENTBRIDGE --> LAMBDAWORKERS
-    LAMBDAWORKERS --> AURORA
+    LAMBDAWORKERS -->|TLS, pooled endpoint| NEON
     LAMBDAWORKERS --> S3FILES
     LAMBDAWORKERS --> SES
     LAMBDAWORKERS --> EVENTBRIDGE
@@ -94,15 +107,12 @@ flowchart TB
     LAMBDAAPI --> SECRETS
     LAMBDAWORKERS --> SECRETS
 
-    KMS --> AURORA
     KMS --> S3FILES
-    KMS --> SECRETS
     KMS --> SQS
 
     LAMBDAAPI --> CLOUDWATCH
     LAMBDAWORKERS --> CLOUDWATCH
     APIGW --> CLOUDWATCH
-    AURORA --> CLOUDWATCH
 
     LAMBDAAPI --> XRAY
     LAMBDAWORKERS --> XRAY
@@ -187,7 +197,7 @@ tempo-dev-main-queue
 tempo-dev-main-dlq
 tempo-dev-files
 tempo-prod-api
-tempo-prod-aurora
+tempo-prod-database-migrator
 ```
 
 ### 4.2 Environment Codes
@@ -357,10 +367,10 @@ export interface TempoEnvironmentConfig {
   readonly enableDeletionProtection: boolean;
   readonly logRetentionDays: number;
 
-  readonly aurora: {
-    readonly minAcu: number;
-    readonly maxAcu: number;
-    readonly autoPause: boolean;
+  readonly neon: {
+    readonly projectId: string;      // the environment's Neon project
+    readonly pooledHost?: string;    // runtime roles connect here
+    readonly databaseName?: string;
   };
 
   readonly lambda: {
@@ -390,181 +400,66 @@ Rules:
 
 ## 9. Network Architecture
 
-### 9.1 VPC Decision
+### 9.1 No VPC (ADR-0022)
 
-Create one VPC per environment.
+No Tempo function runs in a VPC. The database is Neon, reached over its public endpoint with TLS in `VerifyFull`
+mode, so there are no subnets, NAT gateways, interface endpoints or security groups to pay for or maintain.
+ADR-0017 is closed.
 
-Production:
+### 9.2 What protects the database instead
 
-```text
-1 VPC
-2 Availability Zones minimum
-Private isolated subnets for Aurora
-Private application subnets only if Lambda requires VPC access
-No public database subnet
-```
+- TLS on every connection, with certificate verification.
+- Role passwords from SSM SecureString, readable only by the functions that use them.
+- Least-privilege roles (`tempo_app`, `tempo_platform`, `tempo_migrator`) and row-level security on every
+  tenant-owned table (docs/26 section 7).
+- The Neon owner role is used only by the migrator to bootstrap roles.
 
-### 9.2 Initial Subnets
+### 9.3 When a VPC would come back
 
-Recommended:
-
-```text
-Private Isolated Subnets
-- Aurora PostgreSQL
-- No default internet route
-
-Private Application Subnets
-- Lambda functions that require database access
-- Internet access decision handled separately
-
-Public Subnets
-- Created only if NAT Gateway or another public network component is approved
-```
-
-### 9.3 NAT Gateway Cost Rule
-
-NAT Gateway is not added automatically.
-
-Before adding NAT Gateway, evaluate:
-
-- Which Lambda functions require internet access.
-- Which functions require Aurora access.
-- Whether workloads can be separated into VPC and non-VPC workers.
-- Whether AWS service access can use VPC endpoints.
-- Whether a queue-based boundary removes the need for internet access from database-connected Lambdas.
-
-Initial preferred pattern:
-
-```text
-API Lambda in VPC
-→ Aurora
-
-API Lambda
-→ SQS
-
-External Integration Worker outside VPC
-→ External Provider
-
-External Integration Worker
-→ SQS result/event
-
-Database Worker in VPC
-→ Aurora
-```
-
-If one function must access both Aurora and the public internet, the networking decision must be explicitly reviewed.
-
-### 9.4 VPC Endpoints
-
-Add VPC endpoints only when required and cost-justified.
-
-Candidates:
-
-- S3 Gateway Endpoint.
-- Secrets Manager Interface Endpoint.
-- CloudWatch Logs Interface Endpoint.
-- SQS Interface Endpoint.
-- KMS Interface Endpoint.
-
-Do not add all endpoints by default.
-
-### 9.5 Security Groups
-
-Create dedicated security groups:
-
-```text
-tempo-{env}-lambda-db-sg
-tempo-{env}-aurora-sg
-```
-
-Rules:
-
-- Aurora accepts PostgreSQL traffic only from the Lambda database security group.
-- No `0.0.0.0/0` ingress.
-- No public database access.
-- Egress should be restricted where practical.
-- Security-group rules must be defined in CDK.
-- Human direct database access must use an approved administrative path.
+A VPC is reconsidered only for a workload that must reach a private AWS resource, or if a contract requires data to
+stay inside AWS (ADR-0022 review triggers). Adding one needs the owner's approval of its monthly cost (ADR-0021).
 
 ---
 
-## 10. Aurora PostgreSQL Serverless v2
+## 10. Database: Neon Serverless Postgres
+
+ADR-0022 is the source of truth; `docs/claude-memory/database-neon.md` holds the operational facts.
 
 ### 10.1 Database Decision
 
-Use:
-
 ```text
-Amazon Aurora PostgreSQL-Compatible Edition
-Aurora Serverless v2
+Neon serverless Postgres, PostgreSQL 18
+Region aws-eu-central-1 (Frankfurt), the same Region as the Lambda functions
+One Neon project per environment; branches only for short-lived copies
 ```
 
-### 10.2 Cluster Layout
+### 10.2 Plan and Capacity
 
-Initial non-production:
+- Every project starts on the Free plan ($0): 100 CU-hours a month, 1 GB storage, 5 GB egress, a 6-hour restore
+  window. Going over a limit suspends compute until the next period.
+- Compute scales to zero after five idle minutes and wakes on the first query.
+- Production moves to the Launch plan before the first paying studio, with the owner's approval (ADR-0022
+  tripwires). A scheduled Lambda reads usage from Neon's API and publishes `Tempo/Database NeonFreeLimitPercent`.
 
-```text
-1 writer
-0 readers
-Auto-pause where supported
-Min ACU: 0 where supported
-Max ACU: controlled low ceiling
-```
+### 10.3 Endpoints and Settings
 
-Initial production:
-
-```text
-1 writer
-0 readers initially
-Auto-pause disabled
-Min ACU > 0
-Max ACU configured
-Deletion protection enabled
-PITR enabled
-```
-
-Production growth:
-
-```text
-1 writer
-1 reader/failover instance
-```
-
-A reader is added when:
-
-- SLO requires stronger failover.
-- Read pressure affects the writer.
-- Load testing justifies the cost.
-- Operational maturity is sufficient.
-
-### 10.3 Database Configuration
-
-Required:
-
-- Encryption at rest.
-- Secrets Manager-managed credentials.
-- Automated backups.
-- Point-in-time recovery.
-- Deletion protection in production.
-- CloudWatch metrics.
-- Performance Insights where cost-appropriate.
-- Log exports for PostgreSQL errors and slow queries where appropriate.
-- Controlled maintenance window.
-- Controlled backup window.
+- The migrator uses the direct endpoint: DDL, session settings and advisory locks need a real session.
+- The API and the worker use the pooled endpoint (`-pooler`), where PgBouncer runs in transaction mode. Tenant
+  context is set per transaction with `set_config(..., true)`, never with a session-level `SET`.
+- Every connection uses TLS in `VerifyFull` mode.
 
 ### 10.4 Database Name
 
 ```text
-tempo
+neondb
 ```
 
 ### 10.5 PostgreSQL Schemas
 
-Initial:
+Created so far: `platform` (the migration journal), and from Phase 1 `identity`, `organizations`, `audit` and
+`platform_admin` (docs/26 section 7). Later phases add, as needed:
 
 ```text
-identity
-organizations
 authorization
 people
 billing
@@ -572,14 +467,6 @@ entitlements
 communications
 files
 integrations
-audit
-platform
-platform_admin
-```
-
-Future:
-
-```text
 vertical_studio
 vertical_coaching
 vertical_running
@@ -588,31 +475,24 @@ vertical_clinic
 
 ### 10.6 Lambda Connection Controls
 
-- Keep connection pool size small.
-- Reuse connections safely across warm invocations.
-- Apply reserved concurrency to database-connected Lambdas.
-- Track database connection count.
-- Do not add RDS Proxy initially.
-- Add RDS Proxy only after measured connection pressure.
-- Fail gracefully when database capacity is exhausted.
+- Keep connection pools small (the API uses at most 5 connections per role).
+- Reserved concurrency on database-connected functions.
+- No RDS Proxy: Neon's pooler accepts up to 10,000 client connections.
+- Fail gracefully when the database is suspended or waking.
 
-### 10.7 Database Secret
+### 10.7 Database Credentials
 
-Secret name:
+SSM SecureString parameters, written by a person, never by CDK (ADR-0015 amendment):
 
 ```text
-tempo/{environment}/database/master
+/tempo/{environment}/db/neon-connection-string   the owner role's URL, direct endpoint (migrator only)
+/tempo/{environment}/db/migrator-password        tempo_migrator
+/tempo/{environment}/db/app-password             tempo_app (API)
+/tempo/{environment}/db/platform-password        tempo_platform (operator console, tripwire)
 ```
 
-The application should use a dedicated application database user, not the master user.
-
-Future secrets:
-
-```text
-tempo/{environment}/database/application
-tempo/{environment}/database/migrator
-tempo/{environment}/database/read-only
-```
+Each function may read only the parameters it uses. The commands are in `infrastructure/README.md`, "Database
+credentials".
 
 ---
 
@@ -626,7 +506,7 @@ Recommended implementation:
 Tempo.DatabaseMigrator
 → packaged as Lambda invocation or one-off ECS task only if Lambda limitations require it
 → executed by GitHub Actions
-→ connected to Aurora
+→ connected to Neon over TLS, direct endpoint
 ```
 
 Initial preferred option:
@@ -728,7 +608,7 @@ Examples:
 API Lambda:
 
 - Read database application secret.
-- Connect to Aurora.
+- Connect to Neon through the pooled endpoint.
 - Send selected SQS messages.
 - Put selected EventBridge events.
 - Read/write selected S3 prefixes.
@@ -1047,7 +927,7 @@ Do not use EventBridge as a replacement for reliable work queues when backpressu
 ```mermaid
 sequenceDiagram
     participant API as API Lambda
-    participant DB as Aurora PostgreSQL
+    participant DB as Neon PostgreSQL
     participant Q as Outbox Queue
     participant W as Outbox Worker
     participant EB as EventBridge
@@ -1257,50 +1137,46 @@ Attach WAF to:
 
 ---
 
-## 22. Secrets Manager and Parameter Store
+## 22. Secrets and Parameters
 
-### 22.1 Secrets Manager
+### 22.1 SSM Parameter Store (ADR-0015 amendment, ADR-0022)
+
+Secrets are SSM SecureString parameters on the AWS managed `aws/ssm` key. Standard parameters are free; Secrets
+Manager is not, and it is not used while fixed cost must stay at $0 (ADR-0021).
 
 Use for:
 
-- Database credentials.
+- Database credentials (section 10.7).
 - Payment provider credentials.
 - Messaging provider credentials.
 - Webhook signing secrets.
-- External API credentials.
+- External API credentials, such as the Neon API key.
 
 Naming:
 
 ```text
-tempo/{environment}/{component}/{secret-name}
+/tempo/{environment}/{component}/{name}
 ```
 
 Examples:
 
 ```text
-tempo/dev/database/application
-tempo/prod/payments/provider
-tempo/prod/communications/whatsapp
+/tempo/dev/db/app-password
+/tempo/dev/neon/api-key
+/tempo/prod/payments/provider
 ```
 
-### 22.2 Parameter Store
+Non-secret settings are plain String parameters under the same prefix, or committed environment configuration.
 
-Use for non-secret settings:
+### 22.2 Rules
 
-```text
-tempo/{environment}/application/feature-flags
-tempo/{environment}/application/support-email
-```
-
-### 22.3 Rules
-
-- Secrets never appear in source control.
-- Secrets never appear in CDK context.
-- Secrets never appear in GitHub repository secrets when AWS OIDC and Secrets Manager can be used instead.
-- Lambda retrieves only secrets it needs.
-- Secret access is audited.
-- Rotation is enabled where supported.
-- Secret values are cached safely within warm Lambda execution environments.
+- A person writes secret values. CloudFormation cannot create SecureString values, and values never pass through
+  CDK; stacks pass only parameter names (ADR-0015 amendment).
+- Secrets never appear in source control, CDK context or GitHub repository secrets.
+- Each function gets read access to exactly the parameters it uses, never a wildcard.
+- Rotation: change the parameter and redeploy; the migrator resets role passwords on every run.
+- Secret values are cached within a warm Lambda execution environment.
+- Secrets Manager comes back only for a secret that needs managed rotation, with the owner's approval of its cost.
 
 ---
 
@@ -1440,9 +1316,8 @@ Required:
 - SQS queue depth.
 - SQS age of oldest message.
 - DLQ depth.
-- Aurora capacity.
-- Aurora connections.
-- Aurora errors.
+- Neon Free-plan usage (`NeonFreeLimitPercent`).
+- Database connection errors (from function logs).
 - Outbox lag.
 - Webhook failures.
 - Notification failures.
@@ -1459,8 +1334,7 @@ Lambda error threshold
 Lambda throttling
 DLQ message count > 0
 Queue age threshold
-Aurora connection threshold
-Aurora capacity near maximum
+Neon Free-plan usage above 70%
 Outbox publication lag
 Billing reconciliation mismatch
 Webhook signature failure spike
@@ -1503,14 +1377,13 @@ CloudWatch logs support operations. Application audit records support business a
 
 ## 28. Backup and Recovery
 
-### 28.1 Aurora
+### 28.1 Database (Neon)
 
-- Automated backups.
-- Point-in-time recovery.
-- Production deletion protection.
-- Restore test schedule.
-- Backup retention defined per environment.
-- Manual snapshots before high-risk migrations when justified.
+- Point-in-time restore within the plan's window: 6 hours on Free, up to 7 days on Launch.
+- A Neon branch as a snapshot before high-risk migrations.
+- Before the pilot, the owners choose a scheduled `pg_dump` to S3 or the Launch plan's 7-day window (ADR-0022).
+- A restore drill before the first paying studio.
+- The 10-studio tripwire alerts the owner to move to hourly backups (docs/26 section 10.2, ADR-0021).
 
 ### 28.2 S3
 
@@ -1532,7 +1405,7 @@ These are provisional and require business approval:
 
 ```text
 RPO: 24 hours maximum for non-critical early environments
-RPO: 15 minutes or better for production transactional database through PITR
+RPO: within the Neon plan's restore window for the production database (6 hours on Free, accepted until the pilot)
 RTO: 4 hours for initial commercial production
 ```
 
@@ -1546,8 +1419,8 @@ Mandatory:
 - Cost Anomaly Detection.
 - Environment tags.
 - Monthly cost review.
-- Aurora ACU maximum limits.
-- Auto-pause in non-production where supported.
+- Neon Free-plan limits, watched by the usage check.
+- Scale to zero in every environment.
 - No NAT Gateway without approval.
 - No Redis initially.
 - No RDS Proxy initially.
@@ -1756,8 +1629,8 @@ CDK tests must assert:
 - WAF attached where required.
 - API Gateway type is HTTP API.
 - Cognito app clients have no browser client secret.
-- Aurora is not publicly accessible.
-- Aurora deletion protection is enabled in production.
+- No AWS database, VPC or Secrets Manager secret is created (ADR-0022).
+- Functions read only their own SSM database parameters.
 - SQS queues have DLQs.
 - Lambda log retention is explicit.
 - IAM wildcard actions/resources are rejected unless allowlisted.
@@ -1773,7 +1646,7 @@ CDK tests must assert:
 Before deployment:
 
 - No public S3 bucket.
-- No public Aurora.
+- No database credentials outside SSM SecureString.
 - No static AWS credentials.
 - No secret in environment configuration.
 - Cognito callback URLs are exact.
@@ -1794,9 +1667,7 @@ Before deployment:
 
 The AWS infrastructure phase is complete when the development environment contains:
 
-- VPC and required subnets.
-- Aurora PostgreSQL Serverless v2.
-- Secrets Manager database secrets.
+- The Neon project and its SSM database parameters (ADR-0022).
 - Cognito User Pool and app clients.
 - API Gateway HTTP API.
 - Lambda API.
@@ -1833,7 +1704,7 @@ Unauthenticated request receives 401
 SQS test message is processed
 Failed test message reaches DLQ
 EventBridge test event reaches target
-Aurora connection succeeds
+Database connection succeeds
 S3 signed upload/download succeeds
 CloudFront serves each frontend shell
 ```
@@ -1850,7 +1721,7 @@ This LLD is implemented successfully when:
 - Development environment deploys automatically through GitHub Actions.
 - API health endpoint is reachable.
 - Authenticated request through Cognito succeeds.
-- Aurora is private and reachable only by approved workloads.
+- The database is reachable only over TLS with role credentials from SSM.
 - SQS and EventBridge workflows operate.
 - Frontend is served through CloudFront from private S3.
 - Logs, traces, metrics and alarms exist.
@@ -1903,7 +1774,7 @@ An AI agent must not:
 - Add Redis.
 - Add RDS Proxy.
 - Create public S3 buckets.
-- Create public Aurora.
+- Create an AWS database, a VPC or a NAT gateway without the owner's approval.
 - Add wildcard IAM policies without documented exception.
 - Store secrets in CDK configuration.
 - Create production resources manually.
