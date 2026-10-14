@@ -13,3 +13,6 @@ Each of these cost time once.
 - **One Claude session per folder.** Two sessions in one checkout switch branches under each other. Use
   `git worktree add ../Tempo-<topic> -b <branch> origin/main` and remove the worktree after the merge.
 - **SSO tokens expire** after a few hours; `aws sso login --profile tempo-mgmt` again, then re-export for CDK.
+- **`packages.lock.json` churn:** the committed lock files carry a `"net10.0/linux-arm64": {}` section from the
+  Lambda's `--runtime linux-arm64` build, and a plain local `dotnet restore` deletes it. Don't commit that change:
+  `git restore -- 'backend/*/packages.lock.json'`.
