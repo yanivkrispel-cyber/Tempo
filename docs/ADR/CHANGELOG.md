@@ -1,3 +1,41 @@
+# ADR Baseline v3.2 - Change Log (2026-10-14)
+
+Aurora DSQL could not be created for the account (support case open since 2026-10-13). The owners chose Neon serverless Postgres as the database for good.
+
+## Added ADRs
+
+- ADR-0022: Neon serverless Postgres in Frankfurt, one project per environment, Free plan until the pilot, no VPC, credentials in SSM Parameter Store.
+
+## Superseded or Closed ADRs
+
+- ADR-0005: Aurora Serverless v2 is replaced by ADR-0022.
+- ADR-0017: no VPC, so the NAT question is closed.
+
+## Amended ADRs
+
+- ADR-0001: the database is the one non-AWS vendor.
+- ADR-0006: structural isolation stays primary; RLS is added as a second layer, set per transaction.
+- ADR-0013: Neon's pooler replaces RDS Proxy.
+- ADR-0015: database credentials in SSM SecureString instead of Secrets Manager.
+- ADR-0019: a 6-hour restore window until the pilot, accepted by the owners; the pre-pilot backup choice is recorded.
+- ADR-0021: Neon tripwires replace the DSQL ones.
+
+# ADR Baseline v3.1 - Change Log (2026-10-13)
+
+The owners accepted the council proposal "Tempo Zero" on 2026-10-13. These are the parts that do not depend on the database choice. The database decision, ADR-0022 with the Aurora DSQL spike results, comes in a separate change.
+
+## Added ADRs
+
+- ADR-0021: zero fixed cost until revenue, with tripwires that need owner approval (including hourly backups at 10 active studios).
+
+## Amended ADRs
+
+- ADR-0004: CloudFront plus a Lambda Function URL behind Origin Access Control replaces API Gateway. JWT validation moves into the API.
+- ADR-0008: one SQS work queue and one DLQ, an outbox sweeper on EventBridge Scheduler, and an EventBridge bus only for real fan-out.
+- ADR-0009: WAF in every environment through the CloudFront flat-rate Free plan.
+- ADR-0012: ten production alarms and none in development, 5% trace sampling, a canary and a Free Tier dashboard.
+- ADR-0020: a $1 budget that alerts on the first cent, and Cost Anomaly Detection at $1.
+
 # ADR Baseline v3.0 - Change Log
 
 ## Updated Existing ADRs

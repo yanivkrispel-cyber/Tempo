@@ -1,9 +1,9 @@
 # ADR-0020: AWS Cost Governance from the First Environment
 
-- **Status:** Accepted
+- **Status:** Accepted, amended on 2026-10-13 (the zero fixed cost policy and a $1 budget)
 - **Date:** 2026-07-30
 - **Owners:** Founders, Platform Engineering, Finance
-- **Related:** ADR-0001, ADR-0002, ADR-0005, ADR-0012, ADR-0014
+- **Related:** ADR-0001, ADR-0002, ADR-0005, ADR-0012, ADR-0014, ADR-0021
 
 ## Context
 
@@ -45,3 +45,12 @@ Tag dimensions include environment, system, module, owner, cost center and data 
 - Some convenience services will be deferred until measured need exists.
 - Cost reviews become part of engineering operations.
 - Architecture decisions can be revisited using evidence rather than assumptions.
+
+## Amendment 2026-10-13: Zero Fixed Cost and a $1 Budget
+
+ADR-0021 adds a numeric target to this ADR's controls: a fixed cost of $0 until there is revenue, with tripwires that the owners approve.
+
+- **The Organization-wide budget.** `tempo-org-zero-cost` lives in the management account and covers every account. It is $1 a month. It alerts on the first $0.01 of actual spend and on a forecast above $1. It was created on 2026-10-13.
+- **Per-account budgets.** Each account's budget in the AccountBaseline stack is $1, not $200, with the same two alerts.
+- **Cost Anomaly Detection.** The threshold is $1, not $50.
+- **Review requirement.** Every new managed service, and every pull request that adds an AWS resource, states the fixed monthly cost and the variable unit cost. A non-zero fixed cost needs a tripwire in ADR-0021.

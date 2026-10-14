@@ -22,7 +22,7 @@ dist/
 .turbo/
 *.tsbuildinfo
 .pnpm-store/
-pnpm-lock.yaml
+# pnpm-lock.yaml is committed intentionally - CI installs with --frozen-lockfile.
 
 ## IDE
 .idea/
@@ -44,8 +44,13 @@ docker-compose.override.yml
 **/*.secret.*
 **/appsettings.Local*
 
-## Infrastructure
-infrastructure/bin/*
-infrastructure/lib/*
-!infrastructure/bin/.gitkeep
-!infrastructure/lib/.gitkeep
+## Infrastructure (CDK)
+# infrastructure/bin and infrastructure/lib are CDK *source* folders, not
+# .NET build output - un-ignore them from the generic bin/ and obj/ rules
+# above, which would otherwise match any directory literally named "bin".
+!infrastructure/bin/
+!infrastructure/bin/**
+!infrastructure/lib/
+!infrastructure/lib/**
+infrastructure/cdk.out/
+infrastructure/cdk-outputs.json

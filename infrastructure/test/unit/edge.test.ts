@@ -1,0 +1,133 @@
+import { Stack } from "aws-cdk-lib";
+import { Match, Template } from "aws-cdk-lib/assertions";
+import { describe, expect, it } from "vitest";
+import {
+  AUTH_PATH_PREFIX,
+  AUTH_RATE_LIMIT,
+  CANARY_INTERVAL_MINUTES,
+  GENERAL_RATE_LIMIT,
+  HEALTH_PATH
+} from "../../lib/edge/edge-stack";
+import { dev, prod } from "./helpers/synth";
+
+function stackOf(stage: typeof dev, id: string): Stack {
+  const child = stage.node.findChild(id);
+  if (!Stack.isStack(child)) throw new Error(`${id} is not a Stack`);
+  return child;
+}
+
+describe.each([
+  ["dev", dev],
+  ["prod", prod]
+] as const)("Edge on the CloudFront Free plan (%s; ADR-0004, ADR-0009 amendments)", (_name, stage) => {
+  const edge = stackOf(stage, "Edge");
+  const template = Template.fromStack(edge);
+  const api = Template.fromStack(stackOf(stage, "Api"));
+
+  it("is deployed in us-east-1, the only Region with CLOUDFRONT-scope web ACLs", () => {
+    expect(edge.region).toBe("us-east-1");
+  });
+
+  it("puts a CLOUDFRONT web ACL with exactly five rules in front of the distribution", () => {
+    const acl = Object.values(template.findResources("AWS::WAFv2::WebACL"));
+    expect(acl).toHaveLength(1);
+    expect(acl[0].Properties.Scope).toBe("CLOUDFRONT");
+    // The Free plan allows five rules and no rule groups of our own.
+    expect(acl[0].Properties.Rules).toHaveLength(5);
+    template.hasResourceProperties("AWS::CloudFront::Distribution", {
+      DistributionConfig: Match.objectLike({ WebACLId: { "Fn::GetAtt": [Match.anyValue(), "Arn"] } })
+    });
+  });
+
+  it("rate-limits every client, and authentication paths more strictly", () => {
+    const rules = Object.values(template.findResources("AWS::WAFv2::WebACL"))[0].Properties.Rules as Array<{
+      Name: string;
+      Statement: { RateBasedStatement?: { Limit: number; ScopeDownStatement?: unknown } };
+    }>;
+    const all = rules.find((r) => r.Name === "RateLimitAll")?.Statement.RateBasedStatement;
+    const auth = rules.find((r) => r.Name === "RateLimitAuth")?.Statement.RateBasedStatement;
+    expect(all?.Limit).toBe(GENERAL_RATE_LIMIT);
+    expect(auth?.Limit).toBe(AUTH_RATE_LIMIT);
+    expect(JSON.stringify(auth?.ScopeDownStatement)).toContain(AUTH_PATH_PREFIX);
+  });
+
+  it("subscribes the distribution and the web ACL to the FREE plan tier", () => {
+    const plans = Object.values(template.findResources("AWS::PricingPlanManager::Subscription"));
+    expect(plans).toHaveLength(1);
+    expect(plans[0].Properties).toMatchObject({ PlanFamily: "CloudFront", PlanTier: "FREE" });
+    const covered = (plans[0].Properties.ResourceArns as Array<Record<string, unknown>>).map((arn) => JSON.stringify(arn));
+    const distributionId = Object.keys(template.findResources("AWS::CloudFront::Distribution"))[0];
+    const aclId = Object.keys(template.findResources("AWS::WAFv2::WebACL"))[0];
+    expect(covered.some((arn) => arn.includes(distributionId))).toBe(true);
+    expect(covered.some((arn) => arn.includes(aclId))).toBe(true);
+  });
+
+  it("uses only managed cache and origin request policies, which the Free plan requires", () => {
+    template.resourceCountIs("AWS::CloudFront::CachePolicy", 0);
+    template.resourceCountIs("AWS::CloudFront::OriginRequestPolicy", 0);
+    template.resourceCountIs("AWS::CloudFront::ResponseHeadersPolicy", 0);
+  });
+
+  it("sends /api/* uncached to the API Function URL through a signing origin access control", () => {
+    template.hasResourceProperties("AWS::CloudFront::OriginAccessControl", {
+      OriginAccessControlConfig: Match.objectLike({ OriginAccessControlOriginType: "lambda", SigningBehavior: "always" })
+    });
+    const distribution = Object.values(template.findResources("AWS::CloudFront::Distribution"))[0];
+    const apiBehavior = distribution.Properties.DistributionConfig.CacheBehaviors.find(
+      (b: { PathPattern: string }) => b.PathPattern === "/api/*"
+    );
+    expect(apiBehavior.ViewerProtocolPolicy).toBe("https-only");
+    // Managed CachingDisabled policy.
+    expect(apiBehavior.CachePolicyId).toBe("4135ea2d-6df8-44a3-9df3-4b5a84be39ad");
+  });
+
+  it("keeps the PWA bucket private", () => {
+    template.hasResourceProperties("AWS::S3::Bucket", {
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true
+      }
+    });
+  });
+
+  it("gives the API function an IAM-authenticated Function URL that only this account's distributions may invoke", () => {
+    api.hasResourceProperties("AWS::Lambda::Url", { AuthType: "AWS_IAM" });
+    for (const action of ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]) {
+      api.hasResourceProperties("AWS::Lambda::Permission", {
+        Action: action,
+        Principal: "cloudfront.amazonaws.com",
+        SourceArn: Match.anyValue()
+      });
+    }
+  });
+
+  it("runs a canary every five minutes that calls the health endpoint through CloudFront", () => {
+    template.hasResourceProperties("AWS::Scheduler::Schedule", {
+      ScheduleExpression: `rate(${CANARY_INTERVAL_MINUTES} minutes)`,
+      Target: Match.objectLike({ RetryPolicy: { MaximumRetryAttempts: 0 } })
+    });
+    const canary = Object.values(template.findResources("AWS::Lambda::Function")).find((fn) =>
+      JSON.stringify(fn.Properties.Environment ?? {}).includes(HEALTH_PATH)
+    );
+    expect(canary).toBeDefined();
+    expect(JSON.stringify(canary?.Properties.Environment.Variables.HEALTH_URL)).toContain("DomainName");
+    template.hasResourceProperties("AWS::Lambda::EventInvokeConfig", { MaximumRetryAttempts: 0 });
+  });
+});
+
+describe("Edge alarms (ADR-0012 amendment)", () => {
+  it("production alarms on CloudFront 5xx and canary failure and notifies a topic in us-east-1", () => {
+    const template = Template.fromStack(stackOf(prod, "Edge"));
+    template.hasResourceProperties("AWS::CloudWatch::Alarm", { Namespace: "AWS/CloudFront", MetricName: "5xxErrorRate" });
+    template.hasResourceProperties("AWS::CloudWatch::Alarm", { MetricName: "Errors", TreatMissingData: "breaching" });
+    template.resourceCountIs("AWS::SNS::Topic", 1);
+  });
+
+  it("development has the canary but no alarms", () => {
+    const template = Template.fromStack(stackOf(dev, "Edge"));
+    template.resourceCountIs("AWS::Scheduler::Schedule", 1);
+    template.resourceCountIs("AWS::CloudWatch::Alarm", 0);
+  });
+});

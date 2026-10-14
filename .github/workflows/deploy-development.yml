@@ -1,0 +1,126 @@
+name: Deploy Development
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # required for AWS OIDC (ADR-0011) - no static AWS keys anywhere in this workflow
+  contents: read
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  NODE_VERSION: "22"
+  AWS_REGION: eu-central-1
+  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::687239340846:role/tempo-dev-github-deploy
+
+jobs:
+  deploy:
+    name: Build, deploy and smoke-test development
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: dotnet restore / build / test
+        run: |
+          dotnet restore Tempo.sln
+          dotnet build Tempo.sln --configuration Release --no-restore
+          dotnet test Tempo.sln --configuration Release --no-build
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: CDK unit tests
+        run: pnpm --filter @tempo/infrastructure test
+
+      - name: cdk synth
+        run: pnpm --filter @tempo/infrastructure run synth
+
+      # Immutable Lambda deployment artifacts (ADR-0011: "build immutable
+      # signed/versioned artifacts"). infrastructure/lib/constructs/dotnet-lambda-code.ts
+      # picks these up automatically because it looks for exactly this path.
+      - name: Publish Lambda deployment packages
+        run: |
+          for project in Tempo.Api Tempo.Worker Tempo.DatabaseMigrator; do
+            dotnet publish "backend/$project/$project.csproj" \
+              --configuration Release \
+              --runtime linux-arm64 \
+              --self-contained false
+          done
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: cdk deploy TempoDev
+        working-directory: infrastructure
+        run: |
+          npx cdk deploy 'TempoDev/*' \
+            --require-approval never \
+            --outputs-file cdk-outputs.json \
+            --context commitSha=${{ github.sha }}
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Run database migration (deployment-role invocation only)
+        run: |
+          # The function's own response goes to migration-response.json; an
+          # unhandled exception is reported in the CLI output as FunctionError.
+          INVOKE_RESULT=$(aws lambda invoke \
+            --function-name tempo-dev-database-migrator \
+            --invocation-type RequestResponse \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            --region ${{ env.AWS_REGION }} \
+            migration-response.json)
+
+          echo "$INVOKE_RESULT"
+          cat migration-response.json
+
+          if echo "$INVOKE_RESULT" | grep -q '"FunctionError"'; then
+            echo "::error::Database migration failed - see migration-response.json above"
+            exit 1
+          fi
+
+          if ! grep -q '"Successful":true' migration-response.json; then
+            echo "::error::Database migration did not report success"
+            exit 1
+          fi
+
+      - name: Run deployment smoke test
+        run: |
+          API_URL=$(node -e "
+            const outputs = require('./infrastructure/cdk-outputs.json');
+            console.log(outputs['TempoDev-Api'].HttpApiUrl);
+          ")
+          echo "API_URL=$API_URL" >> "$GITHUB_ENV"
+          node tools/scripts/smoke-test.mjs --api-url "$API_URL" --environment dev --region ${{ env.AWS_REGION }}
+
+      - name: Publish deployment summary
+        if: always()
+        run: |
+          {
+            echo "## Deployment summary"
+            echo ""
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Environment: development"
+            echo "- API URL: ${API_URL:-unknown}"
+            echo "- Result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"

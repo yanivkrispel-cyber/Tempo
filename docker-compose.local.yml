@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: tempo
       POSTGRES_USER: tempo
@@ -10,7 +10,10 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker and
+      # refuse a mount at .../data. A volume left from PostgreSQL 17 must be
+      # removed first: docker compose -f docker-compose.local.yml down -v
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tempo"]
       interval: 5s
