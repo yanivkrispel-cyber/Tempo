@@ -77,8 +77,8 @@ reads `email` from the access token, so it returns no email today; Phase 1 repla
 Email changes: `POST /api/v1/session` refreshes `email` and `email_verified` from Cognito when the token's
 `auth_time` is newer than the stored `identity_synced_at`.
 
-Operators are not `UserAccount`s. They live in `platform_admin.operators`, provisioned the same way from the operator
-pool, and only when an administrator has pre-registered their email (section 9).
+Operators are not `UserAccount`s. They live in `platform_admin.operators`, registered by a person with their Cognito
+`sub` (section 9).
 
 ### 2.4 Account rules
 
@@ -159,7 +159,7 @@ For staff, admins and, optionally, clients.
 
 - Created by `POST /api/v1/organizations/{organizationId}/invitations` with `email` and `role`.
 - Token: 32 random bytes, base64url. Only its SHA-256 hash is stored. The full link is returned once, in the create
-  response.
+  response: `https://<app>/invite#<token>`, the client app for clients and the admin app for staff and admins.
 - Valid for 7 days. States: `pending`, `accepted`, `revoked`, `expired` (expiry is computed on read; no job needed).
 - Bound to the email address: acceptance requires the caller's verified email to match, compared case-insensitively.
   Otherwise 403 `invitation.email_mismatch`.
@@ -169,13 +169,15 @@ For staff, admins and, optionally, clients.
 
 - Each studio has at most one active join code: 16 random bytes, base64url, stored as a hash. Owners and admins
   create, rotate or disable it. Rotation invalidates the old link at once.
-- The link is `https://<client app>/join/<code>`. Accepting it creates an `active` client membership.
+- The link is `https://<client app>/join#<code>`. Accepting it creates an `active` client membership.
 - **Open O-2:** should joining by link need the studio's approval? Default: no, the member is active at once, and the
   owner can suspend a member or rotate the link.
 
 ### 5.3 Preview and accept
 
-Tokens never travel in a URL path or query sent to the API, because access logs record them.
+Tokens never travel in a URL path or query sent to any server, because access logs record them. **Decision (Kris,
+2026-10-15):** the token and the join code sit in the link's fragment (after `#`), which the browser never sends, so
+they stay out of CloudFront logs too. The app reads the fragment and sends the value in the request body.
 
 | Call | Body | Result |
 |---|---|---|
@@ -443,7 +445,7 @@ Added while building Phase 1 (PRs #34 to #39):
 | Code | Status | When |
 |---|---|---|
 | `auth.unauthorized` | 401 | Missing, invalid or wrong-pool token |
-| `permission.denied` | 403 | The caller's role does not allow the action (section 4.1) |
+| `permission.denied` | 403 | The caller's role does not allow the action (section 4.1). Name confirmed by Kris, 2026-10-15 |
 | `operator.not_registered` | 403 | An operator-pool token with no active `platform_admin.operators` row |
 | `membership.not_found` | 404 | The member does not exist in this studio, or was removed |
 | `invitation.expired` | 410 | Accept after expiry, to the matching email only |
@@ -460,10 +462,15 @@ LLD, before the implementation. The frontend builds against it (`docs/claude-mem
 
 ## 9. Platform operators
 
-- An administrator creates the operator in the Cognito operator pool and adds a row to `platform_admin.operators`
-  with the same email (through the migrator's seed script per environment, or a CLI command; no API for it in Phase 1).
-- On the first operator session the API links `(issuer, sub)` to that row. An operator token whose email has no row
-  gets 403.
+**Decision (Kris, 2026-10-15).** Operators are registered by `sub`, not linked by email.
+
+- A person creates the operator in the Cognito operator pool, reads the new user's `sub`, and inserts the row into
+  `platform_admin.operators` with issuer, `sub` and email, in the Neon SQL editor. There is no API for it in Phase 1.
+  The steps are in `docs/claude-memory/backend-patterns.md`.
+- Every platform request must match an active row by issuer and `sub`; anything else gets 403
+  `operator.not_registered`.
+- Why not link by email on the first session: access tokens carry no email, and reading it would need
+  `AdminGetUser` on the operator pool. The API's role keeps that right on the customer pool only.
 - Kris is the first operator.
 
 ## 10. Cross-cutting
