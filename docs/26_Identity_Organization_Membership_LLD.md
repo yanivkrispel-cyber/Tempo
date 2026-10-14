@@ -346,7 +346,6 @@ Policies for `tempo_app`:
 
 ```sql
 ALTER TABLE organizations.memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizations.memberships FORCE ROW LEVEL SECURITY;
 
 -- tenant routes see their tenant; account routes (GET /me) see the caller's own memberships
 CREATE POLICY memberships_app ON organizations.memberships TO tempo_app
@@ -366,6 +365,9 @@ WITH CHECK (organization_id = nullif(current_setting('app.organization_id', true
   `SECURITY DEFINER` functions owned by `tempo_migrator`, with a fixed `search_path`, take the hash and return only the
   row needed: `organizations.find_invitation_by_token_hash(bytea)` and
   `organizations.find_organization_by_join_code_hash(bytea)`. `tempo_app` gets EXECUTE on them and nothing broader.
+
+RLS is enabled, not forced. The owner (`tempo_migrator`) is therefore exempt, which is what lets the two lookup
+functions read a row before a tenant is known. Runtime roles own no objects, so RLS always applies to them.
 
 A missing setting makes the policy compare against NULL, so a query outside a proper transaction returns no rows
 (fails closed).
