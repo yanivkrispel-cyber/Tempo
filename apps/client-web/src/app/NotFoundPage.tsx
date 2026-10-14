@@ -1,14 +1,17 @@
-import { Link } from "react-router";
+import { ButtonLink, EmptyState } from "../shared/design-system";
 
 export function NotFoundPage() {
   return (
     <main className="tp-page">
-      <div className="tp-empty">
-        <h1>הדף לא נמצא</h1>
-        <Link className="tp-btn tp-btn--secondary" to="/">
-          לדף הבית
-        </Link>
-      </div>
+      <EmptyState
+        title="הדף לא נמצא"
+        titleAs="h1"
+        action={
+          <ButtonLink to="/" variant="secondary">
+            לדף הבית
+          </ButtonLink>
+        }
+      />
     </main>
   );
 }

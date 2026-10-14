@@ -1,9 +1,11 @@
+import { Banner } from "./design-system";
+
 export function InvalidLink() {
   return (
     <main className="tp-page">
-      <div className="tp-banner tp-banner--danger" role="alert">
+      <Banner tone="danger" icon="info">
         הקישור לא תקין. בקשו מהסטודיו קישור חדש.
-      </div>
+      </Banner>
     </main>
   );
 }
