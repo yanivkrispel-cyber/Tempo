@@ -38,4 +38,14 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
 ## Process
 
 - D4: small PRs with green CI. D5: GitHub via `gh`.
-- D7 (onboarding) and D8 (admin MFA) are open; ask the owner before the Phase 1 LLD.
+- **D7 onboarding (2026-10-14):** studio owners sign up on their own and open their studio; staff and clients join by
+  invitation or the studio's join link. Cognito self sign-up stays on; a new account has no access until it creates a
+  studio or joins one. ADR-0023.
+- **D8 operator MFA (2026-10-14):** the Tempo team signs in through a separate Cognito user pool with MFA required
+  and no self sign-up. Operators are never organization members. ADR-0023.
+- **D10 operators by `sub` (2026-10-15):** a person registers each operator in `platform_admin.operators` with the
+  Cognito `sub` (steps in `backend-patterns.md`); no link by email, so the API needs no `AdminGetUser` on the
+  operator pool. docs/26 section 9.
+- **D11 `permission.denied` (2026-10-15):** the 403 code when the caller's role does not allow an action.
+- **D12 tokens in the fragment (2026-10-15):** invitation and join links are `<app>/invite#<token>` and
+  `<client app>/join#<code>`, so no server log ever records them; apps send the value in the request body.
