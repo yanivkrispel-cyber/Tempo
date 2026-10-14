@@ -65,7 +65,7 @@ interface ControlProps extends AriaAttributes {
 }
 
 /** Inside a Field, the control takes the Field's id, description, validity and required flag. */
-function useFieldControl<P extends ControlProps>(props: P): P {
+export function useFieldControl<P extends ControlProps>(props: P): P {
   const field = useContext(FieldContext);
   if (!field) return props;
   return {

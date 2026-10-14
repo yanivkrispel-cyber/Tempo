@@ -1,5 +1,6 @@
 import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "./cx";
+import { isRtl } from "./direction";
 
 export interface TabItem<T extends string> {
   value: T;
@@ -15,11 +16,6 @@ export interface TabsProps<T extends string> {
   className?: string;
   /** The selected tab's panel. */
   children?: ReactNode;
-}
-
-/** The previous and next keys follow the reading direction: in RTL, ArrowLeft goes to the next tab. */
-function isRtl(element: Element): boolean {
-  return element.closest("[dir]")?.getAttribute("dir") === "rtl";
 }
 
 /** WAI-ARIA tabs with automatic activation: arrows, Home and End move and select. */

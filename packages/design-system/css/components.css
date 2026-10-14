@@ -100,6 +100,14 @@
   background-repeat: no-repeat; background-position: right 14px center; background-size: 18px; }
 [dir="ltr"] .tp-input--search { background-position: left 14px center; }
 
+/* A control with a popover (date, time): the wrapper anchors it, an adorned input leaves room for
+   the icon button at its end, and the popover opens under the control's start edge. */
+.tp-field__control { position: relative; }
+.tp-field__control--adorned .tp-input { padding-inline-end: 48px; }
+.tp-field__adorn { position: absolute; inset-inline-end: 4px; top: 50%; margin-top: calc(var(--control-sm) / -2); }
+.tp-popover { position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: var(--z-dropdown); }
+.tp-listbox { max-height: 264px; overflow-y: auto; }
+
 /* ------------------------------------------------------------- Dropdown menu
    Reference "Select Dropdown": a cream panel with a gentle lift, items 8px radius, hovered item taupe. */
 .tp-menu { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-raise); padding: 8px; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
@@ -113,6 +121,26 @@
 /* A menu opened by a button: the anchor wraps both; the menu floats under the trigger, aligned to its end edge. */
 .tp-menu-anchor { position: relative; display: inline-flex; }
 .tp-menu--popover { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: var(--z-dropdown); }
+
+/* ---------------------------------------------------------------- Calendar
+   The date picker's month in the menu's cream panel. Weeks start on Sunday. Days are 44px touch
+   targets; today has a sage ring; the chosen day is a sage tile with a white 600 label (15px, as
+   the reference allows for white on sage); the neighbouring months' days are faint. */
+.tp-calendar { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-raise); padding: 12px; width: max-content; }
+.tp-calendar__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.tp-calendar__title { font-size: 16px; line-height: 24px; font-weight: 700; }
+[dir="ltr"] .tp-calendar__head .tp-icon { transform: scaleX(-1); }
+.tp-calendar__grid { border-collapse: separate; border-spacing: 2px; }
+.tp-calendar__grid th { height: 28px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted); text-align: center; }
+.tp-calendar__day { width: var(--touch-min); height: var(--touch-min); text-align: center; vertical-align: middle; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink); cursor: pointer;
+  transition: background var(--duration-fast) var(--tp-ease); }
+.tp-calendar__day:hover { background: var(--taupe-soft); }
+.tp-calendar__day--outside { color: var(--ink-faint); }
+.tp-calendar__day[aria-current="date"] { box-shadow: inset 0 0 0 1.5px var(--brand); }
+.tp-calendar__day[aria-selected="true"] { background: var(--tp-btn-gradient); color: var(--on-brand); font-weight: 600; box-shadow: var(--shadow-brand); }
+.tp-calendar__day[aria-disabled="true"] { color: var(--ink-faint); background: transparent; cursor: default; text-decoration: line-through; }
+.tp-calendar__day:focus-visible { box-shadow: var(--shadow-focus); }
 
 /* ------------------------------------------------------------------ Toggle
    Reference: on = sage track with mint glow and a cream knob; off = light taupe track. */
