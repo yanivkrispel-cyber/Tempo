@@ -6,7 +6,10 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using Tempo.Worker.Consumers;
 using Tempo.Worker.Consumers.Outbox;
+using Tempo.Platform.BuildingBlocks.Persistence;
+using Tempo.Platform.Modules.PlatformAdmin;
 using Tempo.Worker.Consumers.SmokeTest;
+using Tempo.Worker.Consumers.Tripwire;
 
 [assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
 
@@ -27,12 +30,21 @@ public class Function
         .WriteTo.Console(new RenderedCompactJsonFormatter())
         .CreateLogger();
 
+    // Built on first use: only the tripwire message touches the database.
+    // DATABASE_HOST, DATABASE_NAME and DATABASE_PLATFORM_PASSWORD_PARAMETER
+    // come from the stack; ALARM_TOPIC_ARN only where alarms email the owner.
+    private static readonly ConfiguredDataSourceProvider DataSources = new(Environment.GetEnvironmentVariable);
+
     private readonly SqsMessageDispatcher _dispatcher = new(
         Logger,
         new Dictionary<string, IQueueMessageHandler>(StringComparer.Ordinal)
         {
             [MessageTypes.OutboxPublish] = new OutboxMessageHandler(Logger),
-            [MessageTypes.SmokeTest] = new SmokeTestMessageHandler(Logger)
+            [MessageTypes.SmokeTest] = new SmokeTestMessageHandler(Logger),
+            [MessageTypes.TripwireCheck] = new TripwireMessageHandler(
+                Logger,
+                new HourlyBackupTripwire(DataSources),
+                Environment.GetEnvironmentVariable("ALARM_TOPIC_ARN") is { Length: > 0 } topic ? new SnsOwnerAlert(topic) : null)
         });
 
     public Task<SQSBatchResponse> FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)

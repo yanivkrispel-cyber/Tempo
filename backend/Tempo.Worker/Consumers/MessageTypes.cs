@@ -11,4 +11,7 @@ public static class MessageTypes
 
     /// <summary>The deployment smoke test's probe message (LLD section 38).</summary>
     public const string SmokeTest = "smoke-test";
+
+    /// <summary>The daily 10-studio check, sent by EventBridge Scheduler (docs/26 section 10.2).</summary>
+    public const string TripwireCheck = "tripwire.check";
 }

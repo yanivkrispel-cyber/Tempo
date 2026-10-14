@@ -1,7 +1,6 @@
 using Tempo.Api.Endpoints;
 using Tempo.Api.ErrorHandling;
 using Tempo.Api.Identity;
-using Tempo.Api.Persistence;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
@@ -24,7 +23,11 @@ public static class ServiceCollectionExtensions
         services.AddProblemDetails();
         services.AddOpenApi();
 
-        services.AddSingleton<IDataSourceProvider, ConfiguredDataSourceProvider>();
+        services.AddSingleton<IDataSourceProvider>(sp =>
+        {
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            return new ConfiguredDataSourceProvider(key => configuration[key]);
+        });
         services.AddSingleton<IAccountDirectory, AccountDirectory>();
         services.AddSingleton<IMembershipDirectory, MembershipDirectory>();
         services.AddSingleton<ICognitoUserReader, CognitoUserReader>();
