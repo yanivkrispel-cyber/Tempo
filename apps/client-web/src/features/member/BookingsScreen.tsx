@@ -35,6 +35,7 @@ export function BookingsScreen() {
       </header>
 
       <Tabs
+        block
         label="הזמנות"
         value={view}
         onChange={setView}

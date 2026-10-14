@@ -219,6 +219,8 @@ button.tp-chip { border: 0; min-height: 34px; }
 .tp-card--base { background: var(--tp-taupe-gradient); color: var(--on-taupe); box-shadow: var(--shadow-sunken), 0 2px 6px #5a46371f; }
 .tp-card--base .tp-card__title, .tp-card--base .tp-muted, .tp-card--base .tp-caption, .tp-card--base .tp-stat__label, .tp-card--base .tp-stat__delta { color: var(--on-taupe); }
 .tp-card--base .tp-muted, .tp-card--base .tp-caption, .tp-card--base .tp-stat__label { opacity: .85; }
+/* An eyebrow on a taupe or rose card takes the card's white ink, like the muted text there (ink-muted would fall under AA). */
+.tp-card--base .tp-eyebrow, .tp-card--elevated .tp-eyebrow, .tp-card--brand .tp-eyebrow { color: inherit; opacity: .85; }
 .tp-card--elevated, .tp-card--brand { background: var(--tp-rose-gradient); color: var(--on-rose); box-shadow: var(--shadow-float); }
 .tp-card--elevated .tp-card__title, .tp-card--elevated .tp-muted, .tp-card--elevated .tp-caption, .tp-card--elevated .tp-stat__label, .tp-card--elevated .tp-stat__delta,
 .tp-card--brand .tp-card__title, .tp-card--brand .tp-muted, .tp-card--brand .tp-caption, .tp-card--brand .tp-stat__label, .tp-card--brand .tp-stat__delta { color: var(--on-rose); }
@@ -319,6 +321,8 @@ button.tp-setting:hover { background: var(--surface-hover); }
 .tp-tab { border: 0; background: transparent; color: var(--ink-muted); padding-inline: 16px; min-height: 34px; font-size: 14px; font-weight: 600; white-space: nowrap; border-radius: 9px; }
 .tp-tab:hover { color: var(--ink); }
 .tp-tab[aria-selected="true"] { color: var(--ink); background: var(--tp-slab); box-shadow: var(--shadow-raise-sm); }
+.tp-tabs--block { width: 100%; }
+.tp-tabs--block .tp-tab { flex: 1; }
 
 /* --------------------------------------------------------------- Sidebar rail */
 .tp-rail { width: var(--sidebar); padding: 16px 12px; background: var(--tp-slab); border-radius: var(--radius-xl); box-shadow: var(--shadow-raise);
