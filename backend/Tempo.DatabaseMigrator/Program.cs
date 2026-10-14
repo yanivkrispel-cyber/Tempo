@@ -34,6 +34,10 @@ var applicationCredentials = (
     Environment.GetEnvironmentVariable("DATABASE_APPLICATION_USERNAME") ?? Function.ApplicationUsername,
     Environment.GetEnvironmentVariable("DATABASE_APPLICATION_PASSWORD") ?? Guid.NewGuid().ToString("N"));
 
+var platformCredentials = (
+    Environment.GetEnvironmentVariable("DATABASE_PLATFORM_USERNAME") ?? Function.PlatformUsername,
+    Environment.GetEnvironmentVariable("DATABASE_PLATFORM_PASSWORD") ?? Guid.NewGuid().ToString("N"));
+
 var migratorCredentials = (
     Environment.GetEnvironmentVariable("DATABASE_MIGRATOR_USERNAME") ?? Function.MigratorUsername,
     Environment.GetEnvironmentVariable("DATABASE_MIGRATOR_PASSWORD") ?? Guid.NewGuid().ToString("N"));
@@ -46,6 +50,7 @@ try
         endpoint,
         masterCredentials,
         applicationCredentials,
+        platformCredentials,
         migratorCredentials,
         log,
         CancellationToken.None);

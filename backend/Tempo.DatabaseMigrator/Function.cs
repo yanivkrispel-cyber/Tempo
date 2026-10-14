@@ -24,6 +24,7 @@ public sealed record MigrationResponse(bool Successful, string[] AppliedScripts)
 public static class Function
 {
     public const string ApplicationUsername = "tempo_app";
+    public const string PlatformUsername = "tempo_platform";
     public const string MigratorUsername = "tempo_migrator";
 
     private static readonly ILogger Logger = new LoggerConfiguration()
@@ -34,17 +35,18 @@ public static class Function
 
     public static async Task<MigrationResponse> FunctionHandler(object? request, ILambdaContext context)
     {
-        // On Neon, per ADR-0022, the owner URL and both role passwords are
+        // On Neon, per ADR-0022, the owner URL and the three role passwords are
         // SSM SecureString parameters that a person writes. The stack passes
         // only the parameter names, as the ADR-0015 amendment requires.
         var ownerUrlParameter = RequireEnv("OWNER_URL_PARAMETER");
         var applicationPasswordParameter = RequireEnv("APPLICATION_PASSWORD_PARAMETER");
+        var platformPasswordParameter = RequireEnv("PLATFORM_PASSWORD_PARAMETER");
         var migratorPasswordParameter = RequireEnv("MIGRATOR_PASSWORD_PARAMETER");
 
         using var ssm = new AmazonSimpleSystemsManagementClient();
         var response = await ssm.GetParametersAsync(new GetParametersRequest
         {
-            Names = [ownerUrlParameter, applicationPasswordParameter, migratorPasswordParameter],
+            Names = [ownerUrlParameter, applicationPasswordParameter, platformPasswordParameter, migratorPasswordParameter],
             WithDecryption = true
         });
 
@@ -60,6 +62,7 @@ public static class Function
             endpoint,
             ownerCredential,
             (ApplicationUsername, values[applicationPasswordParameter]),
+            (PlatformUsername, values[platformPasswordParameter]),
             (MigratorUsername, values[migratorPasswordParameter]),
             new SerilogUpgradeLog(Logger),
             CancellationToken.None);

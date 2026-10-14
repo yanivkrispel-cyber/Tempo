@@ -109,18 +109,19 @@ describe("Database on Neon (ADR-0022)", () => {
     expect(migrator.Properties.Environment.Variables).toMatchObject({
       OWNER_URL_PARAMETER: "/tempo/dev/db/neon-connection-string",
       APPLICATION_PASSWORD_PARAMETER: "/tempo/dev/db/app-password",
+      PLATFORM_PASSWORD_PARAMETER: "/tempo/dev/db/platform-password",
       MIGRATOR_PASSWORD_PARAMETER: "/tempo/dev/db/migrator-password"
     });
   });
 
-  it("the migrator may read only its three parameters, without a wildcard", () => {
+  it("the migrator may read only its four parameters, without a wildcard", () => {
     const statements = Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
       (p) => p.Properties.PolicyDocument.Statement as Array<{ Action: string | string[]; Resource: unknown }>
     );
     const ssm = statements.filter((s) => [s.Action].flat().some((a) => a.startsWith("ssm:")));
     const resources = JSON.stringify(ssm.map((s) => s.Resource));
     expect(resources).not.toContain("*");
-    for (const name of ["neon-connection-string", "app-password", "migrator-password"]) {
+    for (const name of ["neon-connection-string", "app-password", "platform-password", "migrator-password"]) {
       expect(resources).toContain(`parameter/tempo/dev/db/${name}`);
     }
   });

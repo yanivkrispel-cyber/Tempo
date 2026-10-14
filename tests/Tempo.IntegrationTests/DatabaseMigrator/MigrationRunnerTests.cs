@@ -20,17 +20,19 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var database = await postgres.CreateDatabaseAsync();
         var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, database, SslMode.Disable);
         var result = await MigrationRunner.RunAsync(
-            endpoint, postgres.Master, Role("tempo_app"), Role("tempo_migrator"), new NullUpgradeLog(), CancellationToken.None);
+            endpoint, postgres.Master, Role("tempo_app"), Role("tempo_platform"), Role("tempo_migrator"), new NullUpgradeLog(), CancellationToken.None);
         return (endpoint, result);
     }
 
     [Fact]
-    public async Task RunAsync_OnFreshPostgres18_AppliesBaselineAndJournalsItInPlatformSchema()
+    public async Task RunAsync_OnFreshPostgres18_AppliesEveryScriptAndJournalsThemInPlatformSchema()
     {
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().ContainSingle(name => name.EndsWith("0001_baseline.sql", StringComparison.Ordinal));
+        result.AppliedScripts.Should().HaveCount(2);
+        result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
+        result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -38,7 +40,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(1);
+            .Should().Be(2);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
     }
@@ -49,7 +51,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, _) = await MigrateFreshDatabaseAsync();
 
         var second = await MigrationRunner.RunAsync(
-            endpoint, postgres.Master, Role("tempo_app"), Role("tempo_migrator"), new NullUpgradeLog(), CancellationToken.None);
+            endpoint, postgres.Master, Role("tempo_app"), Role("tempo_platform"), Role("tempo_migrator"), new NullUpgradeLog(), CancellationToken.None);
 
         second.Successful.Should().BeTrue();
         second.AppliedScripts.Should().BeEmpty();
@@ -66,10 +68,10 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, database, SslMode.Disable);
 
         var result = await MigrationRunner.RunAsync(
-            endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
+            endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().ContainSingle(name => name.EndsWith("0001_baseline.sql", StringComparison.Ordinal));
+        result.AppliedScripts.Should().HaveCount(2);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();
@@ -84,7 +86,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, database, SslMode.Require);
 
         var run = () => MigrationRunner.RunAsync(
-            endpoint, postgres.Master, Role("tempo_app"), Role("tempo_migrator"), new NullUpgradeLog(), CancellationToken.None);
+            endpoint, postgres.Master, Role("tempo_app"), Role("tempo_platform"), Role("tempo_migrator"), new NullUpgradeLog(), CancellationToken.None);
 
         // The endpoint's SSL mode reaches the connection: the deployed
         // migrator's Require is honored, not silently downgraded.

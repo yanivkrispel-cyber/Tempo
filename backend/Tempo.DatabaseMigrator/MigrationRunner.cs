@@ -25,6 +25,7 @@ public static class MigrationRunner
         DatabaseEndpoint endpoint,
         (string Username, string Password) masterCredentials,
         (string Username, string Password) applicationCredentials,
+        (string Username, string Password) platformCredentials,
         (string Username, string Password) migratorCredentials,
         IUpgradeLog log,
         CancellationToken cancellationToken)
@@ -35,6 +36,7 @@ public static class MigrationRunner
             masterConnectionString,
             endpoint.DatabaseName,
             applicationCredentials,
+            platformCredentials,
             migratorCredentials,
             log,
             cancellationToken);
@@ -45,6 +47,11 @@ public static class MigrationRunner
             .PostgresqlDatabase(migratorConnectionString)
             .WithScriptsEmbeddedInAssembly(typeof(MigrationRunner).Assembly)
             .JournalTo((connectionManager, upgradeLog) => new MigrationJournal(connectionManager, upgradeLog))
+            // Scripts name the runtime roles as $app_role$ and $platform_role$.
+            // BootstrapRoles has already checked both names against
+            // ^[a-z_][a-z0-9_]*$, so they are safe to substitute into DDL.
+            .WithVariable("app_role", applicationCredentials.Username)
+            .WithVariable("platform_role", platformCredentials.Username)
             .WithTransaction()
             .LogTo(log)
             .Build();
