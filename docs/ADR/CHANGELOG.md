@@ -1,3 +1,12 @@
+# ADR Baseline v3.4 - Change Log (2026-10-14)
+
+The owner approved the frontend toolchain for the web apps (night board #44, decision 1).
+
+## Added ADRs
+
+- ADR-0024: Vite, React 19, React Router 7, TanStack Query, `openapi-typescript` + `openapi-fetch`, Vitest +
+  Testing Library for all web apps. Approved by Kris on 2026-10-14. $0.
+
 # ADR Baseline v3.3 - Change Log (2026-10-14)
 
 The product owner decided the two questions that blocked the Phase 1 design: onboarding (D7) and operator MFA (D8).
