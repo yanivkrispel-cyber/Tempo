@@ -33,6 +33,12 @@ describe("API Gateway is an HTTP API, never a REST API (ADR-0004)", () => {
     template.hasResourceProperties("AWS::ApiGatewayV2::Authorizer", { AuthorizerType: "JWT" });
   });
 
+  it("CORS lets the apps send If-Match and read Location and Retry-After", () => {
+    const [api] = Object.values(template.findResources("AWS::ApiGatewayV2::Api"));
+    expect(api.Properties.CorsConfiguration.AllowHeaders).toContain("If-Match");
+    expect(api.Properties.CorsConfiguration.ExposeHeaders).toEqual(expect.arrayContaining(["Location", "Retry-After"]));
+  });
+
   it("CORS has no wildcard origin combined with credentials", () => {
     const apis = template.findResources("AWS::ApiGatewayV2::Api");
     const [api] = Object.values(apis);

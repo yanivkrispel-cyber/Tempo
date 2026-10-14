@@ -32,7 +32,8 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
 - Tokens (32 bytes) and join codes (16 bytes) are base64url from `SecretToken.New`; only the SHA-256 hash is stored.
   They are found before any tenant is known through the two `SECURITY DEFINER` functions, then the unit of work moves
   to that studio with `SetTenantAsync`.
-- Links: `ADMIN_APP_URL` / `CLIENT_APP_URL` (`AppLinks`). Client invitations and join links go to the client app,
+- Links: `ADMIN_APP_URL` / `CLIENT_APP_URL` (`AppLinks`), shaped `<app>/invite#<token>` and `<client app>/join#<code>`:
+  the value is in the fragment so no server log ever sees it (Kris, 2026-10-15). Client invitations and join links go to the client app,
   staff and admin invitations to the admin app. CDK takes both origins from the first Cognito callback URL of each app.
 - Preview and accept calls pass `IAttemptLimiter` first: 20 per account per hour in `identity.join_attempts`
   (migration 0003), committed before the work so failed guesses count. Over the limit is 429 with `Retry-After`.

@@ -135,7 +135,10 @@ export class ApiStack extends Stack {
           CorsHttpMethod.DELETE,
           CorsHttpMethod.OPTIONS
         ],
-        allowHeaders: ["Content-Type", "Authorization", "X-Tempo-Authorization", "X-Correlation-Id"],
+        // If-Match carries the version on PATCH (concurrency.conflict); the
+        // apps read Location after a create and Retry-After after a 429.
+        allowHeaders: ["Content-Type", "Authorization", "X-Tempo-Authorization", "X-Correlation-Id", "If-Match"],
+        exposeHeaders: ["Location", "Retry-After", "X-Correlation-Id"],
         allowCredentials: false,
         maxAge: Duration.hours(1)
       }

@@ -18,11 +18,15 @@ public sealed class AppLinks(IConfiguration configuration)
 
     public string ClientApp { get; } = (configuration["CLIENT_APP_URL"] ?? "http://localhost:5174").TrimEnd('/');
 
-    /// <summary>Clients accept in the client app; admins and staff in the admin app.</summary>
+    /// <summary>
+    /// Clients accept in the client app; admins and staff in the admin app.
+    /// The token sits in the fragment, which browsers never send to a server,
+    /// so it stays out of every access log (docs/26 section 5.3).
+    /// </summary>
     public string Invitation(MembershipRole role, string token) =>
-        $"{(role == MembershipRole.Client ? ClientApp : AdminApp)}/invite/{token}";
+        $"{(role == MembershipRole.Client ? ClientApp : AdminApp)}/invite#{token}";
 
-    public string Join(string code) => $"{ClientApp}/join/{code}";
+    public string Join(string code) => $"{ClientApp}/join#{code}";
 }
 
 /// <summary>

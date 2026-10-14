@@ -37,8 +37,8 @@ public sealed class InvitationEndpointTests : IDisposable
     public void Dispose() => api.Dispose();
 
     [Theory]
-    [InlineData("client", "http://localhost:5174/invite/tok")]
-    [InlineData("staff", "http://localhost:5173/invite/tok")]
+    [InlineData("client", "http://localhost:5174/invite#tok")]
+    [InlineData("staff", "http://localhost:5173/invite#tok")]
     public async Task Create_Returns201WithTheLinkForTheRightApp(string role, string link)
     {
         var parsed = Enum.Parse<MembershipRole>(role, ignoreCase: true);
@@ -112,7 +112,7 @@ public sealed class InvitationEndpointTests : IDisposable
         var response = await SendAsync(HttpMethod.Put, $"/api/v1/organizations/{StudioId}/join-link", body: null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await response.Content.ReadFromJsonAsync<JoinLinkResponse>())!.Link.Should().Be("http://localhost:5174/join/new-code");
+        (await response.Content.ReadFromJsonAsync<JoinLinkResponse>())!.Link.Should().Be("http://localhost:5174/join#new-code");
     }
 
     [Fact]
