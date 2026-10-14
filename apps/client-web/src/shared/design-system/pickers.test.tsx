@@ -113,6 +113,18 @@ describe("DateInput", () => {
     expect(screen.getByRole("gridcell", { name: /15 באוקטובר/ })).toHaveFocus();
   });
 
+  it("reads a two-digit year in the century that fits max, as for a birth date", async () => {
+    const onChange = vi.fn();
+    render(
+      <Field label="תאריך לידה">
+        <DateInput value={null} max="2026-10-15" today="2026-10-15" onChange={onChange} />
+      </Field>
+    );
+    await userEvent.type(screen.getByLabelText("תאריך לידה"), "15.10.30");
+    await userEvent.tab();
+    expect(onChange).toHaveBeenLastCalledWith("1930-10-15");
+  });
+
   it("refuses a typed date outside the range", async () => {
     render(<ClassDate min="2026-10-15" />);
     const input = screen.getByLabelText("תאריך");

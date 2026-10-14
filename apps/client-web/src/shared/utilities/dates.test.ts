@@ -25,6 +25,28 @@ describe("dates", () => {
     expect(parseDate(text, "2026-06-01")).toBeNull();
   });
 
+  it("reads a two-digit year more than a year ahead as 19xx", () => {
+    expect(parseDate("15.10.85", "2026-06-01")).toBe("1985-10-15");
+    expect(parseDate("15.10.27", "2026-06-01")).toBe("2027-10-15");
+    expect(parseDate("15.10.28", "2026-06-01")).toBe("1928-10-15");
+  });
+
+  it("keeps next January's dates typed late in the year", () => {
+    expect(parseDate("15.01.27", "2026-10-15")).toBe("2027-01-15");
+  });
+
+  it("picks the century that fits the range", () => {
+    expect(parseDate("15.10.20", "2026-06-01", { max: "2026-06-01" })).toBe("2020-10-15");
+    expect(parseDate("15.10.27", "2026-06-01", { max: "2026-06-01" })).toBe("1927-10-15");
+    expect(parseDate("15.10.85", "2026-06-01", { min: "2026-06-01" })).toBe("2085-10-15");
+  });
+
+  it("checks 29 February in the century it lands in", () => {
+    expect(parseDate("29.02.00", "2026-06-01")).toBe("2000-02-29");
+    // 1900 was not a leap year, so 2000 is the only real date; DateInput then flags it as out of range.
+    expect(parseDate("29.02.00", "2026-06-01", { max: "1999-12-31" })).toBe("2000-02-29");
+  });
+
   it("writes dates the Israeli way", () => {
     expect(formatDate("2026-03-05")).toBe("05.03.2026");
   });

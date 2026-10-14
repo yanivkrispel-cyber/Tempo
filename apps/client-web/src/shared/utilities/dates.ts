@@ -101,14 +101,30 @@ export function formatDate(iso: IsoDate): string {
 /**
  * Reads a typed date, day first: "15.10.2026", "15/10/26", "5-3-2026", "151026", "15102026", or
  * "15.10" for this year. An ISO date is accepted as is. Returns null for anything else.
+ *
+ * A two-digit year is 20xx unless that is more than a year ahead, then 19xx ("15.10.85" is 1985,
+ * "15.01.27" typed in October 2026 is next January). When `range` is given, the century that falls
+ * inside it wins, so a birth date with max = today reads "15.10.30" as 1930.
  */
-export function parseDate(text: string, today: IsoDate = todayIso()): IsoDate | null {
+export function parseDate(text: string, today: IsoDate = todayIso(), range: { min?: IsoDate; max?: IsoDate } = {}): IsoDate | null {
   const value = text.trim();
   if (isoPattern.test(value)) return fromIsoDate(value) ? value : null;
 
   const match = /^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2}|\d{4}))?$/.exec(value) ?? /^(\d{2})(\d{2})(\d{2}|\d{4})$/.exec(value);
   if (!match) return null;
-  const year = match[3] === undefined ? Number(today.slice(0, 4)) : match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3]);
-  const iso = `${year}-${pad(Number(match[2]))}-${pad(Number(match[1]))}`;
-  return fromIsoDate(iso) ? iso : null;
+  const day = pad(Number(match[1]));
+  const month = pad(Number(match[2]));
+  const typed = match[3];
+  const thisYear = Number(today.slice(0, 4));
+
+  let years: number[];
+  if (typed === undefined) years = [thisYear];
+  else if (typed.length === 4) years = [Number(typed)];
+  else {
+    const recent = 2000 + Number(typed);
+    years = recent > thisYear + 1 ? [recent - 100, recent] : [recent, recent - 100];
+  }
+
+  const dates = years.map((year) => `${year}-${month}-${day}`).filter((iso) => fromIsoDate(iso) !== null);
+  return dates.find((iso) => inRange(iso, range.min, range.max)) ?? dates[0] ?? null;
 }
