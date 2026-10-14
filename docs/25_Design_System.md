@@ -79,11 +79,12 @@ Toast · Dialog and bottom sheet · Skeleton · Empty state · Week schedule wit
 Two composed reference screens live in `packages/design-system/docs/specimen.html`: the console's weekly schedule and
 the member app home.
 
-Not yet: date picker, time picker, dropdown menu, command palette, charts (use the `dataviz` guidance with these
+Not yet: command palette, charts (use the `dataviz` guidance with these
 tokens when they arrive), data grid virtualization.
 
 ## 8. Workflow
 
 1. Change `tokens.json` → `pnpm --filter @tempo/design-system build` → commit both files.
 2. New primitive → `components.css` + a block in `docs/specimen.html` + a preview in the reference artifact.
-3. A React wrapper per primitive lands in each app when that app is scaffolded (Phase 1), typed props, no styles.
+3. A React wrapper per primitive lands in each app, typed props, no styles. `apps/client-web` has them (date and
+   time pickers, dropdown menu, dialog and toasts included); `apps/admin-web` gets its own when its screens start.
