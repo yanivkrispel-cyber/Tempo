@@ -8,7 +8,7 @@ import {
   GENERAL_RATE_LIMIT,
   HEALTH_PATH
 } from "../../lib/edge/edge-stack";
-import { dev, prod } from "./helpers/synth";
+import { dev, devWithEdge, prod } from "./helpers/synth";
 
 function stackOf(stage: typeof dev, id: string): Stack {
   const child = stage.node.findChild(id);
@@ -16,8 +16,14 @@ function stackOf(stage: typeof dev, id: string): Stack {
   return child;
 }
 
+describe("Development without the edge stack", () => {
+  it("has no Edge stack until AWS verifies the account for CloudFront", () => {
+    expect(dev.node.tryFindChild("Edge")).toBeUndefined();
+  });
+});
+
 describe.each([
-  ["dev", dev],
+  ["dev with edge", devWithEdge],
   ["prod", prod]
 ] as const)("Edge on the CloudFront Free plan (%s; ADR-0004, ADR-0009 amendments)", (_name, stage) => {
   const edge = stackOf(stage, "Edge");
@@ -126,7 +132,7 @@ describe("Edge alarms (ADR-0012 amendment)", () => {
   });
 
   it("development has the canary but no alarms", () => {
-    const template = Template.fromStack(stackOf(dev, "Edge"));
+    const template = Template.fromStack(stackOf(devWithEdge, "Edge"));
     template.resourceCountIs("AWS::Scheduler::Schedule", 1);
     template.resourceCountIs("AWS::CloudWatch::Alarm", 0);
   });
