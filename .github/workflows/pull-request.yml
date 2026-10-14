@@ -88,8 +88,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build and test frontend workspaces
-        # No-op until apps/* are scaffolded (Phase 0 is backend/infra only) -
-        # pnpm --recursive skips workspace packages without the script.
+        # apps/* (Vite build + Vitest), packages/* (design-system token check)
+        # and infrastructure. pnpm --recursive skips packages without the script.
         run: |
           pnpm --recursive run build
           pnpm --recursive run test
