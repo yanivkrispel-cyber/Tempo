@@ -45,6 +45,8 @@ docker-compose.override.yml
 **/appsettings.Local*
 
 ## Infrastructure (CDK)
+infrastructure/cdk.out/
+infrastructure/cdk.context.json.bak
 # infrastructure/bin and infrastructure/lib are CDK *source* folders, not
 # .NET build output - un-ignore them from the generic bin/ and obj/ rules
 # above, which would otherwise match any directory literally named "bin".
