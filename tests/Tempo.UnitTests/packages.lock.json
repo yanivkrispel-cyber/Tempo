@@ -606,6 +606,7 @@
       "tempo.api": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.CognitoIdentityProvider": "[4.0.105.2, )",
           "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
           "Amazon.Lambda.AspNetCoreServer.Hosting": "[2.2.0, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.10, )",
@@ -671,6 +672,15 @@
         "requested": "[3.0.0, )",
         "resolved": "3.0.0",
         "contentHash": "FTWf7ODv7+hwnqHREYQWntNDJsu4WWtTcEZoji0e5QiChMMrMyfYf07E7flBanolf8dTY6jfVdDfC816uGkzdA=="
+      },
+      "AWSSDK.CognitoIdentityProvider": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.105.2, )",
+        "resolved": "4.0.105.2",
+        "contentHash": "Mc/Je6heNGq6S0A/g9KiAhh6LotJQ1YceXlSHtQ+qyD9h1MKEGKbURP5Oid6JLnEVlHHhxtU5aiIYsz8j5j56A==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.4, 5.0.0)"
+        }
       },
       "AWSSDK.SimpleSystemsManagement": {
         "type": "CentralTransitive",

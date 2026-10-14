@@ -47,6 +47,16 @@ public sealed record AccountSnapshot(Guid UserAccountId, AccountStatus Status, b
 /// <summary>A caller's membership in one studio, with the studio's status.</summary>
 public sealed record MembershipSnapshot(Guid MembershipId, MembershipRole Role, MembershipStatus Status, OrganizationStatus OrganizationStatus);
 
+/// <summary>One of the caller's live memberships with its studio, for GET /api/v1/me.</summary>
+public sealed record AccountMembership(
+    Guid MembershipId,
+    MembershipRole Role,
+    MembershipStatus Status,
+    Guid OrganizationId,
+    string Slug,
+    string DisplayName,
+    OrganizationStatus OrganizationStatus);
+
 /// <summary>
 /// Built once per tenant request by the API's route filter (docs/26 section 6).
 /// Repositories of tenant-owned tables take it as a required parameter.
@@ -69,4 +79,7 @@ public interface IAccountDirectory
 public interface IMembershipDirectory
 {
     Task<MembershipSnapshot?> FindAsync(Guid userAccountId, Guid organizationId, CancellationToken cancellationToken);
+
+    /// <summary>Every membership of the account that is not removed, oldest first.</summary>
+    Task<IReadOnlyList<AccountMembership>> ListForAccountAsync(Guid userAccountId, CancellationToken cancellationToken);
 }

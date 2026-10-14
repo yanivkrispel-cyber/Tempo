@@ -99,19 +99,4 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var value = await command.ExecuteScalarAsync();
         return value is null or DBNull ? default : (T)value;
     }
-
-    private sealed class NullUpgradeLog : IUpgradeLog
-    {
-        public void LogTrace(string format, params object[] args) { }
-
-        public void LogDebug(string format, params object[] args) { }
-
-        public void LogInformation(string format, params object[] args) { }
-
-        public void LogWarning(string format, params object[] args) { }
-
-        public void LogError(string format, params object[] args) { }
-
-        public void LogError(Exception ex, string format, params object[] args) { }
-    }
 }

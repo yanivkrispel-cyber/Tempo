@@ -74,3 +74,44 @@ describe("The API validates Cognito access tokens itself (ADR-0004 amendment)", 
     });
   });
 });
+
+describe("Phase 1 routes and database access (docs/26)", () => {
+  const template = stackTemplate("Api");
+
+  it("sends every other /api/v1 route to the function without a gateway authorizer", () => {
+    // The API validates both pools' tokens itself; the gateway authorizer
+    // knows only the customer pool and would refuse operator tokens.
+    template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
+      RouteKey: "ANY /api/v1/{proxy+}",
+      AuthorizationType: "NONE"
+    });
+  });
+
+  it("tells the API where Neon's pooled endpoint is and which password parameters to read", () => {
+    template.hasResourceProperties("AWS::Lambda::Function", {
+      FunctionName: "tempo-dev-api",
+      Environment: {
+        Variables: Match.objectLike({
+          DATABASE_HOST: Match.stringLikeRegexp("^ep-.+-pooler\..+\.neon\.tech$"),
+          DATABASE_NAME: "neondb",
+          DATABASE_APP_PASSWORD_PARAMETER: "/tempo/dev/db/app-password",
+          DATABASE_PLATFORM_PASSWORD_PARAMETER: "/tempo/dev/db/platform-password"
+        })
+      }
+    });
+  });
+
+  it("the API may read only the two runtime passwords, never the owner URL or the migrator's", () => {
+    const statements = Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
+      (p) => p.Properties.PolicyDocument.Statement as Array<{ Action: string | string[]; Resource: unknown }>
+    );
+    const resources = JSON.stringify(
+      statements.filter((s) => [s.Action].flat().some((a) => a.startsWith("ssm:"))).map((s) => s.Resource)
+    );
+    expect(resources).toContain("parameter/tempo/dev/db/app-password");
+    expect(resources).toContain("parameter/tempo/dev/db/platform-password");
+    expect(resources).not.toContain("neon-connection-string");
+    expect(resources).not.toContain("migrator-password");
+    expect(resources).not.toContain("*");
+  });
+});

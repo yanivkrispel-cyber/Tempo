@@ -27,6 +27,7 @@
 
     <!-- AWS SDK clients (least-privilege, ADR-0015). AWSSDK.EventBridge/SQS
          are added when the outbox worker starts publishing for real. -->
+    <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.2" />
     <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.1" />
 
     <!-- Database / migrator (ADR-0022) -->

@@ -336,19 +336,4 @@ public sealed class IdentitySchemaTests(PostgresFixture postgres) : IClassFixtur
 
         return command;
     }
-
-    private sealed class NullUpgradeLog : IUpgradeLog
-    {
-        public void LogTrace(string format, params object[] args) { }
-
-        public void LogDebug(string format, params object[] args) { }
-
-        public void LogInformation(string format, params object[] args) { }
-
-        public void LogWarning(string format, params object[] args) { }
-
-        public void LogError(string format, params object[] args) { }
-
-        public void LogError(Exception ex, string format, params object[] args) { }
-    }
 }

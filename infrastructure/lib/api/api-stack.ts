@@ -12,12 +12,14 @@ import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations
 import { IUserPool, IUserPoolClient } from "aws-cdk-lib/aws-cognito";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { CfnPermission, FunctionUrlAuthType } from "aws-cdk-lib/aws-lambda";
+import { IStringParameter, StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { resolveDotNetLambdaCode } from "../constructs/dotnet-lambda-code";
 import { createLogGroup } from "../constructs/log-group-defaults";
 import { TempoFunction } from "../constructs/lambda-defaults";
 import { applyStandardTags } from "../constructs/tagging";
+import { databaseParameterName } from "../data/database-stack";
 
 export interface ApiStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -53,9 +55,15 @@ const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
  * test endpoint", "Unauthenticated request receives 401").
  *
  * No Tempo function runs in a VPC (ADR-0022: the database is Neon over a
- * public TLS endpoint). Neither route touches the database yet, so the API
- * function has no database parameter access; it gets read access to its own
- * runtime credential when the first route needs it.
+ * public TLS endpoint). The API connects as `tempo_app` and `tempo_platform`
+ * (docs/26 section 7.2) through Neon's pooled endpoint, and may read exactly
+ * those two passwords from SSM, never the owner URL or the migrator's.
+ *
+ * Phase 1 routes (contracts/openapi/tempo-api.v1.yaml) reach the function
+ * through one `ANY /api/v1/{proxy+}` route without an API Gateway
+ * authorizer: the API validates both pools' tokens itself (ADR-0004
+ * amendment, ADR-0023), and the gateway's JWT authorizer knows only the
+ * customer pool, so it would turn away operator tokens.
  */
 export class ApiStack extends Stack {
   public readonly httpApi: HttpApi;
@@ -66,6 +74,7 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
     const { config } = props;
+    const database = this.databaseConnection(config);
 
     this.apiFunction = new TempoFunction(this, "ApiFunction", config, {
       functionName: resourceName(config, "api"),
@@ -83,9 +92,14 @@ export class ApiStack extends Stack {
         COGNITO_ISSUER: `https://${props.userPool.userPoolProviderName}`,
         COGNITO_CLIENT_IDS: props.userPoolClients.map((client) => client.userPoolClientId).join(","),
         COGNITO_OPERATOR_ISSUER: `https://${props.operatorPool.userPoolProviderName}`,
-        COGNITO_OPERATOR_CLIENT_IDS: props.operatorPoolClients.map((client) => client.userPoolClientId).join(",")
+        COGNITO_OPERATOR_CLIENT_IDS: props.operatorPoolClients.map((client) => client.userPoolClientId).join(","),
+        ...database.environment
       }
     });
+
+    for (const parameter of database.passwords) {
+      parameter.grantRead(this.apiFunction.function);
+    }
 
     // Account provisioning reads the caller's email from Cognito, because
     // access tokens carry no email claim (Phase 1 LLD section 2.3). Only the
@@ -135,6 +149,12 @@ export class ApiStack extends Stack {
       methods: [HttpMethod.GET],
       integration,
       authorizer
+    });
+
+    this.httpApi.addRoutes({
+      path: "/api/v1/{proxy+}",
+      methods: [HttpMethod.ANY],
+      integration
     });
 
     const accessLogGroup = createLogGroup(this, "AccessLogGroup", config, {
@@ -189,5 +209,34 @@ export class ApiStack extends Stack {
     });
 
     applyStandardTags(this, config, "api");
+  }
+
+  /**
+   * Where the API's runtime roles connect, and the two password parameters
+   * the function may read. Empty until the environment's Neon project exists.
+   */
+  private databaseConnection(config: TempoEnvironmentConfig): {
+    environment: Record<string, string>;
+    passwords: IStringParameter[];
+  } {
+    if (config.neon.pooledHost === undefined || config.neon.databaseName === undefined) {
+      return { environment: {}, passwords: [] };
+    }
+
+    const [application, platform] = (["applicationPassword", "platformPassword"] as const).map((key) =>
+      StringParameter.fromSecureStringParameterAttributes(this, `${key}Parameter`, {
+        parameterName: databaseParameterName(config, key)
+      })
+    );
+
+    return {
+      environment: {
+        DATABASE_HOST: config.neon.pooledHost,
+        DATABASE_NAME: config.neon.databaseName,
+        DATABASE_APP_PASSWORD_PARAMETER: application.parameterName,
+        DATABASE_PLATFORM_PASSWORD_PARAMETER: platform.parameterName
+      },
+      passwords: [application, platform]
+    };
   }
 }

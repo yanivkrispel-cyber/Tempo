@@ -12,6 +12,13 @@ export type TempoEnvironmentName = "dev" | "stg" | "prod";
 export interface NeonConfig {
   /** Neon project id, e.g. `wild-darkness-22822656`. The usage check reads this project. */
   readonly projectId: string;
+  /**
+   * The production branch's pooled endpoint host (`ep-...-pooler...neon.tech`)
+   * and database, for the API's runtime roles. A host name is not a secret;
+   * the role passwords stay in SSM. Absent until the project exists.
+   */
+  readonly pooledHost?: string;
+  readonly databaseName?: string;
 }
 
 export interface LambdaConfig {
@@ -161,6 +168,14 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (!/^[a-z0-9-]+$/.test(config.neon.projectId)) {
     errors.push(`neon.projectId must be a Neon project id, got "${config.neon.projectId}"`);
+  }
+
+  if (config.neon.pooledHost !== undefined && !/^ep-[a-z0-9-]+-pooler\.[a-z0-9.-]+\.neon\.tech$/.test(config.neon.pooledHost)) {
+    errors.push(`neon.pooledHost must be a Neon pooled endpoint host, got "${config.neon.pooledHost}"`);
+  }
+
+  if ((config.neon.pooledHost === undefined) !== (config.neon.databaseName === undefined)) {
+    errors.push("neon.pooledHost and neon.databaseName must be set together");
   }
 
   if (config.observability.logRetentionDays <= 0) {

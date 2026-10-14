@@ -13,6 +13,20 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   as metadata.
 - A module adds its endpoints by registering an `IEndpointModule` in DI; `Program.cs` maps all of them.
 
+## Accounts (step 6)
+
+- `POST /api/v1/session` provisions just in time (`Modules/Identity/Application/AccountService.cs`): look up
+  `(iss, sub)`; on a miss read email from Cognito `AdminGetUser` (the token's `username` claim, the pool id from the
+  issuer) and insert account, external identity and an `account.created` audit event in one transaction. A
+  unique-key race re-reads the winner's row. A sign-in whose `auth_time` is newer than `identity_synced_at` refreshes
+  email and verification.
+- `GET /api/v1/me` is the only route a disabled account may call. `PATCH /api/v1/me` goes through `CallerAccount`.
+- Audit events are written with `AuditWriter` inside the caller's unit of work.
+- API Gateway has one `ANY /api/v1/{proxy+}` route without a gateway authorizer; the API checks tokens itself. The old
+  `GET /api/v1/me` route with the JWT authorizer still exists and wins for that path.
+- The API reaches Neon's pooled endpoint from `neon.pooledHost` and `neon.databaseName` in the environment config.
+  Dev: `ep-bold-art-b94ii1t4-pooler.c-7.eu-central-1.aws.neon.tech`, database `neondb`.
+
 ## Tokens
 
 - Two JWT bearer schemes, `customer` (the default policy) and `operator` (policy `operator`), in
@@ -39,8 +53,8 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
 ## Tests
 
 - API tests use `tests/Tempo.UnitTests/Api/TestApi.cs`: both pools share one local signing key, and the account and
-  membership directories are NSubstitute substitutes. Extra probe endpoints go in through the constructor.
+  membership directories and `IAccountService` are NSubstitute substitutes. Extra probe endpoints go in through the constructor.
 - Every test class that starts the API host carries `[Collection(ApiHostGroup.Name)]`. Parallel hosts trip Serilog's
   static bootstrap logger ("The logger is already frozen"). The real fix in `Program.cs` is still open.
-- Database tests (`tests/Tempo.IntegrationTests/DatabaseMigrator/`) migrate a fresh database per test on one
+- Database tests use `MigratedDatabase.CreateAsync(postgres)` (`tests/Tempo.IntegrationTests/DatabaseMigrator/`) migrate a fresh database per test on one
   PostgreSQL 18 container per class, seed as the superuser (which bypasses RLS) and connect as the real runtime roles.
