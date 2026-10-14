@@ -1,6 +1,6 @@
 # Tempo Architecture Decision Records - Current Baseline
 
-- **Version:** 3.3
+- **Version:** 3.4
 - **Date:** 2026-10-14
 - **Cloud Decision:** AWS, except the database (Neon on AWS eu-central-1, ADR-0022)
 - **Architecture Direction:** Serverless-first modular monolith
@@ -42,6 +42,7 @@
 | ADR-0021 | Zero Fixed Cost Until Revenue | Accepted, amended 2026-10-14: Neon tripwires |
 | ADR-0022 | Neon Serverless Postgres as the Primary Transactional Database | Accepted |
 | ADR-0023 | Studio Self-Onboarding and a Separate Operator Identity Pool | Accepted |
+| ADR-0024 | Frontend Toolchain for the Tempo Web Apps | Accepted |
 
 ## Decision Summary
 
@@ -61,6 +62,7 @@ Encryption: KMS
 Email: SES
 Observability: CloudWatch + OpenTelemetry/X-Ray
 Cost: $0 fixed cost until revenue; tripwires need owner approval (ADR-0021)
+Web apps: Vite + React 19 + React Router 7 + TanStack Query; API client from OpenAPI (ADR-0024)
 IaC: AWS CDK TypeScript
 CI/CD: GitHub Actions + OIDC
 Primary Region: eu-central-1
