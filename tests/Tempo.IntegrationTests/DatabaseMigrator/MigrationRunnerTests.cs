@@ -56,6 +56,28 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
     }
 
     [Fact]
+    public async Task RunAsync_AsNonSuperuserMaster_BootstrapsAndMigrates()
+    {
+        // Neon and Aurora hand out a CREATEROLE master, not a superuser. Role
+        // names are cluster-wide, so they are unique to this test: roles made
+        // by the superuser in other tests would not be this master's to alter.
+        var (database, master) = await postgres.CreateManagedMasterDatabaseAsync();
+        var suffix = master.Username["tempo_master_".Length..];
+        var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, database, SslMode.Disable);
+
+        var result = await MigrationRunner.RunAsync(
+            endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
+
+        result.Successful.Should().BeTrue();
+        result.AppliedScripts.Should().ContainSingle(name => name.EndsWith("0001_baseline.sql", StringComparison.Ordinal));
+
+        await using var connection = postgres.ConnectAsMaster(database);
+        await connection.OpenAsync();
+        (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
+            .Should().Be($"tempo_migrator_{suffix}");
+    }
+
+    [Fact]
     public async Task RunAsync_RequiringSslAgainstServerWithoutTls_Fails()
     {
         var database = await postgres.CreateDatabaseAsync();
