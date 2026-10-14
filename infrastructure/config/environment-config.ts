@@ -91,9 +91,13 @@ export interface GitHubDeploymentConfig {
 export interface FeatureFlags {
   /** Custom Route 53 domain + ACM certificate for the HTTP API. Requires domainName/hostedZoneId. */
   readonly enableCustomDomain: boolean;
-  /** Frontend hosting (S3 + CloudFront) - out of scope for the Phase 0 AWS foundation slice. */
+  /**
+   * The edge stack in us-east-1: one CloudFront distribution for the PWA and,
+   * under /api/*, the API function's Function URL, on the CloudFront Free plan
+   * (ADR-0004 and ADR-0009 amendments).
+   */
   readonly enableFrontendHosting: boolean;
-  /** WAF attachment - production-only, deferred until first environment is stable. */
+  /** The WAF web ACL on the distribution. The edge stack always attaches it, so it must match enableFrontendHosting. */
   readonly enableWaf: boolean;
 }
 
@@ -215,6 +219,10 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     if (url.includes("*")) {
       errors.push(`wildcard URLs are prohibited, got "${url}"`);
     }
+  }
+
+  if (config.featureFlags.enableWaf !== config.featureFlags.enableFrontendHosting) {
+    errors.push("featureFlags.enableWaf must equal enableFrontendHosting: the edge stack always attaches the web ACL, which the Free plan covers");
   }
 
   if (config.featureFlags.enableCustomDomain && (!config.domainName || !config.hostedZoneId)) {

@@ -66,10 +66,28 @@ const ALLOWED: readonly AllowedFixedCost[] = [
   }
 ];
 
+/**
+ * Logical IDs that a FREE-tier CloudFront flat-rate plan in the same stack
+ * covers (ADR-0021: the Free plan bills the distribution, its web ACL and the
+ * web ACL's rules at $0).
+ */
+function coveredByFreePlan(resources: Record<string, { Type: string; Properties?: Record<string, unknown> }>) {
+  const covered = new Set<string>();
+  for (const resource of Object.values(resources)) {
+    if (resource.Type !== "AWS::PricingPlanManager::Subscription" || resource.Properties?.PlanTier !== "FREE") continue;
+    for (const arn of (resource.Properties.ResourceArns as unknown[]) ?? []) {
+      const getAtt = (arn as { "Fn::GetAtt"?: [string, string] })["Fn::GetAtt"];
+      if (getAtt) covered.add(getAtt[0]);
+    }
+  }
+  return covered;
+}
+
 function fixedCostResources(stage: typeof dev) {
   const found: Array<{ stack: string; type: string; logicalId: string }> = [];
   for (const stack of stage.node.findAll().filter(Stack.isStack)) {
     const resources = Template.fromStack(stack).toJSON().Resources ?? {};
+    const freePlan = coveredByFreePlan(resources);
     for (const [logicalId, resource] of Object.entries<{ Type: string; Properties?: Record<string, unknown> }>(resources)) {
       // Provisioned concurrency bills by the hour whether or not it is used.
       const provisioned =
@@ -77,6 +95,7 @@ function fixedCostResources(stage: typeof dev) {
         resource.Properties?.ProvisionedConcurrencyConfig !== undefined;
       if (!provisioned && !(resource.Type in FIXED_COST_TYPES)) continue;
       if (resource.Type === "AWS::EC2::VPCEndpoint" && resource.Properties?.VpcEndpointType === "Gateway") continue;
+      if (freePlan.has(logicalId)) continue;
       found.push({ stack: stack.node.id, type: provisioned ? "ProvisionedConcurrency" : resource.Type, logicalId });
     }
   }
