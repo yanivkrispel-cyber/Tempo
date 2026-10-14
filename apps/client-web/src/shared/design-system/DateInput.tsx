@@ -79,7 +79,7 @@ export function DateInput({ value, onChange, min, max, today = todayIso(), class
       report(null);
       return;
     }
-    const parsed = parseDate(text, today);
+    const parsed = parseDate(text, today, { min, max });
     if (parsed && inRange(parsed, min, max)) {
       setInvalid(false);
       setText(formatDate(parsed));
