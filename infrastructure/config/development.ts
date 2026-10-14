@@ -64,10 +64,15 @@ const developmentConfig: TempoEnvironmentConfig = {
     githubEnvironment: undefined
   },
 
+  // The edge stack is off in dev until AWS verifies the account for
+  // CloudFront (the first deploy on 2026-10-14 failed: "Your account must be
+  // verified before you can add new CloudFront resources"). The API answers on
+  // its execute-api URL meanwhile. Turn both flags back on once AWS Support
+  // confirms; the edge stack returns before the pilot in any case.
   featureFlags: {
     enableCustomDomain: false,
-    enableFrontendHosting: true,
-    enableWaf: true
+    enableFrontendHosting: false,
+    enableWaf: false
   },
 
   corsAllowedOrigins: [
