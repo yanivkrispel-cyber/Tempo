@@ -36,9 +36,13 @@ export class GitHubOidcStack extends Stack {
     // Trust is restricted to this exact repository and the exact branch (or
     // GitHub Environment, for protected production approval) permitted to
     // deploy this environment - never every branch or every repository.
+    // The repo uses GitHub's immutable subject, which pins the numeric owner and
+    // repository ids, so a renamed or re-created repo cannot inherit the trust.
+    const { owner, ownerId, repo, repoId } = config.github;
+    const subjectPrefix = `repo:${owner}@${ownerId}/${repo}@${repoId}`;
     const subClaim = config.github.githubEnvironment
-      ? `repo:${config.github.owner}/${config.github.repo}:environment:${config.github.githubEnvironment}`
-      : `repo:${config.github.owner}/${config.github.repo}:ref:refs/heads/${config.github.allowedBranch}`;
+      ? `${subjectPrefix}:environment:${config.github.githubEnvironment}`
+      : `${subjectPrefix}:ref:refs/heads/${config.github.allowedBranch}`;
 
     this.deploymentRole = new Role(this, "DeploymentRole", {
       roleName: resourceName(config, "github-deploy"),
