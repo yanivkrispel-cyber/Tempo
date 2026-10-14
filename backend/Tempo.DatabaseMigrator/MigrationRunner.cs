@@ -50,7 +50,7 @@ public static class MigrationRunner
             .Build();
 
         // DbUp's engine is synchronous by design; this method still runs
-        // asynchronously up to this point (role bootstrap, secret reads).
+        // asynchronously up to this point (role bootstrap).
         var result = upgrader.PerformUpgrade();
 
         if (!result.Successful)

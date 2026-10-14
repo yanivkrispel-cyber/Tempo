@@ -8,8 +8,8 @@ namespace Tempo.DatabaseMigrator;
 /// Prepares the `application` and `migrator` Postgres roles (LLD section 12:
 /// "Create or prepare database identities for: Master/bootstrap user,
 /// Application user, Migrator user") and the `platform` schema that holds the
-/// migration journal. CDK provisions the Secrets Manager secrets holding each
-/// role's password; only the master user can actually issue `CREATE ROLE`,
+/// migration journal. Each role's password is an SSM SecureString parameter
+/// that a person writes (ADR-0022); only the master user can issue `CREATE ROLE`,
 /// so this runs once, at the start of every migration, using the master
 /// connection. Every step is idempotent and checked from C#, with no
 /// PL/pgSQL `DO` block, so the same bootstrap shape also fits engines without
@@ -85,8 +85,8 @@ public static partial class BootstrapRoles
         // The password is interpolated directly because PostgreSQL DDL (CREATE
         // ROLE / ALTER ROLE) cannot be parameterized. This is only safe because
         // ValidateCredential() above enforces an alphanumeric-only charset,
-        // matching how infrastructure/lib/data/database-stack.ts generates
-        // these secrets (excludePunctuation: true).
+        // which the documented way to generate these passwords produces
+        // (infrastructure/README.md, "Database credentials").
         var sql = roleExists
             ? $"ALTER ROLE {quotedRole} WITH PASSWORD '{credential.Password}'"
             : $"CREATE ROLE {quotedRole} LOGIN PASSWORD '{credential.Password}'";

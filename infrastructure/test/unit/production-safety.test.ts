@@ -11,44 +11,15 @@ function stackTemplate(childId: string) {
   return Template.fromStack(child);
 }
 
-describe("Production Aurora safety (LLD sections 10.2, 34, 35)", () => {
-  const template = stackTemplate("Database");
-
-  it("has deletion protection enabled", () => {
-    template.hasResourceProperties("AWS::RDS::DBCluster", { DeletionProtection: true });
-  });
-
-  it("has auto-pause disabled (no SecondsUntilAutoPause) and a non-zero minimum ACU", () => {
-    const clusters = template.findResources("AWS::RDS::DBCluster");
-    const [cluster] = Object.values(clusters);
-    const scaling = cluster.Properties.ServerlessV2ScalingConfiguration;
-
-    expect(scaling.SecondsUntilAutoPause).toBeUndefined();
-    expect(scaling.MinCapacity).toBeGreaterThan(0);
-  });
-
-  it("uses a safe removal policy (Snapshot or Retain, never Delete)", () => {
-    const clusters = template.findResources("AWS::RDS::DBCluster");
-    const [cluster] = Object.values(clusters);
-    expect(["Snapshot", "Retain"]).toContain(cluster.DeletionPolicy);
-  });
-
-  it("is still not publicly accessible in production", () => {
-    template.hasResourceProperties("AWS::RDS::DBInstance", { PubliclyAccessible: false });
-  });
-});
-
-describe("Production Secrets Manager removal policy", () => {
-  it("application and migrator secrets are retained on stack deletion", () => {
+describe("Production database access (ADR-0022)", () => {
+  it("the migrator reads only the production database parameters", () => {
     const template = stackTemplate("Database");
-    const secrets = template.findResources("AWS::SecretsManager::Secret");
-    const nonMasterSecrets = Object.values(secrets).filter(
-      (s) => !JSON.stringify(s.Properties).includes("tempo_master")
+    const statements = Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
+      (p) => p.Properties.PolicyDocument.Statement as Array<{ Resource: unknown }>
     );
-    expect(nonMasterSecrets.length).toBeGreaterThan(0);
-    for (const secret of nonMasterSecrets) {
-      expect(secret.DeletionPolicy).toBe("Retain");
-    }
+    const resources = JSON.stringify(statements.map((s) => s.Resource));
+    expect(resources).toContain("parameter/tempo/prod/db/neon-connection-string");
+    expect(resources).not.toContain("/tempo/dev/");
   });
 });
 

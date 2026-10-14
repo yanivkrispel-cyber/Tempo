@@ -48,10 +48,10 @@ const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
  * smoke tests in LLD section 38 ("Cognito token can call an authenticated
  * test endpoint", "Unauthenticated request receives 401").
  *
- * The API Lambda is intentionally NOT VPC-attached in this phase: neither
- * route touches Aurora, so there is no reason to pay for VPC cold starts or
- * interface endpoints yet (see networking/network-stack.ts for the fuller
- * networking decision). It therefore receives no database secret access.
+ * No Tempo function runs in a VPC (ADR-0022: the database is Neon over a
+ * public TLS endpoint). Neither route touches the database yet, so the API
+ * function has no database parameter access; it gets read access to its own
+ * runtime credential when the first route needs it.
  */
 export class ApiStack extends Stack {
   public readonly httpApi: HttpApi;

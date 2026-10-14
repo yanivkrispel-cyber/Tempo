@@ -19,8 +19,8 @@ export interface MessagingStackProps extends StackProps {
  * those receives count toward SQS's free requests, so a separate queue is
  * added only when a job needs its own backpressure or concurrency limit.
  *
- * The worker is not VPC-attached: its handlers are skeletons with no
- * database I/O yet.
+ * The worker has no database access yet: its handlers are skeletons. It
+ * will reach Neon through the pooled endpoint without a VPC (ADR-0022).
  */
 export class MessagingStack extends Stack {
   public readonly workQueue: SecureQueue;

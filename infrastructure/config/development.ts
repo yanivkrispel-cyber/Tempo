@@ -22,14 +22,6 @@ const developmentConfig: TempoEnvironmentConfig = {
 
   enableDeletionProtection: false,
 
-  aurora: {
-    minAcu: 0,
-    maxAcu: 2,
-    autoPauseEnabled: true,
-    readerCount: 0,
-    backupRetentionDays: 7
-  },
-
   lambda: {
     apiMemoryMb: 1024,
     apiTimeoutSeconds: 30,
@@ -57,11 +49,6 @@ const developmentConfig: TempoEnvironmentConfig = {
     alertEmail: "yaniv.krispel+tempo-app@gmail.com",
     // Created by AWS when Cost Explorer was enabled in the management account on 2026-10-13.
     existingAnomalyMonitorArn: "arn:aws:ce::687239340846:anomalymonitor/2426a559-1df4-4d63-9375-c8fe4ca7a971"
-  },
-
-  networking: {
-    maxAzs: 2,
-    natGatewayEnabled: false
   },
 
   github: {

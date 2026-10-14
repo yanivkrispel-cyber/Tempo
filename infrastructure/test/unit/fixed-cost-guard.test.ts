@@ -40,31 +40,11 @@ interface AllowedFixedCost {
 }
 
 /**
- * Debt from the Aurora design that the Tempo Zero infrastructure step
- * (status page step 7) removes. Delete an entry when its resource goes.
+ * Reviewed exceptions. Empty since ADR-0022 removed the VPC endpoint, Aurora
+ * and the Secrets Manager secrets. A new entry needs owner approval under an
+ * ADR-0021 tripwire; delete it when its resource goes.
  */
-const ALLOWED: readonly AllowedFixedCost[] = [
-  {
-    stack: "Network",
-    type: "AWS::EC2::VPCEndpoint",
-    reason: "Secrets Manager endpoint for the migrator inside the VPC, $17.52 a month in two AZs. Goes with the VPC in step 7."
-  },
-  {
-    stack: "Database",
-    type: "AWS::SecretsManager::Secret",
-    reason: "Aurora master, application and migrator passwords, $1.20 a month. IAM database authentication replaces them in step 7."
-  },
-  {
-    stack: "Database",
-    type: "AWS::RDS::DBCluster",
-    reason: "Aurora Serverless v2 (ADR-0005). Replaced by the database that ADR-0022 decides after the DSQL spike, step 7."
-  },
-  {
-    stack: "Database",
-    type: "AWS::RDS::DBInstance",
-    reason: "The Aurora writer instance. Goes with the cluster."
-  }
-];
+const ALLOWED: readonly AllowedFixedCost[] = [];
 
 /**
  * Logical IDs that a FREE-tier CloudFront flat-rate plan in the same stack
