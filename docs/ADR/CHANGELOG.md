@@ -1,3 +1,10 @@
+# ADR-0024 - Change Log (2026-10-14)
+
+## Added ADRs
+
+- ADR-0024: the frontend toolchain for all web apps: Vite, React 19, React Router 7, TanStack Query,
+  `openapi-typescript` + `openapi-fetch`, Vitest + Testing Library. Approved by Kris on 2026-10-14. $0.
+
 # ADR Baseline v3.2 - Change Log (2026-10-14)
 
 Aurora DSQL could not be created for the account (support case open since 2026-10-13). The owners chose Neon serverless Postgres as the database for good.
