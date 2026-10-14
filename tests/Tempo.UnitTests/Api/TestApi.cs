@@ -14,6 +14,7 @@ using Tempo.Api.DependencyInjection;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Identity.Application;
+using Tempo.Platform.Modules.Organizations.Application;
 
 namespace Tempo.UnitTests.Api;
 
@@ -44,6 +45,8 @@ public sealed class TestApi : IDisposable
                 services.AddSingleton(Accounts);
                 services.AddSingleton(Memberships);
                 services.AddSingleton(AccountService);
+                services.AddSingleton(Organizations);
+                services.AddSingleton(Members);
                 if (map is not null)
                 {
                     services.AddSingleton<IEndpointModule>(new DelegateModule(map));
@@ -56,6 +59,10 @@ public sealed class TestApi : IDisposable
     public IMembershipDirectory Memberships { get; } = Substitute.For<IMembershipDirectory>();
 
     public IAccountService AccountService { get; } = Substitute.For<IAccountService>();
+
+    public IOrganizationService Organizations { get; } = Substitute.For<IOrganizationService>();
+
+    public IMemberService Members { get; } = Substitute.For<IMemberService>();
 
     public HttpClient CreateClient() => factory.CreateClient();
 

@@ -83,3 +83,11 @@ public interface IMembershipDirectory
     /// <summary>Every membership of the account that is not removed, oldest first.</summary>
     Task<IReadOnlyList<AccountMembership>> ListForAccountAsync(Guid userAccountId, CancellationToken cancellationToken);
 }
+
+/// <summary>Name and email of an account, for member lists. Implemented by the Identity module.</summary>
+public sealed record AccountProfile(Guid UserAccountId, string Email, string? DisplayName);
+
+public interface IAccountProfiles
+{
+    Task<IReadOnlyDictionary<Guid, AccountProfile>> FindAsync(IReadOnlyCollection<Guid> userAccountIds, CancellationToken cancellationToken);
+}
