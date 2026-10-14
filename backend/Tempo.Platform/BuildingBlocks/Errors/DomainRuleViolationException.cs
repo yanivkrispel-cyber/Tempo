@@ -8,6 +8,7 @@ public enum ViolationKind
     Forbidden,
     NotFound,
     Conflict,
+    Gone,
     TooManyRequests
 }
 
@@ -57,4 +58,7 @@ public sealed class DomainRuleViolationException : Exception
 
     /// <summary>The request field at fault, in the contract's camelCase, or null.</summary>
     public string? Field { get; }
+
+    /// <summary>For <see cref="ViolationKind.TooManyRequests"/>: when to try again (the Retry-After header).</summary>
+    public TimeSpan? RetryAfter { get; init; }
 }

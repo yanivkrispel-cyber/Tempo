@@ -91,3 +91,12 @@ public interface IAccountProfiles
 {
     Task<IReadOnlyDictionary<Guid, AccountProfile>> FindAsync(IReadOnlyCollection<Guid> userAccountIds, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// The per-account limit on invitation and join attempts (docs/26 section
+/// 10.3). Records the attempt and throws 429 when the account is over the limit.
+/// </summary>
+public interface IAttemptLimiter
+{
+    Task CheckAsync(Guid userAccountId, CancellationToken cancellationToken);
+}
