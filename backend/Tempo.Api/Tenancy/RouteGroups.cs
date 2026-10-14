@@ -19,9 +19,11 @@ public static class RouteGroups
             .RequireAuthorization()
             .AddEndpointFilter<TenantRouteFilter>();
 
-    /// <summary>`/api/v1/platform/...` with an operator token only (ADR-0023).</summary>
+    /// <summary>`/api/v1/platform/...` with an operator token only (ADR-0023), from a registered operator.</summary>
     public static RouteGroupBuilder MapPlatformGroup(this IEndpointRouteBuilder endpoints) =>
-        endpoints.MapGroup("/api/v1/platform").RequireAuthorization(CognitoAuthentication.OperatorPolicy);
+        endpoints.MapGroup("/api/v1/platform")
+            .RequireAuthorization(CognitoAuthentication.OperatorPolicy)
+            .AddEndpointFilter<OperatorRouteFilter>();
 }
 
 /// <summary>

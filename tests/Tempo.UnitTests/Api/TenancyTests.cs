@@ -40,11 +40,23 @@ public sealed class TenancyTests : IDisposable
     public void Dispose() => api.Dispose();
 
     [Fact]
-    public async Task PlatformRoute_WithOperatorToken_Returns200()
+    public async Task PlatformRoute_WithARegisteredOperator_Returns200()
     {
+        api.Operators.FindActiveAsync(TestApi.OperatorIssuer, "operator-1", Arg.Any<CancellationToken>())
+            .Returns((Guid.CreateVersion7(), "kris@example.com"));
+
         var response = await api.GetAsync("/api/v1/platform/probe", api.OperatorToken());
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task PlatformRoute_WithAnUnregisteredOperator_Returns403()
+    {
+        var response = await api.GetAsync("/api/v1/platform/probe", api.OperatorToken());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await CodeOf(response)).Should().Be("operator.not_registered");
     }
 
     [Fact]

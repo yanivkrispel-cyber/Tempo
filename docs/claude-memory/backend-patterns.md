@@ -38,6 +38,30 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   (migration 0003), committed before the work so failed guesses count. Over the limit is 429 with `Retry-After`.
 - Accepting or joining twice returns the existing membership; a suspended membership or studio is 403.
 
+## Operator console (step 9)
+
+- `/api/v1/platform/*` runs as `tempo_platform` (`Modules/PlatformAdmin/PlatformService.cs`). `OperatorRouteFilter`
+  needs an active row in `platform_admin.operators` matching the token's issuer and `sub`, otherwise 403
+  `operator.not_registered`. Every call on one studio is audited with `actor_type = 'operator'`, reads included.
+- The API never reads operator emails from Cognito (its `AdminGetUser` right covers the customer pool only), so a
+  person registers an operator with the `sub` already filled in. After the operator pool exists in the environment:
+
+  ```powershell
+  $pool = aws cognito-idp list-user-pools --max-results 20 --profile tempo --region eu-central-1 --query "UserPools[?Name=='tempo-dev-operators'].Id" --output text
+  aws cognito-idp admin-create-user --user-pool-id $pool --username <email> --user-attributes Name=email,Value=<email> Name=email_verified,Value=true --profile tempo --region eu-central-1
+  aws cognito-idp admin-get-user --user-pool-id $pool --username <email> --profile tempo --region eu-central-1 --query "UserAttributes[?Name=='sub'].Value" --output text
+  ```
+
+  Then, in the Neon SQL editor as the owner (a person, not Claude):
+
+  ```sql
+  INSERT INTO platform_admin.operators (id, email, issuer, subject, status, created_at, updated_at)
+  VALUES (uuidv7(), '<email>', 'https://cognito-idp.eu-central-1.amazonaws.com/<pool id>', '<sub>', 'active', now(), now());
+  ```
+
+  The first sign-in sets a TOTP device, because the pool requires MFA.
+- A studio's own audit log: `GET /organizations/{id}/audit-events`, owner and admin, names for user actors only.
+
 ## Tokens
 
 - Two JWT bearer schemes, `customer` (the default policy) and `operator` (policy `operator`), in

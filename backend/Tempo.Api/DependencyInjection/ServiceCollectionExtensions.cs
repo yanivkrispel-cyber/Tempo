@@ -5,10 +5,12 @@ using Tempo.Api.Persistence;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
+using Tempo.Platform.Modules.PlatformAdmin;
 
 namespace Tempo.Api.DependencyInjection;
 
@@ -34,6 +36,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IInvitationService, InvitationService>();
         services.AddSingleton<IJoinLinkService, JoinLinkService>();
         services.AddSingleton<AppLinks>();
+        services.AddSingleton<PlatformService>();
+        services.AddSingleton<IPlatformService>(sp => sp.GetRequiredService<PlatformService>());
+        services.AddSingleton<IOperatorDirectory>(sp => sp.GetRequiredService<PlatformService>());
+        services.AddSingleton<IAuditService, AuditService>();
+        services.AddScoped<OperatorRouteFilter>();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<TenantRouteFilter>();
 
