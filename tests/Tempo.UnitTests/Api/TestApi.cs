@@ -47,6 +47,8 @@ public sealed class TestApi : IDisposable
                 services.AddSingleton(AccountService);
                 services.AddSingleton(Organizations);
                 services.AddSingleton(Members);
+                services.AddSingleton(Invitations);
+                services.AddSingleton(JoinLinks);
                 if (map is not null)
                 {
                     services.AddSingleton<IEndpointModule>(new DelegateModule(map));
@@ -63,6 +65,10 @@ public sealed class TestApi : IDisposable
     public IOrganizationService Organizations { get; } = Substitute.For<IOrganizationService>();
 
     public IMemberService Members { get; } = Substitute.For<IMemberService>();
+
+    public IInvitationService Invitations { get; } = Substitute.For<IInvitationService>();
+
+    public IJoinLinkService JoinLinks { get; } = Substitute.For<IJoinLinkService>();
 
     public HttpClient CreateClient() => factory.CreateClient();
 

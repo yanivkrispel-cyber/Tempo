@@ -166,7 +166,8 @@ public static class OrganizationEndpoints
             : throw new DomainRuleViolationException(ViolationKind.Validation, "if_match.invalid", "If-Match must be a version you read.", "If-Match");
     }
 
-    private static T? ParseEnum<T>(string? value, string field)
+    /// <summary>The contract's lowercase enum names; anything else is 400 `{field}.invalid`.</summary>
+    internal static T? ParseEnum<T>(string? value, string field)
         where T : struct, Enum
     {
         if (value is null)

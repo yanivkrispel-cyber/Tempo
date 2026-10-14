@@ -1,3 +1,4 @@
+using Tempo.Api.Endpoints;
 using Tempo.Api.ErrorHandling;
 using Tempo.Api.Identity;
 using Tempo.Api.Persistence;
@@ -29,6 +30,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAccountProfiles, AccountProfiles>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<IMemberService, MemberService>();
+        services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
+        services.AddSingleton<IInvitationService, InvitationService>();
+        services.AddSingleton<IJoinLinkService, JoinLinkService>();
+        services.AddSingleton<AppLinks>();
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<TenantRouteFilter>();
 
         return services;

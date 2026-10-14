@@ -20,6 +20,9 @@ public static class RolePolicy
 
     public static bool CanManageJoinLink(MembershipRole actor) => actor is MembershipRole.Owner or MembershipRole.Admin;
 
+    /// <summary>List and revoke invitations (section 8.2). Which roles one may invite is <see cref="CanInvite"/>.</summary>
+    public static bool CanManageInvitations(MembershipRole actor) => actor is MembershipRole.Owner or MembershipRole.Admin;
+
     /// <summary>Owners invite admins, staff and clients; admins invite staff and clients. Nobody invites an owner.</summary>
     public static bool CanInvite(MembershipRole actor, MembershipRole invited) => (actor, invited) switch
     {

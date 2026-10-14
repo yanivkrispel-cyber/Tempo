@@ -27,6 +27,17 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
 - The API reaches Neon's pooled endpoint from `neon.pooledHost` and `neon.databaseName` in the environment config.
   Dev: `ep-bold-art-b94ii1t4-pooler.c-7.eu-central-1.aws.neon.tech`, database `neondb`.
 
+## Invitations and join link (step 8)
+
+- Tokens (32 bytes) and join codes (16 bytes) are base64url from `SecretToken.New`; only the SHA-256 hash is stored.
+  They are found before any tenant is known through the two `SECURITY DEFINER` functions, then the unit of work moves
+  to that studio with `SetTenantAsync`.
+- Links: `ADMIN_APP_URL` / `CLIENT_APP_URL` (`AppLinks`). Client invitations and join links go to the client app,
+  staff and admin invitations to the admin app. CDK takes both origins from the first Cognito callback URL of each app.
+- Preview and accept calls pass `IAttemptLimiter` first: 20 per account per hour in `identity.join_attempts`
+  (migration 0003), committed before the work so failed guesses count. Over the limit is 429 with `Retry-After`.
+- Accepting or joining twice returns the existing membership; a suspended membership or studio is 403.
+
 ## Tokens
 
 - Two JWT bearer schemes, `customer` (the default policy) and `operator` (policy `operator`), in

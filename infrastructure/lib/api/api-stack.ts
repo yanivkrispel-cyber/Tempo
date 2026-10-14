@@ -93,6 +93,11 @@ export class ApiStack extends Stack {
         COGNITO_CLIENT_IDS: props.userPoolClients.map((client) => client.userPoolClientId).join(","),
         COGNITO_OPERATOR_ISSUER: `https://${props.operatorPool.userPoolProviderName}`,
         COGNITO_OPERATOR_CLIENT_IDS: props.operatorPoolClients.map((client) => client.userPoolClientId).join(","),
+        // Origins of the apps, for the invitation and join links the API
+        // returns (docs/26 section 5). Taken from the Cognito callback URLs,
+        // so each app's origin is configured once.
+        ADMIN_APP_URL: new URL(config.cognitoCallbackUrls.adminWeb[0]).origin,
+        CLIENT_APP_URL: new URL(config.cognitoCallbackUrls.clientWeb[0]).origin,
         ...database.environment
       }
     });

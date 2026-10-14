@@ -20,8 +20,15 @@ public static class Problems
     public static Task WriteAsync(HttpContext httpContext, int status, string code, string title) =>
         WriteAsync(httpContext, Create(httpContext, status, code, title));
 
-    public static Task WriteAsync(HttpContext httpContext, DomainRuleViolationException violation) =>
-        WriteAsync(httpContext, Create(httpContext, violation));
+    public static Task WriteAsync(HttpContext httpContext, DomainRuleViolationException violation)
+    {
+        if (violation.RetryAfter is { } retryAfter)
+        {
+            httpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return WriteAsync(httpContext, Create(httpContext, violation));
+    }
 
     public static int StatusOf(ViolationKind kind) => kind switch
     {
@@ -30,6 +37,7 @@ public static class Problems
         ViolationKind.Forbidden => StatusCodes.Status403Forbidden,
         ViolationKind.NotFound => StatusCodes.Status404NotFound,
         ViolationKind.Conflict => StatusCodes.Status409Conflict,
+        ViolationKind.Gone => StatusCodes.Status410Gone,
         ViolationKind.TooManyRequests => StatusCodes.Status429TooManyRequests,
         _ => StatusCodes.Status400BadRequest
     };

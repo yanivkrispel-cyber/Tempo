@@ -87,12 +87,16 @@ public static class AccountEndpoints
             account.DisplayName,
             account.Locale,
             StoredValue.Of(account.Status),
-            [.. studios.Select(m => new MyMembershipResponse(
-                m.MembershipId,
-                StoredValue.Of(m.Role),
-                StoredValue.Of(m.Status),
-                new MyOrganizationResponse(m.OrganizationId, m.Slug, m.DisplayName, StoredValue.Of(m.OrganizationStatus))))]);
+            [.. studios.Select(ToResponse)]);
     }
+
+    /// <summary>`MyMembership`: also the answer to accepting an invitation or joining by link.</summary>
+    internal static MyMembershipResponse ToResponse(AccountMembership m) =>
+        new(
+            m.MembershipId,
+            StoredValue.Of(m.Role),
+            StoredValue.Of(m.Status),
+            new MyOrganizationResponse(m.OrganizationId, m.Slug, m.DisplayName, StoredValue.Of(m.OrganizationStatus)));
 
     /// <summary>
     /// The sign-in behind a validated customer access token. Cognito access
