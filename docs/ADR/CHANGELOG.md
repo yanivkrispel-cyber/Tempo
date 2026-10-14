@@ -1,3 +1,15 @@
+# ADR Baseline v3.3 - Change Log (2026-10-14)
+
+The product owner decided the two questions that blocked the Phase 1 design: onboarding (D7) and operator MFA (D8).
+
+## Added ADRs
+
+- ADR-0023: studio owners sign up on their own; staff and clients join by invitation or join link; the Tempo team signs in through a separate user pool with MFA required.
+
+## Amended ADRs
+
+- ADR-0007: two user pools instead of one; self sign-up stays on for the customer pool.
+
 # ADR Baseline v3.2 - Change Log (2026-10-14)
 
 Aurora DSQL could not be created for the account (support case open since 2026-10-13). The owners chose Neon serverless Postgres as the database for good.
