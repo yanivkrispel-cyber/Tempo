@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ניהול פלטפורמה · כרטיס סטודיו</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+.kv{display:flex;justify-content:space-between;gap:12px;align-items:center;min-height:32px}
+.lcl{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;font-weight:600;color:var(--ink-muted)}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ניהול הפלטפורמה" style="flex: none;">
+    <div class="tp-rail__logo" style="background: var(--tp-taupe-gradient);">T</div>
+    <a class="tp-rail__item" href="PlatformHome.dc.html" aria-label="סקירה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <a class="tp-rail__item" href="Studios.dc.html" aria-current="page" aria-label="סטודיואים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="חיובים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span class="tp-chip tp-chip--count">1</span></a>
+    <a class="tp-rail__item" href="Impersonate.dc.html" aria-label="תמיכה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="יומן ביקורת"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--brand" style="margin-top: 8px;">קר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 1240px; display: flex; flex-direction: column; gap: 20px;">
+    <a href="Studios.dc.html" style="display: inline-flex; gap: 6px; align-items: center; font-weight: 600; font-size: 14px; width: max-content;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px;"><path d="m9 18 6-6-6-6"/></svg>חזרה לרשימת הסטודיואים</a>
+
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+      <div style="display: flex; gap: 18px; align-items: center;">
+        <span class="tp-rail__logo" style="width: 64px; height: 64px; font-size: 26px; margin: 0;">נ</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <h1>סטודיו נשימה</h1>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <span class="{{stateChip}}">{{stateLabel}}</span>
+            <span class="tp-chip tp-chip--plain">מסלול מקצועי</span>
+            <code>org_7f3a2c91</code>
+            <span class="tp-muted" style="font-size: 14px;">סטודיו · תל אביב · ב-<bdi>Tempo</bdi> מאז 02.01.2026</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <a class="tp-btn tp-btn--secondary" href="Impersonate.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>כניסה כתמיכה</a>
+        <sc-if value="{{isActive}}" hint-placeholder-val="{{true}}"><button class="tp-btn tp-btn--danger" type="button" onClick="{{askSuspend}}">השעיית הסטודיו</button></sc-if>
+        <sc-if value="{{isSuspended}}" hint-placeholder-val="{{false}}"><button class="tp-btn" type="button" onClick="{{reactivate}}">הפעלה מחדש</button></sc-if>
+      </div>
+    </header>
+
+    <sc-if value="{{isSuspended}}" hint-placeholder-val="{{false}}">
+      <div class="tp-banner tp-banner--danger" role="status"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span>הסטודיו מושעה. הצוות והמתאמנים לא יכולים להיכנס, והבעלים קיבלה מייל עם הסיבה. הנתונים נשמרים.</span></div>
+    </sc-if>
+
+    <section class="tp-card tp-card--cream" aria-label="מחזור חיים" style="padding: 18px 24px;">
+      <div class="tp-steps">
+        <span class="tp-steps__dot tp-steps__dot--done"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <span class="tp-steps__line tp-steps__line--done"></span>
+        <span class="tp-steps__dot tp-steps__dot--done"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <span class="tp-steps__line tp-steps__line--done"></span>
+        <span class="{{dotActive}}"></span>
+        <span class="{{lineSusp}}"></span>
+        <span class="{{dotSusp}}"></span>
+        <span class="tp-steps__line"></span>
+        <span class="tp-steps__dot"></span>
+      </div>
+      <div class="lcl"><span>הקמה · 02.01</span><span>ניסיון · 02.01 עד 16.01</span><span>פעיל · מאז 16.01</span><span>מושעה</span><span>סגור</span></div>
+    </section>
+
+    <div class="tp-tabs" role="tablist" aria-label="כרטיס סטודיו">
+      <button class="tp-tab" role="tab" type="button" aria-selected="{{tO}}" onClick="{{showO}}">סקירה</button>
+      <button class="tp-tab" role="tab" type="button" aria-selected="{{tE}}" onClick="{{showE}}">מסלול והרשאות</button>
+      <button class="tp-tab" role="tab" type="button" aria-selected="{{tA}}" onClick="{{showA}}">יומן ביקורת</button>
+    </div>
+
+    <sc-if value="{{isO}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+        <section style="flex: 3 1 520px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div class="tp-card tp-card--sm"><div class="tp-stat__value">184</div><div class="tp-stat__label">מתאמנים פעילים · 9 חדשים החודש</div></div>
+          <div class="tp-card tp-card--sm"><div class="tp-stat__value">31</div><div class="tp-stat__label">שיעורים בשבוע · תפוסה 85%</div></div>
+          <div class="tp-card tp-card--sm"><div class="tp-stat__value">5</div><div class="tp-stat__label">אנשי צוות · 4 מדריכים</div></div>
+          <div class="tp-card tp-card--sm tp-card--base"><div class="tp-stat__value">290 ₪</div><div class="tp-stat__label">לחודש · חיוב הבא ב-02.11</div></div>
+          <div class="tp-card tp-card--sm tp-card--cream" style="grid-column: 1 / -1;">
+            <div class="tp-card__head" style="margin-bottom: 10px;"><h2 class="tp-card__title" style="font-size: 17px;">שימוש מול מגבלות המסלול</h2></div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div><div class="kv"><span>מתאמנים</span><span class="tp-muted">184 מתוך 300</span></div><span class="tp-bar tp-bar--sage"><span class="tp-bar__fill" style="width: 61%;"></span></span></div>
+              <div><div class="kv"><span>אנשי צוות</span><span class="tp-muted">5 מתוך 10</span></div><span class="tp-bar tp-bar--sage"><span class="tp-bar__fill" style="width: 50%;"></span></span></div>
+              <div><div class="kv"><span>אחסון קבצים</span><span class="tp-muted"><bdi>1.2 GB</bdi> מתוך <bdi>5 GB</bdi></span></div><span class="tp-bar tp-bar--sage"><span class="tp-bar__fill" style="width: 24%;"></span></span></div>
+            </div>
+          </div>
+        </section>
+        <aside class="tp-card tp-card--cream" style="flex: 2 1 300px; min-width: 0;">
+          <h2 class="tp-card__title" style="margin-bottom: 12px;">בעלים ואנשי קשר</h2>
+          <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;"><span class="tp-avatar">מר</span><div><div style="font-weight: 700;">מיכל רז</div><div class="tp-caption">בעלים · <bdi>MFA</bdi> מופעל</div></div></div>
+          <div class="kv"><span class="tp-muted">טלפון</span><span class="tp-ltr" dir="ltr">050-123-4567</span></div>
+          <div class="kv"><span class="tp-muted">מייל</span><span class="tp-ltr" dir="ltr">michal@neshima.example</span></div>
+          <div class="kv"><span class="tp-muted">כתובת</span><span>דיזנגוף 120, תל אביב</span></div>
+          <hr class="tp-divider" style="margin-block: 10px;">
+          <div class="kv"><span class="tp-muted">פניות פתוחות</span><span class="tp-chip tp-chip--info">1 · כרטיס 1051</span></div>
+        </aside>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isE}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+        <section class="tp-card tp-card--cream" style="flex: 3 1 520px; min-width: 0;">
+          <div class="tp-card__head"><h2 class="tp-card__title">יכולות פעילות</h2><span class="tp-caption">גרסה 7 · עודכן 16.01.2026</span></div>
+          <div style="display: flex; flex-direction: column;">
+            <sc-for list="{{ents}}" as="e" hint-placeholder-count="7">
+              <div class="kv" style="min-height: 56px; border-bottom: 1px solid var(--line);">
+                <span style="display: flex; flex-direction: column;"><span style="font-weight: 600;">{{e.name}}</span><span class="tp-caption">{{e.note}}</span></span>
+                <label class="tp-toggle"><input type="checkbox" defaultChecked="{{e.on}}" disabled="{{e.locked}}" aria-label="{{e.name}}"><span class="tp-toggle__track"></span></label>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <aside class="tp-card" style="flex: 2 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+          <h2 class="tp-card__title">מסלול</h2>
+          <div class="tp-field"><label class="tp-field__label" for="pl">מסלול נוכחי</label><select id="pl" class="tp-select"><option>מקצועי · 290 ₪ לחודש</option><option>בסיסי · 190 ₪ לחודש</option></select></div>
+          <div class="tp-field"><label class="tp-field__label" for="why">סיבה לשינוי ידני</label><input id="why" class="tp-input" placeholder="נשמרת ביומן הביקורת"><span class="tp-field__help">שינוי ידני מחשב מחדש את ההרשאות מיד.</span></div>
+          <button class="tp-btn tp-btn--secondary" type="button">שמירת השינוי</button>
+        </aside>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isA}}" hint-placeholder-val="{{false}}">
+      <div class="tp-table-wrap">
+        <table class="tp-table">
+          <thead><tr><th>מתי</th><th>מי</th><th>פעולה</th><th>פרטים</th></tr></thead>
+          <tbody>
+            <sc-for list="{{audit}}" as="a" hint-placeholder-count="6">
+              <tr><td class="tp-muted" style="font-size: 14px; white-space: nowrap;">{{a.when}}</td><td>{{a.who}}</td><td><span class="{{a.chip}}">{{a.what}}</span></td><td style="font-size: 14px;">{{a.detail}}</td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{confirm}}" hint-placeholder-val="{{false}}">
+    <div class="tp-scrim">
+      <div class="tp-dialog" role="dialog" aria-modal="true" aria-labelledby="su-h">
+        <h2 id="su-h" class="tp-dialog__title">להשעות את סטודיו נשימה?</h2>
+        <p class="tp-dialog__body">184 מתאמנים וחמישה אנשי צוות לא יוכלו להיכנס עד שתפעיל אותו מחדש. שום נתון לא נמחק.</p>
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 16px;">
+          <div class="tp-field"><label class="tp-field__label" for="rs">סיבה</label><select id="rs" class="tp-select"><option>אי תשלום אחרי 14 יום</option><option>הפרת תנאי שימוש</option><option>בקשת הבעלים</option></select></div>
+          <div class="tp-field"><label class="tp-field__label" for="nt">הודעה לבעלים</label><textarea id="nt" class="tp-textarea" placeholder="תצורף למייל שנשלח למיכל"></textarea></div>
+          <div class="tp-field"><label class="tp-field__label" for="cf">הקלדת שם הסטודיו לאישור</label><input id="cf" class="tp-input" placeholder="סטודיו נשימה" onInput="{{onConfirmText}}"></div>
+        </div>
+        <div class="tp-dialog__actions">
+          <button class="tp-btn tp-btn--secondary" type="button" onClick="{{keep}}">ביטול</button>
+          <button class="tp-btn tp-btn--danger" type="button" disabled="{{cantSuspend}}" onClick="{{doSuspend}}">השעיה</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'o', suspended: false, confirm: false, typed: '' }; }
+  renderVals() {
+    const s = this.state;
+    const ents = [
+      ['מערכת שיעורים והרשמה', 'כלול בכל המסלולים', true, true],
+      ['רשימות המתנה אוטומטיות', 'כלול במסלול מקצועי', true, false],
+      ['תשלומים וכרטיסיות', 'כלול במסלול מקצועי', true, false],
+      ['התראות בדחיפה ובמייל', 'כלול בכל המסלולים', true, true],
+      ['מיתוג אישי לאפליקציה', 'צבע ולוגו של הסטודיו', true, false],
+      ['כמה סניפים', 'לא כלול במסלול', false, false],
+      ['הודעות וואטסאפ', 'תוסף בתשלום, הסטודיו משלם', false, false]
+    ].map(([name, note, on, locked]) => ({ name, note, on, locked }));
+    const audit = [
+      ['13.10 · 09:41', 'מיכל רז', 'כניסה', 'כניסה עם אימות דו-שלבי', 'tp-chip tp-chip--plain'],
+      ['12.10 · 14:02', 'יעל מצוות התמיכה', 'כניסת תמיכה', 'כרטיס 1051 · 20 דקות · קריאה בלבד', 'tp-chip tp-chip--info'],
+      ['02.10 · 06:00', 'מערכת', 'חיוב', 'חיוב חודשי 290 ₪ הצליח', 'tp-chip tp-chip--success'],
+      ['18.09 · 11:30', 'מיכל רז', 'צוות', 'הוסיפה את עומר כמדריך', 'tp-chip tp-chip--plain'],
+      ['16.01 · 10:15', 'קריס', 'מסלול', 'מעבר מניסיון למסלול מקצועי', 'tp-chip tp-chip--brand'],
+      ['02.01 · 09:00', 'קריס', 'הקמה', 'הסטודיו נוצר והזמנה נשלחה לבעלים', 'tp-chip tp-chip--plain']
+    ].map(([when, who, what, detail, chip]) => ({ when, who, what, detail, chip }));
+    return {
+      ents, audit, isActive: !s.suspended, isSuspended: s.suspended,
+      stateChip: s.suspended ? 'tp-chip tp-chip--danger' : 'tp-chip tp-chip--success',
+      stateLabel: s.suspended ? 'מושעה' : 'פעיל',
+      dotActive: s.suspended ? 'tp-steps__dot tp-steps__dot--done' : 'tp-steps__dot tp-steps__dot--current',
+      lineSusp: s.suspended ? 'tp-steps__line tp-steps__line--done' : 'tp-steps__line',
+      dotSusp: s.suspended ? 'tp-steps__dot tp-steps__dot--current' : 'tp-steps__dot',
+      isO: s.tab === 'o', isE: s.tab === 'e', isA: s.tab === 'a',
+      tO: String(s.tab === 'o'), tE: String(s.tab === 'e'), tA: String(s.tab === 'a'),
+      showO: () => this.setState({ tab: 'o' }), showE: () => this.setState({ tab: 'e' }), showA: () => this.setState({ tab: 'a' }),
+      confirm: s.confirm, cantSuspend: s.typed !== 'סטודיו נשימה',
+      onConfirmText: (e) => this.setState({ typed: e.target.value.trim() }),
+      askSuspend: () => this.setState({ confirm: true, typed: '' }),
+      keep: () => this.setState({ confirm: false }),
+      doSuspend: () => this.setState({ confirm: false, suspended: true }),
+      reactivate: () => this.setState({ suspended: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

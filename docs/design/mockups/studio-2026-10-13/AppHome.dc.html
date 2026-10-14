@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>בית · אפליקציית המתאמן</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+a.tp-event,a.tp-tabbar__item,a.tp-tabbar__fab{text-decoration:none}
+a.tp-event{color:var(--ink)}
+.day{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;width:42px;min-height:56px;justify-content:center;border-radius:12px;color:var(--ink-muted);font-size:12px;font-weight:600}
+.day b{font-size:16px;color:var(--ink)}
+.day[aria-pressed="true"]{background:var(--tp-slab);box-shadow:var(--shadow-raise-sm);color:var(--brand-ink)}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+  <div style="height: 844px; overflow-y: auto; box-sizing: border-box; padding: 28px 16px 120px; display: flex; flex-direction: column; gap: 20px;">
+
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="tp-eyebrow">שלישי · 13.10 · סטודיו נשימה</span>
+        <h1 style="font-size: 28px; font-weight: 800;">היי נגה</h1>
+      </div>
+      <button class="tp-btn tp-btn--icon" type="button" aria-label="התראות" style="position: relative;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+    </header>
+
+    <section class="tp-card tp-card--elevated" aria-labelledby="next-h" style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em;">השיעור הבא שלך</span>
+      <h2 id="next-h" style="font-size: 24px; line-height: 30px; font-weight: 800;">פילאטיס מכשירים</h2>
+      <span style="font-weight: 500;">היום 17:30 · דנה · חדר המכשירים</span>
+      <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+        <a class="tp-btn tp-btn--rose" href="AppClass.dc.html" style="box-shadow: 0 0 0 1.5px #ffffff80;">לפרטי השיעור</a>
+      </div>
+    </section>
+
+    <section aria-label="ימי השבוע" style="display: flex; justify-content: space-between; padding: 6px; border-radius: 16px; background: var(--surface-sunken); box-shadow: var(--shadow-sunken);">
+      <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+        <button class="day" type="button" aria-pressed="{{d.on}}" onClick="{{d.pick}}">{{d.name}}<b>{{d.num}}</b></button>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="day-h" style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 id="day-h" style="font-size: 18px;">{{dayTitle}}</h2>
+        <a href="AppBook.dc.html" style="font-size: 14px; font-weight: 600;">לכל המערכת</a>
+      </div>
+      <sc-for list="{{events}}" as="e" hint-placeholder-count="3">
+        <a class="{{e.cls}}" href="AppClass.dc.html" style="--tp-fill: {{e.pct}}; padding-block: 12px;">
+          <span class="tp-event__count">{{e.badge}}</span>
+          <span class="tp-event__title" style="font-size: 15px; padding-inline-end: 64px;">{{e.title}}</span>
+          <span class="tp-event__meta" style="font-size: 13px;">{{e.time}} · {{e.coach}}</span>
+          <span class="tp-event__fill"><i></i></span>
+        </a>
+      </sc-for>
+      <sc-if value="{{noEvents}}" hint-placeholder-val="{{false}}">
+        <div class="tp-empty" style="padding-block: 28px;">
+          <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="tp-empty__title">{{emptyText}}</span>
+        </div>
+      </sc-if>
+    </section>
+
+    <section aria-label="ההתקדמות שלך" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <div class="tp-card tp-card--sm" style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
+        <div class="tp-ring tp-ring--sm" style="--tp-ring-deg: 280deg;"><div class="tp-ring__inner">14</div></div>
+        <div class="tp-stat__label">ביקורים החודש</div>
+      </div>
+      <div class="tp-card tp-card--sm tp-card--base" style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
+        <div class="tp-icon-tile tp-icon-tile--sm"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <div class="tp-stat__label">שישה שבועות ברצף עם שלושה שיעורים</div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="tp-tabbar" aria-label="ניווט" style="position: absolute; bottom: 16px; inset-inline: 16px;">
+    <a class="tp-tabbar__item" href="AppHome.dc.html" aria-current="page"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>בית</a>
+    <a class="tp-tabbar__item" href="AppBook.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>מערכת</a>
+    <a class="tp-tabbar__fab" href="AppBook.dc.html" aria-label="הרשמה לשיעור"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    <a class="tp-tabbar__item" href="AppBookings.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>הזמנות</a>
+    <a class="tp-tabbar__item" href="AppProfile.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>פרופיל</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { day: 2 }; }
+  renderVals() {
+    const T = { vin: ['ויניאסה יוגה', 'sage'], ref: ['פילאטיס מכשירים', 'rose'], mat: ['פילאטיס מזרן', 'taupe'], pow: ['פילאטיס כוח', 'amber'], pre: ['יוגה בהריון', 'mauve'], yin: ['יין יוגה ונשימה', 'blue'] };
+    const byDay = {
+      2: [['17:30', 'ref', 'דנה', 8, 8, 'נרשמת'], ['19:00', 'pre', 'נועה', 6, 10], ['20:15', 'yin', 'עומר', 14, 14]],
+      3: [['07:00', 'ref', 'דנה', 6, 8], ['09:30', 'vin', 'נועה', 8, 14], ['18:00', 'pow', 'עומר', 10, 10], ['19:30', 'mat', 'יעל', 4, 12]],
+      4: [['07:00', 'vin', 'נועה', 5, 14], ['09:30', 'ref', 'דנה', 3, 8], ['20:00', 'yin', 'עומר', 6, 14]],
+      5: [['08:00', 'ref', 'דנה', 8, 8], ['09:30', 'vin', 'נועה', 11, 14]]
+    };
+    const names = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+    const full = ['ראשון', 'שני', 'היום', 'מחר', 'חמישי', 'שישי', 'שבת'];
+    const d = this.state.day;
+    const days = names.map((name, i) => ({ name, num: String(11 + i), on: String(i === d), pick: () => this.setState({ day: i }) }));
+    const events = (byDay[d] || []).map(([time, k, coach, n, cap, mine]) => {
+      const free = cap - n;
+      return { time, coach, title: T[k][0], cls: 'tp-event tp-event--' + T[k][1], pct: Math.round((n / cap) * 100) + '%',
+        badge: mine ? mine : free === 0 ? 'מלא · המתנה' : free === 1 ? 'מקום אחד' : free + ' מקומות' };
+    });
+    return { days, events, noEvents: events.length === 0, emptyText: d < 2 ? 'היום הזה כבר עבר' : 'אין שיעורים בשבת',
+      dayTitle: d === 2 ? 'השיעורים של היום' : d === 3 ? 'השיעורים של מחר' : 'השיעורים של יום ' + full[d] };
+  }
+}
+</script>
+</body>
+</html>

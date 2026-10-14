@@ -1,0 +1,33 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-13T16:00:00Z"},
+  "title": "Tempo Studio Mockup",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 1080, "title": "קונסולה · היום", "expand": "fill", "is_interactive": true},
+    "Schedule.dc.html": {"x": 1520, "y": 0, "w": 1440, "h": 1080, "title": "קונסולה · מערכת שבועית", "expand": "fill", "is_interactive": true},
+    "ClassDetail.dc.html": {"x": 3040, "y": 0, "w": 1440, "h": 1080, "title": "קונסולה · פרטי שיעור", "expand": "fill", "is_interactive": true},
+    "Members.dc.html": {"x": 4560, "y": 0, "w": 1440, "h": 1080, "title": "קונסולה · מנויים", "expand": "fill", "is_interactive": true},
+    "MemberProfile.dc.html": {"x": 6080, "y": 0, "w": 1440, "h": 1080, "title": "קונסולה · כרטיס מנוי", "expand": "fill", "is_interactive": true},
+    "AppHome.dc.html": {"x": 0, "y": 1500, "w": 390, "h": 844, "title": "מתאמן · בית", "is_interactive": true, "radius": 28},
+    "AppBook.dc.html": {"x": 470, "y": 1500, "w": 390, "h": 844, "title": "מתאמן · מערכת והרשמה", "is_interactive": true, "radius": 28},
+    "AppClass.dc.html": {"x": 940, "y": 1500, "w": 390, "h": 844, "title": "מתאמן · פרטי שיעור", "is_interactive": true, "radius": 28},
+    "AppBookings.dc.html": {"x": 1410, "y": 1500, "w": 390, "h": 844, "title": "מתאמן · ההזמנות שלי", "is_interactive": true, "radius": 28},
+    "AppProfile.dc.html": {"x": 1880, "y": 1500, "w": 390, "h": 844, "title": "מתאמן · פרופיל ומנוי", "is_interactive": true, "radius": 28},
+    "PlatformHome.dc.html": {"x": 0, "y": 2950, "w": 1440, "h": 1080, "title": "צוות Tempo · סקירה", "expand": "fill", "is_interactive": true},
+    "Studios.dc.html": {"x": 1520, "y": 2950, "w": 1440, "h": 1080, "title": "צוות Tempo · סטודיואים", "expand": "fill", "is_interactive": true},
+    "StudioDetail.dc.html": {"x": 3040, "y": 2950, "w": 1440, "h": 1080, "title": "צוות Tempo · כרטיס סטודיו", "expand": "fill", "is_interactive": true},
+    "Impersonate.dc.html": {"x": 4560, "y": 2950, "w": 1440, "h": 1080, "title": "צוות Tempo · כניסה כתמיכה", "expand": "fill", "is_interactive": true},
+    "NewStudio.dc.html": {"x": 6080, "y": 2950, "w": 1440, "h": 1080, "title": "צוות Tempo · סטודיו חדש", "expand": "fill", "is_interactive": true}
+  },
+  "order": ["Main.dc.html", "Schedule.dc.html", "ClassDetail.dc.html", "Members.dc.html", "MemberProfile.dc.html", "AppHome.dc.html", "AppBook.dc.html", "AppClass.dc.html", "AppBookings.dc.html", "AppProfile.dc.html", "PlatformHome.dc.html", "Studios.dc.html", "StudioDetail.dc.html", "Impersonate.dc.html", "NewStudio.dc.html"],
+  "notes": {
+    "consoleTitle": {"x": 0, "y": -300, "text": "קונסולת בעל הסטודיו · דסקטופ", "kind": "title1", "maxW": 7520},
+    "appTitle": {"x": 0, "y": 1200, "text": "אפליקציית המתאמן · טלפון", "kind": "title1", "maxW": 2270},
+    "platformTitle": {"x": 0, "y": 2650, "text": "ניהול הסטודיואים · צוות Tempo", "kind": "title1", "maxW": 7520}
+  },
+  "designSystems": [
+    {"title": "Tempo Design System", "namespace": "tempo", "artifact": "https://claude.ai/artifact/4MSvEKktJR25A76416N5nC", "version": "1791902499-1213", "copiedAt": "2026-10-13T16:00:00Z"}
+  ]
+}

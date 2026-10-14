@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>פרטי שיעור</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ראשי" style="flex: none;">
+    <div class="tp-rail__logo">T</div>
+    <a class="tp-rail__item" href="Main.dc.html" aria-label="היום"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></a>
+    <a class="tp-rail__item" href="Schedule.dc.html" aria-current="page" aria-label="מערכת שבועית"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></a>
+    <a class="tp-rail__item" href="Members.dc.html" aria-label="מנויים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="הודעות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="tp-chip tp-chip--count">2</span></a>
+    <a class="tp-rail__item" href="#" aria-label="דוחות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--taupe" style="margin-top: 8px;">מר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 1240px; display: flex; flex-direction: column; gap: 20px;">
+    <a href="Schedule.dc.html" style="display: inline-flex; gap: 6px; align-items: center; font-weight: 600; font-size: 14px; width: max-content;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px;"><path d="m9 18 6-6-6-6"/></svg>חזרה למערכת השבועית</a>
+
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <span class="tp-eyebrow">שלישי · 13.10.2026</span>
+        <h1>פילאטיס מכשירים</h1>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+          <span class="tp-chip tp-chip--cat-rose">פילאטיס</span>
+          <span class="{{fullChip}}">{{fullLabel}}</span>
+          <span class="tp-muted">17:30 עד 18:20 · חדר המכשירים</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <button class="tp-btn tp-btn--secondary" type="button"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>הודעה לרשומים</button>
+        <button class="tp-btn tp-btn--danger" type="button" onClick="{{askCancel}}">ביטול השיעור</button>
+      </div>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+      <section style="flex: 3 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+        <div class="tp-tabs" role="tablist" aria-label="רשימות השיעור">
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{tabReg}}" onClick="{{showReg}}">רשומים · {{regCount}}</button>
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{tabWait}}" onClick="{{showWait}}">רשימת המתנה · {{waitCount}}</button>
+        </div>
+
+        <sc-if value="{{isReg}}" hint-placeholder-val="{{true}}">
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead><tr><th>מתאמן.ת</th><th>מנוי</th><th>נרשם.ה</th><th>נוכחות</th><th><span class="tp-sr-only">פעולות</span></th></tr></thead>
+              <tbody>
+                <sc-for list="{{reg}}" as="r" hint-placeholder-count="8">
+                  <tr>
+                    <td><span style="display: flex; align-items: center; gap: 10px;"><span class="tp-avatar tp-avatar--sm">{{r.ini}}</span><a href="MemberProfile.dc.html" style="color: var(--ink);">{{r.name}}</a></span></td>
+                    <td><span class="{{r.planClass}}">{{r.plan}}</span></td>
+                    <td class="tp-muted" style="font-size: 14px;">{{r.when}}</td>
+                    <td><label class="tp-check"><input type="checkbox" defaultChecked="{{r.here}}"><span class="tp-sr-only">נוכחות של {{r.name}}</span></label></td>
+                    <td style="text-align: end;"><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button" onClick="{{r.cancel}}">ביטול הרשמה</button></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isWait}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <sc-for list="{{wait}}" as="w" hint-placeholder-count="3">
+              <div class="tp-class" style="padding: 16px 20px;">
+                <span class="tp-chip tp-chip--count">{{w.pos}}</span>
+                <span class="tp-avatar">{{w.ini}}</span>
+                <div class="tp-class__body"><span style="font-weight: 700;">{{w.name}}</span><span class="tp-class__meta">{{w.meta}}</span></div>
+                <div class="tp-class__actions"><button class="tp-btn tp-btn--secondary tp-btn--sm" type="button" onClick="{{w.promote}}">העברה לשיעור</button></div>
+              </div>
+            </sc-for>
+            <sc-if value="{{waitEmpty}}" hint-placeholder-val="{{false}}">
+              <div class="tp-empty">
+                <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22h14M5 2h14M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>
+                <span class="tp-empty__title">רשימת ההמתנה ריקה</span>
+                <span>כשהשיעור מתמלא, מי שמנסה להירשם נכנס לכאן לפי הסדר.</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+
+      <aside style="flex: 2 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
+        <section class="tp-card" aria-label="תפוסה">
+          <div class="tp-stat">
+            <div class="{{ringClass}}" style="--tp-ring-deg: {{ringDeg}};"><div class="tp-ring__inner">{{regCount}} מתוך 8</div></div>
+            <div>
+              <div class="tp-stat__value" style="font-size: 24px; line-height: 30px;">{{occupancy}}</div>
+              <div class="tp-stat__label">{{occupancyNote}}</div>
+            </div>
+          </div>
+        </section>
+        <section class="tp-card tp-card--cream" aria-labelledby="det-h">
+          <h2 id="det-h" class="tp-card__title" style="margin-bottom: 14px;">פרטים</h2>
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; gap: 12px; align-items: center;"><span class="tp-avatar">דנ</span><div><div style="font-weight: 700;">דנה אלון</div><div class="tp-caption">מדריכה · פילאטיס מכשירים</div></div></div>
+            <hr class="tp-divider">
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="tp-icon-tile tp-icon-tile--sm"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span>50 דקות · ביטול חינם עד 4 שעות לפני</span></div>
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="tp-icon-tile tp-icon-tile--sm"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span><span>חדר המכשירים · 8 מכשירי רפורמר</span></div>
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="tp-icon-tile tp-icon-tile--sm"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span><span>מנוי חודשי או כניסה אחת מכרטיסייה</span></div>
+          </div>
+        </section>
+        <div class="tp-banner tp-banner--info" role="note">
+          <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+          <span>כשמקום מתפנה, הממתין.ה הראשון.ה מקבל.ת אותו אוטומטית והודעה בדחיפה ובמייל.</span>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <sc-if value="{{confirmCancel}}" hint-placeholder-val="{{false}}">
+    <div class="tp-scrim">
+      <div class="tp-dialog" role="dialog" aria-modal="true" aria-labelledby="cx-h">
+        <h2 id="cx-h" class="tp-dialog__title">לבטל את השיעור?</h2>
+        <p class="tp-dialog__body">שמונה הרשומים ושלושת הממתינים יקבלו הודעה, וכניסות מכרטיסייה יוחזרו להם. אי אפשר לבטל את הפעולה.</p>
+        <div class="tp-field" style="margin-top: 16px;">
+          <label class="tp-field__label" for="cx-msg">הודעה למתאמנים</label>
+          <textarea id="cx-msg" class="tp-textarea" defaultValue="השיעור של היום ב-17:30 מבוטל בגלל מחלה של המדריכה. מצטערים, נתראה בשיעור הבא."></textarea>
+        </div>
+        <div class="tp-dialog__actions">
+          <button class="tp-btn tp-btn--secondary" type="button" onClick="{{keep}}">השארת השיעור</button>
+          <button class="tp-btn tp-btn--danger" type="button" onClick="{{doCancel}}">ביטול השיעור</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="tp-toast tp-toast--success" role="status" style="position: fixed; bottom: 24px; inset-inline-start: 50%; transform: translateX(50%); z-index: 50;">
+      <span class="tp-toast__tile"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+      <span>{{toast}}</span>
+      <button class="tp-toast__close" type="button" aria-label="סגירה" onClick="{{closeToast}}"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tab: 'reg', toast: '', confirmCancel: false,
+      reg: [
+        { id: 1, ini: 'שכ', name: 'שירה כהן', plan: 'חודשי ללא הגבלה', k: 'brand', when: '10.10 · 21:04', here: true },
+        { id: 2, ini: 'אש', name: 'אורית שלום', plan: 'כרטיסייה · 2 נותרו', k: 'warning', when: '10.10 · 22:40', here: true },
+        { id: 3, ini: 'נר', name: 'נגה רוזן', plan: 'חודשי ללא הגבלה', k: 'brand', when: '11.10 · 07:15', here: false },
+        { id: 4, ini: 'עג', name: 'עדי גולן', plan: 'כרטיסייה · 6 נותרו', k: 'plain', when: '11.10 · 12:30', here: false },
+        { id: 5, ini: 'קב', name: 'קרן ברק', plan: 'חודשי ללא הגבלה', k: 'brand', when: '11.10 · 18:02', here: false },
+        { id: 6, ini: 'הא', name: 'הילה אוחיון', plan: 'פעמיים בשבוע', k: 'plain', when: '12.10 · 08:45', here: false },
+        { id: 7, ini: 'סד', name: 'סיון דהן', plan: 'שיעור ניסיון', k: 'info', when: '12.10 · 13:20', here: false },
+        { id: 8, ini: 'עש', name: 'ענבר שגיא', plan: 'כרטיסייה · 9 נותרו', k: 'plain', when: '12.10 · 20:11', here: false }
+      ],
+      wait: [
+        { id: 9, ini: 'מל', name: 'מאיה לוי', meta: 'נכנסה להמתנה ב-12.10 · 21:30 · חודשי' },
+        { id: 10, ini: 'רא', name: 'רוני אברהם', meta: 'נכנסה להמתנה ב-13.10 · 06:50 · כרטיסייה' },
+        { id: 11, ini: 'תפ', name: 'תמר פרץ', meta: 'נכנסה להמתנה ב-13.10 · 08:05 · חודשי' }
+      ]
+    };
+  }
+  move(regLeft, wait, toast) {
+    let reg = regLeft;
+    let w = wait;
+    if (reg.length < 8 && w.length) {
+      const p = w[0];
+      reg = reg.concat([{ id: p.id, ini: p.ini, name: p.name, plan: 'מהמתנה', k: 'success', when: 'עכשיו', here: false }]);
+      w = w.slice(1);
+      toast = toast + ' · ' + p.name + ' קיבלה את המקום';
+    }
+    this.setState({ reg, wait: w, toast });
+  }
+  renderVals() {
+    const s = this.state;
+    const n = s.reg.length;
+    const full = n >= 8;
+    const reg = s.reg.map((r) => ({ ...r, planClass: 'tp-chip tp-chip--' + r.k,
+      cancel: () => this.move(s.reg.filter((x) => x.id !== r.id), s.wait, 'ההרשמה של ' + r.name + ' בוטלה') }));
+    const wait = s.wait.map((w, i) => ({ ...w, pos: String(i + 1),
+      promote: () => {
+        const reg2 = s.reg.concat([{ id: w.id, ini: w.ini, name: w.name, plan: 'מהמתנה', k: 'success', when: 'עכשיו', here: false }]);
+        this.setState({ reg: reg2, wait: s.wait.filter((x) => x.id !== w.id), toast: w.name + ' הועברה לשיעור מעבר למכסה' });
+      } }));
+    return {
+      reg, wait, regCount: String(n), waitCount: String(s.wait.length), waitEmpty: s.wait.length === 0,
+      isReg: s.tab === 'reg', isWait: s.tab === 'wait', tabReg: String(s.tab === 'reg'), tabWait: String(s.tab === 'wait'),
+      showReg: () => this.setState({ tab: 'reg' }), showWait: () => this.setState({ tab: 'wait' }),
+      fullChip: full ? 'tp-chip tp-chip--warning' : 'tp-chip tp-chip--success',
+      fullLabel: full ? 'מלא' : (8 - n) + ' מקומות פנויים',
+      ringClass: n > 8 ? 'tp-ring tp-ring--over' : 'tp-ring tp-ring--rose',
+      ringDeg: Math.min(360, Math.round((n / 8) * 360)) + 'deg',
+      occupancy: n > 8 ? 'מעבר למכסה' : full ? 'השיעור מלא' : 'יש מקום',
+      occupancyNote: s.wait.length ? s.wait.length + ' ממתינים לפי סדר ההרשמה' : 'אין ממתינים',
+      confirmCancel: s.confirmCancel,
+      askCancel: () => this.setState({ confirmCancel: true }),
+      keep: () => this.setState({ confirmCancel: false }),
+      doCancel: () => this.setState({ confirmCancel: false, toast: 'השיעור בוטל והמתאמנים קיבלו הודעה' }),
+      hasToast: !!s.toast, toast: s.toast, closeToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

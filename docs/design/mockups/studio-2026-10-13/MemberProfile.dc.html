@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>כרטיס מנוי</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ראשי" style="flex: none;">
+    <div class="tp-rail__logo">T</div>
+    <a class="tp-rail__item" href="Main.dc.html" aria-label="היום"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></a>
+    <a class="tp-rail__item" href="Schedule.dc.html" aria-label="מערכת שבועית"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></a>
+    <a class="tp-rail__item" href="Members.dc.html" aria-current="page" aria-label="מנויים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="הודעות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="tp-chip tp-chip--count">2</span></a>
+    <a class="tp-rail__item" href="#" aria-label="דוחות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--taupe" style="margin-top: 8px;">מר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 1240px; display: flex; flex-direction: column; gap: 20px;">
+    <a href="Members.dc.html" style="display: inline-flex; gap: 6px; align-items: center; font-weight: 600; font-size: 14px; width: max-content;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px;"><path d="m9 18 6-6-6-6"/></svg>חזרה לרשימת המנויים</a>
+
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+      <div style="display: flex; gap: 18px; align-items: center;">
+        <span class="tp-avatar tp-avatar--lg" style="width: 72px; height: 72px; font-size: 24px;">שכ</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <h1>שירה כהן</h1>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <span class="{{chipClass}}">{{statusLabel}}</span>
+            <span class="tp-ltr tp-muted" dir="ltr" style="font-size: 14px;">052-418-7731</span>
+            <span class="tp-muted">·</span>
+            <span class="tp-ltr tp-muted" dir="ltr" style="font-size: 14px;">shira.cohen@example.com</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <button class="tp-btn tp-btn--secondary" type="button"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>הודעה</button>
+        <button class="tp-btn tp-btn--secondary" type="button">הקפאת מנוי</button>
+        <button class="tp-btn" type="button" onClick="{{openRenew}}">חידוש מנוי</button>
+      </div>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+      <section style="flex: 3 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+        <section aria-label="סיכום" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+          <div class="tp-card tp-card--sm"><div class="tp-stat"><div class="tp-ring tp-ring--sm" style="--tp-ring-deg: 248deg;"><div class="tp-ring__inner">11</div></div><div><div class="tp-stat__value" style="font-size: 22px; line-height: 28px;">11 ביקורים</div><div class="tp-stat__label">החודש · 16 בחודש שעבר</div></div></div></div>
+          <div class="tp-card tp-card--sm tp-card--base"><div class="tp-stat__value" style="font-size: 22px; line-height: 28px;">פילאטיס מכשירים</div><div class="tp-stat__label">השיעור הקבוע שלה · רביעי 07:00</div></div>
+          <div class="tp-card tp-card--sm tp-card--cream"><div class="tp-stat__value" style="font-size: 22px; line-height: 28px;">שנתיים וחצי</div><div class="tp-stat__label">בסטודיו מאז 03.2024</div></div>
+        </section>
+
+        <div class="tp-tabs" role="tablist" aria-label="היסטוריה">
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{tVisits}}" onClick="{{showVisits}}">ביקורים</button>
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{tPay}}" onClick="{{showPay}}">תשלומים</button>
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{tNotes}}" onClick="{{showNotes}}">הערות צוות</button>
+        </div>
+
+        <sc-if value="{{isVisits}}" hint-placeholder-val="{{true}}">
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead><tr><th>שיעור</th><th>תאריך</th><th>מדריך.ה</th><th>נוכחות</th></tr></thead>
+              <tbody>
+                <sc-for list="{{visits}}" as="v" hint-placeholder-count="6">
+                  <tr><td>{{v.title}}</td><td class="tp-muted">{{v.date}}</td><td>{{v.coach}}</td><td><span class="{{v.chip}}">{{v.state}}</span></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+        <sc-if value="{{isPay}}" hint-placeholder-val="{{false}}">
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead><tr><th>תאריך</th><th>פריט</th><th class="tp-num">סכום</th><th>אמצעי</th><th>מצב</th></tr></thead>
+              <tbody>
+                <sc-for list="{{payments}}" as="p" hint-placeholder-count="4">
+                  <tr><td>{{p.date}}</td><td>{{p.item}}</td><td class="tp-num">{{p.sum}}</td><td class="tp-muted">{{p.method}}</td><td><span class="tp-chip tp-chip--success">שולם</span></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+        <sc-if value="{{isNotes}}" hint-placeholder-val="{{false}}">
+          <div class="tp-card tp-card--cream" style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; gap: 12px;"><span class="tp-avatar tp-avatar--sm">דנ</span><div><div style="font-weight: 600;">דנה · 06.10.2026</div><div>רגישות בגב התחתון. להימנע מכפיפות עמוקות ברפורמר עד סוף החודש.</div></div></div>
+            <hr class="tp-divider">
+            <div class="tp-field">
+              <label class="tp-field__label" for="note">הערה חדשה</label>
+              <textarea id="note" class="tp-textarea" placeholder="ההערה גלויה לצוות בלבד"></textarea>
+            </div>
+            <div><button class="tp-btn tp-btn--secondary tp-btn--sm" type="button">שמירת ההערה</button></div>
+          </div>
+        </sc-if>
+      </section>
+
+      <aside style="flex: 2 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
+        <sc-if value="{{notRenewed}}" hint-placeholder-val="{{true}}">
+          <section class="tp-card tp-card--elevated" aria-labelledby="exp-h" style="display: flex; flex-direction: column; gap: 10px;">
+            <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em;">המנוי מסתיים בעוד חמישה ימים</span>
+            <h2 id="exp-h" class="tp-card__title">חודשי ללא הגבלה · עד 18.10</h2>
+            <span class="tp-bar" style="background: #ffffff40;"><span class="tp-bar__fill" style="width: 84%; background: var(--ink-inverse);"></span></span>
+            <div><button class="tp-btn tp-btn--rose tp-btn--sm" type="button" onClick="{{openRenew}}" style="box-shadow: 0 0 0 1.5px #ffffff80;">חידוש המנוי</button></div>
+          </section>
+        </sc-if>
+        <sc-if value="{{renewed}}" hint-placeholder-val="{{false}}">
+          <div class="tp-banner tp-banner--success" role="status"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>המנוי חודש עד 18.11.2026. קבלה נשלחה במייל.</span></div>
+        </sc-if>
+        <section class="tp-card tp-card--cream" aria-labelledby="pr-h" style="display: flex; flex-direction: column; gap: 12px;">
+          <h2 id="pr-h" class="tp-card__title">פרטים והסכמות</h2>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span class="tp-muted">הצהרת בריאות</span><span class="tp-chip tp-chip--success">נחתמה 02.01.2026</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span class="tp-muted">תקנון הסטודיו</span><span class="tp-chip tp-chip--success">אושר</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span class="tp-muted">אמצעי תשלום</span><span>ויזה שמסתיימת ב-<bdi>4412</bdi></span></div>
+          <hr class="tp-divider">
+          <label class="tp-toggle"><input type="checkbox" defaultChecked="{{yes}}"><span class="tp-toggle__track"></span><span class="tp-toggle__label">התראות בדחיפה</span></label>
+          <label class="tp-toggle"><input type="checkbox" defaultChecked="{{yes}}"><span class="tp-toggle__track"></span><span class="tp-toggle__label">תזכורות במייל</span></label>
+          <label class="tp-toggle"><input type="checkbox"><span class="tp-toggle__track"></span><span class="tp-toggle__label">דיוור שיווקי</span></label>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <sc-if value="{{showRenew}}" hint-placeholder-val="{{false}}">
+    <div class="tp-scrim">
+      <div class="tp-dialog" role="dialog" aria-modal="true" aria-labelledby="rn-h">
+        <div class="tp-steps" aria-label="שלב 2 מתוך 3" style="margin-bottom: 22px;">
+          <span class="tp-steps__dot tp-steps__dot--done"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <span class="tp-steps__line tp-steps__line--done"></span>
+          <span class="tp-steps__dot tp-steps__dot--current"></span>
+          <span class="tp-steps__line"></span>
+          <span class="tp-steps__dot"></span>
+        </div>
+        <h2 id="rn-h" class="tp-dialog__title">חידוש מנוי לשירה</h2>
+        <p class="tp-dialog__body">בחרו מסלול. החיוב יתבצע בכרטיס השמור, והמנוי החדש מתחיל ב-19.10.</p>
+        <fieldset style="border: 0; padding: 0; margin: 16px 0 0; display: flex; flex-direction: column; gap: 10px;">
+          <legend class="tp-sr-only">מסלול</legend>
+          <label class="tp-card tp-card--sm tp-card--selected" style="display: flex; align-items: center; gap: 12px; cursor: pointer;"><span class="tp-check"><input type="radio" name="plan" defaultChecked="{{yes}}"></span><span style="flex: 1; font-weight: 600;">חודשי ללא הגבלה</span><span class="tp-num" style="font-weight: 700;">450 ₪ לחודש</span></label>
+          <label class="tp-card tp-card--sm" style="display: flex; align-items: center; gap: 12px; cursor: pointer;"><span class="tp-check"><input type="radio" name="plan"></span><span style="flex: 1; font-weight: 600;">פעמיים בשבוע</span><span class="tp-num" style="font-weight: 700;">360 ₪ לחודש</span></label>
+          <label class="tp-card tp-card--sm" style="display: flex; align-items: center; gap: 12px; cursor: pointer;"><span class="tp-check"><input type="radio" name="plan"></span><span style="flex: 1; font-weight: 600;">כרטיסיית 10 כניסות</span><span class="tp-num" style="font-weight: 700;">520 ₪</span></label>
+        </fieldset>
+        <div class="tp-dialog__actions">
+          <button class="tp-btn tp-btn--secondary" type="button" onClick="{{closeRenew}}">ביטול</button>
+          <button class="tp-btn" type="button" onClick="{{confirmRenew}}">חיוב וחידוש</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'visits', showRenew: false, renewed: false }; }
+  renderVals() {
+    const s = this.state;
+    const visits = [
+      ['פילאטיס מכשירים', 'שלישי 13.10 · 09:30', 'דנה', true],
+      ['ויניאסה יוגה', 'ראשון 11.10 · 07:00', 'נועה', true],
+      ['פילאטיס מכשירים', 'רביעי 07.10 · 07:00', 'דנה', true],
+      ['יין יוגה', 'שני 05.10 · 20:30', 'עומר', false],
+      ['פילאטיס מכשירים', 'ראשון 04.10 · 09:30', 'דנה', true],
+      ['פילאטיס מזרן', 'חמישי 01.10 · 18:00', 'יעל', true]
+    ].map(([title, date, coach, ok]) => ({ title, date, coach, state: ok ? 'הגיעה' : 'לא הגיעה · בוטל באיחור', chip: ok ? 'tp-chip tp-chip--success' : 'tp-chip tp-chip--danger' }));
+    const payments = [
+      ['18.09.2026', 'מנוי חודשי ללא הגבלה', '450 ₪', 'ויזה 4412'],
+      ['18.08.2026', 'מנוי חודשי ללא הגבלה', '450 ₪', 'ויזה 4412'],
+      ['18.07.2026', 'מנוי חודשי ללא הגבלה', '450 ₪', 'ויזה 4412'],
+      ['02.07.2026', 'מגבת וגרביים נגד החלקה', '65 ₪', 'מזומן']
+    ].map(([date, item, sum, method]) => ({ date, item, sum, method }));
+    return {
+      yes: true, visits, payments,
+      isVisits: s.tab === 'visits', isPay: s.tab === 'pay', isNotes: s.tab === 'notes',
+      tVisits: String(s.tab === 'visits'), tPay: String(s.tab === 'pay'), tNotes: String(s.tab === 'notes'),
+      showVisits: () => this.setState({ tab: 'visits' }), showPay: () => this.setState({ tab: 'pay' }), showNotes: () => this.setState({ tab: 'notes' }),
+      showRenew: s.showRenew, renewed: s.renewed, notRenewed: !s.renewed,
+      chipClass: s.renewed ? 'tp-chip tp-chip--success' : 'tp-chip tp-chip--warning',
+      statusLabel: s.renewed ? 'פעילה עד 18.11.2026' : 'מסתיים ב-18.10',
+      openRenew: () => this.setState({ showRenew: true }),
+      closeRenew: () => this.setState({ showRenew: false }),
+      confirmRenew: () => this.setState({ showRenew: false, renewed: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

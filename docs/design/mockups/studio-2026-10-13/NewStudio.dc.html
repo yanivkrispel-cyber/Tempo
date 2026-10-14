@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ניהול פלטפורמה · סטודיו חדש</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+.lbls{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;font-weight:600;color:var(--ink-muted)}
+.kv{display:flex;justify-content:space-between;gap:12px;min-height:34px;align-items:center}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ניהול הפלטפורמה" style="flex: none;">
+    <div class="tp-rail__logo" style="background: var(--tp-taupe-gradient);">T</div>
+    <a class="tp-rail__item" href="PlatformHome.dc.html" aria-label="סקירה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <a class="tp-rail__item" href="Studios.dc.html" aria-current="page" aria-label="סטודיואים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="חיובים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span class="tp-chip tp-chip--count">1</span></a>
+    <a class="tp-rail__item" href="Impersonate.dc.html" aria-label="תמיכה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="יומן ביקורת"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--brand" style="margin-top: 8px;">קר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 860px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px;">
+    <a href="Studios.dc.html" style="display: inline-flex; gap: 6px; align-items: center; font-weight: 600; font-size: 14px; width: max-content;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px;"><path d="m9 18 6-6-6-6"/></svg>חזרה לרשימת הסטודיואים</a>
+    <header style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="tp-eyebrow">שלב {{stepNo}} מתוך 4</span>
+      <h1>סטודיו חדש</h1>
+    </header>
+
+    <section class="tp-card tp-card--cream" aria-label="התקדמות" style="padding: 18px 24px;">
+      <div class="tp-steps">
+        <sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+          <span class="{{d.dot}}"><sc-if value="{{d.done}}" hint-placeholder-val="{{false}}"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></sc-if></span>
+          <sc-if value="{{d.hasLine}}" hint-placeholder-val="{{true}}"><span class="{{d.line}}"></span></sc-if>
+        </sc-for>
+      </div>
+      <div class="lbls"><span>העסק</span><span>בעלים</span><span>מסלול</span><span>סיכום</span></div>
+    </section>
+
+    <sc-if value="{{s1}}" hint-placeholder-val="{{true}}">
+      <section class="tp-card" style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 class="tp-card__title">פרטי העסק</h2>
+        <div class="tp-field"><label class="tp-field__label" for="bn">שם הסטודיו<span class="tp-req">*</span></label><input id="bn" class="tp-input" defaultValue="סטודיו תנועה ים"></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+          <div class="tp-field"><label class="tp-field__label" for="vt">סוג עסק</label><select id="vt" class="tp-select"><option>סטודיו (שיעורים קבוצתיים)</option><option disabled="{{yes}}">אימון אישי · בקרוב</option><option disabled="{{yes}}">קליניקה · בקרוב</option></select></div>
+          <div class="tp-field"><label class="tp-field__label" for="ct">עיר</label><input id="ct" class="tp-input" defaultValue="בת ים"></div>
+        </div>
+        <div class="tp-field"><label class="tp-field__label" for="sl">כתובת באפליקציה</label><input id="sl" class="tp-input tp-ltr" dir="ltr" defaultValue="tnua-yam"><span class="tp-field__help">המתאמנים יגיעו לסטודיו דרך הכתובת הזו. אותיות באנגלית, מספרים ומקפים.</span></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+      <section class="tp-card" style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 class="tp-card__title">הבעלים</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+          <div class="tp-field"><label class="tp-field__label" for="on">שם מלא<span class="tp-req">*</span></label><input id="on" class="tp-input" defaultValue="רוני ים"></div>
+          <div class="tp-field"><label class="tp-field__label" for="op">טלפון</label><input id="op" class="tp-input tp-ltr" dir="ltr" defaultValue="052-777-1203"></div>
+        </div>
+        <div class="tp-field"><label class="tp-field__label" for="oe">מייל<span class="tp-req">*</span></label><input id="oe" class="tp-input tp-ltr" dir="ltr" defaultValue="roni@tnua-yam.example"><span class="tp-field__help">לשם תישלח ההזמנה. הבעלים בוחר.ת סיסמה ומפעיל.ה אימות דו-שלבי בכניסה הראשונה.</span></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+      <section class="tp-card" style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 class="tp-card__title">מסלול</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+          <sc-for list="{{plans}}" as="p" hint-placeholder-count="2">
+            <button class="{{p.cls}}" type="button" aria-pressed="{{p.on}}" onClick="{{p.pick}}" style="border: 0; text-align: start; display: flex; flex-direction: column; gap: 6px; cursor: pointer; font: inherit; color: var(--ink);">
+              <span style="font-size: 18px; font-weight: 700;">{{p.name}}</span>
+              <span style="font-size: 22px; font-weight: 800;">{{p.price}}</span>
+              <span class="tp-muted" style="font-size: 14px;">{{p.note}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <label class="tp-toggle"><input type="checkbox" defaultChecked="{{yes}}"><span class="tp-toggle__track"></span><span class="tp-toggle__label">ניסיון חינם של 14 יום לפני החיוב הראשון</span></label>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{s4}}" hint-placeholder-val="{{false}}">
+      <section class="tp-card" style="display: flex; flex-direction: column; gap: 6px;">
+        <h2 class="tp-card__title" style="margin-bottom: 8px;">סיכום</h2>
+        <div class="kv"><span class="tp-muted">סטודיו</span><span>סטודיו תנועה ים · בת ים</span></div>
+        <div class="kv"><span class="tp-muted">בעלים</span><span>רוני ים · <span class="tp-ltr" dir="ltr">roni@tnua-yam.example</span></span></div>
+        <div class="kv"><span class="tp-muted">מסלול</span><span>{{planName}} · ניסיון עד 27.10.2026</span></div>
+        <div class="kv"><span class="tp-muted">כתובת</span><span class="tp-ltr" dir="ltr">tempo.app/tnua-yam</span></div>
+        <div class="tp-banner tp-banner--warning" style="margin-top: 12px;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span>כשהסטודיו יעבור מניסיון לפעיל, יהיו 10 סטודיואים פעילים ותגיע ההתראה על מעבר לגיבוי שעתי.</span></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{done}}" hint-placeholder-val="{{false}}">
+      <div class="tp-empty" style="background: var(--success-soft);">
+        <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--success-ink);"><path d="M20 6 9 17l-5-5"/></svg>
+        <span class="tp-empty__title">הסטודיו נוצר</span>
+        <span>ההזמנה נשלחה לרוני. הסטודיו במצב ניסיון עד 27.10.2026.</span>
+        <a class="tp-btn" href="StudioDetail.dc.html">לכרטיס הסטודיו</a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; justify-content: space-between; gap: 12px;">
+        <button class="tp-btn tp-btn--secondary" type="button" onClick="{{back}}" disabled="{{isFirst}}">הקודם</button>
+        <button class="tp-btn" type="button" onClick="{{next}}">{{nextLabel}}</button>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { step: 1, plan: 'pro' }; }
+  renderVals() {
+    const s = this.state;
+    const st = Math.min(s.step, 4);
+    const dots = [1, 2, 3, 4].map((i) => ({
+      done: i < st || s.step === 5,
+      dot: (i < st || s.step === 5) ? 'tp-steps__dot tp-steps__dot--done' : i === st ? 'tp-steps__dot tp-steps__dot--current' : 'tp-steps__dot',
+      hasLine: i < 4,
+      line: (i < st || s.step === 5) ? 'tp-steps__line tp-steps__line--done' : 'tp-steps__line'
+    }));
+    const P = { basic: ['בסיסי', '190 ₪ לחודש', 'עד 120 מתאמנים · שיעורים, הרשמה והתראות'], pro: ['מקצועי', '290 ₪ לחודש', 'עד 300 מתאמנים · גם רשימות המתנה, תשלומים ומיתוג'] };
+    const plans = ['basic', 'pro'].map((id) => ({ name: P[id][0], price: P[id][1], note: P[id][2], on: String(s.plan === id),
+      cls: s.plan === id ? 'tp-card tp-card--sm tp-card--selected' : 'tp-card tp-card--sm tp-card--cream',
+      pick: () => this.setState({ plan: id }) }));
+    return {
+      yes: true, dots, plans, stepNo: String(st), planName: P[s.plan][0],
+      s1: s.step === 1, s2: s.step === 2, s3: s.step === 3, s4: s.step === 4, done: s.step === 5, showNav: s.step < 5,
+      isFirst: s.step === 1, nextLabel: s.step === 4 ? 'יצירת הסטודיו ושליחת ההזמנה' : 'המשך',
+      back: () => this.setState({ step: Math.max(1, s.step - 1) }),
+      next: () => this.setState({ step: s.step + 1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

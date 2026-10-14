@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ניהול פלטפורמה · סקירה</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+.lc{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;min-width:0}
+.lc b{font-size:24px;line-height:30px}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ניהול הפלטפורמה" style="flex: none;">
+    <div class="tp-rail__logo" style="background: var(--tp-taupe-gradient);">T</div>
+    <a class="tp-rail__item" href="PlatformHome.dc.html" aria-current="page" aria-label="סקירה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <a class="tp-rail__item" href="Studios.dc.html" aria-label="סטודיואים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="חיובים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span class="tp-chip tp-chip--count">1</span></a>
+    <a class="tp-rail__item" href="Impersonate.dc.html" aria-label="תמיכה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="יומן ביקורת"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--brand" style="margin-top: 8px;">קר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 1240px; display: flex; flex-direction: column; gap: 24px;">
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="tp-eyebrow"><bdi>Tempo</bdi> · ניהול הפלטפורמה · שלישי 13.10.2026</span>
+        <h1 style="font-size: 32px; line-height: 40px; font-weight: 800;">בוקר טוב, קריס</h1>
+        <span class="tp-muted">14 סטודיואים במערכת. חיוב אחד נכשל ושלושה ניסיונות מסתיימים השבוע.</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+        <label class="tp-sr-only" for="q">חיפוש סטודיו, בעלים או מזהה</label>
+        <input id="q" class="tp-input tp-input--search" type="search" placeholder="חיפוש סטודיו, בעלים או מזהה" style="width: 300px;">
+        <a class="tp-btn" href="NewStudio.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>סטודיו חדש</a>
+      </div>
+    </header>
+
+    <section aria-label="מדדים" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px;">
+      <div class="tp-card tp-card--sm">
+        <div class="tp-stat">
+          <div class="tp-icon-tile"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M10 6h4M10 10h4M10 14h4"/></svg></div>
+          <div><div class="tp-stat__value">9</div><div class="tp-stat__label">סטודיואים פעילים · 2 חדשים החודש</div></div>
+        </div>
+      </div>
+      <div class="tp-card tp-card--sm tp-card--base">
+        <div class="tp-stat">
+          <div class="tp-icon-tile"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div><div class="tp-stat__value">1,126</div><div class="tp-stat__label">מתאמנים בכל הסטודיואים</div></div>
+        </div>
+      </div>
+      <div class="tp-card tp-card--sm tp-card--cream">
+        <div class="tp-stat">
+          <div class="tp-icon-tile"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+          <div><div class="tp-stat__value">2,610 ₪</div><div class="tp-stat__label">הכנסה חודשית מתחדשת</div></div>
+        </div>
+      </div>
+      <div class="tp-card tp-card--sm tp-card--elevated" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-size: 17px; line-height: 24px; font-weight: 700;">עוד סטודיו אחד לגיבוי שעתי</div>
+        <span class="tp-bar" style="background: #ffffff40;"><span class="tp-bar__fill" style="width: 90%; background: var(--ink-inverse);"></span></span>
+        <div style="font-size: 13px; line-height: 18px;">9 מתוך 10 פעילים. בעשירי Tempo תתריע ונעבור לגיבוי כל שעה, בערך בין 2 ל-4 דולר לחודש.</div>
+        <div><button class="tp-btn tp-btn--rose tp-btn--sm" type="button" onClick="{{openTrip}}" style="box-shadow: 0 0 0 1.5px #ffffff80;">פרטי ההחלטה</button></div>
+      </div>
+    </section>
+
+    <section class="tp-card tp-card--cream" aria-labelledby="lc-h">
+      <div class="tp-card__head">
+        <h2 id="lc-h" class="tp-card__title">מחזור החיים של הסטודיואים</h2>
+        <a href="Studios.dc.html" style="font-weight: 600; font-size: 14px;">לרשימה המלאה</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+        <sc-for list="{{states}}" as="st" hint-placeholder-count="6">
+          <a class="lc" href="Studios.dc.html" style="text-decoration: none; color: var(--ink); background: {{st.bg}}; box-shadow: {{st.shadow}};">
+            <span class="{{st.chip}}" style="width: max-content;">{{st.label}}</span>
+            <b>{{st.n}}</b>
+            <span class="tp-caption">{{st.note}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+      <section class="tp-card tp-card--cream" aria-labelledby="ev-h" style="flex: 3 1 560px; min-width: 0;">
+        <div class="tp-card__head"><h2 id="ev-h" class="tp-card__title">דורש טיפול</h2><span class="tp-chip tp-chip--count">4</span></div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <sc-for list="{{todo}}" as="t" hint-placeholder-count="4">
+            <div class="tp-class" style="padding: 14px 18px; gap: 14px;">
+              <span class="{{t.tile}}"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span>
+              <div class="tp-class__body"><span style="font-weight: 700;"><bdi>{{t.studio}}</bdi> · {{t.title}}</span><span class="tp-class__meta" style="font-size: 13px;">{{t.meta}}</span></div>
+              <div class="tp-class__actions"><a class="tp-btn tp-btn--secondary tp-btn--sm" href="StudioDetail.dc.html">{{t.action}}</a></div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <aside style="flex: 2 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 20px;">
+        <section class="tp-card" aria-labelledby="hl-h">
+          <h2 id="hl-h" class="tp-card__title" style="margin-bottom: 14px;">תקינות המערכת</h2>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; gap: 12px;"><span><bdi>API</bdi> · זמן תגובה חציוני 84 מ״ש</span><span class="tp-chip tp-chip--success">תקין</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 12px;"><span>מסד הנתונים · גיבוי אחרון 03:00</span><span class="tp-chip tp-chip--success">תקין</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 12px;"><span>תורי רקע · 0 הודעות תקועות</span><span class="tp-chip tp-chip--success">תקין</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 12px;"><span>שליחת מייל · <bdi>SES</bdi> במצב בדיקות</span><span class="tp-chip tp-chip--warning">מוגבל</span></div>
+          </div>
+        </section>
+        <section class="tp-card tp-card--cream" aria-labelledby="au-h">
+          <h2 id="au-h" class="tp-card__title" style="margin-bottom: 14px;">פעולות צוות אחרונות</h2>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="tp-avatar tp-avatar--sm">יע</span><span style="flex: 1;">יעל נכנסה כתמיכה ל<bdi>Core Studio</bdi> · כרטיס 1042</span><span class="tp-caption">09:12</span></div>
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="tp-avatar tp-avatar--sm tp-avatar--brand">קר</span><span style="flex: 1;">קריס פתח את הסטודיו אנרגיה פלוס</span><span class="tp-caption">אתמול</span></div>
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="tp-avatar tp-avatar--sm">יע</span><span style="flex: 1;">יעל השעתה את סטודיו גלים · אי תשלום</span><span class="tp-caption">08.10</span></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <sc-if value="{{trip}}" hint-placeholder-val="{{false}}">
+    <div class="tp-scrim">
+      <div class="tp-dialog" role="dialog" aria-modal="true" aria-labelledby="tr-h">
+        <h2 id="tr-h" class="tp-dialog__title">מעבר לגיבוי שעתי</h2>
+        <p class="tp-dialog__body">ההחלטה מ-13.10.2026: עד 10 סטודיואים פעילים, גיבוי פעם ביום. כשהסטודיו העשירי נהיה פעיל, תגיע התראה בתוך האפליקציה ובמייל, ונעבור לגיבוי כל שעה. העלות הצפויה בערך בין 2 ל-4 דולר לחודש, ודורשת את האישור שלך.</p>
+        <div class="tp-banner tp-banner--info" style="margin-top: 16px;"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>כרגע 9 פעילים. ניסיון שהופך לפעיל נספר מיד.</span></div>
+        <label class="tp-toggle" style="margin-top: 12px;"><input type="checkbox" defaultChecked="{{yes}}"><span class="tp-toggle__track"></span><span class="tp-toggle__label">התראה גם בדחיפה לטלפון</span></label>
+        <div class="tp-dialog__actions">
+          <button class="tp-btn tp-btn--secondary" type="button" onClick="{{closeTrip}}">סגירה</button>
+          <button class="tp-btn" type="button" onClick="{{closeTrip}}">שמירת ההתראה</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { trip: false }; }
+  renderVals() {
+    const states = [
+      ['בהקמה', 0, 'אין כרגע', 'tp-chip tp-chip--plain'],
+      ['ניסיון', 3, 'שלושה מסתיימים השבוע', 'tp-chip tp-chip--info'],
+      ['פעיל', 9, 'נספרים להתראת הגיבוי', 'tp-chip tp-chip--success', true],
+      ['חוב בתשלום', 1, 'ניסיון חיוב חוזר מחר', 'tp-chip tp-chip--warning'],
+      ['מוגבל', 0, 'קריאה בלבד', 'tp-chip tp-chip--plain'],
+      ['מושעה', 1, 'מאז 08.10', 'tp-chip tp-chip--danger'],
+      ['סגור', 0, 'נתונים נשמרים 90 יום', 'tp-chip tp-chip--plain']
+    ].map(([label, n, note, chip, hi]) => ({ label, n: String(n), note, chip,
+      bg: hi ? 'var(--tp-sand-slab)' : 'var(--surface-sunken)', shadow: hi ? 'var(--shadow-raise-sm)' : 'var(--shadow-sunken)' }));
+    const todo = [
+      ['Flow Yoga', 'חיוב החודש נכשל', 'כרטיס האשראי נדחה ב-12.10. ניסיון חוזר אוטומטי מחר ב-09:00.', 'לכרטיס הסטודיו', 'warning'],
+      ['מרחב תנועה', 'הניסיון מסתיים בעוד יומיים', '42 מתאמנים, 31 שיעורים השבוע. עוד לא בחרו מסלול.', 'לכרטיס הסטודיו', 'info'],
+      ['יוגה בכרם', 'הניסיון מסתיים בעוד ארבעה ימים', 'שישה מתאמנים בלבד. כדאי לבדוק אם צריכים עזרה בהקמה.', 'לכרטיס הסטודיו', 'info'],
+      ['סטודיו גלים', 'מושעה חמישה ימים', 'אחרי 30 יום הסטודיו ייסגר והנתונים יישמרו 90 יום.', 'לכרטיס הסטודיו', 'danger']
+    ].map(([studio, title, meta, action, k]) => ({ studio, title, meta, action,
+      tile: k === 'danger' ? 'tp-icon-tile tp-icon-tile--sm tp-icon-tile--dark' : 'tp-icon-tile tp-icon-tile--sm' }));
+    return { yes: true, states, todo, trip: this.state.trip,
+      openTrip: () => this.setState({ trip: true }), closeTrip: () => this.setState({ trip: false }) };
+  }
+}
+</script>
+</body>
+</html>
