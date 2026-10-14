@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ניהול פלטפורמה · סטודיואים</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ניהול הפלטפורמה" style="flex: none;">
+    <div class="tp-rail__logo" style="background: var(--tp-taupe-gradient);">T</div>
+    <a class="tp-rail__item" href="PlatformHome.dc.html" aria-label="סקירה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <a class="tp-rail__item" href="Studios.dc.html" aria-current="page" aria-label="סטודיואים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="חיובים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span class="tp-chip tp-chip--count">1</span></a>
+    <a class="tp-rail__item" href="Impersonate.dc.html" aria-label="תמיכה"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="יומן ביקורת"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--brand" style="margin-top: 8px;">קר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 1240px; display: flex; flex-direction: column; gap: 20px;">
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="tp-eyebrow"><bdi>Tempo</bdi> · ניהול הפלטפורמה</span>
+        <h1>סטודיואים</h1>
+        <span class="tp-muted">{{summary}}</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <button class="tp-btn tp-btn--secondary" type="button">ייצוא לאקסל</button>
+        <a class="tp-btn" href="NewStudio.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>סטודיו חדש</a>
+      </div>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+      <div class="tp-tabs" role="tablist" aria-label="סינון לפי מצב">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{f.on}}" onClick="{{f.pick}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <label class="tp-sr-only" for="plan">מסלול</label>
+        <select id="plan" class="tp-select" style="width: 170px;" onChange="{{onPlan}}"><option value="all">כל המסלולים</option><option value="בסיסי">בסיסי</option><option value="מקצועי">מקצועי</option></select>
+        <label class="tp-sr-only" for="ss">חיפוש סטודיו, בעלים או עיר</label>
+        <input id="ss" class="tp-input tp-input--search" type="search" placeholder="חיפוש סטודיו, בעלים או עיר" style="width: 280px;" onInput="{{onSearch}}">
+      </div>
+    </div>
+
+    <div class="tp-table-wrap">
+      <table class="tp-table">
+        <thead><tr><th>סטודיו</th><th>בעלים</th><th>עיר</th><th>מסלול</th><th>מצב</th><th class="tp-num">מתאמנים</th><th>פעילות אחרונה</th><th><span class="tp-sr-only">פעולות</span></th></tr></thead>
+        <tbody>
+          <sc-for list="{{rows}}" as="s" hint-placeholder-count="10">
+            <tr>
+              <td><span style="display: flex; align-items: center; gap: 10px;"><span class="tp-avatar tp-avatar--sm tp-avatar--taupe" style="border-radius: 8px;">{{s.ini}}</span><a href="StudioDetail.dc.html" style="color: var(--ink);"><bdi>{{s.name}}</bdi></a></span></td>
+              <td style="font-size: 14px;">{{s.owner}}</td>
+              <td class="tp-muted" style="font-size: 14px;">{{s.city}}</td>
+              <td style="font-size: 14px;">{{s.plan}}</td>
+              <td><span class="{{s.chip}}">{{s.state}}</span></td>
+              <td class="tp-num">{{s.members}}</td>
+              <td class="tp-muted" style="font-size: 14px;">{{s.last}}</td>
+              <td style="text-align: end;"><a class="tp-btn tp-btn--ghost tp-btn--sm" href="StudioDetail.dc.html">פתיחה</a></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      <sc-if value="{{none}}" hint-placeholder-val="{{false}}">
+        <div class="tp-empty" style="margin: 8px;">
+          <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M10 6h4M10 10h4M10 14h4"/></svg>
+          <span class="tp-empty__title">אין סטודיואים שמתאימים לסינון</span>
+          <span>נסו שם אחר, או בחרו מצב אחר.</span>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { f: 'all', q: '', plan: 'all' }; }
+  renderVals() {
+    const S = {
+      active: ['פעיל', 'tp-chip tp-chip--success'], trial: ['ניסיון', 'tp-chip tp-chip--info'],
+      due: ['חוב בתשלום', 'tp-chip tp-chip--warning'], susp: ['מושעה', 'tp-chip tp-chip--danger']
+    };
+    const all = [
+      ['נש', 'סטודיו נשימה', 'מיכל רז', 'תל אביב', 'מקצועי', 'active', 184, 'לפני 3 דקות'],
+      ['פב', 'פילאטיס בגבעה', 'אורנה שטרן', 'ירושלים', 'מקצועי', 'active', 152, 'לפני 10 דקות'],
+      ['CS', 'Core Studio', 'גיא לנדאו', 'רמת גן', 'מקצועי', 'active', 131, 'לפני 25 דקות'],
+      ['בפ', 'בית הפילאטיס', 'רותם חזן', 'הרצליה', 'מקצועי', 'active', 118, 'לפני שעה'],
+      ['RF', 'Reform', 'נטע אזולאי', 'באר שבע', 'בסיסי', 'active', 96, 'לפני שעה'],
+      ['אי', 'אדמה יוגה', 'עדן פלד', 'קיסריה', 'בסיסי', 'active', 88, 'היום 07:40'],
+      ['מש', 'מקום של שקט', 'שני גבאי', 'מודיעין', 'בסיסי', 'active', 74, 'היום 06:55'],
+      ['BL', 'Balance', 'ליאור קרמר', 'רעננה', 'בסיסי', 'active', 69, 'אתמול'],
+      ['קה', 'קו האופק', 'דור מלכה', 'חולון', 'בסיסי', 'active', 57, 'אתמול'],
+      ['FY', 'Flow Yoga', 'אביטל נחום', 'חיפה', 'בסיסי', 'due', 63, 'היום 08:10'],
+      ['מת', 'מרחב תנועה', 'יונתן עמר', 'פתח תקווה', 'ניסיון', 'trial', 42, 'לפני 40 דקות'],
+      ['יב', 'יוגה בכרם', 'מאיה טל', 'זכרון יעקב', 'ניסיון', 'trial', 6, '09.10'],
+      ['אפ', 'אנרגיה פלוס', 'אלון ששון', 'אשדוד', 'ניסיון', 'trial', 0, 'אתמול'],
+      ['סג', 'סטודיו גלים', 'הדס בר', 'נתניה', 'בסיסי', 'susp', 46, '08.10']
+    ].map(([ini, name, owner, city, plan, st, members, last]) => ({ ini, name, owner, city, plan, st, members: String(members), last, state: S[st][0], chip: S[st][1] }));
+    const s = this.state;
+    const q = s.q.toLowerCase();
+    const rows = all.filter((x) => s.f === 'all' || x.st === s.f)
+      .filter((x) => s.plan === 'all' || x.plan === s.plan)
+      .filter((x) => !q || (x.name + ' ' + x.owner + ' ' + x.city).toLowerCase().includes(q));
+    const n = (k) => all.filter((x) => x.st === k).length;
+    const filters = [['all', 'הכל · ' + all.length], ['active', 'פעילים · ' + n('active')], ['trial', 'ניסיון · ' + n('trial')], ['due', 'חוב · ' + n('due')], ['susp', 'מושעים · ' + n('susp')]]
+      .map(([id, label]) => ({ label, on: String(s.f === id), pick: () => this.setState({ f: id }) }));
+    return {
+      rows, filters, none: rows.length === 0,
+      summary: 'מציג ' + rows.length + ' מתוך ' + all.length + ' סטודיואים',
+      onSearch: (e) => this.setState({ q: e.target.value.trim() }),
+      onPlan: (e) => this.setState({ plan: e.target.value })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>פרופיל ומנוי · אפליקציית המתאמן</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+a.tp-tabbar__item,a.tp-tabbar__fab{text-decoration:none}
+.set{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+  <div style="height: 844px; overflow-y: auto; box-sizing: border-box; padding: 28px 16px 120px; display: flex; flex-direction: column; gap: 16px;">
+    <header style="display: flex; gap: 14px; align-items: center;">
+      <span class="tp-avatar tp-avatar--lg">נר</span>
+      <div style="flex: 1;">
+        <h1 style="font-size: 24px; line-height: 30px; font-weight: 800;">נגה רוזן</h1>
+        <span class="tp-ltr tp-muted" dir="ltr" style="font-size: 13px;">noga.rosen@example.com</span>
+      </div>
+      <button class="tp-btn tp-btn--icon" type="button" aria-label="עריכת פרטים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    </header>
+
+    <section class="tp-card tp-card--base" aria-labelledby="pl-h" style="display: flex; flex-direction: column; gap: 10px; padding: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em;">המנוי שלך</span>
+        <span class="tp-icon-tile tp-icon-tile--sm"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+      </div>
+      <h2 id="pl-h" style="font-size: 22px; line-height: 28px; font-weight: 800;">חודשי ללא הגבלה</h2>
+      <span style="font-size: 14px;">מתחדש אוטומטית ב-18.10 · ויזה <bdi>4412</bdi></span>
+      <span class="tp-bar" style="margin-top: 4px;"><span class="tp-bar__fill" style="width: 84%; background: var(--sand);"></span></span>
+      <span style="font-size: 13px;">עוד חמישה ימים בתקופה הנוכחית</span>
+    </section>
+
+    <section class="tp-card tp-card--sm" style="display: flex; align-items: center; gap: 12px;">
+      <span class="tp-rail__logo" style="width: 40px; height: 40px; font-size: 16px; margin: 0;">נ</span>
+      <div style="flex: 1;"><div style="font-weight: 700;">סטודיו נשימה</div><div class="tp-caption">פילאטיס ויוגה · תל אביב</div></div>
+      <button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">החלפת סטודיו</button>
+    </section>
+
+    <section class="tp-card tp-card--cream" aria-labelledby="nt-h" style="padding: 8px 18px;">
+      <h2 id="nt-h" class="tp-label tp-muted" style="padding-top: 10px;">התראות</h2>
+      <div class="set"><span>התראות בדחיפה</span><label class="tp-toggle"><input type="checkbox" defaultChecked="{{yes}}" aria-label="התראות בדחיפה"><span class="tp-toggle__track"></span></label></div>
+      <hr class="tp-divider">
+      <div class="set"><span>תזכורות במייל</span><label class="tp-toggle"><input type="checkbox" defaultChecked="{{yes}}" aria-label="תזכורות במייל"><span class="tp-toggle__track"></span></label></div>
+      <hr class="tp-divider">
+      <div class="set"><span style="display: flex; flex-direction: column;"><span>תזכורת לפני שיעור</span><span class="tp-caption">כמה זמן לפני</span></span>
+        <label class="tp-sr-only" for="rem">תזכורת לפני שיעור</label>
+        <select id="rem" class="tp-select" style="width: 132px; min-height: 38px;"><option>שעתיים</option><option>שעה</option><option>יום לפני</option></select>
+      </div>
+    </section>
+
+    <section class="tp-card tp-card--cream" aria-labelledby="ac-h" style="padding: 8px 18px;">
+      <h2 id="ac-h" class="tp-label tp-muted" style="padding-top: 10px;">חשבון</h2>
+      <div class="set"><span>הצהרת בריאות</span><span class="tp-chip tp-chip--success">נחתמה</span></div>
+      <hr class="tp-divider">
+      <div class="set"><span>קבלות ותשלומים</span><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--ink-muted);"><path d="m15 18-6-6 6-6"/></svg></div>
+      <hr class="tp-divider">
+      <div class="set"><span>שפה</span><span class="tp-muted">עברית</span></div>
+    </section>
+
+    <button class="tp-btn tp-btn--ghost tp-btn--block" type="button" style="color: var(--danger-ink);">התנתקות</button>
+  </div>
+
+  <nav class="tp-tabbar" aria-label="ניווט" style="position: absolute; bottom: 16px; inset-inline: 16px;">
+    <a class="tp-tabbar__item" href="AppHome.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>בית</a>
+    <a class="tp-tabbar__item" href="AppBook.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>מערכת</a>
+    <a class="tp-tabbar__fab" href="AppBook.dc.html" aria-label="הרשמה לשיעור"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    <a class="tp-tabbar__item" href="AppBookings.dc.html"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>הזמנות</a>
+    <a class="tp-tabbar__item" href="AppProfile.dc.html" aria-current="page"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>פרופיל</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>מנויים</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/tempo/tokens.css">
+<link rel="stylesheet" href="ds/tempo/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:var(--brand-ink)}a:hover{color:var(--ink)}
+.tp-table tbody tr{cursor:pointer}
+</style>
+</helmet>
+<div dir="rtl" lang="he" style="min-height: 1080px; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 22px;">
+
+  <nav class="tp-rail" aria-label="ניווט ראשי" style="flex: none;">
+    <div class="tp-rail__logo">T</div>
+    <a class="tp-rail__item" href="Main.dc.html" aria-label="היום"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></a>
+    <a class="tp-rail__item" href="Schedule.dc.html" aria-label="מערכת שבועית"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></a>
+    <a class="tp-rail__item" href="Members.dc.html" aria-current="page" aria-label="מנויים"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="tp-rail__item" href="#" aria-label="הודעות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="tp-chip tp-chip--count">2</span></a>
+    <a class="tp-rail__item" href="#" aria-label="דוחות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/></svg></a>
+    <div class="tp-rail__spacer" style="min-height: 180px;"></div>
+    <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <span class="tp-avatar tp-avatar--taupe" style="margin-top: 8px;">מר</span>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; max-width: 1240px; display: flex; flex-direction: column; gap: 20px;">
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="tp-eyebrow">סטודיו נשימה</span>
+        <h1>מנויים</h1>
+        <span class="tp-muted">184 פעילים, 12 מסתיימים החודש, 2 עם חיוב שנכשל.</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <button class="tp-btn tp-btn--secondary" type="button">ייצוא לאקסל</button>
+        <button class="tp-btn" type="button"><svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>מנוי חדש</button>
+      </div>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+      <div class="tp-tabs" role="tablist" aria-label="סינון לפי מצב">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+          <button class="tp-tab" role="tab" type="button" aria-selected="{{f.on}}" onClick="{{f.pick}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+      <label class="tp-sr-only" for="ms">חיפוש לפי שם או טלפון</label>
+      <input id="ms" class="tp-input tp-input--search" type="search" placeholder="חיפוש לפי שם או טלפון" style="width: 300px;" onInput="{{onSearch}}">
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+      <div style="flex: 3 1 600px; min-width: 0;">
+        <div class="tp-table-wrap">
+          <table class="tp-table">
+            <thead><tr><th>שם</th><th>טלפון</th><th>מנוי</th><th>מצב</th><th class="tp-num">ביקורים החודש</th><th>ביקור אחרון</th></tr></thead>
+            <tbody>
+              <sc-for list="{{rows}}" as="m" hint-placeholder-count="10">
+                <tr aria-selected="{{m.sel}}" onClick="{{m.pick}}">
+                  <td><span style="display: flex; align-items: center; gap: 10px;"><span class="tp-avatar tp-avatar--sm">{{m.ini}}</span>{{m.name}}</span></td>
+                  <td><span dir="ltr" class="tp-ltr" style="font-size: 14px;">{{m.phone}}</span></td>
+                  <td style="font-size: 14px;">{{m.plan}}</td>
+                  <td><span class="{{m.chipClass}}">{{m.status}}</span></td>
+                  <td class="tp-num">{{m.visits}}</td>
+                  <td class="tp-muted" style="font-size: 14px;">{{m.last}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <sc-if value="{{none}}" hint-placeholder-val="{{false}}">
+            <div class="tp-empty" style="margin: 8px;">
+              <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <span class="tp-empty__title">לא נמצאו מנויים</span>
+              <span>נסו שם אחר, או נקו את הסינון.</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <aside class="tp-card" aria-label="תצוגה מקדימה" style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; gap: 14px; align-items: center;">
+          <span class="tp-avatar tp-avatar--lg">{{cur.ini}}</span>
+          <div><div style="font-size: 20px; line-height: 28px; font-weight: 700;">{{cur.name}}</div><div class="tp-caption">חבר.ה מאז {{cur.since}}</div></div>
+        </div>
+        <span class="{{cur.chipClass}}" style="width: max-content;">{{cur.status}}</span>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+          <div class="tp-card tp-card--sm tp-card--cream"><div class="tp-stat__value" style="font-size: 24px;">{{cur.visits}}</div><div class="tp-stat__label">ביקורים החודש</div></div>
+          <div class="tp-card tp-card--sm tp-card--cream"><div style="font-size: 15px; font-weight: 700; line-height: 22px;">{{cur.next}}</div><div class="tp-stat__label">השיעור הבא</div></div>
+        </div>
+        <div class="tp-muted" style="font-size: 14px;">{{cur.plan}}</div>
+        <a class="tp-btn tp-btn--secondary tp-btn--block" href="MemberProfile.dc.html">לכרטיס המנוי המלא</a>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { filter: 'all', q: '', sel: 1 }; }
+  renderVals() {
+    const S = {
+      active: ['פעיל.ה', 'tp-chip tp-chip--success'],
+      ending: ['מסתיים בקרוב', 'tp-chip tp-chip--warning'],
+      failed: ['חיוב נכשל', 'tp-chip tp-chip--danger'],
+      frozen: ['בהקפאה', 'tp-chip tp-chip--info'],
+      off: ['לא פעיל.ה', 'tp-chip tp-chip--plain']
+    };
+    const all = [
+      [1, 'שכ', 'שירה כהן', '052-418-7731', 'חודשי ללא הגבלה', 'ending', 11, 'היום', '03.2024', 'רביעי 07:00 · מכשירים'],
+      [2, 'אש', 'אורית שלום', '054-902-1188', 'כרטיסייה · 2 נותרו', 'ending', 6, 'היום', '09.2025', 'היום 17:30 · מכשירים'],
+      [3, 'נר', 'נגה רוזן', '050-733-4410', 'חודשי ללא הגבלה', 'active', 14, 'אתמול', '01.2023', 'היום 17:30 · מכשירים'],
+      [4, 'מל', 'מאיה לוי', '053-221-9075', 'חודשי ללא הגבלה', 'active', 9, 'היום', '06.2024', 'בהמתנה להיום 17:30'],
+      [5, 'רא', 'רוני אברהם', '058-640-3321', 'כרטיסייה · 4 נותרו', 'ending', 3, '09.10', '02.2026', 'בהמתנה להיום 17:30'],
+      [6, 'עג', 'עדי גולן', '052-387-6602', 'כרטיסייה · 6 נותרו', 'failed', 4, '12.10', '11.2025', 'היום 17:30 · מכשירים'],
+      [7, 'קב', 'קרן ברק', '054-115-8740', 'חודשי ללא הגבלה', 'failed', 8, 'אתמול', '04.2025', 'היום 17:30 · מכשירים'],
+      [8, 'הא', 'הילה אוחיון', '050-998-2217', 'פעמיים בשבוע', 'active', 7, '12.10', '08.2025', 'היום 17:30 · מכשירים'],
+      [9, 'תפ', 'תמר פרץ', '053-470-6153', 'חודשי ללא הגבלה', 'frozen', 0, '14.09', '05.2024', 'בהקפאה עד 01.11'],
+      [10, 'לב', 'לירון ביטון', '052-660-0941', 'חודשי ללא הגבלה', 'off', 0, '22.07', '10.2023', 'אין'],
+      [11, 'יש', 'יובל שמש', '058-312-7789', 'יוגה · פעם בשבוע', 'active', 4, '10.10', '07.2025', 'ראשון 20:30 · יין']
+    ].map(([id, ini, name, phone, plan, st, visits, last, since, next]) => ({ id, ini, name, phone, plan, st, visits: String(visits), last, since, next, status: S[st][0], chipClass: S[st][1] }));
+    const s = this.state;
+    const rows = all
+      .filter((m) => s.filter === 'all' || m.st === s.filter)
+      .filter((m) => !s.q || m.name.includes(s.q) || m.phone.replace(/-/g, '').includes(s.q.replace(/-/g, '')))
+      .map((m) => ({ ...m, sel: String(m.id === s.sel), pick: () => this.setState({ sel: m.id }) }));
+    const counts = (k) => all.filter((m) => m.st === k).length;
+    const filters = [['all', 'הכל · ' + all.length], ['active', 'פעילים · ' + counts('active')], ['ending', 'מסתיימים · ' + counts('ending')], ['failed', 'חיוב נכשל · ' + counts('failed')], ['frozen', 'בהקפאה · ' + counts('frozen')]]
+      .map(([id, label]) => ({ label, on: String(s.filter === id), pick: () => this.setState({ filter: id }) }));
+    const cur = all.find((m) => m.id === s.sel) || all[0];
+    return { rows, filters, cur, none: rows.length === 0, onSearch: (e) => this.setState({ q: e.target.value.trim() }) };
+  }
+}
+</script>
+</body>
+</html>
