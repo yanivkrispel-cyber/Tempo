@@ -107,6 +107,12 @@
 .tp-menu__item:hover, .tp-menu__item[aria-selected="true"] { background: var(--taupe-soft); }
 .tp-menu__item[aria-current="true"] { background: var(--selected); color: var(--selected-ink); }
 .tp-menu__sep { height: 1px; background: var(--line); margin: 6px 8px; }
+.tp-menu__item--danger { color: var(--danger-ink); }
+.tp-menu__item:disabled { color: var(--ink-faint); background: transparent; cursor: default; }
+.tp-menu__item .tp-icon { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+/* A menu opened by a button: the anchor wraps both; the menu floats under the trigger, aligned to its end edge. */
+.tp-menu-anchor { position: relative; display: inline-flex; }
+.tp-menu--popover { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: var(--z-dropdown); }
 
 /* ------------------------------------------------------------------ Toggle
    Reference: on = sage track with mint glow and a cream knob; off = light taupe track. */
@@ -312,6 +318,13 @@
 .tp-toast .tp-btn { margin-inline-start: auto; }
 .tp-toast__close { margin-inline-start: auto; width: 32px; height: 32px; border-radius: var(--radius-sm); border: 0; background: transparent; color: var(--ink-muted); display: grid; place-items: center; }
 .tp-toast__close:hover { background: var(--surface-hover); color: var(--ink); }
+/* Where toasts appear: above the bottom tab bar on phones, in the bottom end corner from 768px. */
+.tp-toast-region { position: fixed; inset-inline: 16px; bottom: 104px; z-index: var(--z-toast); display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+.tp-toast-region > .tp-toast { pointer-events: auto; width: 100%; }
+@media (min-width: 768px) {
+  .tp-toast-region { inset-inline: auto 24px; bottom: 24px; align-items: flex-end; }
+  .tp-toast-region > .tp-toast { width: auto; }
+}
 
 /* ------------------------------------------------------------------ Dialog
    Reference "Modal Dialog": a cream slab floating, sage primary, cream cancel. */
