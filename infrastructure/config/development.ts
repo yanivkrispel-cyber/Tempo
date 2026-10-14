@@ -23,7 +23,11 @@ const developmentConfig: TempoEnvironmentConfig = {
   enableDeletionProtection: false,
 
   // tempo-dev in Frankfurt, created 2026-10-14 (ADR-0022).
-  neon: { projectId: "wild-darkness-22822656" },
+  neon: {
+    projectId: "wild-darkness-22822656",
+    pooledHost: "ep-bold-art-b94ii1t4-pooler.c-7.eu-central-1.aws.neon.tech",
+    databaseName: "neondb"
+  },
 
   // The management account caps Lambda memory at 512 MB (the first deploy on
   // 2026-10-14 failed with "MemorySize ... less than or equal to 512"). .NET 10

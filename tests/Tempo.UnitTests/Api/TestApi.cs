@@ -13,6 +13,7 @@ using NSubstitute;
 using Tempo.Api.DependencyInjection;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Identity.Application;
 
 namespace Tempo.UnitTests.Api;
 
@@ -42,6 +43,7 @@ public sealed class TestApi : IDisposable
                 Pool(services, CognitoAuthentication.OperatorScheme, OperatorIssuer, OperatorClient);
                 services.AddSingleton(Accounts);
                 services.AddSingleton(Memberships);
+                services.AddSingleton(AccountService);
                 if (map is not null)
                 {
                     services.AddSingleton<IEndpointModule>(new DelegateModule(map));
@@ -53,9 +55,11 @@ public sealed class TestApi : IDisposable
 
     public IMembershipDirectory Memberships { get; } = Substitute.For<IMembershipDirectory>();
 
+    public IAccountService AccountService { get; } = Substitute.For<IAccountService>();
+
     public HttpClient CreateClient() => factory.CreateClient();
 
-    public Task<HttpResponseMessage> GetAsync(string path, string? token)
+    public async Task<HttpResponseMessage> GetAsync(string path, string? token)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         if (token is not null)
@@ -63,20 +67,26 @@ public sealed class TestApi : IDisposable
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        return factory.CreateClient().SendAsync(request);
+        return await factory.CreateClient().SendAsync(request);
     }
 
     public string CustomerToken(string subject = "user-123") => Token(CustomerIssuer, CustomerClient, subject);
 
     public string OperatorToken(string subject = "operator-1") => Token(OperatorIssuer, OperatorClient, subject);
 
-    public string Token(string issuer, string clientId, string subject = "user-123", string tokenUse = "access", int expiresInMinutes = 10)
+    public string Token(
+        string issuer,
+        string clientId,
+        string subject = "user-123",
+        string tokenUse = "access",
+        int expiresInMinutes = 10,
+        params Claim[] extraClaims)
     {
         var now = DateTime.UtcNow;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = issuer,
-            Subject = new ClaimsIdentity([new Claim("sub", subject), new Claim("token_use", tokenUse), new Claim("client_id", clientId)]),
+            Subject = new ClaimsIdentity([new Claim("sub", subject), new Claim("token_use", tokenUse), new Claim("client_id", clientId), .. extraClaims]),
             NotBefore = now.AddMinutes(expiresInMinutes > 0 ? -1 : -30),
             IssuedAt = now.AddMinutes(expiresInMinutes > 0 ? -1 : -30),
             Expires = now.AddMinutes(expiresInMinutes),

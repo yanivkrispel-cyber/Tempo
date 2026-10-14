@@ -17,7 +17,7 @@ public sealed class DomainRuleViolationHandler : IExceptionHandler
             return false;
         }
 
-        await Problems.WriteAsync(httpContext, Problems.StatusOf(violation.Kind), violation.Code, violation.Message);
+        await Problems.WriteAsync(httpContext, violation);
         return true;
     }
 }

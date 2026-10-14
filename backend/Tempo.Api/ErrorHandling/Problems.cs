@@ -15,14 +15,13 @@ public static class Problems
         Results.Problem(Create(httpContext, status, code, title));
 
     public static IResult Result(HttpContext httpContext, DomainRuleViolationException violation) =>
-        Result(httpContext, StatusOf(violation.Kind), violation.Code, violation.Message);
+        Results.Problem(Create(httpContext, violation));
 
-    public static async Task WriteAsync(HttpContext httpContext, int status, string code, string title)
-    {
-        httpContext.Response.StatusCode = status;
-        httpContext.Response.ContentType = "application/problem+json";
-        await httpContext.Response.WriteAsJsonAsync(Create(httpContext, status, code, title), (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json");
-    }
+    public static Task WriteAsync(HttpContext httpContext, int status, string code, string title) =>
+        WriteAsync(httpContext, Create(httpContext, status, code, title));
+
+    public static Task WriteAsync(HttpContext httpContext, DomainRuleViolationException violation) =>
+        WriteAsync(httpContext, Create(httpContext, violation));
 
     public static int StatusOf(ViolationKind kind) => kind switch
     {
@@ -34,6 +33,24 @@ public static class Problems
         ViolationKind.TooManyRequests => StatusCodes.Status429TooManyRequests,
         _ => StatusCodes.Status400BadRequest
     };
+
+    private static async Task WriteAsync(HttpContext httpContext, ProblemDetails problem)
+    {
+        httpContext.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
+        httpContext.Response.ContentType = "application/problem+json";
+        await httpContext.Response.WriteAsJsonAsync(problem, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json");
+    }
+
+    private static ProblemDetails Create(HttpContext httpContext, DomainRuleViolationException violation)
+    {
+        var problem = Create(httpContext, StatusOf(violation.Kind), violation.Code, violation.Message);
+        if (violation.Field is not null)
+        {
+            problem.Extensions["errors"] = new[] { new { field = violation.Field, code = violation.Code, message = violation.Message } };
+        }
+
+        return problem;
+    }
 
     private static ProblemDetails Create(HttpContext httpContext, int status, string code, string title) => new()
     {

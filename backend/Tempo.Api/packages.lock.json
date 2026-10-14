@@ -14,6 +14,15 @@
           "Amazon.Lambda.RuntimeSupport": "2.1.3"
         }
       },
+      "AWSSDK.CognitoIdentityProvider": {
+        "type": "Direct",
+        "requested": "[4.0.105.2, )",
+        "resolved": "4.0.105.2",
+        "contentHash": "Mc/Je6heNGq6S0A/g9KiAhh6LotJQ1YceXlSHtQ+qyD9h1MKEGKbURP5Oid6JLnEVlHHhxtU5aiIYsz8j5j56A==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.4, 5.0.0)"
+        }
+      },
       "AWSSDK.SimpleSystemsManagement": {
         "type": "Direct",
         "requested": "[4.0.104.1, )",

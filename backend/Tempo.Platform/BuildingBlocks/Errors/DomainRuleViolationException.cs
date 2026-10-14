@@ -27,6 +27,13 @@ public sealed class DomainRuleViolationException : Exception
         Code = code;
     }
 
+    /// <summary>A validation failure on one request field; the API lists it under `errors`.</summary>
+    public DomainRuleViolationException(ViolationKind kind, string code, string title, string field)
+        : this(kind, code, title)
+    {
+        Field = field;
+    }
+
     public DomainRuleViolationException()
         : this(ViolationKind.Validation, InvalidRequest, "The request is not valid.")
     {
@@ -47,4 +54,7 @@ public sealed class DomainRuleViolationException : Exception
     public ViolationKind Kind { get; }
 
     public string Code { get; }
+
+    /// <summary>The request field at fault, in the contract's camelCase, or null.</summary>
+    public string? Field { get; }
 }

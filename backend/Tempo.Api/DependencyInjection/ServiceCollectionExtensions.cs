@@ -1,8 +1,10 @@
 using Tempo.Api.ErrorHandling;
+using Tempo.Api.Identity;
 using Tempo.Api.Persistence;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 
@@ -21,6 +23,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDataSourceProvider, ConfiguredDataSourceProvider>();
         services.AddSingleton<IAccountDirectory, AccountDirectory>();
         services.AddSingleton<IMembershipDirectory, MembershipDirectory>();
+        services.AddSingleton<ICognitoUserReader, CognitoUserReader>();
+        services.AddSingleton<IAccountService, AccountService>();
         services.AddScoped<TenantRouteFilter>();
 
         return services;
