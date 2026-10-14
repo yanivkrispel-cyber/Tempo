@@ -53,8 +53,10 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
 ## Tests
 
 - API tests use `tests/Tempo.UnitTests/Api/TestApi.cs`: both pools share one local signing key, and the account and
-  membership directories and `IAccountService` are NSubstitute substitutes. Extra probe endpoints go in through the constructor.
+  membership directories and `IAccountService` are NSubstitute substitutes. Extra probe endpoints go in through the
+  constructor.
 - Every test class that starts the API host carries `[Collection(ApiHostGroup.Name)]`. Parallel hosts trip Serilog's
   static bootstrap logger ("The logger is already frozen"). The real fix in `Program.cs` is still open.
-- Database tests use `MigratedDatabase.CreateAsync(postgres)` (`tests/Tempo.IntegrationTests/DatabaseMigrator/`) migrate a fresh database per test on one
-  PostgreSQL 18 container per class, seed as the superuser (which bypasses RLS) and connect as the real runtime roles.
+- Database tests (`tests/Tempo.IntegrationTests/DatabaseMigrator/`) call `MigratedDatabase.CreateAsync(postgres)`:
+  a fresh migrated database per test on one PostgreSQL 18 container per class. They seed as the superuser (which
+  bypasses RLS) and connect as the real runtime roles.
