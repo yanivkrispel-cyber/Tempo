@@ -39,6 +39,7 @@ try
     app.MapOpenApi();
     app.MapHealthEndpoints();
     app.MapAccountEndpoints();
+    app.MapOrganizationEndpoints();
     app.MapEndpointModules();
 
     await app.RunAsync();

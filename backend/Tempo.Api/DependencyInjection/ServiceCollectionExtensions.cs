@@ -6,6 +6,7 @@ using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Identity.Infrastructure;
+using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 
 namespace Tempo.Api.DependencyInjection;
@@ -25,6 +26,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMembershipDirectory, MembershipDirectory>();
         services.AddSingleton<ICognitoUserReader, CognitoUserReader>();
         services.AddSingleton<IAccountService, AccountService>();
+        services.AddSingleton<IAccountProfiles, AccountProfiles>();
+        services.AddSingleton<IOrganizationService, OrganizationService>();
+        services.AddSingleton<IMemberService, MemberService>();
         services.AddScoped<TenantRouteFilter>();
 
         return services;
