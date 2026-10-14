@@ -1,0 +1,981 @@
+openapi: 3.1.0
+info:
+  title: Tempo API
+  version: 1.0.0-phase1
+  summary: Phase 1 - accounts, studios, memberships, invitations, join links, audit and the platform console.
+  description: |
+    Source of truth for the Phase 1 API (docs/26_Identity_Organization_Membership_LLD.md, section 8).
+    Frontends generate their client from this file.
+
+    **Tokens.** Send a Cognito *access* token as `Authorization: Bearer <token>`. Behind CloudFront the
+    same value goes in `X-Tempo-Authorization`, because CloudFront's origin access control replaces
+    `Authorization`. Customer-pool tokens work on every route except `/api/v1/platform/*`, which accepts
+    only operator-pool tokens (ADR-0023).
+
+    **Errors.** Every error is Problem Details (`application/problem+json`) with a stable `code`.
+
+    **Lists.** Keyset pagination: pass the last item's `id` as `before`; `limit` is 1 to 100 (default 50).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Tempo-Proprietary
+servers:
+  - url: https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com
+    description: Development
+security:
+  - customerToken: []
+tags:
+  - name: Health
+    description: Liveness, no authentication.
+  - name: Account
+    description: The signed-in person, before any studio is chosen.
+  - name: Joining
+    description: Accepting an invitation or a studio join link.
+  - name: Organizations
+    description: A studio and its settings.
+  - name: Members
+    description: People who belong to a studio, with their role.
+  - name: Invitations
+    description: Email-bound invitations for admins, staff and clients.
+  - name: Join link
+    description: The studio's link for clients to join on their own.
+  - name: Audit
+    description: Who changed what in a studio.
+  - name: Platform
+    description: The Tempo team's console. Operator-pool tokens only.
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: The API is up.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /api/v1/session:
+    post:
+      tags: [Account]
+      operationId: startSession
+      summary: Create or refresh the caller's Tempo account
+      description: |
+        Call once after every sign-in. Creates the account on first use and refreshes email and
+        verification from Cognito. Idempotent.
+      responses:
+        "200":
+          description: The account and its studios.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/me:
+    get:
+      tags: [Account]
+      operationId: getMe
+      summary: The caller's account and studios
+      responses:
+        "200":
+          description: The account and its studios.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: "`account.not_provisioned`: call `POST /api/v1/session` first."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+    patch:
+      tags: [Account]
+      operationId: updateMe
+      summary: Update display name or locale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMeRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations:
+    post:
+      tags: [Organizations]
+      operationId: createOrganization
+      summary: Open a new studio; the caller becomes its owner
+      description: Needs a verified email. At most 3 studios per account (`organization.creation_limit`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrganizationRequest" }
+      responses:
+        "201":
+          description: Created.
+          headers:
+            Location:
+              description: URL of the new studio.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/invitations/preview:
+    post:
+      tags: [Joining]
+      operationId: previewInvitation
+      summary: Show what an invitation is for, without accepting it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TokenRequest" }
+      responses:
+        "200":
+          description: The invitation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPreview" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/invitations/accept:
+    post:
+      tags: [Joining]
+      operationId: acceptInvitation
+      summary: Accept an invitation
+      description: The caller's verified email must match the invitation. Accepting twice returns the same membership.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TokenRequest" }
+      responses:
+        "200":
+          description: The membership.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyMembership" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "410":
+          description: "`invitation.expired`"
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/join/preview:
+    post:
+      tags: [Joining]
+      operationId: previewJoin
+      summary: Show which studio a join link belongs to
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JoinCodeRequest" }
+      responses:
+        "200":
+          description: The studio.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JoinPreview" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/join:
+    post:
+      tags: [Joining]
+      operationId: joinOrganization
+      summary: Join a studio as a client through its join link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JoinCodeRequest" }
+      responses:
+        "200":
+          description: The membership.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyMembership" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/organizations/{organizationId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Organizations]
+      operationId: getOrganization
+      summary: A studio the caller belongs to
+      responses:
+        "200":
+          description: The studio.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Organizations]
+      operationId: updateOrganization
+      summary: Change studio settings (owner, admin)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateOrganizationRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/members:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Members]
+      operationId: listMembers
+      summary: The studio's members (owner, admin, staff)
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Role" }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/MembershipStatus" }
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of members.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/members/{membershipId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/MembershipId"
+    patch:
+      tags: [Members]
+      operationId: updateMember
+      summary: Change a member's role or suspend and reactivate them
+      description: |
+        Owners can change anyone but themselves; admins only staff and clients. The owner role cannot be
+        granted here (`membership.forbidden_role_change`).
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMemberRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [Members]
+      operationId: removeMember
+      summary: Remove a member, or leave the studio when it is your own membership
+      description: The owner cannot leave (`membership.owner_cannot_leave`).
+      responses:
+        "204":
+          description: Removed.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/invitations:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Invitations]
+      operationId: listInvitations
+      summary: Pending and past invitations (owner, admin)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/InvitationStatus" }
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of invitations.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Invitations]
+      operationId: createInvitation
+      summary: Invite someone by email (owner, admin)
+      description: |
+        Returns the invitation link once; it is not stored and cannot be shown again. Until Tempo can send
+        email, the inviter shares the link (LLD open question O-1). A new invitation to the same email
+        revokes the previous pending one. Admins cannot invite admins.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvitationRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreatedInvitation" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/invitations/{invitationId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - name: invitationId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Invitations]
+      operationId: revokeInvitation
+      summary: Revoke a pending invitation (owner, admin)
+      responses:
+        "204":
+          description: Revoked.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/join-link:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    put:
+      tags: [Join link]
+      operationId: rotateJoinLink
+      summary: Create the studio's join link, or replace it (owner, admin)
+      description: The previous link stops working at once. The link is returned only here.
+      responses:
+        "200":
+          description: The new link.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JoinLink" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Join link]
+      operationId: disableJoinLink
+      summary: Turn the join link off (owner, admin)
+      responses:
+        "204":
+          description: Disabled.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/audit-events:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Audit]
+      operationId: listAuditEvents
+      summary: The studio's audit log, newest first (owner, admin)
+      parameters:
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of events.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditEventPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/organizations:
+    get:
+      tags: [Platform]
+      operationId: platformListOrganizations
+      summary: All studios
+      security:
+        - operatorToken: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/OrganizationStatus" }
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of studios.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOrganizationPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/platform/organizations/{organizationId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Platform]
+      operationId: platformGetOrganization
+      summary: One studio, with its owner and member counts (audited)
+      security:
+        - operatorToken: []
+      responses:
+        "200":
+          description: The studio.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOrganization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/organizations/{organizationId}/suspend:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Platform]
+      operationId: platformSuspendOrganization
+      summary: Suspend a studio
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReasonRequest" }
+      responses:
+        "200":
+          description: Suspended.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOrganization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/organizations/{organizationId}/reactivate:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Platform]
+      operationId: platformReactivateOrganization
+      summary: Reactivate a suspended studio
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReasonRequest" }
+      responses:
+        "200":
+          description: Reactivated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOrganization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/stats:
+    get:
+      tags: [Platform]
+      operationId: platformGetStats
+      summary: Counts for the console home page
+      security:
+        - operatorToken: []
+      responses:
+        "200":
+          description: The counts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformStats" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+components:
+  securitySchemes:
+    customerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from the customer pool `tempo-{env}-users`.
+    operatorToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from the operator pool `tempo-{env}-operators` (MFA required).
+
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MembershipId:
+      name: membershipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Before:
+      name: before
+      in: query
+      required: false
+      description: The `id` of the last item on the previous page.
+      schema: { type: string, format: uuid }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: The `version` you last read. A stale value returns 409 `concurrency.conflict`.
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: Unexpected error.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    BadRequest:
+      description: Validation failed; `errors` lists the fields.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Unauthorized:
+      description: Missing, invalid or wrong-pool token.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Forbidden:
+      description: |
+        Signed in but not allowed, for example `permission.denied` (the caller's role does not allow it),
+        `account.disabled`, `account.email_not_verified`, `membership.suspended`, `organization.suspended`,
+        `invitation.email_mismatch`, `operator.not_registered`.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: |
+        Not found, or not visible to the caller. A studio the caller does not belong to is also 404
+        (`organization.not_found`), so ids cannot be probed.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Conflict:
+      description: "`organization.slug_taken`, `organization.creation_limit` or `concurrency.conflict`."
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    TooManyRequests:
+      description: Too many requests. Invitation and join calls allow 20 per account per hour; other routes are limited at the edge.
+      headers:
+        Retry-After:
+          description: Seconds until the next attempt is allowed.
+          schema: { type: integer }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        code:
+          type: string
+          description: Stable machine-readable code, e.g. `membership.not_found`.
+          examples: [organization.not_found]
+        detail: { type: string }
+        correlationId: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, code]
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+
+    Health:
+      type: object
+      required: [status, environment, version, timestamp, correlationId]
+      properties:
+        status: { type: string, examples: [healthy] }
+        environment: { type: string }
+        version: { type: string }
+        timestamp: { type: string, format: date-time }
+        correlationId: { type: string }
+
+    Role:
+      type: string
+      enum: [owner, admin, staff, client]
+    MembershipStatus:
+      type: string
+      enum: [invited, active, suspended, removed]
+    OrganizationStatus:
+      type: string
+      enum: [active, suspended]
+    InvitationStatus:
+      type: string
+      enum: [pending, accepted, revoked, expired]
+    InvitableRole:
+      type: string
+      enum: [admin, staff, client]
+
+    Me:
+      type: object
+      required: [id, email, emailVerified, locale, status, memberships]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        emailVerified: { type: boolean }
+        displayName: { type: [string, "null"] }
+        locale: { type: string, examples: [he-IL] }
+        status:
+          type: string
+          enum: [active, disabled]
+        memberships:
+          type: array
+          items: { $ref: "#/components/schemas/MyMembership" }
+
+    MyMembership:
+      type: object
+      description: One studio the caller belongs to, for the studio switcher.
+      required: [membershipId, role, status, organization]
+      properties:
+        membershipId: { type: string, format: uuid }
+        role: { $ref: "#/components/schemas/Role" }
+        status: { $ref: "#/components/schemas/MembershipStatus" }
+        organization:
+          type: object
+          required: [id, slug, displayName, status]
+          properties:
+            id: { type: string, format: uuid }
+            slug: { type: string }
+            displayName: { type: string }
+            status: { $ref: "#/components/schemas/OrganizationStatus" }
+
+    UpdateMeRequest:
+      type: object
+      minProperties: 1
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 100 }
+        locale:
+          type: string
+          enum: [he-IL, en-US]
+
+    Slug:
+      type: string
+      pattern: "^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$"
+      description: Lowercase Latin letters, digits and hyphens, 3 to 40 characters.
+      examples: [studio-neshima]
+
+    Organization:
+      type: object
+      required: [id, slug, displayName, status, countryCode, defaultLocale, timeZone, currencyCode, joinLinkEnabled, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { $ref: "#/components/schemas/Slug" }
+        displayName: { type: string, examples: [סטודיו נשימה] }
+        status: { $ref: "#/components/schemas/OrganizationStatus" }
+        countryCode: { type: string, examples: [IL] }
+        defaultLocale: { type: string, examples: [he-IL] }
+        timeZone: { type: string, examples: [Asia/Jerusalem] }
+        currencyCode: { type: string, examples: [ILS] }
+        joinLinkEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        version: { type: string, description: Send back in `If-Match` when updating. }
+
+    CreateOrganizationRequest:
+      type: object
+      required: [displayName, slug]
+      properties:
+        displayName: { type: string, minLength: 2, maxLength: 100 }
+        slug: { $ref: "#/components/schemas/Slug" }
+        timeZone: { type: string, default: Asia/Jerusalem }
+        defaultLocale: { type: string, default: he-IL }
+
+    UpdateOrganizationRequest:
+      type: object
+      minProperties: 1
+      properties:
+        displayName: { type: string, minLength: 2, maxLength: 100 }
+        timeZone: { type: string }
+        defaultLocale: { type: string }
+
+    Member:
+      type: object
+      required: [id, userAccountId, email, role, status, joinedAt, version]
+      properties:
+        id: { type: string, format: uuid, description: The membership id. }
+        userAccountId: { type: string, format: uuid }
+        email: { type: string, format: email }
+        displayName: { type: [string, "null"] }
+        role: { $ref: "#/components/schemas/Role" }
+        status: { $ref: "#/components/schemas/MembershipStatus" }
+        joinedAt: { type: string, format: date-time }
+        version: { type: string }
+
+    MemberPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Member" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    UpdateMemberRequest:
+      type: object
+      minProperties: 1
+      properties:
+        role: { $ref: "#/components/schemas/InvitableRole" }
+        status:
+          type: string
+          enum: [active, suspended]
+
+    CreateInvitationRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/InvitableRole" }
+
+    Invitation:
+      type: object
+      required: [id, email, role, status, expiresAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/InvitableRole" }
+        status: { $ref: "#/components/schemas/InvitationStatus" }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        invitedBy:
+          type: object
+          required: [membershipId]
+          properties:
+            membershipId: { type: string, format: uuid }
+            displayName: { type: [string, "null"] }
+
+    CreatedInvitation:
+      allOf:
+        - $ref: "#/components/schemas/Invitation"
+        - type: object
+          required: [link]
+          properties:
+            link:
+              type: string
+              format: uri
+              description: |
+                Shown once, as `https://<app>/invite#<token>`. The token is in the fragment, which browsers never
+                send to a server; the app reads it and sends it in the body of preview and accept.
+
+    InvitationPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Invitation" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    TokenRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 20, maxLength: 100 }
+
+    InvitationPreview:
+      type: object
+      required: [organization, role, expiresAt]
+      properties:
+        organization:
+          type: object
+          required: [id, displayName]
+          properties:
+            id: { type: string, format: uuid }
+            displayName: { type: string }
+        role: { $ref: "#/components/schemas/InvitableRole" }
+        invitedByDisplayName: { type: [string, "null"] }
+        expiresAt: { type: string, format: date-time }
+
+    JoinCodeRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 16, maxLength: 64 }
+
+    JoinPreview:
+      type: object
+      required: [organization]
+      properties:
+        organization:
+          type: object
+          required: [id, displayName]
+          properties:
+            id: { type: string, format: uuid }
+            displayName: { type: string }
+
+    JoinLink:
+      type: object
+      required: [link, createdAt]
+      properties:
+        link:
+          type: string
+          format: uri
+          description: |
+            `https://<client app>/join#<code>`. The code is in the fragment; the app sends it in the body of
+            join preview and join.
+        createdAt: { type: string, format: date-time }
+
+    AuditEvent:
+      type: object
+      required: [id, occurredAt, actorType, action, targetType]
+      properties:
+        id: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        actorType:
+          type: string
+          enum: [user, operator, system]
+        actorDisplayName: { type: [string, "null"] }
+        action: { type: string, examples: [membership.role_changed] }
+        targetType: { type: string, examples: [membership] }
+        targetId: { type: [string, "null"], format: uuid }
+        data:
+          type: object
+          additionalProperties: true
+
+    AuditEventPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEvent" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    PlatformOrganization:
+      type: object
+      required: [id, slug, displayName, status, createdAt, owner, memberCounts]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        displayName: { type: string }
+        status: { $ref: "#/components/schemas/OrganizationStatus" }
+        createdAt: { type: string, format: date-time }
+        owner:
+          type: object
+          required: [userAccountId, email]
+          properties:
+            userAccountId: { type: string, format: uuid }
+            email: { type: string, format: email }
+            displayName: { type: [string, "null"] }
+        memberCounts:
+          type: object
+          required: [owner, admin, staff, client]
+          properties:
+            owner: { type: integer }
+            admin: { type: integer }
+            staff: { type: integer }
+            client: { type: integer }
+
+    PlatformOrganizationPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PlatformOrganization" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    ReasonRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 500 }
+
+    PlatformStats:
+      type: object
+      required: [activeOrganizations, suspendedOrganizations, accounts, activeMemberships, hourlyBackupThreshold]
+      properties:
+        activeOrganizations: { type: integer }
+        suspendedOrganizations: { type: integer }
+        accounts: { type: integer }
+        activeMemberships: { type: integer }
+        hourlyBackupThreshold:
+          type: integer
+          description: Active studios at which the owner is alerted to move to hourly backups (ADR-0021).
+          examples: [10]
