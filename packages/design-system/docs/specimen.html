@@ -31,11 +31,6 @@
   .sp-phone { width: 390px; max-width: 100%; margin-inline: auto; border-radius: 44px; padding: 14px; background: var(--surface); box-shadow: var(--shadow-raise), var(--shadow-float); }
   .sp-phone__screen { border-radius: 32px; background: var(--canvas); padding: 20px 18px 16px; min-height: 760px; display: flex; flex-direction: column; gap: var(--space-5); position: relative; overflow: hidden; }
   .sp-status { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-inline: 6px; }
-  .sp-week { display: flex; gap: 6px; padding: 6px; border-radius: var(--radius-lg); background: var(--surface-sunken); box-shadow: var(--shadow-sunken); }
-  .sp-week > div { flex: 1; text-align: center; padding: 8px 0; border-radius: 14px; font-size: 12px; font-weight: 600; color: var(--ink-muted); line-height: 16px; }
-  .sp-week > div b { display: block; font-size: 15px; color: var(--ink); }
-  .sp-week > div.on { background: var(--surface); box-shadow: var(--shadow-raise-sm); color: var(--brand-ink); }
-  .sp-week > div.on b { color: var(--brand-ink); }
 </style>
 </head>
 <body>
@@ -169,9 +164,11 @@
           <div class="tp-ring" style="--tp-ring-deg:288deg;--tp-ring-color:#fffef4;--tp-ring-color2:#e8d6cf;background:var(--rose-deep);box-shadow:inset 3px 3px 8px #5a463740"><div class="tp-ring__inner" style="color:var(--rose-ink)">12/15</div></div>
           <div style="flex:1;min-width:0"><div class="tp-caption">השיעור הבא · בעוד 40 דקות</div><div style="font-size:20px;line-height:26px;font-weight:700">פילאטיס מזרן</div><div class="tp-caption">08:30 · דנה כהן · סטודיו 2</div></div>
         </div>
-        <div class="sp-week">
-          <div>א׳<b>13</b></div><div class="on">ב׳<b>14</b></div><div>ג׳<b>15</b></div><div>ד׳<b>16</b></div><div>ה׳<b>17</b></div><div>ו׳<b>18</b></div><div>ש׳<b>19</b></div>
+        <div class="tp-week" role="group" aria-label="ימי השבוע">
+          <button class="tp-week__day" type="button" aria-pressed="false">א׳<b>13</b></button><button class="tp-week__day" type="button" aria-pressed="true">ב׳<b>14</b></button><button class="tp-week__day" type="button" aria-pressed="false">ג׳<b>15</b></button><button class="tp-week__day" type="button" aria-pressed="false">ד׳<b>16</b></button><button class="tp-week__day" type="button" aria-pressed="false">ה׳<b>17</b></button><button class="tp-week__day" type="button" aria-pressed="false">ו׳<b>18</b></button><button class="tp-week__day" type="button" aria-pressed="false">ש׳<b>19</b></button>
         </div>
+        <div class="tp-row" style="gap:8px"><button class="tp-chip tp-chip--plain tp-chip--brand" type="button" aria-pressed="true">הכל</button><button class="tp-chip tp-chip--plain" type="button" aria-pressed="false">פילאטיס</button><button class="tp-chip tp-chip--plain" type="button" aria-pressed="false">יוגה</button></div>
+        <div class="tp-class" style="padding:14px;gap:14px"><span class="tp-slot">18:00<small>45 דק׳</small></span><span class="tp-class__body"><span class="tp-class__title" style="font-size:16px;line-height:22px">פילאטיס כוח</span><span class="tp-class__meta" style="font-size:13px">עומר · מלא, 2 ממתינים</span></span><span class="tp-chip tp-chip--warning">במקום 2 בהמתנה</span></div>
         <div class="tp-stack" style="gap:12px">
           <div class="tp-row" style="justify-content:space-between"><span class="tp-label">שיעורים ביום שני</span><a href="#" class="tp-caption" style="color:var(--brand-ink)">כל השבוע</a></div>
           <button class="tp-event tp-event--blue" type="button"><span class="tp-event__count">6/10</span><span class="tp-event__title">פילאטיס מכשירים</span><span class="tp-event__meta">07:30 · דנה · סטודיו 2</span><span class="tp-event__fill"><i style="--tp-fill:60%"></i></span></button>

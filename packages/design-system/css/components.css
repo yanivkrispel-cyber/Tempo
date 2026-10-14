@@ -54,6 +54,10 @@
 .tp-btn--danger { background: var(--danger); color: var(--on-danger); box-shadow: 0 8px 18px -6px #c0786b8c, inset 0 1px 0 #ffffff66; }
 .tp-btn--danger:hover { box-shadow: 0 0 0 4px var(--danger-soft), 0 10px 22px -6px #c0786b99; }
 .tp-btn--danger:active { box-shadow: var(--shadow-sunken); }
+/* a quiet destructive action, e.g. signing out: ghost with danger ink */
+.tp-btn--ghost-danger { background: transparent; color: var(--danger-ink); box-shadow: none; }
+.tp-btn--ghost-danger:hover { background: var(--surface); box-shadow: var(--shadow-raise-sm); }
+.tp-btn--ghost-danger:active { background: var(--surface-sunken); box-shadow: var(--shadow-sunken); }
 
 /* icon-only: a square 12px tile (reference icon tiles), cream by default */
 .tp-btn--icon { padding-inline: 0; width: var(--control-md); height: var(--control-md); border-radius: var(--radius-md); background: var(--tp-slab); color: var(--icon-dark); box-shadow: var(--shadow-raise-sm); }
@@ -175,6 +179,8 @@
   border-radius: 9px; font-size: 14px; line-height: 20px; font-weight: 600; transition: box-shadow var(--duration-base) var(--tp-ease), color var(--duration-base) var(--tp-ease), background var(--duration-base) var(--tp-ease); }
 .tp-seg__opt:hover { color: var(--ink); }
 .tp-seg__opt[aria-pressed="true"], .tp-seg__opt[aria-selected="true"] { background: var(--tp-slab); color: var(--ink); box-shadow: var(--shadow-raise-sm); }
+.tp-seg--block { display: flex; width: 100%; }
+.tp-seg--block .tp-seg__opt { flex: 1; padding-inline: 6px; }
 
 /* ------------------------------------------------------------------- Chips
    Small raised cream tiles, 8px radius, a colored dot and colored text. */
@@ -197,6 +203,8 @@
 .tp-chip--cat-mauve { color: var(--cat-mauve-ink); } .tp-chip--cat-mauve::before { background: var(--cat-mauve); }
 .tp-chip--count { background: var(--brand); color: var(--on-brand); min-width: 24px; min-height: 24px; justify-content: center; padding-inline: 7px; border-radius: var(--radius-pill); box-shadow: var(--shadow-raise-sm); }
 .tp-chip--count::before { display: none; }
+/* A chip as a filter toggle: a button with aria-pressed; the pressed one takes the brand ink (tp-chip--brand). */
+button.tp-chip { border: 0; min-height: 34px; }
 
 /* ------------------------------------------------------------------- Cards
    Reference: Base Card (taupe, soft inner shadow, white text, a sand icon tile);
@@ -217,6 +225,10 @@
 .tp-card--elevated .tp-muted, .tp-card--elevated .tp-caption, .tp-card--elevated .tp-stat__label, .tp-card--brand .tp-muted, .tp-card--brand .tp-caption, .tp-card--brand .tp-stat__label { opacity: .85; }
 .tp-card--sunken { background: var(--surface-deep); box-shadow: var(--shadow-sunken); }
 .tp-card--selected { box-shadow: var(--shadow-raise), 0 0 0 1.5px var(--selected-line), 0 0 0 5px var(--focus-glow); }
+/* A settings row inside a card: the label at the start, its control at the end. */
+.tp-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+button.tp-setting { width: 100%; border: 0; background: transparent; padding-inline: 0; text-align: start; border-radius: var(--radius-sm); }
+button.tp-setting:hover { background: var(--surface-hover); }
 .tp-icon-tile { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--sand); color: var(--icon-dark); display: grid; place-items: center; box-shadow: var(--shadow-raise-sm); flex: none; }
 .tp-icon-tile .tp-icon { width: var(--icon-md); height: var(--icon-md); }
 .tp-icon-tile--dark { background: var(--icon-dark); color: var(--surface); }
@@ -253,6 +265,7 @@
 .tp-bar { height: 10px; border-radius: var(--radius-pill); background: var(--surface-sunken); box-shadow: var(--shadow-sunken); overflow: hidden; padding: 2px; }
 .tp-bar__fill { height: 100%; border-radius: inherit; background: var(--rose); width: var(--tp-bar, 0%); box-shadow: inset 0 1px 0 #ffffff4d; }
 .tp-bar--sage .tp-bar__fill { background: var(--brand); }
+.tp-bar--sand .tp-bar__fill { background: var(--sand); }
 
 /* ------------------------------------------------------------------ Slider
    Reference: rose fill, sunken track, a cream knob with a rose rim, tick marks below. */
@@ -317,6 +330,7 @@
 .tp-rail__item .tp-icon { width: var(--icon-lg); height: var(--icon-lg); }
 .tp-rail__item .tp-chip--count { position: absolute; top: 2px; inset-inline-end: 0; min-width: 20px; min-height: 20px; font-size: 11px; padding-inline: 5px; }
 .tp-rail__spacer { flex: 1; }
+.tp-rail__logo--sm { width: 40px; height: 40px; font-size: 16px; margin: 0; flex: none; }
 .tp-nav { display: flex; flex-direction: column; gap: 4px; }
 .tp-nav__item { display: flex; align-items: center; gap: 12px; min-height: 46px; padding-inline: 14px; border-radius: var(--radius-md); color: var(--ink-muted); font-weight: 600; text-decoration: none; }
 .tp-nav__item:hover { color: var(--ink); background: var(--surface-hover); text-decoration: none; }
@@ -422,6 +436,24 @@
 .tp-class__meta { font-size: 14px; line-height: 20px; color: var(--ink-muted); font-weight: 500; }
 .tp-class__actions { display: flex; gap: 8px; flex: none; align-items: center; }
 .tp-class--selected { box-shadow: var(--shadow-raise), 0 0 0 1.5px var(--selected-line), 0 0 0 5px var(--focus-glow); }
+/* Event tiles, class rows and tab bar items are often links: no underline, ink not link color. */
+a.tp-event, a.tp-class, a.tp-class__body { color: var(--ink); }
+a.tp-event, a.tp-event:hover, a.tp-class, a.tp-class:hover, a.tp-class__body, a.tp-class__body:hover,
+a.tp-tabbar__item, a.tp-tabbar__item:hover, a.tp-tabbar__fab, a.tp-tabbar__fab:hover { text-decoration: none; }
+
+/* -------------------------------------------------------------- Time slot
+   The start time in a well at the start of a class row, with the length or the day under it. */
+.tp-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 58px; height: 58px; flex: none;
+  border-radius: var(--radius-md); font-size: 16px; line-height: 20px; font-weight: 700; background: var(--surface-sunken); box-shadow: var(--shadow-sunken); }
+.tp-slot small { font-size: 11px; line-height: 14px; font-weight: 600; color: var(--ink-muted); }
+
+/* ------------------------------------------------------------- Week strip
+   The member app's seven days in a well; the chosen day rises as a cream tile. */
+.tp-week { display: flex; justify-content: space-between; padding: 6px; border-radius: var(--radius-lg); background: var(--surface-sunken); box-shadow: var(--shadow-sunken); }
+.tp-week__day { border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 42px; min-height: 56px; border-radius: var(--radius-md); color: var(--ink-muted); font-size: 12px; line-height: 16px; font-weight: 600; }
+.tp-week__day b { font-size: 16px; line-height: 22px; color: var(--ink); }
+.tp-week__day[aria-pressed="true"] { background: var(--tp-slab); box-shadow: var(--shadow-raise-sm); color: var(--brand-ink); }
 
 /* ------------------------------------------------------------- Bottom tab bar */
 .tp-tabbar { display: flex; align-items: center; justify-content: space-around; padding: 8px 10px; background: var(--tp-slab); border-radius: var(--radius-xl); box-shadow: var(--shadow-raise); }
@@ -431,6 +463,9 @@
 .tp-tabbar__fab { width: 54px; height: 54px; border-radius: var(--radius-md); border: 0; background: var(--tp-btn-gradient); color: var(--on-brand); box-shadow: var(--shadow-brand); display: grid; place-items: center; margin-top: -26px; }
 .tp-tabbar__fab:hover { box-shadow: var(--shadow-glow); }
 .tp-tabbar__fab .tp-icon { width: 24px; height: 24px; stroke-width: 2.2; }
+/* The tab bar fixed to the bottom of a phone screen; a page under it leaves room with .tp-page--tabbar. */
+.tp-tabbar--fixed { position: fixed; inset-inline: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: var(--z-sticky); max-width: 480px; margin-inline: auto; }
+.tp-page--tabbar { padding-block: 28px 128px; max-width: 520px; }
 
 /* -------------------------------------------------------------------- Icons */
 .tp-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
