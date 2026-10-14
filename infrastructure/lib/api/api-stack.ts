@@ -1,4 +1,4 @@
-import { CfnOutput, Duration, Stack, StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, Fn, Stack, StackProps } from "aws-cdk-lib";
 import { AccessLogFormat } from "aws-cdk-lib/aws-apigateway";
 import {
   CorsHttpMethod,
@@ -10,6 +10,7 @@ import {
 import { HttpUserPoolAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { IUserPool, IUserPoolClient } from "aws-cdk-lib/aws-cognito";
+import { CfnPermission, FunctionUrlAuthType } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { resolveDotNetLambdaCode } from "../constructs/dotnet-lambda-code";
@@ -55,6 +56,8 @@ const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
 export class ApiStack extends Stack {
   public readonly httpApi: HttpApi;
   public readonly apiFunction: TempoFunction;
+  /** Domain of the API function's Function URL, the edge distribution's /api/* origin. */
+  public readonly functionUrlDomain: string;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -132,6 +135,36 @@ export class ApiStack extends Stack {
         destination: new LogGroupLogDestination(accessLogGroup),
         format: ACCESS_LOG_FORMAT
       }
+    });
+
+    // The edge distribution's /api/* origin (ADR-0009 amendment). AWS_IAM means
+    // only signed requests get in: CloudFront signs every one with its origin
+    // access control, so the URL cannot be called directly.
+    const functionUrl = this.apiFunction.function.addFunctionUrl({ authType: FunctionUrlAuthType.AWS_IAM });
+    this.functionUrlDomain = Fn.select(2, Fn.split("/", functionUrl.url));
+
+    // The distribution lives in us-east-1 and reads this stack's URL, so naming
+    // its ARN here would make the reference circular. Any distribution of this
+    // account may invoke; the function URL itself is still private to them.
+    const distributions = `arn:${this.partition}:cloudfront::${this.account}:distribution/*`;
+    new CfnPermission(this, "AllowCloudFrontInvokeFunctionUrl", {
+      action: "lambda:InvokeFunctionUrl",
+      functionName: this.apiFunction.function.functionName,
+      principal: "cloudfront.amazonaws.com",
+      sourceArn: distributions,
+      functionUrlAuthType: "AWS_IAM"
+    });
+    // Lambda also checks lambda:InvokeFunction for requests signed by an OAC.
+    new CfnPermission(this, "AllowCloudFrontInvokeFunction", {
+      action: "lambda:InvokeFunction",
+      functionName: this.apiFunction.function.functionName,
+      principal: "cloudfront.amazonaws.com",
+      sourceArn: distributions
+    });
+
+    new CfnOutput(this, "FunctionUrlDomain", {
+      description: "The API function's Function URL domain - the edge stack reads it across Regions",
+      value: this.functionUrlDomain
     });
 
     new CfnOutput(this, "HttpApiUrl", {

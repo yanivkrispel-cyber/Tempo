@@ -73,8 +73,8 @@ const developmentConfig: TempoEnvironmentConfig = {
 
   featureFlags: {
     enableCustomDomain: false,
-    enableFrontendHosting: false,
-    enableWaf: false
+    enableFrontendHosting: true,
+    enableWaf: true
   },
 
   corsAllowedOrigins: [

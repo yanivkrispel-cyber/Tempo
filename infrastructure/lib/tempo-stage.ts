@@ -10,6 +10,7 @@ import { DatabaseStack } from "./data/database-stack";
 import { MessagingStack } from "./async/messaging-stack";
 import { ApiStack } from "./api/api-stack";
 import { ObservabilityStack } from "./observability/observability-stack";
+import { EdgeStack } from "./edge/edge-stack";
 
 export interface TempoStageProps extends StageProps {
   readonly config: TempoEnvironmentConfig;
@@ -22,9 +23,10 @@ export interface TempoStageProps extends StageProps {
  * references are passed directly between stacks within the Stage rather
  * than through SSM/cross-stack exports, per LLD section 7.1.
  *
- * StorageStack and FrontendStack (S3/CloudFront/Route 53/ACM/WAF) are not
- * part of this slice - no root domain was provided, and full frontend
- * hosting is explicitly deferrable per the Phase 0 scope.
+ * The edge stack (CloudFront, WAF, PWA bucket) runs in us-east-1, the only
+ * Region with CLOUDFRONT-scope web ACLs. It reads the API stack's Function URL
+ * through a cross-Region reference. No custom domain yet: the distribution
+ * serves on its *.cloudfront.net name.
  */
 export class TempoStage extends Stage {
   constructor(scope: Construct, id: string, props: TempoStageProps) {
@@ -59,8 +61,18 @@ export class TempoStage extends Stage {
       env,
       userPool: identity.userPool,
       userPoolClients: [identity.adminWebClient, identity.clientWebClient, identity.platformAdminWebClient],
-      buildVersion: props.buildVersion
+      buildVersion: props.buildVersion,
+      crossRegionReferences: config.featureFlags.enableFrontendHosting
     });
+
+    if (config.featureFlags.enableFrontendHosting) {
+      new EdgeStack(this, "Edge", {
+        config,
+        env: { account: config.accountId, region: "us-east-1" },
+        crossRegionReferences: true,
+        apiFunctionUrlDomain: api.functionUrlDomain
+      });
+    }
 
     new ObservabilityStack(this, "Observability", {
       config,
