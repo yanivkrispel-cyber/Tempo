@@ -13,13 +13,15 @@ export interface TabsProps<T extends string> {
   onChange: (value: T) => void;
   /** The tab list's accessible name, e.g. "ההזמנות שלי". */
   label: string;
+  /** Full width, the tabs sharing it equally. */
+  block?: boolean;
   className?: string;
   /** The selected tab's panel. */
   children?: ReactNode;
 }
 
 /** WAI-ARIA tabs with automatic activation: arrows, Home and End move and select. */
-export function Tabs<T extends string>({ tabs, value, onChange, label, className, children }: TabsProps<T>) {
+export function Tabs<T extends string>({ tabs, value, onChange, label, block = false, className, children }: TabsProps<T>) {
   const id = useId();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const selected = Math.max(
@@ -48,7 +50,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, className
 
   return (
     <>
-      <div role="tablist" aria-label={label} className={cx("tp-tabs", className)} onKeyDown={onKeyDown}>
+      <div role="tablist" aria-label={label} className={cx("tp-tabs", block && "tp-tabs--block", className)} onKeyDown={onKeyDown}>
         {tabs.map((tab, index) => (
           <button
             key={tab.value}

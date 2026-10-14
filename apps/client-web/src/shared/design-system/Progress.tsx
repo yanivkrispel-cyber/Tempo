@@ -40,7 +40,8 @@ export interface ProgressBarProps {
   value: number;
   max?: number;
   label: string;
-  tone?: "rose" | "sage";
+  /** sand reads on a taupe base card. */
+  tone?: "rose" | "sage" | "sand";
   className?: string;
 }
 
@@ -53,7 +54,7 @@ export function ProgressBar({ value, max = 100, label, tone = "rose", className 
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuenow={value}
-      className={cx("tp-bar", tone === "sage" && "tp-bar--sage", className)}
+      className={cx("tp-bar", tone !== "rose" && `tp-bar--${tone}`, className)}
       style={style}
     >
       <div className="tp-bar__fill" />

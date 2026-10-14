@@ -11,9 +11,9 @@ function renderAt(url: string) {
 }
 
 describe("client-web routes", () => {
-  it("renders the home page at /", () => {
+  it("renders the member home at /", async () => {
     renderAt("/");
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("ברוכים הבאים");
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("היי נגה");
   });
 
   it("shows the invitation when /invite has a token in the fragment, then drops the fragment", async () => {

@@ -25,6 +25,8 @@ export { Icon } from "./Icon";
 export type { IconName, IconProps } from "./Icon";
 export { ProgressBar, ProgressRing } from "./Progress";
 export type { ProgressBarProps, ProgressRingProps } from "./Progress";
+export { ClassRow, EventCard, FilterChips, shortDate, TabBar, TimeSlot, WeekStrip } from "./Schedule";
+export type { ClassColor, ClassRowProps, EventCardProps, FilterChipsProps, TabBarLink, TabBarProps, WeekStripProps } from "./Schedule";
 export { Segmented } from "./Segmented";
 export type { SegmentedOption, SegmentedProps } from "./Segmented";
 export { Skeleton } from "./Skeleton";

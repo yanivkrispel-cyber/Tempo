@@ -12,13 +12,15 @@ export interface SegmentedProps<T extends string> {
   onChange: (value: T) => void;
   /** The group's accessible name, e.g. "תצוגה". */
   label: string;
+  /** Full width, the options sharing it equally. */
+  block?: boolean;
   className?: string;
 }
 
 /** A few mutually exclusive options that filter or switch a view in place. */
-export function Segmented<T extends string>({ options, value, onChange, label, className }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ options, value, onChange, label, block = false, className }: SegmentedProps<T>) {
   return (
-    <div role="group" aria-label={label} className={cx("tp-seg", className)}>
+    <div role="group" aria-label={label} className={cx("tp-seg", block && "tp-seg--block", className)}>
       {options.map((option) => (
         <button
           key={option.value}

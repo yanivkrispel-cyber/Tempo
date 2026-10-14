@@ -1,0 +1,35 @@
+/* Screen layout for the member app. Colors and controls come from @tempo/design-system;
+   this file only places them (the mockup's spacing, docs/design/mockups/studio-2026-10-13). */
+.screen { display: flex; flex-direction: column; gap: 20px; }
+.profile { gap: 16px; }
+.section { display: flex; flex-direction: column; gap: 10px; }
+.group { display: flex; flex-direction: column; gap: 12px; }
+.header { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.heading { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.title { font-size: 28px; line-height: 34px; font-weight: 800; }
+.sectionHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sectionTitle { font-size: 18px; line-height: 26px; }
+.list { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.list > li { min-width: 0; }
+
+.next { display: flex; flex-direction: column; gap: 8px; }
+.nextTitle { font-size: 24px; line-height: 30px; font-weight: 800; }
+.nextActions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stat { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+
+.sheetDetails { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.sheetDetail { display: flex; gap: 10px; align-items: center; }
+.sheetNote { margin-top: 14px; }
+.sheetActions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+
+.plan { display: flex; flex-direction: column; gap: 10px; }
+.planHead { display: flex; justify-content: space-between; align-items: center; }
+.planName { font-size: 22px; line-height: 28px; font-weight: 800; }
+.studio { display: flex; align-items: center; gap: 12px; }
+.studioName { flex: 1; min-width: 0; font-weight: 700; }
+.settings { padding-block: 8px; padding-inline: 18px; }
+.settingsTitle { padding-top: 10px; }
+.settingText { display: flex; flex-direction: column; }
+.settingSelect { width: 132px; min-height: 38px; }

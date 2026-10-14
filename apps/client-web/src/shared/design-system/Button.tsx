@@ -3,7 +3,7 @@ import { Link, type LinkProps } from "react-router";
 import { cx } from "./cx";
 import { Icon, type IconName } from "./Icon";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "rose" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "ghost-danger" | "rose" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonLook {
