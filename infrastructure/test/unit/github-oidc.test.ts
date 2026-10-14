@@ -64,11 +64,13 @@ describe("GitHub OIDC deployment role trust (ADR-0011)", () => {
     expect(invoke[0].Resource).toBe("arn:aws:lambda:eu-central-1:687239340846:function:tempo-dev-database-migrator");
   });
 
-  it("may use only the work queue, and only to send and inspect", () => {
+  it("may send to and inspect the work queue, and only inspect its DLQ", () => {
     const sqs = deploymentRoleStatements().filter((s) => [s.Action].flat().some((a) => a.startsWith("sqs:")));
+    const byResource = Object.fromEntries(sqs.map((s) => [s.Resource as string, [s.Action].flat().sort()]));
 
-    expect(sqs).toHaveLength(1);
-    expect([sqs[0].Action].flat().sort()).toEqual(["sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"]);
-    expect(sqs[0].Resource).toBe("arn:aws:sqs:eu-central-1:687239340846:tempo-dev-work");
+    expect(byResource).toEqual({
+      "arn:aws:sqs:eu-central-1:687239340846:tempo-dev-work": ["sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:SendMessage"],
+      "arn:aws:sqs:eu-central-1:687239340846:tempo-dev-work-dlq": ["sqs:GetQueueAttributes", "sqs:GetQueueUrl"]
+    });
   });
 });

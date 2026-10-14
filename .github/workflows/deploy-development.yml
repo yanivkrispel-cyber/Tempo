@@ -61,6 +61,9 @@ jobs:
               --configuration Release \
               --runtime linux-arm64 \
               --self-contained false
+            # The managed .NET runtime will not start a package without its
+            # runtimeconfig.json (Tempo.Worker shipped without one once).
+            test -f "backend/$project/bin/Release/net10.0/linux-arm64/publish/$project.runtimeconfig.json" || { echo "::error::$project publish output has no runtimeconfig.json"; exit 1; }
           done
 
       - name: Configure AWS credentials via OIDC
