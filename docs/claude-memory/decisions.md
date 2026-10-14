@@ -38,4 +38,8 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
 ## Process
 
 - D4: small PRs with green CI. D5: GitHub via `gh`.
-- D7 (onboarding) and D8 (admin MFA) are open; ask the owner before the Phase 1 LLD.
+- **D7 onboarding (2026-10-14):** studio owners sign up on their own and open their studio; staff and clients join by
+  invitation or the studio's join link. Cognito self sign-up stays on; a new account has no access until it creates a
+  studio or joins one. ADR-0023.
+- **D8 operator MFA (2026-10-14):** the Tempo team signs in through a separate Cognito user pool with MFA required
+  and no self sign-up. Operators are never organization members. ADR-0023.
