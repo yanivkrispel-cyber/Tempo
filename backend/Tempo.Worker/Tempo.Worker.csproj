@@ -4,6 +4,10 @@
     <RootNamespace>Tempo.Worker</RootNamespace>
     <AWSProjectType>Lambda</AWSProjectType>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- A class library gets no runtimeconfig.json by default, and the managed
+         .NET Lambda runtime refuses to start without one (Runtime.ExitError,
+         first dev deploy 2026-10-14). -->
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
   </PropertyGroup>
 
   <ItemGroup>

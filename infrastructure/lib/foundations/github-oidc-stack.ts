@@ -92,6 +92,14 @@ export class GitHubOidcStack extends Stack {
         resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work")}`]
       })
     );
+    // The smoke test fails when its message lands in the DLQ instead of being processed.
+    this.deploymentRole.addToPolicy(
+      new PolicyStatement({
+        sid: "SmokeTestDeadLetterQueue",
+        actions: ["sqs:GetQueueUrl", "sqs:GetQueueAttributes"],
+        resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work-dlq")}`]
+      })
+    );
 
     applyStandardTags(this, config, "github-oidc");
   }

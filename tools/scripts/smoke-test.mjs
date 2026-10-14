@@ -6,10 +6,12 @@
  * Verifies, against a real deployed environment:
  *   1. GET /api/v1/health returns 200 with the expected JSON contract.
  *   2. GET /api/v1/me (protected) returns 401 without a token.
- *   3. A smoke-test message sent to the work queue is drained by the worker
- *      Lambda within 60 seconds. Needs AWS CLI credentials that may call
- *      sqs:GetQueueUrl, sqs:SendMessage and sqs:GetQueueAttributes on that
- *      queue (the GitHub deployment role has exactly these). Any failure,
+ *   3. A smoke-test message sent to the work queue is processed by the worker
+ *      Lambda within 60 seconds: the queue reads empty twice in a row and the
+ *      DLQ did not grow. Needs AWS CLI credentials that may call
+ *      sqs:GetQueueUrl, sqs:SendMessage and sqs:GetQueueAttributes on the
+ *      queue, and the first and last of those on its DLQ (the GitHub
+ *      deployment role has exactly these). Any failure,
  *      including missing permissions, fails the smoke test; pass
  *      --skip-queue-check to leave this check out deliberately.
  *
@@ -113,15 +115,39 @@ function awsCli(args) {
   return execFileSync("aws", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
+/** Messages visible plus in flight. */
+function queueDepth(queueUrl, region) {
+  const attributes = JSON.parse(
+    awsCli([
+      "sqs",
+      "get-queue-attributes",
+      "--queue-url",
+      queueUrl,
+      "--attribute-names",
+      "ApproximateNumberOfMessages",
+      "ApproximateNumberOfMessagesNotVisible",
+      "--region",
+      region
+    ])
+  ).Attributes;
+  return Number(attributes.ApproximateNumberOfMessages) + Number(attributes.ApproximateNumberOfMessagesNotVisible);
+}
+
 async function checkQueueIsDrained(environment, region) {
   const queueName = `tempo-${environment}-work`;
   console.log(`→ sending a smoke-test message to ${queueName}`);
 
   let queueUrl;
+  let dlqUrl;
+  let dlqBefore;
   try {
     queueUrl = JSON.parse(
       awsCli(["sqs", "get-queue-url", "--queue-name", queueName, "--region", region])
     ).QueueUrl;
+    dlqUrl = JSON.parse(
+      awsCli(["sqs", "get-queue-url", "--queue-name", `${queueName}-dlq`, "--region", region])
+    ).QueueUrl;
+    dlqBefore = queueDepth(dlqUrl, region);
     const marker = `smoke-test-${Date.now()}`;
     // The worker routes on the MessageType attribute; an untyped message would be dead-lettered.
     const attributes = JSON.stringify({ MessageType: { DataType: "String", StringValue: "smoke-test" } });
@@ -144,28 +170,24 @@ async function checkQueueIsDrained(environment, region) {
   }
 
   // The worker's event source mapping long-polls the queue. A message counts
-  // as drained when it is neither visible nor in flight; a cold start can take
-  // several seconds, so poll for up to a minute.
+  // as drained when it is neither visible nor in flight. SQS counts are
+  // approximate and can read 0 for a moment right after a send (on 2026-10-14
+  // a worker that could not start passed this way), so the queue must read
+  // empty twice in a row, and a message that went to the DLQ is a failure.
   const deadline = Date.now() + 60_000;
   let remaining = Number.NaN;
+  let emptyReads = 0;
   while (Date.now() < deadline) {
     await sleep(5_000);
-    const attributes = JSON.parse(
-      awsCli([
-        "sqs",
-        "get-queue-attributes",
-        "--queue-url",
-        queueUrl,
-        "--attribute-names",
-        "ApproximateNumberOfMessages",
-        "ApproximateNumberOfMessagesNotVisible",
-        "--region",
-        region
-      ])
-    ).Attributes;
-    remaining = Number(attributes.ApproximateNumberOfMessages) + Number(attributes.ApproximateNumberOfMessagesNotVisible);
-    if (remaining === 0) {
-      console.log("✓ smoke-test message on the work queue was drained by the worker Lambda");
+    remaining = queueDepth(queueUrl, region);
+    emptyReads = remaining === 0 ? emptyReads + 1 : 0;
+    if (emptyReads === 2) {
+      const dlqAfter = queueDepth(dlqUrl, region);
+      if (dlqAfter > dlqBefore) {
+        fail(`the smoke-test message went to ${queueName}-dlq (${dlqBefore} -> ${dlqAfter}) - the worker failed to process it`);
+        return false;
+      }
+      console.log("✓ smoke-test message on the work queue was processed by the worker Lambda");
       return true;
     }
   }
