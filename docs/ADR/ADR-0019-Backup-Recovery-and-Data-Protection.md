@@ -58,3 +58,17 @@ Before paid production launch, define and test:
 - Recovery is treated as an operational capability, not a checkbox.
 - Restore drills create controlled cost and engineering work.
 - Multi-region active/active is explicitly out of scope initially.
+
+## Amendment 2026-10-14: Neon Recovery
+
+The database is Neon (ADR-0022), so the Aurora section above no longer applies. Until the pilot:
+
+- Recovery relies on Neon's restore window: 6 hours on the Free plan. This is below the 24-hour RPO from council decision Q5. The owners accepted it on 2026-10-14 while no customer data exists.
+- Before high-risk migrations, a Neon branch is taken as a snapshot.
+
+Before the pilot, the owners choose between two options to meet the 24-hour RPO:
+
+- a scheduled `pg_dump` to S3;
+- the Launch plan's restore window of up to 7 days.
+
+A restore drill runs before the first paying studio.

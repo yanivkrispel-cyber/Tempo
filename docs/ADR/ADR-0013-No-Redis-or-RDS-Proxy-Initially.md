@@ -45,3 +45,7 @@ Do not deploy Amazon ElastiCache or Amazon RDS Proxy in the initial architecture
 - Lower cost and fewer moving parts.
 - Application must carefully manage Lambda/database concurrency.
 - A later addition requires cache invalidation and failure-mode design.
+
+## Amendment 2026-10-14: Neon's Pooler
+
+On Neon (ADR-0022) RDS Proxy does not apply. Neon's built-in PgBouncer pooler, in transaction mode and at no extra cost, takes its place for the API and the Worker. The no-Redis part of this decision is unchanged.

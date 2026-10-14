@@ -53,3 +53,7 @@ Use:
 - Strong AWS-native controls.
 - KMS and Secrets Manager calls/costs require caching and disciplined usage.
 - File authorization remains an application responsibility before signing URLs.
+
+## Amendment 2026-10-14: SSM Parameter Store for Database Credentials
+
+ADR-0021 removes Secrets Manager ($0.40 a month per secret). Database connection details and passwords are SecureString parameters under `/tempo/<env>/db/` in SSM Parameter Store, encrypted with the AWS managed `aws/ssm` key (ADR-0022). Standard parameters are free. A person writes the values. CDK only grants each function read access to its own parameters. Rotation is manual until a tripwire justifies automation.
