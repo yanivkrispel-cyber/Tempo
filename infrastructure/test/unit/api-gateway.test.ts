@@ -1,7 +1,7 @@
 import { Stack } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
-import { dev } from "./helpers/synth";
+import { dev, prod } from "./helpers/synth";
 
 function stackTemplate(childId: string) {
   const child = dev.node.findChild(childId);
@@ -115,5 +115,54 @@ describe("Phase 1 routes and database access (docs/26)", () => {
     expect(resources).not.toContain("neon-connection-string");
     expect(resources).not.toContain("migrator-password");
     expect(resources).not.toContain("*");
+  });
+});
+
+describe("The 10-studio tripwire (docs/26 section 10.2)", () => {
+  const messaging = stackTemplate("Messaging");
+
+  it("sends a daily tripwire.check message to the work queue through Scheduler's universal SQS target", () => {
+    const schedules = Object.values(messaging.findResources("AWS::Scheduler::Schedule"));
+    const tripwire = schedules.find((s) => s.Properties.Name === "tempo-dev-tripwire");
+    expect(tripwire).toBeDefined();
+    expect(tripwire!.Properties.ScheduleExpression).toBe("cron(0 6 * * ? *)");
+    expect(tripwire!.Properties.Target.Arn).toBe("arn:aws:scheduler:::aws-sdk:sqs:sendMessage");
+    expect(JSON.stringify(tripwire!.Properties.Target.Input)).toContain("tripwire.check");
+  });
+
+  it("gives the worker the platform role's password parameter and no alarm topic in dev", () => {
+    messaging.hasResourceProperties("AWS::Lambda::Function", {
+      FunctionName: "tempo-dev-worker-outbox",
+      Environment: {
+        Variables: Match.objectLike({
+          DATABASE_PLATFORM_PASSWORD_PARAMETER: "/tempo/dev/db/platform-password",
+          DATABASE_NAME: "neondb"
+        })
+      }
+    });
+    const [worker] = Object.values(
+      messaging.findResources("AWS::Lambda::Function", { Properties: { FunctionName: "tempo-dev-worker-outbox" } })
+    );
+    expect(worker.Properties.Environment.Variables.ALARM_TOPIC_ARN).toBeUndefined();
+    expect(JSON.stringify(messaging.toJSON())).not.toContain("sns:Publish");
+  });
+});
+
+describe("The tripwire alerts the owner in production only", () => {
+  const child = prod.node.findChild("Messaging");
+  if (!Stack.isStack(child)) throw new Error("Messaging is not a Stack");
+  const messaging = Template.fromStack(child);
+
+  it("the prod worker may publish to the existing alarm topic, and only to it", () => {
+    const [worker] = Object.values(
+      messaging.findResources("AWS::Lambda::Function", { Properties: { FunctionName: "tempo-prod-worker-outbox" } })
+    );
+    expect(JSON.stringify(worker.Properties.Environment.Variables.ALARM_TOPIC_ARN)).toContain("tempo-prod-alarms");
+
+    const publish = Object.values(messaging.findResources("AWS::IAM::Policy"))
+      .flatMap((p) => p.Properties.PolicyDocument.Statement as Array<{ Action: string | string[]; Resource: unknown }>)
+      .filter((s) => [s.Action].flat().includes("sns:Publish"));
+    expect(publish).toHaveLength(1);
+    expect(JSON.stringify(publish[0].Resource)).toContain("tempo-prod-alarms");
   });
 });

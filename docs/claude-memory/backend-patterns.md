@@ -62,6 +62,18 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   The first sign-in sets a TOTP device, because the pool requires MFA.
 - A studio's own audit log: `GET /organizations/{id}/audit-events`, owner and admin, names for user actors only.
 
+## The 10-studio tripwire (step 9, part 2)
+
+- Daily at 06:00 Israel time, EventBridge Scheduler's universal target `aws-sdk:sqs:sendMessage` puts a
+  `tripwire.check` message on the work queue (the templated SQS target cannot set `MessageType`).
+- The worker (`Consumers/Tripwire`) runs `HourlyBackupTripwire` as `tempo_platform`: at 10 active studios it records
+  a row in `platform_admin.tripwires` (migration 0004) and, where `ALARM_TOPIC_ARN` is set (staging and production),
+  publishes once to `tempo-<env>-alarms`. The row commits only after the publish, so a failed send retries next day.
+- `ConfiguredDataSourceProvider` lives in `Tempo.Platform` now; the API passes `IConfiguration`, the worker
+  environment variables.
+- `AWSSDK.SimpleNotificationService` is pinned to 4.0.100.12: Smart App Control here blocks the analyzer DLL in
+  4.0.100.14, and `ExcludeAssets="analyzers"` does not stop the AWS SDK's analyzer from loading.
+
 ## Tokens
 
 - Two JWT bearer schemes, `customer` (the default policy) and `operator` (policy `operator`), in

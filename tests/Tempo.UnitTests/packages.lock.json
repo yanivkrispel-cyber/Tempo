@@ -607,7 +607,6 @@
         "type": "Project",
         "dependencies": {
           "AWSSDK.CognitoIdentityProvider": "[4.0.105.2, )",
-          "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
           "Amazon.Lambda.AspNetCoreServer.Hosting": "[2.2.0, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.10, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.10, )",
@@ -624,12 +623,14 @@
       "tempo.platform": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
           "Npgsql": "[10.0.3, )"
         }
       },
       "tempo.worker": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.SimpleNotificationService": "[4.0.100.12, )",
           "Amazon.Lambda.Core": "[3.3.0, )",
           "Amazon.Lambda.SQSEvents": "[3.0.0, )",
           "Amazon.Lambda.Serialization.SystemTextJson": "[3.0.0, )",
@@ -680,6 +681,15 @@
         "contentHash": "Mc/Je6heNGq6S0A/g9KiAhh6LotJQ1YceXlSHtQ+qyD9h1MKEGKbURP5Oid6JLnEVlHHhxtU5aiIYsz8j5j56A==",
         "dependencies": {
           "AWSSDK.Core": "[4.0.102.4, 5.0.0)"
+        }
+      },
+      "AWSSDK.SimpleNotificationService": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.100.12, )",
+        "resolved": "4.0.100.12",
+        "contentHash": "B9sNsjY/XvC0YBj9eSY/Eh7gVcbQR3Z6yC+LyKZHLcxkadIrShrn+Zue4EM7+lPyau7uOqeTg7Ut1/m5FsNt6Q==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.3, 5.0.0)"
         }
       },
       "AWSSDK.SimpleSystemsManagement": {

@@ -288,6 +288,7 @@
       "tempo.platform": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
           "Npgsql": "[10.0.3, )"
         }
       },

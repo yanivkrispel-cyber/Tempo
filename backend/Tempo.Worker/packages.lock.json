@@ -23,6 +23,15 @@
         "resolved": "3.0.0",
         "contentHash": "FTWf7ODv7+hwnqHREYQWntNDJsu4WWtTcEZoji0e5QiChMMrMyfYf07E7flBanolf8dTY6jfVdDfC816uGkzdA=="
       },
+      "AWSSDK.SimpleNotificationService": {
+        "type": "Direct",
+        "requested": "[4.0.100.12, )",
+        "resolved": "4.0.100.12",
+        "contentHash": "B9sNsjY/XvC0YBj9eSY/Eh7gVcbQR3Z6yC+LyKZHLcxkadIrShrn+Zue4EM7+lPyau7uOqeTg7Ut1/m5FsNt6Q==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.3, 5.0.0)"
+        }
+      },
       "Serilog": {
         "type": "Direct",
         "requested": "[4.4.0, )",
@@ -53,6 +62,11 @@
         "resolved": "10.8.0.113526",
         "contentHash": "2+Gk4w467coeL9ozQlAN9y0mwMj3XmlacFYZE0Ptz4LC4EkmMPwY5ygYPkwg9/xJ1SIShmoAC+5Sinb3khHDng=="
       },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.0.102.8",
+        "contentHash": "90B9Skhl+ORbtWNXrrmGdGhGvAfZiPmZafRYrB/xHelZjePIwPvXioqz9UiiF1vo21eDLzTnXh5EC4RjbNWsFQ=="
+      },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Transitive",
         "resolved": "10.0.0",
@@ -72,7 +86,17 @@
       "tempo.platform": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
           "Npgsql": "[10.0.3, )"
+        }
+      },
+      "AWSSDK.SimpleSystemsManagement": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.104.1, )",
+        "resolved": "4.0.104.1",
+        "contentHash": "krzwvPcmMBVuBZ1fhruesVZLOTXbIttFMotP81nkwmJ2TI8nk+Mam8fwiwpHAkIdbAUu0QQneK53+bhLzT0X7g==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.8, 5.0.0)"
         }
       },
       "Npgsql": {

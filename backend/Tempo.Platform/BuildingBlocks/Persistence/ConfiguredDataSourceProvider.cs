@@ -2,13 +2,14 @@ using System.Collections.Concurrent;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 using Npgsql;
-using Tempo.Platform.BuildingBlocks.Persistence;
 
-namespace Tempo.Api.Persistence;
+namespace Tempo.Platform.BuildingBlocks.Persistence;
 
 /// <summary>
-/// Builds the API's two data sources on first use, so routes that never touch
-/// the database (health) need no database settings.
+/// Builds the runtime data sources on first use, so code that never touches
+/// the database (the health route, most worker messages) needs no database
+/// settings. Shared by the API and the worker; each passes its own way of
+/// reading settings (IConfiguration, environment variables).
 ///
 /// Deployed: DATABASE_HOST (the Neon pooled endpoint), DATABASE_NAME and the
 /// SSM parameter names DATABASE_APP_PASSWORD_PARAMETER and
@@ -18,7 +19,7 @@ namespace Tempo.Api.Persistence;
 /// Locally and in tests: DATABASE_APP_CONNECTION_STRING and
 /// DATABASE_PLATFORM_CONNECTION_STRING, used as given.
 /// </summary>
-public sealed class ConfiguredDataSourceProvider(IConfiguration configuration) : IDataSourceProvider, IAsyncDisposable
+public sealed class ConfiguredDataSourceProvider(Func<string, string?> setting) : IDataSourceProvider, IAsyncDisposable
 {
     public const string ApplicationUsername = "tempo_app";
     public const string PlatformUsername = "tempo_platform";
@@ -45,7 +46,7 @@ public sealed class ConfiguredDataSourceProvider(IConfiguration configuration) :
             _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
         };
 
-        var connectionString = configuration[connectionStringKey];
+        var connectionString = setting(connectionStringKey);
         if (string.IsNullOrEmpty(connectionString))
         {
             var host = Require("DATABASE_HOST");
@@ -68,7 +69,7 @@ public sealed class ConfiguredDataSourceProvider(IConfiguration configuration) :
     }
 
     private string Require(string key) =>
-        configuration[key] is { Length: > 0 } value
+        setting(key) is { Length: > 0 } value
             ? value
             : throw new InvalidOperationException($"The database is not configured: '{key}' is missing.");
 
