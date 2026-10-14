@@ -438,6 +438,18 @@ Problem Details as in `05_Backend_Architecture.md` section 3, with a stable `cod
 `membership.owner_cannot_leave`, `invitation.not_found`, `invitation.expired`, `invitation.email_mismatch`,
 `join.not_found`, `concurrency.conflict`.
 
+Added while building Phase 1 (PRs #34 to #39):
+
+| Code | Status | When |
+|---|---|---|
+| `auth.unauthorized` | 401 | Missing, invalid or wrong-pool token |
+| `permission.denied` | 403 | The caller's role does not allow the action (section 4.1) |
+| `operator.not_registered` | 403 | An operator-pool token with no active `platform_admin.operators` row |
+| `membership.not_found` | 404 | The member does not exist in this studio, or was removed |
+| `invitation.expired` | 410 | Accept after expiry, to the matching email only |
+| `rate_limited` | 429 | Over 20 invitation or join attempts in an hour, with `Retry-After` |
+| `request.empty`, `request.invalid`, `<field>.invalid`, `display_name.length`, `slug.invalid`, `time_zone.unknown`, `locale.unsupported`, `email.invalid`, `reason.length`, `if_match.invalid` | 400 | Validation; `errors` names the field |
+
 Invalid, expired, revoked and unknown tokens all return the same `invitation.not_found` to the preview call, so a
 token cannot be probed for state. Accept returns `invitation.expired` only to a caller whose email matches.
 
