@@ -215,7 +215,9 @@ test("client-web: the class fills and the next member joins the waitlist", async
   await expectNoSeriousA11yViolations(page, testInfo, "client-web class screen, waitlisted");
 });
 
-test("console: a cancellation inside the free window returns the entry and promotes the first in line", async ({ consolePage: page }, testInfo) => {
+test("console: a cancellation inside the free window returns the entry and promotes the first in line", async ({
+  consolePage: page,
+}, testInfo) => {
   await page.goto(admin(`/schedule/sessions/${waitlistSessionId}`));
   await expect(page.getByRole("heading", { level: 1, name: typeName })).toBeVisible();
   const roster = page.getByRole("region", { name: "משתתפים" });
@@ -253,7 +255,13 @@ test("client-web: the promoted member sees the booking and the notice", async ({
 
   await page.goto(`${clientUrl}/`);
   await expect(page.getByRole("link", { name: /^התראות, / })).toBeVisible();
-  await expectNoSeriousA11yViolations(page, testInfo, "client-web home with a notice", undefined, "a chip fails color-contrast (.tp-chip)");
+  await expectNoSeriousA11yViolations(
+    page,
+    testInfo,
+    "client-web home with a notice",
+    undefined,
+    "a chip fails color-contrast (.tp-chip)",
+  );
 
   await page.goto(`${clientUrl}/inbox`);
   await expect(page.getByRole("heading", { level: 1, name: "התראות" })).toBeVisible();
@@ -261,7 +269,9 @@ test("client-web: the promoted member sees the booking and the notice", async ({
   await expectNoSeriousA11yViolations(page, testInfo, "client-web inbox");
 });
 
-test("console: the roster of the booked class, and attendance on a class about to start", async ({ consolePage: page }, testInfo) => {
+test("console: the roster of the booked class, and attendance on a class about to start", async ({
+  consolePage: page,
+}, testInfo) => {
   // The weekly class's roster has the member who booked from the phone.
   await page.goto(admin(`/schedule/sessions/${weeklySessionId}`));
   await expect(page.getByRole("heading", { level: 1, name: typeName })).toBeVisible();
@@ -284,7 +294,9 @@ test("console: the roster of the booked class, and attendance on a class about t
   await page.goto(admin(`/schedule/sessions/${soonId}`));
   const roster = page.getByRole("region", { name: "משתתפים" });
   await expect(roster.getByRole("link", { name: fillerName })).toBeVisible();
-  const present = roster.getByRole("group", { name: `נוכחות של ${fillerName}` }).getByRole("button", { name: "הגיע.ה", exact: true });
+  const present = roster
+    .getByRole("group", { name: `נוכחות של ${fillerName}` })
+    .getByRole("button", { name: "הגיע.ה", exact: true });
   await expect(present).toHaveAttribute("aria-pressed", "false");
   await expectNoSeriousA11yViolations(page, testInfo, "console roster with attendance");
   const marked = page.waitForResponse((response) => response.url().includes("/attendance"));
