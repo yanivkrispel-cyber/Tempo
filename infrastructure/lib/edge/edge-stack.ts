@@ -70,9 +70,13 @@ export interface EdgeStackProps extends StackProps {
 
 /** Requests per client IP in five minutes before WAF blocks it: all paths (rule 4). */
 export const GENERAL_RATE_LIMIT = 2000;
-/** The stricter limit on authentication endpoints (rule 5). */
+/** The stricter limit on the endpoints that take a guessable input (rule 5, #124). */
 export const AUTH_RATE_LIMIT = 100;
-export const AUTH_PATH_PREFIX = "/api/v1/auth/";
+/**
+ * Invitation tokens and join codes are the only inputs worth guessing (docs/26 section 10.3); sign-in itself goes
+ * through Cognito, not this API. `/api/v1/auth/` was named here before and has no routes.
+ */
+export const GUESSABLE_INPUT_PATHS = ["/api/v1/invitations/preview", "/api/v1/invitations/accept", "/api/v1/join", "/api/v1/join/preview"] as const;
 /** What the canary calls through CloudFront (ADR-0012 amendment). */
 export const HEALTH_PATH = "/api/v1/health";
 export const CANARY_INTERVAL_MINUTES = 5;
@@ -129,11 +133,15 @@ export class EdgeStack extends Stack {
               limit: AUTH_RATE_LIMIT,
               aggregateKeyType: "IP",
               scopeDownStatement: {
-                byteMatchStatement: {
-                  searchString: AUTH_PATH_PREFIX,
-                  fieldToMatch: { uriPath: {} },
-                  positionalConstraint: "STARTS_WITH",
-                  textTransformations: [{ priority: 0, type: "NONE" }]
+                orStatement: {
+                  statements: GUESSABLE_INPUT_PATHS.map((path) => ({
+                    byteMatchStatement: {
+                      searchString: path,
+                      fieldToMatch: { uriPath: {} },
+                      positionalConstraint: "EXACTLY",
+                      textTransformations: [{ priority: 0, type: "NONE" }]
+                    }
+                  }))
                 }
               }
             }
