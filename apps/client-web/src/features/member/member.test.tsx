@@ -15,7 +15,7 @@ function renderAt(url: string, auth: AuthClient = signedInAuth()) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(
     <div dir="rtl">
-      <App router={router} auth={auth} fetch={apiStub(signedInRoutes).fetch} today={today} />
+      <App router={router} auth={auth} apiUrl="https://api.test" fetch={apiStub(signedInRoutes).fetch} today={today} />
     </div>
   );
   return router;
@@ -137,7 +137,7 @@ describe("profile", () => {
 
   it("says when an action is not built yet", async () => {
     renderAt("/profile");
-    await userEvent.click(await screen.findByRole("button", { name: "עריכת פרטים" }));
+    await userEvent.click(await screen.findByRole("button", { name: "קבלות ותשלומים" }));
     expect(await screen.findByText("האפשרות הזו תגיע בקרוב")).toBeInTheDocument();
   });
 

@@ -115,14 +115,16 @@ export class AuthClient {
     const code = params.get("code");
     if (!code) throw new SignInError("missing_code", "The callback has no authorization code.");
 
-    const tokens = await this.tokenRequest({
+    const response = await this.postToken({
       grant_type: "authorization_code",
       client_id: this.config.clientId,
       code,
       redirect_uri: this.config.redirectUri,
       code_verifier: flow.verifier
     });
-    if (!tokens?.refresh_token) throw new SignInError("token_exchange_failed", "Cognito did not return tokens.");
+    if (!response.ok) throw new SignInError("token_exchange_failed", `Cognito answered ${response.status}.`);
+    const tokens = (await response.json()) as TokenResponse;
+    if (!tokens.refresh_token) throw new SignInError("token_exchange_failed", "Cognito did not return tokens.");
     this.setSession(this.toSession(tokens, tokens.refresh_token));
     return flow.returnTo;
   }
@@ -153,35 +155,33 @@ export class AuthClient {
   }
 
   private async refresh(session: Session): Promise<string | null> {
-    const tokens = await this.tokenRequest({
-      grant_type: "refresh_token",
-      client_id: this.config.clientId,
-      refresh_token: session.refreshToken
-    }).catch(() => null);
-    if (!tokens) {
-      // Expired or revoked refresh token: signed out.
+    let response: Response;
+    try {
+      response = await this.postToken({ grant_type: "refresh_token", client_id: this.config.clientId, refresh_token: session.refreshToken });
+    } catch {
+      // Offline or a dropped connection: keep the session and send this request without a token.
+      return null;
+    }
+    if (response.status === 400 || response.status === 401) {
+      // invalid_grant: the refresh token expired or was revoked. Signed out.
       this.setSession(null);
       return null;
     }
+    // Cognito having trouble (5xx): keep the session; the next request tries again.
+    if (!response.ok) return null;
+    const tokens = (await response.json()) as TokenResponse;
     // Cognito does not rotate the refresh token unless rotation is turned on; keep the old one if none came back.
     const next = this.toSession(tokens, tokens.refresh_token ?? session.refreshToken);
     this.setSession(next);
     return next.accessToken;
   }
 
-  private async tokenRequest(body: Record<string, string>): Promise<TokenResponse | null> {
-    const response = await this.fetchFn(`${this.config.cognitoDomain}/oauth2/token`, {
+  private postToken(body: Record<string, string>): Promise<Response> {
+    return this.fetchFn(`${this.config.cognitoDomain}/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(body).toString()
     });
-    if (!response.ok) {
-      if (body.grant_type === "authorization_code") {
-        throw new SignInError("token_exchange_failed", `Cognito answered ${response.status}.`);
-      }
-      return null;
-    }
-    return (await response.json()) as TokenResponse;
   }
 
   private toSession(tokens: TokenResponse, refreshToken: string): Session {

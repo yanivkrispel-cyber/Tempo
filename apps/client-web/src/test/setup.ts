@@ -5,6 +5,8 @@ import { afterEach } from "vitest";
 afterEach(() => {
   cleanup();
   // A pending invitation or join secret waits in sessionStorage (shared/utilities/linkSecret.ts).
-  window.sessionStorage.clear();
-  window.localStorage.clear();
+  if (typeof window !== "undefined") {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+  }
 });

@@ -13,7 +13,7 @@ const code = "join_Y29kZS1mb3ItdGVzdHM";
 
 function renderAt(url: string, auth: AuthClient = signedInAuth()) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
-  render(<App router={router} auth={auth} fetch={apiStub(signedInRoutes).fetch} />);
+  render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={apiStub(signedInRoutes).fetch} />);
   return router;
 }
 
