@@ -151,6 +151,16 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             await AuditAsync(unitOfWork, tenant, action, membershipId, new { before = StoredValue.Of(target.Status), after = StoredValue.Of(newStatus) }, cancellationToken);
         }
 
+        // A suspended or demoted member's pending invitations go too (#121); reactivating does not bring them back.
+        if (newStatus == MembershipStatus.Suspended && target.Status != MembershipStatus.Suspended)
+        {
+            await MembershipQueries.RevokeInvitationsSentByAsync(unitOfWork, tenant.OrganizationId, membershipId, null, tenant.UserAccountId, tenant.CorrelationId, "inviter_suspended", cancellationToken);
+        }
+        else if (newRole != target.Role)
+        {
+            await MembershipQueries.RevokeInvitationsSentByAsync(unitOfWork, tenant.OrganizationId, membershipId, newRole, tenant.UserAccountId, tenant.CorrelationId, "inviter_role_changed", cancellationToken);
+        }
+
         await unitOfWork.CommitAsync(cancellationToken);
         return (await WithProfilesAsync([updated], cancellationToken))[0];
     }
@@ -181,6 +191,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
 
         await RoleAssignments.RevokeAllAsync(unitOfWork, tenant.OrganizationId, membershipId, cancellationToken);
         await PersonLinks.UnlinkMembershipAsync(unitOfWork, tenant.OrganizationId, membershipId, cancellationToken);
+        await MembershipQueries.RevokeInvitationsSentByAsync(unitOfWork, tenant.OrganizationId, membershipId, null, tenant.UserAccountId, tenant.CorrelationId, isSelf ? "inviter_left" : "inviter_removed", cancellationToken);
         await AuditAsync(unitOfWork, tenant, "membership.removed", membershipId, new { role = StoredValue.Of(target.Role), left = isSelf }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
     }
