@@ -28,7 +28,8 @@ public static class MigrationRunner
         (string Username, string Password) platformCredentials,
         (string Username, string Password) migratorCredentials,
         IUpgradeLog log,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<string, bool>? scriptFilter = null)
     {
         var masterConnectionString = BuildConnectionString(endpoint, masterCredentials.Username, masterCredentials.Password);
 
@@ -45,7 +46,8 @@ public static class MigrationRunner
 
         var upgrader = DeployChanges.To
             .PostgresqlDatabase(migratorConnectionString)
-            .WithScriptsEmbeddedInAssembly(typeof(MigrationRunner).Assembly)
+            // Tests pass a filter to stop before a script and seed the data it migrates.
+            .WithScriptsEmbeddedInAssembly(typeof(MigrationRunner).Assembly, scriptFilter ?? (_ => true))
             .JournalTo((connectionManager, upgradeLog) => new MigrationJournal(connectionManager, upgradeLog))
             // Scripts name the runtime roles as $app_role$ and $platform_role$.
             // BootstrapRoles has already checked both names against
