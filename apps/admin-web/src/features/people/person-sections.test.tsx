@@ -156,6 +156,8 @@ describe("relationships on the person card", () => {
     const dialog = screen.getByRole("dialog", { name: "הוספת קשר" });
     await userEvent.type(within(dialog).getByRole("searchbox", { name: /חיפוש אדם/ }), "מיכ");
     const results = await within(dialog).findByRole("listbox", { name: "תוצאות" });
+    // The search waits until the typing pauses.
+    await within(results).findByRole("option", { name: "מיכל" });
     expect(
       within(results)
         .getAllByRole("option")

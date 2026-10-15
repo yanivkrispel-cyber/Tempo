@@ -1,12 +1,13 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { Banner, Button, Chip, DateInput, Dialog, Field, Input, Segmented, Skeleton } from "../../shared/design-system";
 import { displayPhone, phoneSearchText } from "../../shared/utilities/phones";
 import { todayIso, type IsoDate } from "../../shared/utilities/dates";
+import { useDebounced } from "../../shared/useDebounced";
 import { useStudio } from "../console/studio";
 import { personStatus, sourceLabel } from "./labels";
 
@@ -152,15 +153,6 @@ function usePeople(query: string | undefined, status: "current" | "archived") {
     getNextPageParam: (page) => page.nextBefore ?? null,
     placeholderData: keepPreviousData,
   });
-}
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return debounced;
 }
 
 /** A walk-in at the front desk (P-6: a display name and one phone or email). */

@@ -8,10 +8,16 @@ import { ConsoleLayout } from "../features/console/ConsoleLayout";
 import { InvitationsPage } from "../features/invitations/InvitationsPage";
 import { InvitePage } from "../features/invitations/InvitePage";
 import { MembersPage } from "../features/members/MembersPage";
+import { PassProductsPage } from "../features/passes/PassProductsPage";
 import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
 import { RolesPage } from "../features/roles/RolesPage";
+import { ClassTypesPage } from "../features/schedule/ClassTypesPage";
+import { RoomsPage } from "../features/schedule/RoomsPage";
+import { SchedulePage } from "../features/schedule/SchedulePage";
+import { SessionPage } from "../features/schedule/SessionPage";
+import { TemplatesPage } from "../features/schedule/TemplatesPage";
 import { SecurityPage } from "../features/security/SecurityPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
@@ -41,6 +47,12 @@ export const routes: RouteObject[] = [
               { path: "people", element: <PeoplePage /> },
               { path: "people/:personId", element: <PersonPage /> },
               { path: "duplicates", element: <DuplicatesPage /> },
+              { path: "schedule", element: <SchedulePage /> },
+              { path: "schedule/sessions/:sessionId", element: <SessionPage /> },
+              { path: "weekly-classes", element: <TemplatesPage /> },
+              { path: "class-types", element: <ClassTypesPage /> },
+              { path: "rooms", element: <RoomsPage /> },
+              { path: "passes", element: <PassProductsPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "audit", element: <AuditPage /> },
             ],
