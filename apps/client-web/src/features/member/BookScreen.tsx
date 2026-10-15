@@ -1,192 +1,210 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   Button,
   Chip,
   ClassRow,
-  Dialog,
   EmptyState,
   FilterChips,
-  Icon,
-  Segmented,
-  Skeleton,
+  IconButton,
+  shortDate,
   TimeSlot,
-  useToast,
+  WeekStrip,
 } from "../../shared/design-system";
-import { addDays } from "../../shared/utilities/dates";
-import {
-  bookingFor,
-  freeSpots,
-  spotsText,
-  useBook,
-  useBookings,
-  useClasses,
-  useJoinWaitlist,
-  useProfile,
-  useToday,
-} from "./data";
-import { relativeDay, shortDayName } from "./format";
+import { addDays, daysBetween, type IsoDate } from "../../shared/utilities/dates";
+import { BookingSheet, useBookingFlow } from "./BookingSheet";
+import { categoryName, freeSpots, myState, spotsText, waitlistOpen, waitText } from "./bookingState";
+import { relativeDay } from "./format";
 import styles from "./member.module.css";
-import type { ClassKind, StudioClass } from "./sample";
+import { PassStrip } from "./Passes";
+import { metaLine } from "./passText";
+import { useBookingPolicy, useSessions, useStudio, useStudioClock, type Session, type Studio } from "./studio";
+import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
+import { clockTime, hasStarted, minutesBetween } from "./studioTime";
 import { StudioNotices, useBookingPaused } from "./StudioNotices";
-import { errorMessage } from "../../api/errors";
 
-type Filter = "all" | ClassKind;
-
-const filters: ReadonlyArray<{ value: Filter; label: string }> = [
-  { value: "all", label: "הכל" },
-  { value: "pilates", label: "פילאטיס" },
-  { value: "yoga", label: "יוגה" },
-];
+const title = "מערכת שיעורים";
 
 export function BookScreen() {
-  const today = useToday();
-  const toast = useToast();
-  const classes = useClasses();
-  const bookings = useBookings();
-  const profile = useProfile();
-  const book = useBook();
-  const joinWaitlist = useJoinWaitlist();
+  const studio = useStudio();
+  return studio ? <StudioBook studio={studio} /> : <NoStudio title={title} />;
+}
+
+function StudioBook({ studio }: { studio: Studio }) {
+  const { timeZone, now, today } = useStudioClock(studio.id);
+  const policy = useBookingPolicy(studio.id);
   const paused = useBookingPaused();
   const [params] = useSearchParams();
 
-  const days = Array.from({ length: 4 }, (_, offset) => addDays(today, offset));
+  // The timetable is open from today to the booking horizon, a week of the strip at a time.
+  const weeks = Math.max(1, Math.ceil((policy.data?.bookingHorizonDays ?? 14) / 7));
   const asked = params.get("day");
-  const [day, setDay] = useState(asked && days.includes(asked) ? asked : today);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [picked, setPicked] = useState<StudioClass | null>(null);
+  const [day, setDay] = useState<IsoDate>(() => {
+    const offset = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? daysBetween(today, asked) : -1;
+    return asked && offset >= 0 && offset < weeks * 7 ? asked : today;
+  });
+  const [category, setCategory] = useState("all");
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const flow = useBookingFlow(studio.id);
+  // After booking, the pressed button turns into a chip: focus moves to that class's link in the list.
+  const list = useRef<HTMLUListElement>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusId) list.current?.querySelector<HTMLAnchorElement>(`a[href="/classes/${focusId}"]`)?.focus();
+  }, [focusId]);
+  const pick = (sessionId: string | null) => {
+    flow.reset();
+    setPickedId(sessionId);
+  };
 
-  if (!classes.data || !bookings.data || !profile.data) {
-    return (
-      <main className={`tp-page tp-page--tabbar ${styles.screen}`} aria-busy="true">
-        <Skeleton height={56} />
-        <Skeleton height={300} />
-      </main>
-    );
-  }
+  const week = Math.min(Math.max(Math.floor(daysBetween(today, day) / 7), 0), weeks - 1);
+  const from = addDays(today, week * 7);
+  const days = Array.from({ length: 7 }, (_, offset) => addDays(from, offset));
+  const sessions = useSessions(studio.id, from, addDays(from, 6));
 
-  const rows = classes.data.filter((item) => item.date === day && (filter === "all" || item.kind === filter));
-  const dayOptions = days.map((value) => ({
-    value,
-    label: value === today || value === addDays(today, 1) ? relativeDay(value, today) : shortDayName(value),
-  }));
+  const all = sessions.data ?? [];
+  const categories = [...new Set(all.map((session) => session.classType.category))];
+  const filters = [
+    { value: "all", label: "הכל" },
+    ...categories.map((value) => ({ value, label: categoryName(value, all) })),
+  ];
+  const rows = all
+    .filter((session) => session.localDate === day && !hasStarted(session.endsAt, now))
+    .filter((session) => category === "all" || session.classType.category === category);
+  const picked = all.find((session) => session.id === pickedId) ?? null;
 
-  function confirm(item: StudioClass) {
-    book.mutate(item.id, {
-      onSuccess: () => {
-        setPicked(null);
-        toast.show({ tone: "success", message: "נרשמת לשיעור. תזכורת תגיע שעתיים לפני." });
-      },
-      onError: (error) => toast.show({ tone: "danger", message: errorMessage(error, "ההרשמה לא הצליחה. נסו שוב.") }),
-    });
-  }
-
-  function wait(item: StudioClass) {
-    joinWaitlist.mutate(item.id, {
-      onSuccess: () => toast.show({ tone: "success", message: "נכנסת לרשימת ההמתנה. נודיע לך כשיתפנה מקום." }),
-      onError: (error) =>
-        toast.show({ tone: "danger", message: errorMessage(error, "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב.") }),
-    });
+  function action(session: Session) {
+    const time = clockTime(session.startsAt, timeZone);
+    const name = `לשיעור ${session.classType.name} ב-${time}`;
+    if (session.status === "cancelled") return <Chip plain>השיעור בוטל</Chip>;
+    switch (myState(session, now)) {
+      case "booked":
+      case "attended":
+        return <Chip tone="success">נרשמת</Chip>;
+      case "no_show":
+        return <Chip tone="warning">לא הגעת</Chip>;
+      case "waitlisted":
+        return <Chip tone="warning">{waitText(session.myBooking?.waitlistPosition)}</Chip>;
+      case "expired":
+        return <Chip plain>לא התפנה מקום</Chip>;
+      default:
+    }
+    if (hasStarted(session.startsAt, now)) return <Chip plain>השיעור התחיל</Chip>;
+    if (freeSpots(session) > 0) {
+      return (
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label={`הרשמה ${name}`}
+          loading={flow.pendingId === session.id}
+          disabled={paused}
+          onClick={() => pick(session.id)}
+        >
+          הרשמה
+        </Button>
+      );
+    }
+    if (waitlistOpen(session, policy.data, now)) {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`להמתנה ${name}`}
+          loading={flow.pendingId === session.id}
+          disabled={paused}
+          onClick={() => pick(session.id)}
+        >
+          להמתנה
+        </Button>
+      );
+    }
+    return <Chip plain>מלא</Chip>;
   }
 
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
       <header className={styles.heading}>
-        <span className="tp-eyebrow">{profile.data.studio.name}</span>
-        <h1 className={styles.title}>מערכת שיעורים</h1>
+        <span className="tp-eyebrow">{studio.name}</span>
+        <h1 className={styles.title}>{title}</h1>
       </header>
       <StudioNotices />
+      <PassStrip organizationId={studio.id} />
 
-      <Segmented label="יום" block options={dayOptions} value={day} onChange={setDay} />
-      <FilterChips label="סוג שיעור" options={filters} value={filter} onChange={setFilter} />
+      <div className={styles.group}>
+        <div className={styles.sectionHead}>
+          <span className="tp-label tp-muted">
+            {week === 0 ? "השבוע הקרוב" : `החל מ${relativeDay(from, today)} ${shortDate(from)}`}
+          </span>
+          <div className={styles.weekButtons}>
+            <IconButton
+              icon="chevron-right"
+              size="sm"
+              label="השבוע הקודם"
+              disabled={week === 0}
+              onClick={() => setDay(addDays(from, -7))}
+            />
+            <IconButton
+              icon="chevron-left"
+              size="sm"
+              label="השבוע הבא"
+              disabled={week >= weeks - 1}
+              onClick={() => setDay(addDays(from, 7))}
+            />
+          </div>
+        </div>
+        <WeekStrip days={days} value={day} onChange={setDay} today={today} />
+      </div>
+      {categories.length > 1 && (
+        <FilterChips label="סוג שיעור" options={filters} value={category} onChange={setCategory} />
+      )}
 
-      {rows.length === 0 ? (
-        <EmptyState icon="calendar" title="אין שיעורים ביום הזה" />
+      {sessions.isPending ? (
+        <ListSkeleton />
+      ) : sessions.isError ? (
+        <LoadError error={sessions.error} onRetry={() => void sessions.refetch()}>
+          לא הצלחנו לטעון את מערכת השיעורים
+        </LoadError>
+      ) : rows.length === 0 ? (
+        <EmptyState icon="calendar" title={day === today ? "אין עוד שיעורים היום" : "אין שיעורים ביום הזה"} />
       ) : (
-        <ul className={styles.list} aria-label={`שיעורים, ${relativeDay(day, today)}`}>
-          {rows.map((item) => {
-            const booking = bookingFor(bookings.data, item.id);
-            const name = `${item.title} ב-${item.start}`;
-            return (
-              <ClassRow
-                key={item.id}
-                as="li"
-                slot={<TimeSlot time={item.start}>{item.minutes} דק׳</TimeSlot>}
-                title={item.title}
-                meta={
-                  booking?.status === "booked" ? `${item.coach} · נרשמת לשיעור` : `${item.coach} · ${spotsText(item)}`
-                }
-                actions={
-                  booking?.status === "booked" ? (
-                    <Chip tone="success">נרשמת</Chip>
-                  ) : booking?.status === "waiting" ? (
-                    <Chip tone="warning">במקום {booking.position} בהמתנה</Chip>
-                  ) : freeSpots(item) > 0 ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      aria-label={`הרשמה ל${name}`}
-                      disabled={paused}
-                      onClick={() => setPicked(item)}
-                    >
-                      הרשמה
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`להמתנה ל${name}`}
-                      loading={joinWaitlist.isPending && joinWaitlist.variables === item.id}
-                      disabled={paused}
-                      onClick={() => wait(item)}
-                    >
-                      להמתנה
-                    </Button>
-                  )
-                }
-              />
-            );
-          })}
+        <ul ref={list} className={styles.list} aria-label={`שיעורים, ${relativeDay(day, today)}`}>
+          {rows.map((session) => (
+            <ClassRow
+              key={session.id}
+              as="li"
+              to={`/classes/${session.id}`}
+              slot={
+                <TimeSlot time={clockTime(session.startsAt, timeZone)}>
+                  {minutesBetween(session.startsAt, session.endsAt)} דק׳
+                </TimeSlot>
+              }
+              title={session.classType.name}
+              meta={metaLine([
+                session.instructor?.displayName,
+                session.status === "cancelled" ? null : spotsText(session),
+              ])}
+              actions={action(session)}
+            />
+          ))}
         </ul>
       )}
 
-      <Dialog open={picked !== null} onClose={() => setPicked(null)} title={picked ? `הרשמה ל${picked.title}` : ""}>
-        {picked && (
-          <>
-            <div className={styles.sheetDetails}>
-              <div className={styles.sheetDetail}>
-                <span className="tp-icon-tile tp-icon-tile--sm">
-                  <Icon name="calendar" />
-                </span>
-                <span>
-                  {relativeDay(picked.date, today)} · {picked.start} · {picked.minutes} דק׳
-                </span>
-              </div>
-              <div className={styles.sheetDetail}>
-                <span className="tp-icon-tile tp-icon-tile--sm">
-                  <Icon name="user" />
-                </span>
-                <span>עם {picked.coach}</span>
-              </div>
-              <div className={styles.sheetDetail}>
-                <span className="tp-icon-tile tp-icon-tile--sm">
-                  <Icon name="credit-card" />
-                </span>
-                <span>כלול במנוי החודשי שלך</span>
-              </div>
-            </div>
-            <p className={`tp-caption ${styles.sheetNote}`}>ביטול חינם עד 4 שעות לפני תחילת השיעור.</p>
-            <div className={styles.sheetActions}>
-              <Button size="lg" block loading={book.isPending} disabled={paused} onClick={() => confirm(picked)}>
-                אישור ההרשמה
-              </Button>
-              <Button variant="ghost" block onClick={() => setPicked(null)}>
-                לא עכשיו
-              </Button>
-            </div>
-          </>
-        )}
-      </Dialog>
+      <BookingSheet
+        session={picked}
+        timeZone={timeZone}
+        today={today}
+        policy={policy.data}
+        now={now}
+        pending={flow.pendingId !== undefined}
+        error={flow.error}
+        onConfirm={(session) =>
+          flow.run(session, () => {
+            setPickedId(null);
+            setFocusId(session.id);
+          })
+        }
+        onClose={() => pick(null)}
+      />
     </main>
   );
 }

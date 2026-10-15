@@ -36,6 +36,13 @@ export function addDays(iso: IsoDate, days: number): IsoDate {
   return toIsoDate(date);
 }
 
+/** Whole days from `from` to `to`: 1 for tomorrow, -1 for yesterday. UTC noon keeps a DST change out of it. */
+export function daysBetween(from: IsoDate, to: IsoDate): number {
+  const noon = (iso: IsoDate) =>
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)), 12);
+  return Math.round((noon(to) - noon(from)) / 86_400_000);
+}
+
 /** Same day of the month, or the month's last day when it is shorter: 31 Jan + 1 month = 28 Feb. */
 export function addMonths(iso: IsoDate, months: number): IsoDate {
   const date = requireDate(iso);

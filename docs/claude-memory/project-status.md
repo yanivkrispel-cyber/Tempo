@@ -56,8 +56,12 @@ back to Kris then).
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 and 2 (sign-in with the Hosted UI,
-studios, members, invitations, roles, people, consent, owner transfer, duplicates, export, erase). Their
-scheduling screens still use sample data; contract-v3 types are in `@tempo/api-client` since #92.
+studios, members, invitations, roles, people, consent, owner transfer, duplicates, export, erase). Contract-v3 types
+are in `@tempo/api-client` since #92. client-web's member screens are on the scheduling API since O13/O14 (board
+#89): timetable, `/classes/:sessionId`, booking, cancel, waitlist, `/inbox` and passes; only the home goal and
+streak and the health declaration are still sample data (`features/member/sample.ts`). Member render code reads
+time from `features/member/clock.tsx`, never `Date.now()` (the `react-hooks/purity` lint rule). admin-web has
+no scheduling screens yet.
 
 ## Open items for Kris
 
