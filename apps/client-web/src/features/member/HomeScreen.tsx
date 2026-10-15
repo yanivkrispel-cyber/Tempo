@@ -7,6 +7,7 @@ import {
   EmptyState,
   EventCard,
   Icon,
+  IconButtonLink,
   ProgressRing,
   WeekStrip,
   shortDate,
@@ -115,18 +116,12 @@ function StudioHome({ studio }: { studio: Studio }) {
     : undefined;
   const unread = inbox.data ? knownNotices(inbox.data.items).filter((item) => !item.readAt).length : 0;
   const bell = (
-    <Link
+    <IconButtonLink
       to="/inbox"
-      className={`tp-btn tp-btn--icon ${styles.bell}`}
-      aria-label={unread === 0 ? "התראות" : unread === 1 ? "התראות, אחת חדשה" : `התראות, ${unread} חדשות`}
-    >
-      <Icon name="bell" />
-      {unread > 0 && (
-        <span className={`tp-chip tp-chip--count ${styles.bellCount}`} aria-hidden="true">
-          {unread}
-        </span>
-      )}
-    </Link>
+      icon="bell"
+      label={unread === 0 ? "התראות" : unread === 1 ? "התראות, אחת חדשה" : `התראות, ${unread} חדשות`}
+      count={unread}
+    />
   );
 
   return (

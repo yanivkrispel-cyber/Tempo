@@ -8,11 +8,13 @@ import {
   Banner,
   Button,
   ButtonLink,
+  Card,
   Chip,
   CountBadge,
   Field,
   Icon,
   IconButton,
+  IconButtonLink,
   Input,
   ProgressBar,
   ProgressRing,
@@ -80,6 +82,45 @@ describe("Button", () => {
     const link = screen.getByRole("link", { name: "לדף הבית" });
     expect(link).toHaveAttribute("href", "/");
     expect(link).toHaveClass("tp-btn", "tp-btn--ghost");
+  });
+});
+
+describe("IconButtonLink", () => {
+  it("is a link named by its label, with the count hidden from screen readers", () => {
+    render(
+      <MemoryRouter>
+        <IconButtonLink to="/inbox" icon="bell" label="התראות, 2 חדשות" count={2} />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole("link", { name: "התראות, 2 חדשות" });
+    expect(link).toHaveAttribute("href", "/inbox");
+    expect(link).toHaveClass("tp-btn", "tp-btn--icon");
+    expect(link.querySelector(".tp-btn__count")).toHaveAttribute("aria-hidden", "true");
+    expect(link.querySelector(".tp-btn__count")).toHaveTextContent("2");
+  });
+
+  it("shows no count at zero", () => {
+    render(
+      <MemoryRouter>
+        <IconButtonLink to="/inbox" icon="bell" label="התראות" count={0} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: "התראות" }).querySelector(".tp-btn__count")).toBeNull();
+  });
+});
+
+describe("Card", () => {
+  it("becomes a link with `to`, keeping its classes", () => {
+    render(
+      <MemoryRouter>
+        <Card small to="/classes/1">
+          פילאטיס
+        </Card>
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole("link", { name: "פילאטיס" });
+    expect(link).toHaveAttribute("href", "/classes/1");
+    expect(link).toHaveClass("tp-card", "tp-card--sm");
   });
 });
 

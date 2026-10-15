@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from "react";
+import { Link } from "react-router";
 import { cx } from "./cx";
 
 /**
@@ -12,6 +13,8 @@ export interface CardProps extends HTMLAttributes<HTMLElement> {
   small?: boolean;
   selected?: boolean;
   as?: "div" | "section" | "article" | "li";
+  /** Makes the whole card a link (like EventCard); `as` is then ignored. */
+  to?: string;
 }
 
 export function Card({
@@ -19,20 +22,21 @@ export function Card({
   small = false,
   selected = false,
   as: Tag = "div",
+  to,
   className,
   ...rest
 }: CardProps) {
-  return (
-    <Tag
-      className={cx(
-        "tp-card",
-        tone !== "sand" && `tp-card--${tone}`,
-        small && "tp-card--sm",
-        selected && "tp-card--selected",
-        className,
-      )}
-      {...rest}
-    />
+  const classes = cx(
+    "tp-card",
+    tone !== "sand" && `tp-card--${tone}`,
+    small && "tp-card--sm",
+    selected && "tp-card--selected",
+    className,
+  );
+  return to ? (
+    <Link to={to} className={classes} {...(rest as HTMLAttributes<HTMLAnchorElement>)} />
+  ) : (
+    <Tag className={classes} {...rest} />
   );
 }
 

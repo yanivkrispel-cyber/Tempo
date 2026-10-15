@@ -182,22 +182,11 @@
   min-height: 38px;
 }
 
-.bell {
-  position: relative;
-}
-.bellCount {
-  position: absolute;
-  top: -6px;
-  inset-inline-end: -6px;
-}
 .notice {
   display: flex;
   gap: 12px;
   align-items: flex-start;
   color: var(--ink);
-}
-.notice:hover {
-  text-decoration: none;
 }
 .noticeBody {
   flex: 1;

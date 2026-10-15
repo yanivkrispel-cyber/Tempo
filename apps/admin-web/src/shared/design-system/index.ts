@@ -4,7 +4,7 @@ export { Avatar, initials } from "./Avatar";
 export type { AvatarProps } from "./Avatar";
 export { Banner } from "./Banner";
 export type { BannerProps, BannerTone } from "./Banner";
-export { Button, ButtonLink, IconButton } from "./Button";
+export { Button, ButtonLink, IconButton, IconButtonLink } from "./Button";
 export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant, IconButtonProps } from "./Button";
 export { Card, CardTitle } from "./Card";
 export type { CardProps, CardTitleProps, CardTone } from "./Card";

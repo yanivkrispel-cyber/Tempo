@@ -101,6 +101,48 @@ export function IconButton({
   );
 }
 
+export interface IconButtonLinkProps extends Omit<LinkProps, "children"> {
+  icon: IconName;
+  /** Required: the link's accessible name. With a count, say it here too ("התראות, 2 חדשות"). */
+  label: string;
+  size?: ButtonSize;
+  primary?: boolean;
+  /** A small count in the corner, e.g. unread items; hidden from screen readers, so `label` carries it. */
+  count?: number;
+}
+
+/** An icon-only link that looks like IconButton: for navigation, never for actions. */
+export function IconButtonLink({
+  icon,
+  label,
+  size = "md",
+  primary = false,
+  count,
+  className,
+  ...rest
+}: IconButtonLinkProps) {
+  return (
+    <Link
+      className={cx(
+        "tp-btn",
+        "tp-btn--icon",
+        size !== "md" && `tp-btn--${size}`,
+        primary && "tp-btn--primary",
+        className,
+      )}
+      aria-label={label}
+      {...rest}
+    >
+      <Icon name={icon} />
+      {count !== undefined && count > 0 && (
+        <span className="tp-chip tp-chip--count tp-btn__count" aria-hidden="true">
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export interface ButtonLinkProps extends LinkProps, ButtonLook {}
 
 /** A link that looks like a button: for navigation, never for actions. */

@@ -760,6 +760,12 @@
 .tp-chip--count::before {
   display: none;
 }
+/* The corner count on an icon button or link (IconButtonLink `count`). */
+.tp-btn__count {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+}
 /* A chip as a filter toggle: a button with aria-pressed; the pressed one takes the brand ink (tp-chip--brand). */
 button.tp-chip {
   border: 0;
@@ -1904,11 +1910,17 @@ button.tp-setting:hover {
 /* Event tiles, class rows and tab bar items are often links: no underline, ink not link color. */
 a.tp-event,
 a.tp-class,
-a.tp-class__body {
+a.tp-class__body,
+a.tp-card {
   color: var(--ink);
+}
+a.tp-card {
+  display: block;
 }
 a.tp-event,
 a.tp-event:hover,
+a.tp-card,
+a.tp-card:hover,
 a.tp-class,
 a.tp-class:hover,
 a.tp-class__body,
