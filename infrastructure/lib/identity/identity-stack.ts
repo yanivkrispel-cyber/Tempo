@@ -1,8 +1,13 @@
-import { Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
 import { AccountRecovery, Mfa, OAuthScope, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
+
+/** SSM path of the smoke-test user's `email` (String) and `password` (SecureString), created by hand. */
+export function smokeTestParameterPath(config: TempoEnvironmentConfig): string {
+  return `/tempo/${config.environmentName}/smoke-test`;
+}
 
 export interface IdentityStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -74,8 +79,17 @@ export class IdentityStack extends Stack {
     this.clientWebClient = this.addBrowserClient(this.userPool, "ClientWebClient", {
       clientName: resourceName(config, "client-web"),
       callbackUrls: config.cognitoCallbackUrls.clientWeb,
-      logoutUrls: config.cognitoLogoutUrls.clientWeb
+      logoutUrls: config.cognitoLogoutUrls.clientWeb,
+      // AdminInitiateAuth needs IAM credentials, so browsers cannot use this flow; the smoke test can.
+      adminUserPassword: config.featureFlags.enableSmokeTestSignIn === true
     });
+
+    // Read by tools/scripts/smoke-test.mjs from cdk-outputs.json. Ids, not secrets.
+    new CfnOutput(this, "UserPoolId", { value: this.userPool.userPoolId });
+    new CfnOutput(this, "ClientWebClientId", { value: this.clientWebClient.userPoolClientId });
+    if (config.featureFlags.enableSmokeTestSignIn) {
+      new CfnOutput(this, "SmokeTestParameterPath", { value: smokeTestParameterPath(config) });
+    }
 
     this.operatorPool = new UserPool(this, "OperatorPool", {
       userPoolName: resourceName(config, "operators"),
@@ -124,6 +138,7 @@ export class IdentityStack extends Stack {
       logoutUrls: readonly string[];
       accessTokenValidity?: Duration;
       refreshTokenValidity?: Duration;
+      adminUserPassword?: boolean;
     }
   ): UserPoolClient {
     return new UserPoolClient(this, id, {
@@ -131,7 +146,7 @@ export class IdentityStack extends Stack {
       userPoolClientName: props.clientName,
       // Browser-based public clients never receive a client secret.
       generateSecret: false,
-      authFlows: { userSrp: true },
+      authFlows: { userSrp: true, adminUserPassword: props.adminUserPassword ?? false },
       preventUserExistenceErrors: true,
       oAuth: {
         flows: { authorizationCodeGrant: true },
