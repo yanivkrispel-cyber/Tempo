@@ -182,6 +182,12 @@ public sealed record InboxItemDataResponse(Guid? SessionId, Guid? BookingId);
 /// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
 public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);
 
-public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null);
+public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null, string? Text = null);
+
+/// <summary>`SendSessionMessageRequest`: a short text to everyone registered on a class (docs/29 section 16.2).</summary>
+public sealed record SendSessionMessageRequest(string? Text);
+
+/// <summary>`SessionMessage`: what went out, to how many people; never the text back.</summary>
+public sealed record SessionMessageResponse(Guid Id, Guid SessionId, int Recipients, DateTimeOffset CreatedAt);
 
 public sealed record InboxPageResponse(IReadOnlyList<InboxItemResponse> Items, int UnreadCount, Guid? NextBefore);
