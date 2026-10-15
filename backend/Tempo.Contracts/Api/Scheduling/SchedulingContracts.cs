@@ -28,7 +28,10 @@ public sealed record ScheduleTemplateResponse(
     int Capacity,
     DateOnly ValidFrom,
     DateOnly? ValidUntil,
-    string Version);
+    string Version,
+    SessionClassTypeResponse ClassType,
+    InstructorResponse? Instructor,
+    SessionRoomResponse? Room);
 
 public sealed record ScheduleTemplateListResponse(IReadOnlyList<ScheduleTemplateResponse> Items);
 
@@ -159,7 +162,7 @@ public sealed record CreateBookingRequest(Guid? PersonId);
 
 public sealed record CancelBookingRequest(bool? ReturnEntry);
 
-public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, DateTimeOffset BookedAt);
+public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>
 public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<RosterEntryResponse> Booked, IReadOnlyList<RosterEntryResponse> Waitlisted);

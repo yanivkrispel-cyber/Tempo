@@ -1989,6 +1989,43 @@ export interface components {
             };
             person: components["schemas"]["PersonDetail"];
             consentHistory: components["schemas"]["Consent"][];
+            /** @description Every booking of this person, in class order (docs/29 section 7). */
+            bookings: components["schemas"]["ExportBooking"][];
+            /** @description Every pass granted to this person, in start order. No staff note. */
+            passes: components["schemas"]["ExportPass"][];
+        };
+        ExportBooking: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sessionId: string;
+            /** @example פילאטיס מכשירים */
+            className: string;
+            /** Format: date-time */
+            startsAt: string;
+            status: components["schemas"]["BookingStatus"];
+            lateCancel: boolean;
+            /** @enum {string|null} */
+            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ExportPass: {
+            /** Format: uuid */
+            id: string;
+            /** @example כרטיסיית 10 */
+            productName: string;
+            kind: components["schemas"]["PassKind"];
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            entries?: number | null;
+            entriesUsed: number;
+            /** @enum {string} */
+            status: "active" | "voided";
+            /** Format: date-time */
+            createdAt: string;
         };
         DuplicateCandidate: {
             /** Format: uuid */
@@ -2105,6 +2142,21 @@ export interface components {
             /** Format: date */
             validUntil?: string | null;
             version: string;
+            /** @description The class type as the console shows it in the weekly grid (same shape as `Session.classType`). */
+            classType: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                category: string;
+                color: components["schemas"]["ClassColor"];
+                description?: string | null;
+            };
+            instructor?: components["schemas"]["InstructorRef"] | null;
+            room?: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
         };
         ScheduleTemplateList: {
             items: components["schemas"]["ScheduleTemplate"][];
@@ -2281,6 +2333,8 @@ export interface components {
             waitlistPosition?: number | null;
             /** @example כרטיסיית 10 */
             passName?: string | null;
+            /** @description Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place). */
+            entriesLeft?: number | null;
             /** Format: date-time */
             bookedAt: string;
         };

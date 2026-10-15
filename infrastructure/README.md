@@ -18,7 +18,7 @@ deployed by this change set):
 | `Database` | Tempo.DatabaseMigrator Lambda, outside any VPC, reading the Neon credentials from SSM (ADR-0022). The database itself is a Neon project, not a CloudFormation resource |
 | `Messaging` | One SQS work queue + DLQ, Tempo.Worker Lambda routing by `MessageType` (ADR-0008 amendment) |
 | `Api` | API Gateway HTTP API, Tempo.Api Lambda, Cognito JWT authorizer |
-| `Observability` | CloudWatch alarms + dashboard |
+| `Observability` | CloudWatch alarms (production only) + the `tempo-<env>-dashboard` page: API, Lambda against the concurrency quota, work queue, daily jobs and canary, Scheduler, Neon |
 
 **Not included in this phase** (see the completion report for why): S3/CloudFront/Route 53/ACM/WAF (`StorageStack`/`FrontendStack`) - no root domain was provided and frontend hosting is explicitly deferrable per the Phase 0 scope.
 

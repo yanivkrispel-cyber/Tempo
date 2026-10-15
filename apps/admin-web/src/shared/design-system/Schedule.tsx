@@ -155,17 +155,28 @@ export interface ClassRowProps {
   /** Buttons or a status chip at the end of the row. */
   actions?: ReactNode;
   as?: "div" | "li";
+  /** Makes the title and meta a link to the class, as in the mockup (AppBook → AppClass). */
+  to?: string;
 }
 
 /** A class card: time slot, title and meta, and actions. */
-export function ClassRow({ slot, title, meta, actions, as: Tag = "div" }: ClassRowProps) {
+export function ClassRow({ slot, title, meta, actions, as: Tag = "div", to }: ClassRowProps) {
+  const body = (
+    <>
+      <span className="tp-class__title">{title}</span>
+      <span className="tp-class__meta">{meta}</span>
+    </>
+  );
   return (
     <Tag className="tp-class">
       {slot}
-      <span className="tp-class__body">
-        <span className="tp-class__title">{title}</span>
-        <span className="tp-class__meta">{meta}</span>
-      </span>
+      {to ? (
+        <Link to={to} className="tp-class__body">
+          {body}
+        </Link>
+      ) : (
+        <span className="tp-class__body">{body}</span>
+      )}
       {actions && <div className="tp-class__actions">{actions}</div>}
     </Tag>
   );

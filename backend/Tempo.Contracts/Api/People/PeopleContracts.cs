@@ -84,8 +84,20 @@ public sealed record ResolveDuplicateRequest(string? Resolution, Guid? SurvivorP
 
 public sealed record ExportOrganizationResponse(Guid Id, string DisplayName);
 
+/// <summary>`ExportBooking`: one booking in the export, with the class name and when it starts.</summary>
+public sealed record ExportBookingResponse(Guid Id, Guid SessionId, string ClassName, DateTimeOffset StartsAt, string Status, bool LateCancel, string? CancelReason, DateTimeOffset CreatedAt);
+
+/// <summary>`ExportPass`: one pass in the export, with the product's name and kind.</summary>
+public sealed record ExportPassResponse(Guid Id, string ProductName, string Kind, DateOnly StartsOn, DateOnly EndsOn, int? Entries, int EntriesUsed, string Status, DateTimeOffset CreatedAt);
+
 /// <summary>`PersonExport`: everything the studio holds about one person.</summary>
-public sealed record PersonExportResponse(DateTimeOffset ExportedAt, ExportOrganizationResponse Organization, PersonDetailResponse Person, IReadOnlyList<ConsentResponse> ConsentHistory);
+public sealed record PersonExportResponse(
+    DateTimeOffset ExportedAt,
+    ExportOrganizationResponse Organization,
+    PersonDetailResponse Person,
+    IReadOnlyList<ConsentResponse> ConsentHistory,
+    IReadOnlyList<ExportBookingResponse> Bookings,
+    IReadOnlyList<ExportPassResponse> Passes);
 
 /// <summary>The body of erase (`ReasonRequest`).</summary>
 public sealed record ErasePersonRequest(string? Reason);

@@ -1,48 +1,85 @@
 import { useState } from "react";
 import {
   Banner,
+  Button,
   ButtonLink,
   Chip,
   ClassRow,
   EmptyState,
-  Skeleton,
   Tabs,
   TimeSlot,
   shortDate,
 } from "../../shared/design-system";
-import { bookingFor, useBookings, useClasses, useHistory, useProfile, useToday } from "./data";
+import { nameOf, useAccount } from "../../account/account";
+import { pastStatus, waitText } from "./bookingState";
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
+import { metaLine } from "./passText";
+import {
+  useInbox,
+  usePastBookings,
+  useStudio,
+  useStudioClock,
+  useUpcomingBookings,
+  type MyBooking,
+  type Studio,
+} from "./studio";
+import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
+import { clockTime, studioDate } from "./studioTime";
 import { StudioNotices } from "./StudioNotices";
 
 type View = "upcoming" | "history";
 
-export function BookingsScreen() {
-  const today = useToday();
-  const classes = useClasses();
-  const bookings = useBookings();
-  const history = useHistory();
-  const profile = useProfile();
-  const [view, setView] = useState<View>("upcoming");
+const title = "ההזמנות שלי";
 
-  if (!classes.data || !bookings.data || !history.data || !profile.data) {
+export function BookingsScreen() {
+  const studio = useStudio();
+  return studio ? <StudioBookings studio={studio} /> : <NoStudio title={title} />;
+}
+
+function StudioBookings({ studio }: { studio: Studio }) {
+  const me = useAccount();
+  const { timeZone, now, today } = useStudioClock(studio.id);
+  const [view, setView] = useState<View>("upcoming");
+  const upcoming = useUpcomingBookings(studio.id);
+  const past = usePastBookings(studio.id, view === "history");
+
+  const inbox = useInbox(studio.id);
+  const count = upcoming.data?.length;
+  const promoted = new Set(
+    (inbox.data?.items ?? []).filter((item) => item.kind === "booking.promoted").map((item) => item.data.bookingId),
+  );
+  const waiting = upcoming.data?.some((booking) => booking.status === "waitlisted") ?? false;
+
+  function upcomingRow(booking: MyBooking) {
+    const session = booking.session;
+    const day = session.localDate === today ? "היום" : shortDayName(session.localDate);
     return (
-      <main className={`tp-page tp-page--tabbar ${styles.screen}`} aria-busy="true">
-        <Skeleton height={56} />
-        <Skeleton height={300} />
-      </main>
+      <ClassRow
+        key={booking.id}
+        as="li"
+        to={`/classes/${session.id}`}
+        slot={<TimeSlot time={clockTime(session.startsAt, timeZone)}>{day}</TimeSlot>}
+        title={session.classType.name}
+        meta={metaLine([relativeDay(session.localDate, today), session.instructor?.displayName, session.room?.name])}
+        actions={
+          booking.status === "waitlisted" ? (
+            <Chip tone="warning">{waitText(booking.waitlistPosition)}</Chip>
+          ) : promoted.has(booking.id) ? (
+            <Chip tone="success">נרשמת מההמתנה</Chip>
+          ) : (
+            <Chip tone="success">נרשמת</Chip>
+          )
+        }
+      />
     );
   }
-
-  const upcoming = classes.data
-    .filter((item) => bookingFor(bookings.data, item.id))
-    .sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
 
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
       <header className={styles.heading}>
-        <span className="tp-eyebrow">{profile.data.name}</span>
-        <h1 className={styles.title}>ההזמנות שלי</h1>
+        <span className="tp-eyebrow">{nameOf(me)}</span>
+        <h1 className={styles.title}>{title}</h1>
       </header>
       <StudioNotices />
 
@@ -52,13 +89,17 @@ export function BookingsScreen() {
         value={view}
         onChange={setView}
         tabs={[
-          { value: "upcoming", label: `קרובים · ${upcoming.length}` },
+          { value: "upcoming", label: count === undefined ? "קרובים" : `קרובים · ${count}` },
           { value: "history", label: "היסטוריה" },
         ]}
       >
         {view === "upcoming" ? (
           <div className={styles.group}>
-            {upcoming.length === 0 ? (
+            {upcoming.isPending ? (
+              <ListSkeleton />
+            ) : upcoming.isError ? (
+              <LoadError error={upcoming.error} onRetry={() => void upcoming.refetch()} />
+            ) : upcoming.data.length === 0 ? (
               <EmptyState
                 icon="calendar"
                 title="אין לך הזמנות קרובות"
@@ -70,55 +111,58 @@ export function BookingsScreen() {
               />
             ) : (
               <ul className={styles.list} aria-label="הזמנות קרובות">
-                {upcoming.map((item) => {
-                  const booking = bookingFor(bookings.data, item.id);
-                  const day = item.date === today ? "היום" : shortDayName(item.date);
-                  return (
-                    <ClassRow
-                      key={item.id}
-                      as="li"
-                      slot={<TimeSlot time={item.start}>{day}</TimeSlot>}
-                      title={item.title}
-                      meta={`${relativeDay(item.date, today)} · ${item.coach} · ${item.room}`}
-                      actions={
-                        booking?.status === "waiting" ? (
-                          <Chip tone="warning">במקום {booking.position} בהמתנה</Chip>
-                        ) : (
-                          <Chip tone="success">נרשמת</Chip>
-                        )
-                      }
-                    />
-                  );
-                })}
+                {upcoming.data.map(upcomingRow)}
               </ul>
             )}
-            <Banner icon="info" role="note">
-              כשמתפנה מקום בשיעור שברשימת ההמתנה שלך, נרשום אותך אוטומטית ונשלח התראה.
-            </Banner>
+            {waiting && (
+              <Banner icon="bell" role="note">
+                כשמתפנה מקום בשיעור שברשימת ההמתנה שלך, נרשום אותך אוטומטית ונשלח התראה.
+              </Banner>
+            )}
           </div>
+        ) : past.isPending ? (
+          <ListSkeleton />
+        ) : past.isError ? (
+          <LoadError error={past.error} onRetry={() => void past.refetch()} />
+        ) : past.data.pages[0]?.items.length === 0 ? (
+          <EmptyState icon="list" title="עוד אין שיעורים קודמים" />
         ) : (
-          <div className="tp-table-wrap">
-            <table className="tp-table tp-table--compact">
-              <caption className="tp-sr-only">שיעורים קודמים</caption>
-              <thead>
-                <tr>
-                  <th scope="col">שיעור</th>
-                  <th scope="col">תאריך</th>
-                  <th scope="col">מצב</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.data.map((visit) => (
-                  <tr key={visit.id}>
-                    <td>{visit.title}</td>
-                    <td className="tp-muted">{shortDate(visit.date)}</td>
-                    <td>
-                      {visit.status === "attended" ? <Chip tone="success">הגעת</Chip> : <Chip plain>בוטל בזמן</Chip>}
-                    </td>
+          <div className={styles.group}>
+            <div className="tp-table-wrap">
+              <table className="tp-table tp-table--compact">
+                <caption className="tp-sr-only">שיעורים קודמים</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">שיעור</th>
+                    <th scope="col">תאריך</th>
+                    <th scope="col">מצב</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {past.data.pages
+                    .flatMap((page) => page.items)
+                    .map((booking) => {
+                      const status = pastStatus(booking, booking.session, now);
+                      return (
+                        <tr key={booking.id}>
+                          <td>{booking.session.classType.name}</td>
+                          <td className="tp-muted">{shortDate(studioDate(booking.session.startsAt, timeZone))}</td>
+                          <td>
+                            <Chip tone={status.tone} plain={status.plain}>
+                              {status.label}
+                            </Chip>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+            {past.hasNextPage && (
+              <Button variant="ghost" block loading={past.isFetchingNextPage} onClick={() => void past.fetchNextPage()}>
+                עוד שיעורים קודמים
+              </Button>
+            )}
           </div>
         )}
       </Tabs>

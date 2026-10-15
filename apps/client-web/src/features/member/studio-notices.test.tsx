@@ -3,21 +3,23 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, problem, sampleMe, signedInRoutes } from "../../test/api";
+import { apiStub, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
+import { createStudio, testNow, testToday } from "../../test/studio";
 
 const studio = sampleMe.memberships[0]!;
 const profilePath = `GET /api/v1/organizations/${studio.organization.id}/me/profile`;
 
 function renderAt(url: string, routesForApi: Record<string, unknown> = {}) {
-  const api = apiStub({ ...signedInRoutes, ...routesForApi });
+  const api = apiStub({ ...createStudio().routes, ...routesForApi });
   render(
     <App
       router={createMemoryRouter(routes, { initialEntries: [url] })}
       auth={signedInAuth()}
       apiUrl="https://api.test"
       fetch={api.fetch}
-      today="2026-10-13"
+      today={testToday}
+      now={testNow}
     />,
   );
   return api;
@@ -32,7 +34,7 @@ describe("studio states", () => {
     renderAt("/book", withState("restricted"));
     expect(await screen.findByRole("heading", { level: 1, name: "מערכת שיעורים" })).toBeInTheDocument();
     expect(screen.getByText(/ההרשמה לשיעורים בסטודיו מושהית כרגע/)).toBeInTheDocument();
-    const bookButtons = screen.getAllByRole("button", { name: /^הרשמה ל/ });
+    const bookButtons = await screen.findAllByRole("button", { name: /^הרשמה ל/ });
     expect(bookButtons.length).toBeGreaterThan(0);
     for (const button of bookButtons) expect(button).toBeDisabled();
   });
@@ -41,7 +43,7 @@ describe("studio states", () => {
     renderAt("/book", withState(state));
     await screen.findByRole("heading", { level: 1, name: "מערכת שיעורים" });
     expect(screen.queryByText(/מושהית/)).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /^הרשמה ל/ })[0]).toBeEnabled();
+    expect((await screen.findAllByRole("button", { name: /^הרשמה ל/ }))[0]).toBeEnabled();
   });
 
   it("tells an owner or admin without MFA where to turn it on", async () => {

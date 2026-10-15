@@ -20,7 +20,8 @@ describe("the account step after sign-in", () => {
     expect(screen.getByText("טוענים את החשבון…")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 1, name: "היי נגה" })).toBeInTheDocument();
 
-    expect(api.requests).toHaveLength(1);
+    // The session comes first and once; the home screen then reads the studio.
+    expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session"))).toHaveLength(1);
     expect(api.requests[0]!.method).toBe("POST");
     expect(api.requests[0]!.url).toBe("https://api.test/api/v1/session");
     expect(api.requests[0]!.headers.get("Authorization")).toBe("Bearer access-1");

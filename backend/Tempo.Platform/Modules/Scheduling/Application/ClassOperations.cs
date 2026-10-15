@@ -5,7 +5,8 @@ using Tempo.Platform.Modules.Audit;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
-public sealed record RosterEntryView(Guid BookingId, PersonRefView Person, string Status, int? WaitlistPosition, string? PassName, DateTimeOffset BookedAt);
+/// <summary><paramref name="EntriesLeft"/> is the held punch card's remaining entries after this place; null for a membership or no pass.</summary>
+public sealed record RosterEntryView(Guid BookingId, PersonRefView Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
 
 public sealed record RosterView(SessionView Session, IReadOnlyList<RosterEntryView> Booked, IReadOnlyList<RosterEntryView> Waitlisted);
 
@@ -36,7 +37,9 @@ public sealed partial class BookingService : IClassService
     {
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await StaffOrInstructorAsync(unitOfWork, tenant, sessionId, Permissions.BookingsManage, cancellationToken);
-        var session = (await TimetableService.SessionsAsync(unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = $3", cancellationToken, sessionId)).Single();
+        // Staff skip the instructor lookup, so an id from another studio (or none) must still answer 404, not 500 (#124).
+        var session = (await TimetableService.SessionsAsync(unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = $3", cancellationToken, sessionId)).SingleOrDefault()
+            ?? throw new DomainRuleViolationException(ViolationKind.NotFound, "session.not_found", "Class not found.");
         await using var command = unitOfWork.Command(
             """
             SELECT b.id, p.id, p.display_name, b.status,
@@ -44,7 +47,7 @@ public sealed partial class BookingService : IClassService
                        (SELECT count(*)::int FROM scheduling.bookings w WHERE w.organization_id = b.organization_id AND w.session_id = b.session_id
                           AND w.status = 'waitlisted' AND w.waitlist_position <= b.waitlist_position)
                    END,
-                   pp.name, b.created_at
+                   pp.name, ps.entries - ps.entries_used, b.created_at
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
             LEFT JOIN scheduling.pass_uses u ON u.organization_id = b.organization_id AND u.booking_id = b.id AND u.status = 'held'
@@ -64,7 +67,8 @@ public sealed partial class BookingService : IClassService
                 reader.GetString(3),
                 await reader.IsDBNullAsync(4, cancellationToken) ? null : reader.GetInt32(4),
                 await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5),
-                await reader.GetFieldValueAsync<DateTimeOffset>(6, cancellationToken)));
+                await reader.IsDBNullAsync(6, cancellationToken) ? null : reader.GetInt32(6),
+                await reader.GetFieldValueAsync<DateTimeOffset>(7, cancellationToken)));
         }
 
         return new RosterView(session, [.. entries.Where(e => e.Status != "waitlisted")], [.. entries.Where(e => e.Status == "waitlisted")]);
@@ -236,8 +240,16 @@ public sealed partial class BookingService : IClassService
             return;
         }
 
+        // The instructor rule holds only while the caller is still an active staff member: a session keeps its
+        // instructor_membership_id after a demotion to client or a suspension (#124).
         await using var command = unitOfWork.Command(
-            "SELECT instructor_membership_id = $3 FROM scheduling.sessions WHERE organization_id = $1 AND id = $2",
+            """
+            SELECT s.instructor_membership_id = $3
+               AND EXISTS (SELECT 1 FROM organizations.memberships m
+                           WHERE m.organization_id = s.organization_id AND m.id = $3 AND m.status = 'active' AND m.role <> 'client')
+            FROM scheduling.sessions s
+            WHERE s.organization_id = $1 AND s.id = $2
+            """,
             tenant.OrganizationId, sessionId, tenant.MembershipId);
         var result = await command.ExecuteScalarAsync(cancellationToken);
         if (result is null)
