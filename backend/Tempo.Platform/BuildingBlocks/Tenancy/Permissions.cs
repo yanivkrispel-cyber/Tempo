@@ -31,6 +31,10 @@ public static class Permissions
     public const string PassesView = "passes.view";
     public const string PassesManage = "passes.manage";
 
+    // Thin billing (docs/28 section 8), seeded by migration 0009.
+    public const string BillingView = "billing.view";
+    public const string BillingManage = "billing.manage";
+
     /// <summary>Every key with what it allows, for the role screen (`GET /permissions`).</summary>
     public static readonly IReadOnlyDictionary<string, string> Catalog = new Dictionary<string, string>
     {
@@ -54,7 +58,9 @@ public static class Permissions
         [BookingsManage] = "Book and cancel for others, read any class roster",
         [AttendanceMark] = "Mark attendance on any class",
         [PassesView] = "See pass products and anyone's passes",
-        [PassesManage] = "Create pass products, grant and void passes"
+        [PassesManage] = "Create pass products, grant and void passes",
+        [BillingView] = "See the studio's plan and billing details",
+        [BillingManage] = "Change the studio's billing details"
     };
 }
 
@@ -81,7 +87,7 @@ public static class SystemRoles
             Permissions.MembersInviteStaff, Permissions.MembersManage, Permissions.AuditView, Permissions.PeopleView,
             Permissions.PeopleManage, Permissions.PeopleMerge, Permissions.PeopleExport, Permissions.ConsentManage,
             Permissions.ScheduleView, Permissions.ScheduleManage, Permissions.BookingsManage, Permissions.AttendanceMark,
-            Permissions.PassesView, Permissions.PassesManage
+            Permissions.PassesView, Permissions.PassesManage, Permissions.BillingView
         });
 
     public static readonly SystemRole Staff = new(
