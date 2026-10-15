@@ -32,7 +32,11 @@ public static class PersonLinks
             userAccountId))
         await using (var reader = await account.ExecuteReaderAsync(cancellationToken))
         {
-            await reader.ReadAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("The account behind a new membership is not visible to its own transaction.");
+            }
+
             email = reader.GetString(0);
             displayName = reader.GetString(1);
             emailVerified = reader.GetBoolean(2);
