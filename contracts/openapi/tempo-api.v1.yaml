@@ -1,12 +1,22 @@
 openapi: 3.1.0
 info:
   title: Tempo API
-  version: 1.1.0-phase2
-  summary: Phase 1 and 2 - accounts, studios, memberships, invitations, audit, roles and permissions, people.
+  version: 1.2.0-v3
+  summary: Phases 1 to 3 and the Studio skeleton - accounts, studios, people, permissions, scheduling, passes, billing.
   description: |
     Source of truth for the Phase 1 API (docs/26_Identity_Organization_Membership_LLD.md, section 8) and the
     Phase 2 additions (docs/27_Authorization_and_People_LLD.md, section 6). Frontends generate their client
     from this file. Phase 2 is additive: every Phase 1 field stays (`role` on memberships stays one release).
+
+    Contract v3 adds Studio scheduling and passes (docs/29_Studio_Scheduling_and_Passes_LLD.md, section 9) and
+    thin billing (docs/28_Billing_and_Entitlements_LLD.md, section 8).
+
+    **Planned operations.** An operation marked `x-tempo-planned: true` is agreed but not deployed yet; the
+    backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
+    build against it on sample data and switch to the API when the mark is gone.
+
+    **Restricted studios.** When a studio's subscription is `restricted`, writes answer 402
+    `billing.restricted`, except cancelling a booking, export and the billing page (docs/28 section 4).
 
     **Permissions.** Every studio route checks one permission key (docs/27 section 3.1); the operation summary
     names it. Apps read `permissions` from `GET /me` to show or hide actions; the API is the only enforcement.
@@ -56,6 +66,16 @@ tags:
     description: The studio's person records, with or without a login.
   - name: My profile
     description: The caller's own person record and consent in one studio.
+  - name: Schedule
+    description: Rooms, class types, weekly classes, sessions and the booking policy (docs/29).
+  - name: Bookings
+    description: Booking, cancelling, the waitlist, roster and attendance (docs/29).
+  - name: Passes
+    description: Punch cards and memberships the studio sells and grants (docs/29).
+  - name: Notifications
+    description: In-app notifications for the caller in one studio.
+  - name: Billing
+    description: Tempo's plan and subscription for the studio (docs/28).
   - name: Platform
     description: The Tempo team's console. Operator-pool tokens only.
 
@@ -1188,6 +1208,847 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/organizations/{organizationId}/rooms:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Schedule]
+      operationId: listRooms
+      x-tempo-planned: true
+      summary: "The studio's rooms (`schedule.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Schedule]
+      operationId: createRoom
+      x-tempo-planned: true
+      summary: "Add a room (`schedule.manage`, limit `rooms.max`)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRoomRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/rooms/{roomId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/RoomId"
+    patch:
+      tags: [Schedule]
+      operationId: updateRoom
+      x-tempo-planned: true
+      summary: "Rename, resize or archive a room (`schedule.manage`)"
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRoomRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/class-types:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Schedule]
+      operationId: listClassTypes
+      x-tempo-planned: true
+      summary: "The studio's class types (`schedule.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClassTypeList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Schedule]
+      operationId: createClassType
+      x-tempo-planned: true
+      summary: "Add a class type (`schedule.manage`, limit `class_types.max`)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateClassTypeRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClassType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/class-types/{classTypeId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/ClassTypeId"
+    patch:
+      tags: [Schedule]
+      operationId: updateClassType
+      x-tempo-planned: true
+      summary: "Edit or archive a class type (`schedule.manage`)"
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateClassTypeRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClassType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/schedule-templates:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Schedule]
+      operationId: listScheduleTemplates
+      x-tempo-planned: true
+      summary: "Weekly classes (`schedule.manage`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleTemplateList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Schedule]
+      operationId: createScheduleTemplate
+      x-tempo-planned: true
+      summary: "Add a weekly class; sessions appear for the next eight weeks (`schedule.manage`)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateScheduleTemplateRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleTemplateChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/schedule-templates/{templateId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/TemplateId"
+    patch:
+      tags: [Schedule]
+      operationId: updateScheduleTemplate
+      x-tempo-planned: true
+      summary: "Change or end a weekly class (`schedule.manage`)"
+      description: "Applies to future sessions without live bookings. Sessions that have bookings keep their values and are listed in `untouchedSessions`."
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateScheduleTemplateRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleTemplateChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/sessions:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Schedule]
+      operationId: listSessions
+      x-tempo-planned: true
+      summary: "Sessions in a date range (`schedule.view`)"
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: "First local date, in the studio's time zone."
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          description: "Last local date, inclusive. At most 62 days after `from`; members see up to the booking horizon."
+          schema: { type: string, format: date }
+        - name: classTypeId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: instructorMembershipId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Schedule]
+      operationId: createSession
+      x-tempo-planned: true
+      summary: "Add a one-off session (`schedule.manage`)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSessionRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [Schedule]
+      operationId: getSession
+      x-tempo-planned: true
+      summary: "One session with the caller's booking state (`schedule.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Schedule]
+      operationId: updateSession
+      x-tempo-planned: true
+      summary: "Change one session's instructor, room or capacity (`schedule.manage`)"
+      description: "Capacity cannot go below the number booked (409 `session.capacity_below_booked`). Raising it promotes from the waitlist."
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateSessionRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/sessions/{sessionId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [Schedule]
+      operationId: cancelSession
+      x-tempo-planned: true
+      summary: "Cancel a session: every booking is cancelled and its entry returned (`schedule.manage`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/sessions/{sessionId}/roster:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      tags: [Bookings]
+      operationId: getSessionRoster
+      x-tempo-planned: true
+      summary: "Booked and waiting people (`bookings.manage`, or the session's instructor)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Roster" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [Bookings]
+      operationId: createBooking
+      x-tempo-planned: true
+      summary: "Book a place, or join the waitlist when full (self, or `bookings.manage` with `personId`)"
+      description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass`, `session.full` (waitlist off or past its cutoff), `session.cancelled`."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateBookingRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/bookings/{bookingId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/BookingId"
+    post:
+      tags: [Bookings]
+      operationId: cancelBooking
+      x-tempo-planned: true
+      summary: "Cancel a booking or leave the waitlist (self, or `bookings.manage`)"
+      description: "Inside the free-cancellation window the entry returns; later it stays used and `lateCancel` is true. `returnEntry` (staff only) returns it anyway. Allowed in restricted mode."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancelBookingRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/bookings/{bookingId}/attendance:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/BookingId"
+    post:
+      tags: [Bookings]
+      operationId: markAttendance
+      x-tempo-planned: true
+      summary: "Mark attended or no-show (`attendance.mark`, or the session's instructor)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttendanceRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/me/bookings:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Bookings]
+      operationId: listMyBookings
+      x-tempo-planned: true
+      summary: "The caller's bookings in this studio (self)"
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, enum: [upcoming, past], default: upcoming }
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyBookingPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/bookings:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [Bookings]
+      operationId: listPersonBookings
+      x-tempo-planned: true
+      summary: "One person's bookings (`bookings.manage`)"
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, enum: [upcoming, past], default: upcoming }
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyBookingPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/pass-products:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Passes]
+      operationId: listPassProducts
+      x-tempo-planned: true
+      summary: "Punch cards and memberships the studio sells (`passes.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassProductList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Passes]
+      operationId: createPassProduct
+      x-tempo-planned: true
+      summary: "Add a punch card or membership product (`passes.manage`)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePassProductRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassProduct" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/pass-products/{productId}/archive:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/ProductId"
+    post:
+      tags: [Passes]
+      operationId: archivePassProduct
+      x-tempo-planned: true
+      summary: "Stop selling a product; granted passes keep working (`passes.manage`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassProduct" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/passes:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [Passes]
+      operationId: listPersonPasses
+      x-tempo-planned: true
+      summary: "One person's passes, newest first (`passes.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Passes]
+      operationId: grantPass
+      x-tempo-planned: true
+      summary: "Grant a pass, e.g. paid at the desk (`passes.manage`)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GrantPassRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pass" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/passes/{passId}/void:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PassId"
+    post:
+      tags: [Passes]
+      operationId: voidPass
+      x-tempo-planned: true
+      summary: "Void a pass; sessions already booked keep their entry (`passes.manage`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pass" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/me/passes:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Passes]
+      operationId: listMyPasses
+      x-tempo-planned: true
+      summary: "The caller's passes in this studio (self)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/booking-policy:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Schedule]
+      operationId: getBookingPolicy
+      x-tempo-planned: true
+      summary: "Cancellation window, waitlist cutoff, booking horizon (`schedule.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BookingPolicy" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Schedule]
+      operationId: updateBookingPolicy
+      x-tempo-planned: true
+      summary: "Change the booking policy (`schedule.manage`)"
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookingPolicyInput" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BookingPolicy" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/me/notifications:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Notifications]
+      operationId: listMyNotifications
+      x-tempo-planned: true
+      summary: "The caller's in-app notifications in this studio, newest first (self)"
+      parameters:
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InboxPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/notifications/{itemId}/read:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/ItemId"
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      x-tempo-planned: true
+      summary: "Mark one notification read (self)"
+      responses:
+        "204":
+          description: Done.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/billing:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Billing]
+      operationId: getBilling
+      x-tempo-planned: true
+      summary: "The studio's plan, subscription state and billing details (`billing.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverview" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/billing/account:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    patch:
+      tags: [Billing]
+      operationId: updateBillingAccount
+      x-tempo-planned: true
+      summary: "Billing email, legal name, business id (`billing.manage`)"
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateBillingAccountRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/plans:
+    get:
+      tags: [Billing]
+      operationId: listPlans
+      x-tempo-planned: true
+      summary: "Public plans and their entitlements (any signed-in account)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/platform/organizations/{organizationId}/billing/plan:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    put:
+      tags: [Platform]
+      operationId: platformSetPlan
+      x-tempo-planned: true
+      summary: "Move a studio to a plan version (audited)"
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetPlanRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/platform/organizations/{organizationId}/billing/payments:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Platform]
+      operationId: platformRecordPayment
+      x-tempo-planned: true
+      summary: "Record a manual payment (audited)"
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordPaymentRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/platform/organizations/{organizationId}/billing/overrides/{entitlementKey}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/EntitlementKey"
+    put:
+      tags: [Platform]
+      operationId: platformSetEntitlementOverride
+      x-tempo-planned: true
+      summary: "Override one entitlement for one studio (audited)"
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetEntitlementOverrideRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingOverview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     customerToken:
@@ -1234,6 +2095,52 @@ components:
       required: false
       description: The `version` you last read. A stale value returns 409 `concurrency.conflict`.
       schema: { type: string }
+
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ClassTypeId:
+      name: classTypeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    TemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PassId:
+      name: passId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    EntitlementKey:
+      name: entitlementKey
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$", examples: [rooms.max] }
 
   responses:
     Problem:
@@ -1292,6 +2199,12 @@ components:
         Retry-After:
           description: Seconds until the next attempt is allowed.
           schema: { type: integer }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    Restricted:
+      description: The studio's subscription is restricted (`billing.restricted`); reads and cancellations still work.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -1384,6 +2297,16 @@ components:
             - $ref: "#/components/schemas/PendingOwnershipTransfer"
             - type: "null"
         status: { $ref: "#/components/schemas/MembershipStatus" }
+        subscriptionState:
+          description: Planned (docs/28). The studio's subscription state, for banners and restricted mode.
+          oneOf:
+            - $ref: "#/components/schemas/SubscriptionState"
+            - type: "null"
+        entitlements:
+          description: Planned (docs/28). The studio's entitlements, to hide or upsell features.
+          oneOf:
+            - $ref: "#/components/schemas/Entitlements"
+            - type: "null"
         organization:
           type: object
           required: [id, slug, displayName, status]
@@ -2001,3 +2924,579 @@ components:
           type: string
           format: uuid
           description: Required when `resolution` is `merge`; one of the pair.
+
+    # --- Studio scheduling and passes (docs/29) ---------------------------------------------------
+
+    ClassColor:
+      type: string
+      description: A class color from the design system.
+      enum: [sage, rose, taupe, amber, mauve, blue]
+
+    LocalTime:
+      type: string
+      description: A wall-clock time in the studio's time zone, `HH:MM`.
+      pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+      examples: ["17:30"]
+
+    Room:
+      type: object
+      required: [id, name, defaultCapacity, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, examples: [חדר המכשירים] }
+        defaultCapacity: { type: integer, minimum: 1, maximum: 500 }
+        status: { type: string, enum: [active, archived] }
+        version: { type: string }
+
+    RoomList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Room" }
+
+    CreateRoomRequest:
+      type: object
+      required: [name, defaultCapacity]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        defaultCapacity: { type: integer, minimum: 1, maximum: 500 }
+
+    UpdateRoomRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        defaultCapacity: { type: integer, minimum: 1, maximum: 500 }
+        status: { type: string, enum: [active, archived] }
+
+    ClassType:
+      type: object
+      required: [id, name, category, color, defaultMinutes, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, examples: [פילאטיס מכשירים] }
+        category:
+          type: string
+          description: Groups class types for filters and for passes limited to one category.
+          pattern: "^[a-z][a-z0-9_]{1,29}$"
+          examples: [pilates]
+        color: { $ref: "#/components/schemas/ClassColor" }
+        defaultMinutes: { type: integer, minimum: 10, maximum: 300 }
+        description: { type: [string, "null"], maxLength: 1000 }
+        status: { type: string, enum: [active, archived] }
+        version: { type: string }
+
+    ClassTypeList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ClassType" }
+
+    CreateClassTypeRequest:
+      type: object
+      required: [name, category, color, defaultMinutes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        category: { type: string, pattern: "^[a-z][a-z0-9_]{1,29}$" }
+        color: { $ref: "#/components/schemas/ClassColor" }
+        defaultMinutes: { type: integer, minimum: 10, maximum: 300 }
+        description: { type: string, maxLength: 1000 }
+
+    UpdateClassTypeRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        category: { type: string, pattern: "^[a-z][a-z0-9_]{1,29}$" }
+        color: { $ref: "#/components/schemas/ClassColor" }
+        defaultMinutes: { type: integer, minimum: 10, maximum: 300 }
+        description: { type: [string, "null"], maxLength: 1000 }
+        status: { type: string, enum: [active, archived] }
+
+    ScheduleTemplate:
+      type: object
+      description: A weekly class. `weekday` 0 is Sunday; times are in the studio's time zone.
+      required: [id, classTypeId, weekday, localStart, minutes, capacity, validFrom, version]
+      properties:
+        id: { type: string, format: uuid }
+        classTypeId: { type: string, format: uuid }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        localStart: { $ref: "#/components/schemas/LocalTime" }
+        minutes: { type: integer, minimum: 10, maximum: 300 }
+        instructorMembershipId: { type: [string, "null"], format: uuid }
+        roomId: { type: [string, "null"], format: uuid }
+        capacity: { type: integer, minimum: 1, maximum: 500 }
+        validFrom: { type: string, format: date }
+        validUntil: { type: [string, "null"], format: date }
+        version: { type: string }
+
+    ScheduleTemplateList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ScheduleTemplate" }
+
+    CreateScheduleTemplateRequest:
+      type: object
+      required: [classTypeId, weekday, localStart, capacity]
+      properties:
+        classTypeId: { type: string, format: uuid }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        localStart: { $ref: "#/components/schemas/LocalTime" }
+        minutes:
+          type: integer
+          minimum: 10
+          maximum: 300
+          description: Defaults to the class type's `defaultMinutes`.
+        instructorMembershipId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        capacity: { type: integer, minimum: 1, maximum: 500 }
+        validFrom:
+          type: string
+          format: date
+          description: Defaults to today.
+        validUntil: { type: string, format: date }
+
+    UpdateScheduleTemplateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        localStart: { $ref: "#/components/schemas/LocalTime" }
+        minutes: { type: integer, minimum: 10, maximum: 300 }
+        instructorMembershipId: { type: [string, "null"], format: uuid }
+        roomId: { type: [string, "null"], format: uuid }
+        capacity: { type: integer, minimum: 1, maximum: 500 }
+        validUntil:
+          type: [string, "null"]
+          format: date
+          description: Ending a weekly class removes its future sessions that have no live bookings.
+
+    ScheduleTemplateChange:
+      type: object
+      required: [template, untouchedSessions]
+      properties:
+        template: { $ref: "#/components/schemas/ScheduleTemplate" }
+        untouchedSessions:
+          type: array
+          description: Future sessions that kept their old values because they have bookings; edit them one by one.
+          items: { $ref: "#/components/schemas/Session" }
+
+    SessionStatus:
+      type: string
+      enum: [scheduled, cancelled]
+
+    InstructorRef:
+      type: object
+      required: [membershipId, displayName]
+      properties:
+        membershipId: { type: string, format: uuid }
+        displayName: { type: string, examples: [דנה אלון] }
+
+    MyBookingState:
+      type: object
+      description: The caller's own place in a session.
+      required: [bookingId, status]
+      properties:
+        bookingId: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/BookingStatus" }
+        waitlistPosition:
+          type: [integer, "null"]
+          description: The caller's place in line (1 = next), counting only people still waiting.
+        freeCancelUntil: { type: [string, "null"], format: date-time }
+
+    Session:
+      type: object
+      required: [id, localDate, startsAt, endsAt, classType, capacity, bookedCount, waitlistCount, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        templateId: { type: [string, "null"], format: uuid }
+        localDate: { type: string, format: date }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        classType:
+          type: object
+          required: [id, name, category, color]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            category: { type: string }
+            color: { $ref: "#/components/schemas/ClassColor" }
+        instructor:
+          oneOf:
+            - $ref: "#/components/schemas/InstructorRef"
+            - type: "null"
+        room:
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string, format: uuid }
+                name: { type: string }
+            - type: "null"
+        capacity: { type: integer }
+        bookedCount: { type: integer }
+        waitlistCount: { type: integer }
+        status: { $ref: "#/components/schemas/SessionStatus" }
+        myBooking:
+          description: The caller's booking or waitlist place; null when none.
+          oneOf:
+            - $ref: "#/components/schemas/MyBookingState"
+            - type: "null"
+        passPreview:
+          description: The pass a booking by the caller would use now (docs/29 section 5.3); null when none is valid.
+          oneOf:
+            - $ref: "#/components/schemas/PassSummary"
+            - type: "null"
+        version: { type: string }
+
+    SessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Session" }
+
+    CreateSessionRequest:
+      type: object
+      required: [classTypeId, localDate, localStart, capacity]
+      properties:
+        classTypeId: { type: string, format: uuid }
+        localDate: { type: string, format: date }
+        localStart: { $ref: "#/components/schemas/LocalTime" }
+        minutes: { type: integer, minimum: 10, maximum: 300 }
+        instructorMembershipId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        capacity: { type: integer, minimum: 1, maximum: 500 }
+
+    UpdateSessionRequest:
+      type: object
+      minProperties: 1
+      properties:
+        instructorMembershipId: { type: [string, "null"], format: uuid }
+        roomId: { type: [string, "null"], format: uuid }
+        capacity: { type: integer, minimum: 1, maximum: 500 }
+
+    BookingStatus:
+      type: string
+      enum: [booked, waitlisted, cancelled, attended, no_show, removed, expired]
+
+    PersonRef:
+      type: object
+      required: [id, displayName]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+
+    Booking:
+      type: object
+      required: [id, sessionId, person, status, lateCancel, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        person: { $ref: "#/components/schemas/PersonRef" }
+        status: { $ref: "#/components/schemas/BookingStatus" }
+        waitlistPosition: { type: [integer, "null"] }
+        lateCancel: { type: boolean }
+        cancelReason:
+          type: [string, "null"]
+          enum: [self, staff, session_cancelled, no_valid_pass, null]
+        pass:
+          description: The pass whose entry this booking holds; null while waiting or after the entry returned.
+          oneOf:
+            - $ref: "#/components/schemas/PassSummary"
+            - type: "null"
+        createdAt: { type: string, format: date-time }
+        version: { type: string }
+
+    CreateBookingRequest:
+      type: object
+      properties:
+        personId:
+          type: string
+          format: uuid
+          description: Book someone else (`bookings.manage`). Omit to book yourself.
+
+    CancelBookingRequest:
+      type: object
+      properties:
+        returnEntry:
+          type: boolean
+          description: Staff only (`bookings.manage`), return the entry on a late cancellation.
+
+    AttendanceRequest:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, enum: [attended, no_show] }
+
+    RosterEntry:
+      type: object
+      required: [bookingId, person, status, bookedAt]
+      properties:
+        bookingId: { type: string, format: uuid }
+        person: { $ref: "#/components/schemas/PersonRef" }
+        status: { $ref: "#/components/schemas/BookingStatus" }
+        waitlistPosition: { type: [integer, "null"] }
+        passName: { type: [string, "null"], examples: [כרטיסיית 10] }
+        bookedAt: { type: string, format: date-time }
+
+    Roster:
+      type: object
+      required: [session, booked, waitlisted]
+      properties:
+        session: { $ref: "#/components/schemas/Session" }
+        booked:
+          type: array
+          description: Booked, attended and no-show places, in booking order.
+          items: { $ref: "#/components/schemas/RosterEntry" }
+        waitlisted:
+          type: array
+          description: In line order.
+          items: { $ref: "#/components/schemas/RosterEntry" }
+
+    MyBooking:
+      allOf:
+        - $ref: "#/components/schemas/Booking"
+        - type: object
+          required: [session]
+          properties:
+            session: { $ref: "#/components/schemas/Session" }
+
+    MyBookingPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MyBooking" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    PassKind:
+      type: string
+      enum: [punch_card, membership]
+
+    PassProduct:
+      type: object
+      required: [id, kind, name, validDays, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/PassKind" }
+        name: { type: string, examples: [כרטיסיית 10 כניסות] }
+        entries: { type: [integer, "null"], description: "Punch cards only." }
+        validDays: { type: integer, minimum: 1, maximum: 730 }
+        weeklyCap: { type: [integer, "null"], description: "Memberships only; null means unlimited." }
+        classCategory: { type: [string, "null"], description: "Only class types of this category; null means all." }
+        priceAgorot: { type: [integer, "null"], description: "Shown to staff only; nothing charges it yet." }
+        status: { type: string, enum: [active, archived] }
+        version: { type: string }
+
+    PassProductList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PassProduct" }
+
+    CreatePassProductRequest:
+      type: object
+      required: [kind, name, validDays]
+      properties:
+        kind: { $ref: "#/components/schemas/PassKind" }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        entries: { type: integer, minimum: 1, maximum: 200, description: "Required for a punch card." }
+        validDays: { type: integer, minimum: 1, maximum: 730 }
+        weeklyCap: { type: integer, minimum: 1, maximum: 14, description: "Memberships only." }
+        classCategory: { type: string, pattern: "^[a-z][a-z0-9_]{1,29}$" }
+        priceAgorot: { type: integer, minimum: 0 }
+
+    PassSummary:
+      type: object
+      required: [id, name, kind, endsOn]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { $ref: "#/components/schemas/PassKind" }
+        endsOn: { type: string, format: date }
+        entriesLeft: { type: [integer, "null"], description: "Punch cards only." }
+
+    Pass:
+      type: object
+      required: [id, personId, product, startsOn, endsOn, entriesUsed, status, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        personId: { type: string, format: uuid }
+        product:
+          type: object
+          required: [id, name, kind]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            kind: { $ref: "#/components/schemas/PassKind" }
+            weeklyCap: { type: [integer, "null"] }
+            classCategory: { type: [string, "null"] }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        entries: { type: [integer, "null"] }
+        entriesUsed: { type: integer }
+        entriesLeft: { type: [integer, "null"] }
+        note: { type: [string, "null"], maxLength: 200 }
+        status: { type: string, enum: [active, voided, expired], description: "`expired` is computed from `endsOn`." }
+        createdAt: { type: string, format: date-time }
+        version: { type: string }
+
+    PassList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Pass" }
+
+    GrantPassRequest:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: string, format: uuid }
+        startsOn:
+          type: string
+          format: date
+          description: Defaults to today in the studio's time zone.
+        note: { type: string, maxLength: 200, examples: [שולם במזומן] }
+
+    BookingPolicy:
+      type: object
+      required: [freeCancelHours, waitlistCutoffHours, bookingHorizonDays, waitlistEnabled, version]
+      properties:
+        freeCancelHours: { type: integer, minimum: 0, maximum: 72 }
+        waitlistCutoffHours: { type: integer, minimum: 0, maximum: 24 }
+        bookingHorizonDays: { type: integer, minimum: 1, maximum: 56 }
+        waitlistEnabled: { type: boolean }
+        version: { type: string }
+
+    BookingPolicyInput:
+      type: object
+      required: [freeCancelHours, waitlistCutoffHours, bookingHorizonDays, waitlistEnabled]
+      properties:
+        freeCancelHours: { type: integer, minimum: 0, maximum: 72 }
+        waitlistCutoffHours: { type: integer, minimum: 0, maximum: 24 }
+        bookingHorizonDays: { type: integer, minimum: 1, maximum: 56 }
+        waitlistEnabled: { type: boolean }
+
+    InboxItem:
+      type: object
+      required: [id, kind, data, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          description: Clients must ignore kinds they do not know.
+          examples: [booking.promoted, booking.promotion_failed, session.cancelled, waitlist.expired]
+        data:
+          type: object
+          description: Ids only.
+          properties:
+            sessionId: { type: string, format: uuid }
+            bookingId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: [string, "null"], format: date-time }
+
+    InboxPage:
+      type: object
+      required: [items, unreadCount]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/InboxItem" }
+        unreadCount: { type: integer }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    # --- Billing (docs/28) ------------------------------------------------------------------------
+
+    SubscriptionState:
+      type: string
+      enum: [trialing, active, past_due, grace, restricted, canceled]
+
+    Entitlements:
+      type: object
+      description: Entitlement keys and values from the plan and overrides, e.g. `rooms.max`. Ignore unknown keys.
+      additionalProperties: true
+      examples:
+        - { rooms.max: 20, class_types.max: 50, staff.max: 10 }
+
+    PlanVersion:
+      type: object
+      required: [id, planKey, displayName, priceMinor, currency, interval, entitlements]
+      properties:
+        id: { type: string, format: uuid }
+        planKey: { type: string, examples: [pilot] }
+        displayName: { type: string }
+        priceMinor: { type: integer, description: "Agorot, VAT included (B-7)." }
+        currency: { type: string, examples: [ILS] }
+        interval: { type: string, enum: [month, year] }
+        entitlements: { $ref: "#/components/schemas/Entitlements" }
+
+    PlanList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PlanVersion" }
+
+    BillingOverview:
+      type: object
+      required: [plan, state, provider, entitlements, version]
+      properties:
+        plan: { $ref: "#/components/schemas/PlanVersion" }
+        state: { $ref: "#/components/schemas/SubscriptionState" }
+        provider: { type: string, examples: [manual] }
+        trialEndsAt: { type: [string, "null"], format: date-time }
+        currentPeriodEnd: { type: [string, "null"], format: date-time }
+        graceEndsAt: { type: [string, "null"], format: date-time }
+        billingEmail: { type: [string, "null"], format: email }
+        legalName: { type: [string, "null"] }
+        businessId: { type: [string, "null"] }
+        cardLast4: { type: [string, "null"] }
+        entitlements: { $ref: "#/components/schemas/Entitlements" }
+        version: { type: string }
+
+    UpdateBillingAccountRequest:
+      type: object
+      minProperties: 1
+      properties:
+        billingEmail: { type: string, format: email, maxLength: 254 }
+        legalName: { type: string, minLength: 1, maxLength: 120 }
+        businessId: { type: string, pattern: "^[0-9]{9}$", description: "Israeli company or licensed-dealer number." }
+
+    SetPlanRequest:
+      type: object
+      required: [planVersionId, reason]
+      properties:
+        planVersionId: { type: string, format: uuid }
+        reason: { type: string, minLength: 5, maxLength: 500 }
+
+    RecordPaymentRequest:
+      type: object
+      required: [amountMinor, method, reason]
+      properties:
+        amountMinor: { type: integer, minimum: 1 }
+        method: { type: string, enum: [transfer, cash, check, other] }
+        reference: { type: string, maxLength: 100 }
+        reason: { type: string, minLength: 5, maxLength: 500 }
+
+    SetEntitlementOverrideRequest:
+      type: object
+      required: [value, reason]
+      properties:
+        value: { description: "A number, boolean or string, as the key defines." }
+        reason: { type: string, minLength: 5, maxLength: 500 }
+        endsAt: { type: [string, "null"], format: date-time }
