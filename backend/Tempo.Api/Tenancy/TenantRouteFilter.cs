@@ -13,7 +13,9 @@ public sealed class AllowWhenOrganizationSuspendedAttribute : Attribute;
 
 /// <summary>
 /// Marks a tenant write that still works while the studio's subscription is restricted (docs/28 section 4,
-/// B-8): cancelling a booking, exporting a person, the billing details, handing the studio over.
+/// B-8): cancelling a booking, exporting or erasing a person, withdrawing one's consent, the billing details,
+/// handing the studio over, removing a member or leaving, revoking an invitation or the join link. Nobody loses
+/// access control or a privacy right because a studio did not pay. RestrictedModeTests pins the list.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public sealed class AllowWhenSubscriptionRestrictedAttribute : Attribute;

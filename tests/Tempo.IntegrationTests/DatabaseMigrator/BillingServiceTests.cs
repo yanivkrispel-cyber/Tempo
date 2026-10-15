@@ -64,6 +64,62 @@ public sealed class BillingServiceTests(PostgresFixture postgres) : IClassFixtur
     }
 
     [Fact]
+    public async Task ParallelCreations_StopAtTheLimit_AndUnarchivingCountsAsCreating()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var timetable = new TimetableService(db, TimeProvider.System);
+        await db.AsMasterAsync(
+            "INSERT INTO billing.entitlement_overrides (organization_id, key, value, reason, created_by_operator, created_at) VALUES ($1, 'rooms.max', '2', 'test', $2, now())",
+            owner.OrganizationId, Guid.CreateVersion7());
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(i => Task.Run(async () =>
+        {
+            try
+            {
+                await timetable.CreateRoomAsync(owner, new NewRoom($"Room {i}", 8), CancellationToken.None);
+                return "created";
+            }
+            catch (DomainRuleViolationException e)
+            {
+                return e.Code;
+            }
+        })));
+
+        results.Count(r => r == "created").Should().Be(2);
+        results.Where(r => r != "created").Should().OnlyContain(r => r == "entitlement.limit_reached");
+        var rooms = await timetable.ListRoomsAsync(owner, CancellationToken.None);
+        await timetable.UpdateRoomAsync(owner, rooms[0].Id, new RoomChanges(null, null, "archived"), null, CancellationToken.None);
+        await timetable.CreateRoomAsync(owner, new NewRoom("Replacement", 8), CancellationToken.None);
+        var reactivate = () => timetable.UpdateRoomAsync(owner, rooms[0].Id, new RoomChanges(null, null, "active"), null, CancellationToken.None);
+        var limit = (await reactivate.Should().ThrowAsync<DomainRuleViolationException>()).Which;
+        limit.Code.Should().Be("entitlement.limit_reached");
+        limit.Extensions!["key"].Should().Be("rooms.max");
+        limit.Extensions["limit"].Should().Be(2L);
+        await timetable.UpdateRoomAsync(owner, rooms[1].Id, new RoomChanges("Renamed", null, "active"), null, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task StaffInvitations_StopAtStaffMax_AndMeCarriesTheSubscription()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        await db.AsMasterAsync(
+            "INSERT INTO billing.entitlement_overrides (organization_id, key, value, reason, created_by_operator, created_at) VALUES ($1, 'staff.max', '2', 'test', $2, now())",
+            owner.OrganizationId, Guid.CreateVersion7());
+        var invitations = new InvitationService(db, new Tempo.Platform.Modules.Identity.Infrastructure.AccountProfiles(db), new Tempo.Platform.Modules.Identity.Infrastructure.AttemptLimiter(db));
+
+        await invitations.CreateAsync(owner, "staff@example.com", MembershipRole.Staff, CancellationToken.None);
+        var second = () => invitations.CreateAsync(owner, "admin@example.com", MembershipRole.Admin, CancellationToken.None);
+        (await second.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("entitlement.limit_reached");
+        await invitations.CreateAsync(owner, "client@example.com", MembershipRole.Client, CancellationToken.None);
+
+        var mine = (await new MembershipDirectory(db).ListForAccountAsync(owner.UserAccountId, CancellationToken.None)).Single();
+        mine.SubscriptionState.Should().Be("active");
+        mine.EntitlementsJson.Should().Contain("\"staff.max\": 2").And.Contain("\"rooms.max\": 20");
+    }
+
+    [Fact]
     public async Task OnlyOwnersAndAdmins_SeeBilling_AndOnlyOwnersChangeIt()
     {
         SystemRoles.Owner.Permissions.Should().Contain([Permissions.BillingView, Permissions.BillingManage]);

@@ -1,6 +1,7 @@
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Billing;
 using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.Organizations.Domain;
@@ -115,6 +116,11 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
 
         var newRole = role ?? target.Role;
         var newStatus = status ?? target.Status;
+        if (target.Role == MembershipRole.Client && newRole != MembershipRole.Client)
+        {
+            await BillingService.CheckLimitAsync(unitOfWork, tenant.OrganizationId, "staff.max", BillingService.StaffCountSql, cancellationToken);
+        }
+
         Row updated;
         await using (var command = unitOfWork.Command(
             """

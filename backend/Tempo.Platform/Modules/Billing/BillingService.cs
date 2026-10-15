@@ -145,21 +145,37 @@ public sealed class BillingService(IDataSourceProvider dataSources) : IBillingSe
     /// Refuses creating one more of something above the studio's limit (docs/28 section 5.2), counted inside the
     /// caller's transaction. A missing key means no limit.
     /// </summary>
-    public static async Task CheckLimitAsync(UnitOfWork unitOfWork, Guid organizationId, string key, string countSql, CancellationToken cancellationToken)
+    public static async Task CheckLimitAsync(UnitOfWork unitOfWork, Guid organizationId, string key, string countSql, CancellationToken cancellationToken, params object?[] more)
     {
+        // Two creations racing for the last seat count one after the other (review on #105).
+        await using (var serialize = unitOfWork.Command("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", $"entitlement:{organizationId}:{key}"))
+        {
+            await serialize.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         var entitlements = await EntitlementsAsync(unitOfWork, organizationId, cancellationToken);
         if (!entitlements.TryGetValue(key, out var limit) || limit.ValueKind != JsonValueKind.Number)
         {
             return;
         }
 
-        await using var count = unitOfWork.Command(countSql, organizationId);
+        await using var count = unitOfWork.Command(countSql, [organizationId, .. more]);
         var used = Convert.ToInt64(await count.ExecuteScalarAsync(cancellationToken), System.Globalization.CultureInfo.InvariantCulture);
         if (used >= limit.GetInt64())
         {
-            throw new DomainRuleViolationException(ViolationKind.Forbidden, "entitlement.limit_reached", $"Your plan allows {limit.GetInt64()} ({key}).");
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "entitlement.limit_reached", $"Your plan allows {limit.GetInt64()} ({key}).")
+            {
+                Extensions = new Dictionary<string, object?> { ["key"] = key, ["limit"] = limit.GetInt64() }
+            };
         }
     }
+
+    /// <summary>`staff.max` counts owners, admins and staff, live or invited (docs/28 section 5.2).</summary>
+    public const string StaffCountSql =
+        """
+        SELECT (SELECT count(*) FROM organizations.memberships WHERE organization_id = $1 AND role <> 'client' AND status IN ('active', 'suspended', 'invited'))
+             + (SELECT count(*) FROM organizations.invitations WHERE organization_id = $1 AND role <> 'client' AND status = 'pending')
+        """;
 
     /// <summary>The live plan's entitlements with unexpired operator overrides on top.</summary>
     public static async Task<IReadOnlyDictionary<string, JsonElement>> EntitlementsAsync(UnitOfWork unitOfWork, Guid organizationId, CancellationToken cancellationToken)

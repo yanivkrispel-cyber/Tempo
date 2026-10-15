@@ -1508,9 +1508,9 @@ export interface components {
             permissions: components["schemas"]["PermissionKey"][];
             pendingOwnershipTransfer?: components["schemas"]["PendingOwnershipTransfer"] | null;
             status: components["schemas"]["MembershipStatus"];
-            /** @description Planned (docs/28). The studio's subscription state, for banners and restricted mode. */
+            /** @description The studio's subscription state (docs/28), for banners and restricted mode. */
             subscriptionState?: components["schemas"]["SubscriptionState"] | null;
-            /** @description Planned (docs/28). The studio's entitlements, to hide or upsell features. */
+            /** @description The studio's entitlements (docs/28), to hide or upsell features. */
             entitlements?: components["schemas"]["Entitlements"] | null;
             organization: {
                 /** Format: uuid */

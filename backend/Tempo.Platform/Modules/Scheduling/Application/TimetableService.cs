@@ -189,6 +189,11 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         var status = changes.Status is null ? null : ActiveOrArchived(changes.Status);
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        if (status == "active")
+        {
+            await BillingService.CheckLimitAsync(unitOfWork, tenant.OrganizationId, "rooms.max", "SELECT count(*) FROM scheduling.rooms WHERE organization_id = $1 AND status = 'active' AND id <> $2", cancellationToken, roomId);
+        }
+
         await using var command = unitOfWork.Command(
             $"""
             UPDATE scheduling.rooms
@@ -246,6 +251,11 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         var status = changes.Status is null ? null : ActiveOrArchived(changes.Status);
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        if (status == "active")
+        {
+            await BillingService.CheckLimitAsync(unitOfWork, tenant.OrganizationId, "class_types.max", "SELECT count(*) FROM scheduling.class_types WHERE organization_id = $1 AND status = 'active' AND id <> $2", cancellationToken, classTypeId);
+        }
+
         await using var command = unitOfWork.Command(
             $"""
             UPDATE scheduling.class_types

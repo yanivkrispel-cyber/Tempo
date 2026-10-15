@@ -15,8 +15,14 @@ info:
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
 
-    **Restricted studios.** When a studio's subscription is `restricted`, writes answer 402
-    `billing.restricted`, except cancelling a booking, export and the billing page (docs/28 section 4).
+    **Restricted studios.** When a studio's subscription is `restricted`, every write on a studio route
+    (POST, PUT, PATCH, DELETE) answers 402 `billing.restricted`, whether or not the operation lists 402, except:
+    cancelBooking, exportPerson, erasePerson, recordMyConsent, updateBillingAccount, removeMember,
+    start/cancel/accept/declineOwnershipTransfer, revokeInvitation and disableJoinLink (docs/28 section 4).
+    Reads always work. `GET /me` carries each studio's `subscriptionState` and `entitlements`.
+
+    **Plan limits.** Creating above a plan limit answers 403 `entitlement.limit_reached` with the Problem
+    members `key` (e.g. `rooms.max`) and `limit`.
 
     **Permissions.** Every studio route checks one permission key (docs/27 section 3.1); the operation summary
     names it. Apps read `permissions` from `GET /me` to show or hide actions; the API is the only enforcement.
@@ -2264,12 +2270,12 @@ components:
             - type: "null"
         status: { $ref: "#/components/schemas/MembershipStatus" }
         subscriptionState:
-          description: Planned (docs/28). The studio's subscription state, for banners and restricted mode.
+          description: The studio's subscription state (docs/28), for banners and restricted mode.
           oneOf:
             - $ref: "#/components/schemas/SubscriptionState"
             - type: "null"
         entitlements:
-          description: Planned (docs/28). The studio's entitlements, to hide or upsell features.
+          description: The studio's entitlements (docs/28), to hide or upsell features.
           oneOf:
             - $ref: "#/components/schemas/Entitlements"
             - type: "null"

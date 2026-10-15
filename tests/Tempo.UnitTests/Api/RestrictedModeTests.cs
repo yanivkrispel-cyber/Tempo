@@ -4,6 +4,8 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Tenancy;
@@ -66,6 +68,22 @@ public sealed class RestrictedModeTests : IDisposable
         var response = await api.GetAsync($"/api/v1/organizations/{StudioId}/read-probe", api.CustomerToken());
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public void TheAllowlist_IsExactlyDocs28Section4()
+    {
+        using var host = new TestApi();
+        var allowed = host.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .Where(endpoint => endpoint.Metadata.GetMetadata<AllowWhenSubscriptionRestrictedAttribute>() is not null)
+            .Select(endpoint => endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName)
+            .Order(StringComparer.Ordinal);
+
+        allowed.Should().Equal(
+            "acceptOwnershipTransfer", "cancelBooking", "cancelOwnershipTransfer", "declineOwnershipTransfer", "disableJoinLink",
+            "erasePerson", "exportPerson", "recordMyConsent", "removeMember", "revokeInvitation", "startOwnershipTransfer",
+            "updateBillingAccount");
     }
 
     private void GivenSubscription(string? state) =>

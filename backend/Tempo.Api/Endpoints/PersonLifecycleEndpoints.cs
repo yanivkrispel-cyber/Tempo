@@ -19,7 +19,7 @@ public static class PersonLifecycleEndpoints
         tenant.MapGet("/duplicate-candidates", ListAsync).RequirePermission(Permissions.PeopleMerge).WithName("listDuplicateCandidates").Produces<DuplicateCandidatePageResponse>();
         tenant.MapPost("/duplicate-candidates/{candidateId:guid}/resolve", ResolveAsync).RequirePermission(Permissions.PeopleMerge).WithName("resolveDuplicateCandidate").Produces<DuplicateCandidateResponse>();
         tenant.MapPost("/people/{personId:guid}/export", ExportAsync).RequirePermission(Permissions.PeopleExport).WithName("exportPerson").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<PersonExportResponse>();
-        tenant.MapPost("/people/{personId:guid}/erase", EraseAsync).RequirePermission(Permissions.PeopleErase).WithName("erasePerson").Produces<PersonDetailResponse>();
+        tenant.MapPost("/people/{personId:guid}/erase", EraseAsync).RequirePermission(Permissions.PeopleErase).WithName("erasePerson").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<PersonDetailResponse>();
 
         return endpoints;
     }
