@@ -9,6 +9,8 @@ using Tempo.Worker.Consumers.Outbox;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.Modules.PlatformAdmin;
 using Tempo.Worker.Consumers.SmokeTest;
+using Tempo.Platform.Modules.Scheduling.Application;
+using Tempo.Worker.Consumers.Scheduling;
 using Tempo.Worker.Consumers.Tripwire;
 
 [assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
@@ -30,7 +32,7 @@ public class Function
         .WriteTo.Console(new RenderedCompactJsonFormatter())
         .CreateLogger();
 
-    // Built on first use: only the tripwire message touches the database.
+    // Built on first use: only the tripwire and scheduling messages touch the database.
     // DATABASE_HOST, DATABASE_NAME and DATABASE_PLATFORM_PASSWORD_PARAMETER
     // come from the stack; ALARM_TOPIC_ARN only where alarms email the owner.
     private static readonly ConfiguredDataSourceProvider DataSources = new(Environment.GetEnvironmentVariable);
@@ -44,7 +46,8 @@ public class Function
             [MessageTypes.TripwireCheck] = new TripwireMessageHandler(
                 Logger,
                 new HourlyBackupTripwire(DataSources),
-                Environment.GetEnvironmentVariable("ALARM_TOPIC_ARN") is { Length: > 0 } topic ? new SnsOwnerAlert(topic) : null)
+                Environment.GetEnvironmentVariable("ALARM_TOPIC_ARN") is { Length: > 0 } topic ? new SnsOwnerAlert(topic) : null),
+            [MessageTypes.SchedulingDaily] = new SchedulingDailyMessageHandler(Logger, new SchedulingDailyJob(DataSources, TimeProvider.System))
         });
 
     public Task<SQSBatchResponse> FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)

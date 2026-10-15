@@ -119,6 +119,26 @@ export class MessagingStack extends Stack {
         retryPolicy: { maximumRetryAttempts: 0 }
       }
     });
+
+    // The daily scheduling job (docs/29 section 11): one more day of sessions, closed waitlists.
+    // A second schedule because each one sets a single MessageType; inside the free tier, $0.
+    new CfnSchedule(this, "SchedulingDailySchedule", {
+      name: resourceName(config, "scheduling-daily"),
+      description: "Daily session horizon and closed waitlists (docs/29 section 11)",
+      scheduleExpression: "cron(15 3 * * ? *)",
+      scheduleExpressionTimezone: "Asia/Jerusalem",
+      flexibleTimeWindow: { mode: "OFF" },
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:sqs:sendMessage",
+        roleArn: role.roleArn,
+        input: Stack.of(this).toJsonString({
+          QueueUrl: this.workQueue.queue.queueUrl,
+          MessageBody: "{}",
+          MessageAttributes: { MessageType: { DataType: "String", StringValue: "scheduling.daily" } }
+        }),
+        retryPolicy: { maximumRetryAttempts: 1 }
+      }
+    });
   }
 
   private alarmTopicArn(config: TempoEnvironmentConfig): string {
