@@ -1714,6 +1714,29 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/me/bookings/{bookingId}/calendar.ics:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/BookingId"
+    get:
+      tags: [Bookings]
+      operationId: getBookingCalendar
+      summary: "Add to calendar: an iCalendar file for the caller's own booked place (self)"
+      description: |
+        One `VEVENT` (RFC 5545): `UID` is `{bookingId}@tempo`, times in UTC, `SUMMARY` the class name, `LOCATION`
+        the studio and the room, `DESCRIPTION` one Hebrew line. Sent as an attachment named `tempo-{localDate}.ics`.
+        Only a `booked` or `attended` place of the caller; anything else answers 404. Cancelling later does not
+        update the calendar entry (no `METHOD:CANCEL` without email, docs/30).
+      responses:
+        "200":
+          description: The calendar file.
+          content:
+            text/calendar:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/people/{personId}/bookings:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
