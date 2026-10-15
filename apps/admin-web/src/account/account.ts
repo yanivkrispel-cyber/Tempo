@@ -42,6 +42,14 @@ export function useUpdateMe() {
   });
 }
 
+/**
+ * The studio's subscription state from GET /me (docs/28 section 4). The field is optional: dev sends it once the
+ * billing API is deployed; until then, and for a studio without a subscription, this is null.
+ */
+export function subscriptionStateOf(membership: MyMembership | undefined): Schemas["SubscriptionState"] | null {
+  return membership?.subscriptionState ?? null;
+}
+
 /** The studios the caller can use now: active memberships in active studios. */
 export function activeMemberships(me: Me): MyMembership[] {
   return me.memberships.filter(

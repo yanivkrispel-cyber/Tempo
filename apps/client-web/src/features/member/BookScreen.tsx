@@ -28,6 +28,8 @@ import {
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
 import type { ClassKind, StudioClass } from "./sample";
+import { StudioNotices, useBookingPaused } from "./StudioNotices";
+import { errorMessage } from "../../api/errors";
 
 type Filter = "all" | ClassKind;
 
@@ -45,6 +47,7 @@ export function BookScreen() {
   const profile = useProfile();
   const book = useBook();
   const joinWaitlist = useJoinWaitlist();
+  const paused = useBookingPaused();
   const [params] = useSearchParams();
 
   const days = Array.from({ length: 4 }, (_, offset) => addDays(today, offset));
@@ -74,14 +77,15 @@ export function BookScreen() {
         setPicked(null);
         toast.show({ tone: "success", message: "נרשמת לשיעור. תזכורת תגיע שעתיים לפני." });
       },
-      onError: () => toast.show({ tone: "danger", message: "ההרשמה לא הצליחה. נסו שוב." }),
+      onError: (error) => toast.show({ tone: "danger", message: errorMessage(error, "ההרשמה לא הצליחה. נסו שוב.") }),
     });
   }
 
   function wait(item: StudioClass) {
     joinWaitlist.mutate(item.id, {
       onSuccess: () => toast.show({ tone: "success", message: "נכנסת לרשימת ההמתנה. נודיע לך כשיתפנה מקום." }),
-      onError: () => toast.show({ tone: "danger", message: "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב." }),
+      onError: (error) =>
+        toast.show({ tone: "danger", message: errorMessage(error, "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב.") }),
     });
   }
 
@@ -91,6 +95,7 @@ export function BookScreen() {
         <span className="tp-eyebrow">{profile.data.studio.name}</span>
         <h1 className={styles.title}>מערכת שיעורים</h1>
       </header>
+      <StudioNotices />
 
       <Segmented label="יום" block options={dayOptions} value={day} onChange={setDay} />
       <FilterChips label="סוג שיעור" options={filters} value={filter} onChange={setFilter} />
@@ -117,7 +122,13 @@ export function BookScreen() {
                   ) : booking?.status === "waiting" ? (
                     <Chip tone="warning">במקום {booking.position} בהמתנה</Chip>
                   ) : freeSpots(item) > 0 ? (
-                    <Button variant="secondary" size="sm" aria-label={`הרשמה ל${name}`} onClick={() => setPicked(item)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      aria-label={`הרשמה ל${name}`}
+                      disabled={paused}
+                      onClick={() => setPicked(item)}
+                    >
                       הרשמה
                     </Button>
                   ) : (
@@ -126,6 +137,7 @@ export function BookScreen() {
                       size="sm"
                       aria-label={`להמתנה ל${name}`}
                       loading={joinWaitlist.isPending && joinWaitlist.variables === item.id}
+                      disabled={paused}
                       onClick={() => wait(item)}
                     >
                       להמתנה
@@ -165,7 +177,7 @@ export function BookScreen() {
             </div>
             <p className={`tp-caption ${styles.sheetNote}`}>ביטול חינם עד 4 שעות לפני תחילת השיעור.</p>
             <div className={styles.sheetActions}>
-              <Button size="lg" block loading={book.isPending} onClick={() => confirm(picked)}>
+              <Button size="lg" block loading={book.isPending} disabled={paused} onClick={() => confirm(picked)}>
                 אישור ההרשמה
               </Button>
               <Button variant="ghost" block onClick={() => setPicked(null)}>

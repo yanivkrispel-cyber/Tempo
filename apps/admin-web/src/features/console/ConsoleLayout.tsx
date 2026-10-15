@@ -5,6 +5,7 @@ import { Button, ButtonLink, EmptyState, Icon, type IconName } from "../../share
 import { IncomingTransferBanner } from "../ownership/Ownership";
 import { securityPath } from "../security/SecurityPage";
 import styles from "./console.module.css";
+import { ConsoleNotices } from "./ConsoleNotices";
 import { StudioContext, type Studio } from "./studio";
 
 interface Section {
@@ -99,6 +100,7 @@ export function ConsoleLayout() {
           </div>
         </aside>
         <div className={styles.content}>
+          <ConsoleNotices />
           <IncomingTransferBanner />
           <Outlet />
         </div>
