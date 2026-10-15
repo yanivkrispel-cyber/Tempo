@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Npgsql;
 using Tempo.DatabaseMigrator;
+using Tempo.Platform.BuildingBlocks.Tenancy;
 using Xunit;
 
 namespace Tempo.IntegrationTests.DatabaseMigrator;
@@ -94,12 +95,13 @@ public sealed class AuthorizationPeopleSchemaTests(PostgresFixture postgres) : I
 
         await using var connection = postgres.ConnectAsMaster(db.Name);
         await connection.OpenAsync();
-        var counts = await RowsAsync(
+        var seeded = await RowsAsync(
             connection,
-            "SELECT r.key, count(*) FROM authz.roles r JOIN authz.role_permissions p ON p.role_id = r.id WHERE r.is_system GROUP BY r.key",
-            reader => (reader.GetString(0), reader.GetInt64(1)));
+            "SELECT r.key, p.permission_key FROM authz.roles r JOIN authz.role_permissions p ON p.role_id = r.id WHERE r.is_system",
+            reader => (reader.GetString(0), reader.GetString(1)));
 
-        counts.Should().BeEquivalentTo(new[] { ("owner", 15L), ("admin", 11L), ("staff", 4L), ("client", 1L) });
+        // Migrations 0005 and 0010 seed exactly the sets the code evaluates with.
+        seeded.Should().BeEquivalentTo(SystemRoles.All.SelectMany(role => role.Permissions.Select(key => (role.Key, key))));
     }
 
     [Fact]
@@ -110,7 +112,7 @@ public sealed class AuthorizationPeopleSchemaTests(PostgresFixture postgres) : I
         await AsAsync(db, db.App, ownerUser, tenantA, async connection =>
         {
             (await CountAsync(connection, "authz.roles")).Should().Be(4);
-            (await CountAsync(connection, "authz.role_permissions")).Should().Be(31);
+            (await CountAsync(connection, "authz.role_permissions")).Should().Be(SystemRoles.All.Sum(role => role.Permissions.Count));
             (await ExecuteAsync(connection, "UPDATE authz.roles SET display_name = 'x' WHERE id = $1", OwnerRole)).Should().Be(0);
             (await ExecuteAsync(connection, "DELETE FROM authz.role_permissions WHERE role_id = $1", AdminRole)).Should().Be(0);
         });

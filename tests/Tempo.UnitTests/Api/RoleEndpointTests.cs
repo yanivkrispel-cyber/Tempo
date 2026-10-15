@@ -48,7 +48,7 @@ public sealed class RoleEndpointTests : IDisposable
         var body = await response.Content.ReadFromJsonAsync<RoleListResponse>();
         body!.Items.Select(r => r.Key).Should().Equal("owner", "admin", "staff", "client");
         body.Items.Should().OnlyContain(r => r.IsSystem);
-        body.Items.Single(r => r.Key == "client").Permissions.Should().Equal(Permissions.OrganizationView);
+        body.Items.Single(r => r.Key == "client").Permissions.Should().Equal(Permissions.OrganizationView, Permissions.ScheduleView);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class RoleEndpointTests : IDisposable
 
         asAdmin.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         asOwner.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await asOwner.Content.ReadFromJsonAsync<PermissionListResponse>())!.Items.Should().HaveCount(15);
+        (await asOwner.Content.ReadFromJsonAsync<PermissionListResponse>())!.Items.Should().HaveCount(Permissions.Catalog.Count);
     }
 
     [Fact]

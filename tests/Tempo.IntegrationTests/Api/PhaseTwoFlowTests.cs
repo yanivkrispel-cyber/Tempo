@@ -32,7 +32,7 @@ public sealed class PhaseTwoFlowTests(PostgresFixture postgres) : IClassFixture<
 {
     private const string CustomerIssuer = "https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_Customers";
 
-    private static readonly string[] StaffPermissions = ["members.view", "organization.view", "people.manage", "people.view"];
+    private static readonly string[] StaffPermissions = ["attendance.mark", "bookings.manage", "members.view", "organization.view", "passes.view", "people.manage", "people.view", "schedule.view"];
 
     private readonly RSA rsa = RSA.Create(2048);
 
