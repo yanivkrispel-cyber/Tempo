@@ -92,7 +92,10 @@ describe("the roster", () => {
     renderAt(
       {
         [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf(
-          [entry(1, "שירה כהן"), entry(2, "נגה רוזן", { passName: "חודשי ללא הגבלה" })],
+          [
+            entry(1, "שירה כהן", { entriesLeft: 1 }),
+            entry(2, "נגה רוזן", { passName: "חודשי ללא הגבלה", entriesLeft: null }),
+          ],
           [entry(3, "מאיה לוי", { status: "waitlisted", waitlistPosition: 1, passName: null })],
         ),
       },
@@ -103,6 +106,9 @@ describe("the roster", () => {
     expect(booked.map((item) => within(item).getByRole("link").textContent)).toEqual(["שירה כהן", "נגה רוזן"]);
     expect(booked[0]).toHaveTextContent("נרשם.ה ב־10.10 · 21:04");
     expect(booked[1]).toHaveTextContent("חודשי ללא הגבלה");
+    // A punch card says what is left after this place; a membership has nothing to count.
+    expect(booked[0]).toHaveTextContent("נותרה כניסה אחת");
+    expect(booked[1]).not.toHaveTextContent("נותר");
     // Five hours before the class: too early for attendance.
     expect(within(roster).queryByRole("group", { name: /נוכחות/ })).not.toBeInTheDocument();
 
