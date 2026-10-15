@@ -46,6 +46,7 @@ try
     app.MapHealthEndpoints();
     app.MapAccountEndpoints();
     app.MapOrganizationEndpoints();
+    app.MapRoleEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();
