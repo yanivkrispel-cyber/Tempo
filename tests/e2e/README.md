@@ -50,7 +50,9 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
    booking, the banner and the inbox notice on client-web; the roster and attendance (on a class that starts in
    twenty minutes, since marking opens thirty minutes before); the audit log; and the studio's `pilot` plan, read
    from `GET /billing` because the console has no screen that shows it yet. Rooms, class types, weekly classes,
-   sessions, products and passes it creates are all `e2e-` and are removed afterwards.
+   sessions, products and passes it creates are all `e2e-` and are removed afterwards. client-web steps run on the
+   Pixel 7; the console steps use a desktop-sized page in the same session, because the console does not fit a phone
+   yet (every page lays out about 1350px wide at 412px, so dialogs open off screen).
 
 **axe on every screen.** `support/axe.ts` audits each screen against WCAG 2.2 A and AA. A serious or critical
 violation fails the test; minor and moderate ones are attached to the report as annotations. The audit runs with the

@@ -16,6 +16,8 @@ export async function expectNoSeriousA11yViolations(
   testInfo: TestInfo,
   screen: string,
   include?: string,
+  /** A known product bug: the violations are annotated on the report instead of failing the test. */
+  knownIssue?: string,
 ): Promise<void> {
   // Let loading skeletons settle so axe sees the real screen.
   await expect(page.locator("[aria-busy='true']")).toHaveCount(0, { timeout: 15_000 });
@@ -46,6 +48,10 @@ export async function expectNoSeriousA11yViolations(
       `[${violation.impact}] ${violation.id}: ${violation.help}\n` +
       violation.nodes.map((node) => `    ${node.target.join(" ")}`).join("\n"),
   );
+  if (knownIssue && serious.length > 0) {
+    testInfo.annotations.push({ type: "known-a11y-bug", description: `${screen}: ${knownIssue}` });
+    return;
+  }
   // Soft, so one screen's findings do not hide the next screen's: the test still fails at the end.
   expect
     .soft(

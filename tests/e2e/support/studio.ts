@@ -69,7 +69,7 @@ export async function removeE2eSchedule(api: Api, ownPersonId?: string): Promise
     .filter((item) => item.name.startsWith("e2e-"));
   const typeIds = new Set(classTypes.map((item) => item.id));
 
-  const sessions = (await sessionsBetween(api, studioDay(-1), studioDay(70))).filter(
+  const sessions = (await sessionsBetween(api, studioDay(0), studioDay(60))).filter(
     (session) => typeIds.has(session.classType.id) && session.status !== "cancelled",
   );
   for (const session of sessions) await api.call("POST", `/sessions/${session.id}/cancel`, { accept: [409] });

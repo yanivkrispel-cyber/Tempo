@@ -14,6 +14,6 @@ test("client-web home: greets the signed-in member by first name", async ({ page
   const firstName = (me.displayName?.trim() || me.email.split("@")[0] || me.email).split(" ")[0] ?? "";
 
   await expect(page.getByRole("heading", { level: 1, name: `היי ${firstName}` })).toBeVisible();
-  await expect(page.getByRole("button", { name: "התראות" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^התראות/ })).toBeVisible();
   await expectNoSeriousA11yViolations(page, testInfo, "client-web home");
 });
