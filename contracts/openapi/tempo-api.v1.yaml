@@ -1,11 +1,19 @@
 openapi: 3.1.0
 info:
   title: Tempo API
-  version: 1.0.0-phase1
-  summary: Phase 1 - accounts, studios, memberships, invitations, join links, audit and the platform console.
+  version: 1.1.0-phase2
+  summary: Phase 1 and 2 - accounts, studios, memberships, invitations, audit, roles and permissions, people.
   description: |
-    Source of truth for the Phase 1 API (docs/26_Identity_Organization_Membership_LLD.md, section 8).
-    Frontends generate their client from this file.
+    Source of truth for the Phase 1 API (docs/26_Identity_Organization_Membership_LLD.md, section 8) and the
+    Phase 2 additions (docs/27_Authorization_and_People_LLD.md, section 6). Frontends generate their client
+    from this file. Phase 2 is additive: every Phase 1 field stays (`role` on memberships stays one release).
+
+    **Permissions.** Every studio route checks one permission key (docs/27 section 3.1); the operation summary
+    names it. Apps read `permissions` from `GET /me` to show or hide actions; the API is the only enforcement.
+
+    **Recent sign-in.** Privileged actions (owner transfer, assigning `admin`, export, erase) need a sign-in
+    within the last 10 minutes; otherwise 401 `auth.step_up_required`, and the app sends the user through
+    sign-in again.
 
     **Tokens.** Send a Cognito *access* token as `Authorization: Bearer <token>`. Behind CloudFront the
     same value goes in `X-Tempo-Authorization`, because CloudFront's origin access control replaces
@@ -40,6 +48,14 @@ tags:
     description: The studio's link for clients to join on their own.
   - name: Audit
     description: Who changed what in a studio.
+  - name: Roles
+    description: Roles, the permission catalog and a member's role set.
+  - name: Ownership
+    description: Handing a studio to another admin.
+  - name: People
+    description: The studio's person records, with or without a login.
+  - name: My profile
+    description: The caller's own person record and consent in one studio.
   - name: Platform
     description: The Tempo team's console. Operator-pool tokens only.
 
@@ -556,6 +572,622 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/organizations/{organizationId}/me/profile:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [My profile]
+      operationId: getMyProfile
+      summary: The caller's own person record in this studio, with contacts and consent
+      description: Any active member. Uses the self rule, so no `people.*` permission is needed.
+      responses:
+        "200":
+          description: The caller's person record.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonDetail" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [My profile]
+      operationId: updateMyProfile
+      summary: Edit the caller's own name and birth date in this studio
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMyProfileRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/me/consents:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [My profile]
+      operationId: recordMyConsent
+      summary: Grant or withdraw one of the caller's own consents
+      description: Appends a row with `method = self`; the current state is the latest row (docs/27 section 4.3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordConsentRequest" }
+      responses:
+        "201":
+          description: Recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Consent" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/roles:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Roles]
+      operationId: listRoles
+      summary: The roles a member can hold in this studio (`members.view`)
+      description: The four system roles, plus the studio's custom roles once they exist (system roles only in Phase 2, A-1).
+      responses:
+        "200":
+          description: All roles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/permissions:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Roles]
+      operationId: listPermissions
+      summary: The permission catalog, for the role screen (`roles.manage`)
+      responses:
+        "200":
+          description: Every permission key with its description.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PermissionList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/members/{membershipId}/roles:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/MembershipId"
+    put:
+      tags: [Roles]
+      operationId: setMemberRoles
+      summary: Replace a member's full set of roles (`members.manage` or `roles.manage`)
+      description: |
+        The rank rule applies: without `roles.manage` you can assign only roles whose permissions you hold
+        yourself (`role.exceeds_actor`). Nobody can assign `owner` (`membership.forbidden_role_change`); use an
+        owner transfer. Nobody can change their own roles. Granting `admin` needs a recent sign-in
+        (`auth.step_up_required`).
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetMemberRolesRequest" }
+      responses:
+        "200":
+          description: The member with the new roles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/ownership-transfer:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Ownership]
+      operationId: getOwnershipTransfer
+      summary: The pending owner transfer, if any (owner, or its target)
+      responses:
+        "200":
+          description: The pending transfer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnershipTransfer" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: "`ownership.transfer_not_found`: nothing pending."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+    post:
+      tags: [Ownership]
+      operationId: startOwnershipTransfer
+      summary: Offer the studio to an active admin (`ownership.transfer`, recent sign-in)
+      description: The target accepts within 72 hours. One pending transfer per studio (`ownership.transfer_pending`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartOwnershipTransferRequest" }
+      responses:
+        "201":
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnershipTransfer" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [Ownership]
+      operationId: cancelOwnershipTransfer
+      summary: Cancel the pending transfer (the owner)
+      responses:
+        "204":
+          description: Cancelled.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/ownership-transfer/accept:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Ownership]
+      operationId: acceptOwnershipTransfer
+      summary: Accept the studio (the target member)
+      description: In one transaction the caller becomes `owner` and the previous owner becomes `admin`.
+      responses:
+        "200":
+          description: The caller's membership, now owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyMembership" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "410":
+          description: "`ownership.transfer_expired`"
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /api/v1/organizations/{organizationId}/ownership-transfer/decline:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Ownership]
+      operationId: declineOwnershipTransfer
+      summary: Decline the studio (the target member)
+      responses:
+        "204":
+          description: Declined.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [People]
+      operationId: listPeople
+      summary: The studio's person records (`people.view`)
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: Matches name, email or phone (any part).
+          schema: { type: string, minLength: 2, maxLength: 100 }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/PersonStatus" }
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of people.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [People]
+      operationId: createPerson
+      summary: Record a person without a login, e.g. a walk-in (`people.manage`)
+      description: Needs a display name and at least one phone or email (P-6). Possible duplicates are flagged, never merged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePersonRequest" }
+      responses:
+        "201":
+          description: Created.
+          headers:
+            Location:
+              description: URL of the new person.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [People]
+      operationId: getPerson
+      summary: One person with contacts, current consent and relationships (`people.view`)
+      responses:
+        "200":
+          description: The person.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonDetail" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [People]
+      operationId: updatePerson
+      summary: Edit a person's name, birth date or status (`people.manage`)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePersonRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/contact-points:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    post:
+      tags: [People]
+      operationId: addContactPoint
+      summary: Add an email or phone (`people.manage`)
+      description: Israeli local phones (`050-1234567`) are stored as E.164; an invalid number is `contact_point.invalid_phone`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateContactPointRequest" }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactPoint" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/contact-points/{contactPointId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+      - name: contactPointId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [People]
+      operationId: updateContactPoint
+      summary: Change a contact's value or make it primary (`people.manage`)
+      description: A verified contact (the login's email) cannot be edited here.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateContactPointRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactPoint" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [People]
+      operationId: deleteContactPoint
+      summary: Remove a contact (`people.manage`)
+      responses:
+        "204":
+          description: Removed.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/consents:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [People]
+      operationId: listConsentHistory
+      summary: Every consent row for a person, newest first (`people.view`)
+      responses:
+        "200":
+          description: The full history.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsentList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [People]
+      operationId: recordConsentOnBehalf
+      summary: Record consent from a paper form (`consent.manage`)
+      description: Appends a row with `method = staff_on_behalf`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordConsentRequest" }
+      responses:
+        "201":
+          description: Recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Consent" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/relationships:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    post:
+      tags: [People]
+      operationId: addRelationship
+      summary: Link this person to another, e.g. guardian of a child (`people.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRelationshipRequest" }
+      responses:
+        "201":
+          description: Linked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Relationship" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/relationships/{relationshipId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+      - name: relationshipId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [People]
+      operationId: deleteRelationship
+      summary: Remove a link (`people.manage`)
+      responses:
+        "204":
+          description: Removed.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/invite:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    post:
+      tags: [People]
+      operationId: invitePerson
+      summary: Invite a recorded person to the app as a client (`members.invite.staff`)
+      description: |
+        Creates an invitation that carries `personId`, so accepting it links the login to this record instead of
+        creating a new one. The person must have no login (`person.has_login`). The link is shown once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitePersonRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreatedInvitation" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/export:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    post:
+      tags: [People]
+      operationId: exportPerson
+      summary: Everything the studio holds about one person, as JSON (`people.export`, recent sign-in)
+      responses:
+        "200":
+          description: The export. Audited; not stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonExport" }
+        "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/erase:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    post:
+      tags: [People]
+      operationId: erasePerson
+      summary: Anonymize a person (`people.erase`, recent sign-in)
+      description: |
+        Names, contacts and birth date are removed, the login is unlinked and `status` becomes `anonymized`.
+        Consent states and timestamps stay as proof. Cannot be undone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReasonRequest" }
+      responses:
+        "200":
+          description: Anonymized.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/duplicate-candidates:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [People]
+      operationId: listDuplicateCandidates
+      summary: Pairs of people that may be the same human (`people.merge`)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, merged, not_duplicate]
+            default: open
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of candidates.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DuplicateCandidatePage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/duplicate-candidates/{candidateId}/resolve:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - name: candidateId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [People]
+      operationId: resolveDuplicateCandidate
+      summary: Merge the pair into one record, or mark it as two people (`people.merge`)
+      description: Two records that both have a login cannot be merged (`person.merge_both_have_login`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveDuplicateRequest" }
+      responses:
+        "200":
+          description: Resolved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DuplicateCandidate" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/platform/organizations/{organizationId}/force-owner-transfer:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Platform]
+      operationId: platformForceOwnerTransfer
+      summary: Make an active admin the owner when the owner is unreachable (audited)
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ForceOwnerTransferRequest" }
+      responses:
+        "200":
+          description: Transferred.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOrganization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
 components:
   securitySchemes:
     customerToken:
@@ -591,6 +1223,11 @@ components:
       in: query
       required: false
       schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     IfMatch:
       name: If-Match
       in: header
@@ -614,11 +1251,19 @@ components:
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
+    StepUpOrUnauthorized:
+      description: |
+        Missing, invalid or wrong-pool token, or `auth.step_up_required`: the action needs a sign-in within the
+        last 10 minutes.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
     Forbidden:
       description: |
-        Signed in but not allowed, for example `permission.denied` (the caller's role does not allow it),
+        Signed in but not allowed, for example `permission.denied` (the caller lacks the route's permission),
         `account.disabled`, `account.email_not_verified`, `membership.suspended`, `organization.suspended`,
-        `invitation.email_mismatch`, `operator.not_registered`.
+        `invitation.email_mismatch`, `operator.not_registered`, `auth.mfa_required`, `role.exceeds_actor`,
+        `membership.forbidden_role_change`, `ownership.target_not_admin`.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -630,7 +1275,9 @@ components:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
     Conflict:
-      description: "`organization.slug_taken`, `organization.creation_limit` or `concurrency.conflict`."
+      description: |
+        `organization.slug_taken`, `organization.creation_limit`, `concurrency.conflict`,
+        `ownership.transfer_pending`, `person.has_login`, `person.merge_both_have_login`.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -713,10 +1360,24 @@ components:
     MyMembership:
       type: object
       description: One studio the caller belongs to, for the studio switcher.
-      required: [membershipId, role, status, organization]
+      required: [membershipId, role, roles, permissions, status, organization]
       properties:
         membershipId: { type: string, format: uuid }
-        role: { $ref: "#/components/schemas/Role" }
+        role:
+          $ref: "#/components/schemas/Role"
+          deprecated: true
+          description: Phase 1 field, kept one release. Read `roles` and `permissions` instead.
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/RoleSummary" }
+        permissions:
+          type: array
+          description: The union of the permissions of the caller's live roles in this studio.
+          items: { $ref: "#/components/schemas/PermissionKey" }
+        pendingOwnershipTransfer:
+          oneOf:
+            - $ref: "#/components/schemas/PendingOwnershipTransfer"
+            - type: "null"
         status: { $ref: "#/components/schemas/MembershipStatus" }
         organization:
           type: object
@@ -777,13 +1438,20 @@ components:
 
     Member:
       type: object
-      required: [id, userAccountId, email, role, status, joinedAt, version]
+      required: [id, userAccountId, email, role, roles, status, joinedAt, version]
       properties:
         id: { type: string, format: uuid, description: The membership id. }
         userAccountId: { type: string, format: uuid }
         email: { type: string, format: email }
         displayName: { type: [string, "null"] }
-        role: { $ref: "#/components/schemas/Role" }
+        role:
+          $ref: "#/components/schemas/Role"
+          deprecated: true
+          description: Phase 1 field, kept one release. Read `roles` instead.
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/RoleSummary" }
+        personId: { type: [string, "null"], format: uuid }
         status: { $ref: "#/components/schemas/MembershipStatus" }
         joinedAt: { type: string, format: date-time }
         version: { type: string }
@@ -979,3 +1647,351 @@ components:
           type: integer
           description: Active studios at which the owner is alerted to move to hourly backups (ADR-0021).
           examples: [10]
+
+    PermissionKey:
+      type: string
+      description: |
+        A stable key from the permission catalog (docs/27 section 3.1). New keys can appear in later phases, so
+        clients must ignore keys they do not know.
+      examples: [members.view, people.manage]
+
+    RoleSummary:
+      type: object
+      required: [id, key, displayName, isSystem]
+      properties:
+        id: { type: string, format: uuid }
+        key: { type: string, examples: [admin] }
+        displayName: { type: string, examples: [מנהל] }
+        isSystem: { type: boolean }
+
+    RoleDetail:
+      allOf:
+        - $ref: "#/components/schemas/RoleSummary"
+        - type: object
+          required: [permissions]
+          properties:
+            permissions:
+              type: array
+              items: { $ref: "#/components/schemas/PermissionKey" }
+
+    RoleList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/RoleDetail" }
+
+    Permission:
+      type: object
+      required: [key, description]
+      properties:
+        key: { $ref: "#/components/schemas/PermissionKey" }
+        description: { type: string }
+
+    PermissionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Permission" }
+
+    SetMemberRolesRequest:
+      type: object
+      required: [roleIds]
+      properties:
+        roleIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
+    OwnershipTransferStatus:
+      type: string
+      enum: [pending, accepted, declined, cancelled, expired]
+
+    OwnershipTransfer:
+      type: object
+      required: [id, status, from, to, expiresAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/OwnershipTransferStatus" }
+        from: { $ref: "#/components/schemas/MemberRef" }
+        to: { $ref: "#/components/schemas/MemberRef" }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    PendingOwnershipTransfer:
+      type: object
+      description: Shown on the membership of the owner who offered the studio and of the admin who can accept it.
+      required: [id, direction, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        direction:
+          type: string
+          enum: [outgoing, incoming]
+        expiresAt: { type: string, format: date-time }
+
+    MemberRef:
+      type: object
+      required: [membershipId]
+      properties:
+        membershipId: { type: string, format: uuid }
+        displayName: { type: [string, "null"] }
+
+    StartOwnershipTransferRequest:
+      type: object
+      required: [toMembershipId]
+      properties:
+        toMembershipId: { type: string, format: uuid }
+
+    ForceOwnerTransferRequest:
+      type: object
+      required: [toMembershipId, reason, ticket]
+      properties:
+        toMembershipId: { type: string, format: uuid }
+        reason: { type: string, minLength: 5, maxLength: 500 }
+        ticket: { type: string, minLength: 1, maxLength: 100, description: Support ticket reference. }
+
+    PersonStatus:
+      type: string
+      enum: [active, archived, anonymized, merged]
+
+    PersonSource:
+      type: string
+      enum: [join_link, invitation, staff_created, import]
+
+    Person:
+      type: object
+      required: [id, displayName, status, source, hasLogin, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string, examples: [נועה לוי] }
+        givenName: { type: [string, "null"] }
+        familyName: { type: [string, "null"] }
+        birthDate: { type: [string, "null"], format: date }
+        status: { $ref: "#/components/schemas/PersonStatus" }
+        source: { $ref: "#/components/schemas/PersonSource" }
+        hasLogin: { type: boolean }
+        membershipId: { type: [string, "null"], format: uuid }
+        primaryEmail: { type: [string, "null"], format: email }
+        primaryPhone: { type: [string, "null"], description: E.164, examples: ["+972501234567"] }
+        mergedIntoId: { type: [string, "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        version: { type: string, description: Send back in `If-Match` when updating. }
+
+    PersonDetail:
+      allOf:
+        - $ref: "#/components/schemas/Person"
+        - type: object
+          required: [contactPoints, consents, relationships]
+          properties:
+            contactPoints:
+              type: array
+              items: { $ref: "#/components/schemas/ContactPoint" }
+            consents:
+              type: array
+              description: The current state per purpose and channel (the latest row of each).
+              items: { $ref: "#/components/schemas/Consent" }
+            relationships:
+              type: array
+              items: { $ref: "#/components/schemas/Relationship" }
+
+    PersonPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Person" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    CreatePersonRequest:
+      type: object
+      required: [displayName]
+      description: At least one of `email` or `phone` is required (P-6).
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 100 }
+        givenName: { type: string, maxLength: 100 }
+        familyName: { type: string, maxLength: 100 }
+        birthDate: { type: string, format: date }
+        email: { type: string, format: email }
+        phone: { type: string, minLength: 6, maxLength: 20, examples: [050-1234567] }
+
+    UpdatePersonRequest:
+      type: object
+      minProperties: 1
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 100 }
+        givenName: { type: [string, "null"], maxLength: 100 }
+        familyName: { type: [string, "null"], maxLength: 100 }
+        birthDate: { type: [string, "null"], format: date }
+        status:
+          type: string
+          enum: [active, archived]
+
+    UpdateMyProfileRequest:
+      type: object
+      minProperties: 1
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 100 }
+        givenName: { type: [string, "null"], maxLength: 100 }
+        familyName: { type: [string, "null"], maxLength: 100 }
+        birthDate: { type: [string, "null"], format: date }
+
+    ContactPointType:
+      type: string
+      enum: [email, phone]
+
+    ContactPoint:
+      type: object
+      required: [id, type, value, isPrimary, verified, version]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/ContactPointType" }
+        value: { type: string, description: "Email in lowercase, phone in E.164." }
+        isPrimary: { type: boolean }
+        verified: { type: boolean, description: The login's email; changes only with the account. }
+        version: { type: string }
+
+    CreateContactPointRequest:
+      type: object
+      required: [type, value]
+      properties:
+        type: { $ref: "#/components/schemas/ContactPointType" }
+        value: { type: string, minLength: 3, maxLength: 254 }
+        isPrimary: { type: boolean, default: false }
+
+    UpdateContactPointRequest:
+      type: object
+      minProperties: 1
+      properties:
+        value: { type: string, minLength: 3, maxLength: 254 }
+        isPrimary: { type: boolean, const: true, description: Makes this the primary of its type. }
+
+    ConsentPurpose:
+      type: string
+      enum: [marketing, reminders]
+
+    ConsentChannel:
+      type: string
+      enum: [email, push, whatsapp]
+
+    Consent:
+      type: object
+      required: [id, purpose, channel, state, method, textVersion, occurredAt]
+      properties:
+        id: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/ConsentPurpose" }
+        channel: { $ref: "#/components/schemas/ConsentChannel" }
+        state:
+          type: string
+          enum: [granted, withdrawn]
+        method:
+          type: string
+          enum: [self, staff_on_behalf, import]
+        textVersion: { type: string, description: The version of the consent text the person agreed to. }
+        recordedBy: { $ref: "#/components/schemas/MemberRef" }
+        occurredAt: { type: string, format: date-time }
+
+    ConsentList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Consent" }
+
+    RecordConsentRequest:
+      type: object
+      required: [purpose, channel, state, textVersion]
+      properties:
+        purpose: { $ref: "#/components/schemas/ConsentPurpose" }
+        channel: { $ref: "#/components/schemas/ConsentChannel" }
+        state:
+          type: string
+          enum: [granted, withdrawn]
+        textVersion: { type: string, minLength: 1, maxLength: 40, examples: [marketing-he-2026-10] }
+
+    RelationshipType:
+      type: string
+      enum: [guardian_of, emergency_contact_for]
+
+    Relationship:
+      type: object
+      required: [id, type, fromPersonId, toPersonId, otherDisplayName, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/RelationshipType" }
+        fromPersonId: { type: string, format: uuid }
+        toPersonId: { type: string, format: uuid }
+        otherDisplayName: { type: string, description: The name of the person on the other side. }
+        createdAt: { type: string, format: date-time }
+
+    CreateRelationshipRequest:
+      type: object
+      required: [type, toPersonId]
+      description: "`{personId}` in the path is the `from` side: the guardian, or the emergency contact."
+      properties:
+        type: { $ref: "#/components/schemas/RelationshipType" }
+        toPersonId: { type: string, format: uuid }
+
+    InvitePersonRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, description: Where the person will sign in; added as a contact if new. }
+
+    PersonExport:
+      type: object
+      required: [exportedAt, person, consentHistory]
+      properties:
+        exportedAt: { type: string, format: date-time }
+        organization:
+          type: object
+          required: [id, displayName]
+          properties:
+            id: { type: string, format: uuid }
+            displayName: { type: string }
+        person: { $ref: "#/components/schemas/PersonDetail" }
+        consentHistory:
+          type: array
+          items: { $ref: "#/components/schemas/Consent" }
+
+    DuplicateCandidate:
+      type: object
+      required: [id, reason, status, personA, personB, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        reason:
+          type: string
+          enum: [email, phone, name_birth_date]
+        status:
+          type: string
+          enum: [open, merged, not_duplicate]
+        personA: { $ref: "#/components/schemas/Person" }
+        personB: { $ref: "#/components/schemas/Person" }
+        createdAt: { type: string, format: date-time }
+        version: { type: string }
+
+    DuplicateCandidatePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/DuplicateCandidate" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    ResolveDuplicateRequest:
+      type: object
+      required: [resolution]
+      properties:
+        resolution:
+          type: string
+          enum: [merge, not_duplicate]
+        survivorPersonId:
+          type: string
+          format: uuid
+          description: Required when `resolution` is `merge`; one of the pair.
