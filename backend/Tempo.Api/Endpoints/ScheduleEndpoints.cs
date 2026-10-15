@@ -190,7 +190,7 @@ public static class ScheduleEndpoints
             s.LocalDate,
             s.StartsAt,
             s.EndsAt,
-            new SessionClassTypeResponse(s.ClassType.Id, s.ClassType.Name, s.ClassType.Category, s.ClassType.Color),
+            new SessionClassTypeResponse(s.ClassType.Id, s.ClassType.Name, s.ClassType.Category, s.ClassType.Color, s.ClassType.Description),
             s.Instructor is { } i ? new InstructorResponse(i.MembershipId, i.DisplayName) : null,
             s.Room is { } r ? new SessionRoomResponse(r.Id, r.Name) : null,
             s.Capacity,
