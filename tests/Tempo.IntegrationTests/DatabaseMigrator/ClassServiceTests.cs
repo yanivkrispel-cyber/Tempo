@@ -4,6 +4,7 @@ using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
+using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.Scheduling.Application;
 using Xunit;
 
@@ -49,6 +50,29 @@ public sealed class ClassServiceTests(PostgresFixture postgres) : IClassFixture<
         (await roster.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("permission.denied");
     }
 
+    [Fact]
+    public async Task Roster_ShowsTheEntriesLeftOnThePunchCard_AndNothingForAWaiter()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, _) = await StudioAsync(db);
+        var session = await SessionAsync(db, owner, owner.MembershipId, capacity: 1);
+        var people = new PeopleService(db);
+        var passes = new PassService(db, TimeProvider.System);
+        var card = await passes.CreateProductAsync(owner, new NewPassProduct("punch_card", "כרטיסיית 10", 10, 90, null, null, null), CancellationToken.None);
+        var dana = (await people.CreateAsync(owner, new NewPerson("Dana", null, null, null, "dana@example.com", null), CancellationToken.None)).Person.Id;
+        var noa = (await people.CreateAsync(owner, new NewPerson("Noa", null, null, null, "noa@example.com", null), CancellationToken.None)).Person.Id;
+        await passes.GrantAsync(owner, dana, new NewPass(card.Id, null, null), CancellationToken.None);
+        await passes.GrantAsync(owner, noa, new NewPass(card.Id, null, null), CancellationToken.None);
+        var bookings = new BookingService(db, TimeProvider.System);
+        await bookings.BookAsync(owner, session, dana, CancellationToken.None);
+        await bookings.BookAsync(owner, session, noa, CancellationToken.None);
+
+        var roster = await bookings.RosterAsync(owner, session, CancellationToken.None);
+
+        roster.Booked.Should().ContainSingle().Which.Should().BeEquivalentTo(new { PassName = "כרטיסיית 10", EntriesLeft = 9 });
+        roster.Waitlisted.Should().ContainSingle().Which.Should().BeEquivalentTo(new { PassName = (string?)null, EntriesLeft = (int?)null }, "a waiter holds no entry yet");
+    }
+
     private static async Task<(TenantContext Owner, Guid StudioId)> StudioAsync(MigratedDatabase db)
     {
         var id = Guid.CreateVersion7();
@@ -73,14 +97,14 @@ public sealed class ClassServiceTests(PostgresFixture postgres) : IClassFixture<
         return new TenantContext(studioId, account, membershipId, role, OrganizationStatus.Active, "test");
     }
 
-    private static async Task<Guid> SessionAsync(MigratedDatabase db, TenantContext owner, Guid instructorMembershipId)
+    private static async Task<Guid> SessionAsync(MigratedDatabase db, TenantContext owner, Guid instructorMembershipId, int capacity = 10)
     {
         var classType = await new TimetableService(db, TimeProvider.System).CreateClassTypeAsync(owner, new NewClassType("יוגה", "yoga", "sage", 60, null), CancellationToken.None);
         var id = Guid.CreateVersion7();
         var startsAt = DateTimeOffset.UtcNow.AddDays(1);
         await db.AsMasterAsync(
-            "INSERT INTO scheduling.sessions (organization_id, id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, capacity, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, 10, 'scheduled', now(), now())",
-            owner.OrganizationId, id, DateOnly.FromDateTime(startsAt.UtcDateTime), classType.Id, startsAt, startsAt.AddMinutes(60), instructorMembershipId);
+            "INSERT INTO scheduling.sessions (organization_id, id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, capacity, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'scheduled', now(), now())",
+            owner.OrganizationId, id, DateOnly.FromDateTime(startsAt.UtcDateTime), classType.Id, startsAt, startsAt.AddMinutes(60), instructorMembershipId, capacity);
         return id;
     }
 }

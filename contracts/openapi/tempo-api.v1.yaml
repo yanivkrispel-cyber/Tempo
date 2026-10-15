@@ -3043,7 +3043,7 @@ components:
     ScheduleTemplate:
       type: object
       description: A weekly class. `weekday` 0 is Sunday; times are in the studio's time zone.
-      required: [id, classTypeId, weekday, localStart, minutes, capacity, validFrom, version]
+      required: [id, classTypeId, weekday, localStart, minutes, capacity, validFrom, version, classType]
       properties:
         id: { type: string, format: uuid }
         classTypeId: { type: string, format: uuid }
@@ -3056,6 +3056,28 @@ components:
         validFrom: { type: string, format: date }
         validUntil: { type: [string, "null"], format: date }
         version: { type: string }
+        classType:
+          description: The class type as the console shows it in the weekly grid (same shape as `Session.classType`).
+          type: object
+          required: [id, name, category, color]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            category: { type: string }
+            color: { $ref: "#/components/schemas/ClassColor" }
+            description: { type: [string, "null"] }
+        instructor:
+          oneOf:
+            - $ref: "#/components/schemas/InstructorRef"
+            - type: "null"
+        room:
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string, format: uuid }
+                name: { type: string }
+            - type: "null"
 
     ScheduleTemplateList:
       type: object
@@ -3276,6 +3298,9 @@ components:
         status: { $ref: "#/components/schemas/BookingStatus" }
         waitlistPosition: { type: [integer, "null"] }
         passName: { type: [string, "null"], examples: [כרטיסיית 10] }
+        entriesLeft:
+          type: [integer, "null"]
+          description: Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place).
         bookedAt: { type: string, format: date-time }
 
     Roster:

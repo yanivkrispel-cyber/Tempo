@@ -2142,6 +2142,21 @@ export interface components {
             /** Format: date */
             validUntil?: string | null;
             version: string;
+            /** @description The class type as the console shows it in the weekly grid (same shape as `Session.classType`). */
+            classType: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                category: string;
+                color: components["schemas"]["ClassColor"];
+                description?: string | null;
+            };
+            instructor?: components["schemas"]["InstructorRef"] | null;
+            room?: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
         };
         ScheduleTemplateList: {
             items: components["schemas"]["ScheduleTemplate"][];
@@ -2318,6 +2333,8 @@ export interface components {
             waitlistPosition?: number | null;
             /** @example כרטיסיית 10 */
             passName?: string | null;
+            /** @description Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place). */
+            entriesLeft?: number | null;
             /** Format: date-time */
             bookedAt: string;
         };
