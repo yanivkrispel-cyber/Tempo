@@ -1421,7 +1421,11 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description Validation failed; `errors` lists the fields. */
+        /**
+         * @description Validation failed; `errors` lists the fields. Phase 2 codes include `contact.required`,
+         *     `contact_point.invalid_phone`, `contact_point.invalid_email`, `consent.invalid`, `role_ids.required`,
+         *     `role_ids.single`, `role.not_found`, `relationship.invalid_type`, `relationship.self`.
+         */
         BadRequest: {
             headers: {
                 [name: string]: unknown;
@@ -1455,7 +1459,7 @@ export interface components {
          * @description Signed in but not allowed, for example `permission.denied` (the caller lacks the route's permission),
          *     `account.disabled`, `account.email_not_verified`, `membership.suspended`, `organization.suspended`,
          *     `invitation.email_mismatch`, `operator.not_registered`, `auth.mfa_required`, `role.exceeds_actor`,
-         *     `membership.forbidden_role_change`, `ownership.target_not_admin`.
+         *     `membership.forbidden_role_change`, `ownership.target_not_admin`, `status.not_allowed`.
          */
         Forbidden: {
             headers: {
@@ -1479,7 +1483,9 @@ export interface components {
         };
         /**
          * @description `organization.slug_taken`, `organization.creation_limit`, `concurrency.conflict`,
-         *     `ownership.transfer_pending`, `person.has_login`, `person.merge_both_have_login`.
+         *     `ownership.transfer_pending`, `ownership.transfer_stale` (roles changed since the offer; it is cancelled),
+         *     `person.has_login`, `person.merge_both_have_login`, `person.read_only` (anonymized or merged),
+         *     `contact_point.verified` (the sign-in email changes only with the account), `relationship.exists`.
          */
         Conflict: {
             headers: {
