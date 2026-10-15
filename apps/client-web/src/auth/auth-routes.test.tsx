@@ -1,3 +1,4 @@
+import type { AuthClient } from "@tempo/api-client/auth";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
@@ -7,7 +8,6 @@ import { App } from "../app/App";
 import { routes } from "../app/routes";
 import { apiStub, problem, signedInRoutes } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
-import type { AuthClient } from "./authClient";
 
 function renderAt(url: string, auth: AuthClient | null, fetch: typeof globalThis.fetch = apiStub(signedInRoutes).fetch) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });

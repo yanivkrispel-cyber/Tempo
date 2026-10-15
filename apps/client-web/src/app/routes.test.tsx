@@ -1,7 +1,7 @@
+import type { AuthClient } from "@tempo/api-client/auth";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import type { AuthClient } from "../auth/authClient";
 import { apiStub, signedInRoutes } from "../test/api";
 import { signedInAuth, signedOutAuth } from "../test/auth";
 import { App } from "./App";

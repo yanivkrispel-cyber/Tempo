@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { AuthClient } from "@tempo/api-client/auth";
 import { useState } from "react";
 import { RouterProvider, type createBrowserRouter } from "react-router";
 import { ApiProvider } from "../api/ApiProvider";
-import type { AuthClient } from "../auth/authClient";
 import { AuthProvider } from "../auth/AuthProvider";
 import { SampleApiProvider } from "../features/member/data";
 import { ToastProvider } from "../shared/design-system";

@@ -2,10 +2,11 @@
   "name": "@tempo/api-client",
   "version": "0.1.0",
   "private": true,
-  "description": "Typed client for the Tempo API, generated from contracts/openapi/tempo-api.v1.yaml. ADR-0024.",
+  "description": "Typed client for the Tempo API, generated from contracts/openapi/tempo-api.v1.yaml, and the apps' Cognito sign-in (./auth). ADR-0024.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./auth": "./src/auth/index.ts"
   },
   "scripts": {
     "generate": "node scripts/generate.mjs",

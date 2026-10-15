@@ -1,6 +1,6 @@
 import { createTempoClient, isProblem, type TempoClient } from "@tempo/api-client";
+import type { AuthClient } from "@tempo/api-client/auth";
 import { createContext, useContext, useState, type ReactNode } from "react";
-import type { AuthClient } from "../auth/authClient";
 
 const ApiContext = createContext<TempoClient | null>(null);
 

@@ -1,4 +1,3 @@
-import type { AuthConfig } from "./config";
 import { codeChallenge, randomUrlSafe } from "./pkce";
 
 /**
@@ -8,6 +7,21 @@ import { codeChallenge, randomUrlSafe } from "./pkce";
  * refresh token's 30 days. The id token is not kept: the API takes access tokens only. The PKCE verifier and
  * `state` live in sessionStorage for the one round trip to the Hosted UI.
  */
+/**
+ * Where an app signs in. None of it is a secret: a browser app client has no client secret, and the bundle
+ * ships these values anyway.
+ */
+export interface AuthConfig {
+  /** The Cognito domain of the pool, e.g. `https://tempo-dev-<account>.auth.eu-central-1.amazoncognito.com`. */
+  cognitoDomain: string;
+  /** The app client id. */
+  clientId: string;
+  /** Must be one of the client's exact callback URLs (`infrastructure/config/<env>.ts`). */
+  redirectUri: string;
+  /** Must be one of the client's exact logout URLs. */
+  logoutUri: string;
+}
+
 export interface Session {
   accessToken: string;
   refreshToken: string;
@@ -17,6 +31,8 @@ export interface Session {
 
 export interface AuthClientOptions {
   config: AuthConfig;
+  /** The app's name in the storage keys (`tempo.<app>.session`), e.g. `client-web`. */
+  app: string;
   storage?: Storage;
   flowStorage?: Storage;
   fetch?: typeof globalThis.fetch;
@@ -32,8 +48,6 @@ export class SignInError extends Error {
   }
 }
 
-const SESSION_KEY = "tempo.client-web.session";
-const FLOW_KEY = "tempo.client-web.signin";
 /** Refresh this long before the access token expires, so a request never leaves with an expired one. */
 const EXPIRY_MARGIN_MS = 60_000;
 
@@ -51,6 +65,8 @@ interface TokenResponse {
 
 export class AuthClient {
   private readonly config: AuthConfig;
+  private readonly sessionKey: string;
+  private readonly flowKey: string;
   private readonly storage: Storage;
   private readonly flowStorage: Storage;
   private readonly fetchFn: typeof globalThis.fetch;
@@ -63,6 +79,8 @@ export class AuthClient {
 
   constructor(options: AuthClientOptions) {
     this.config = options.config;
+    this.sessionKey = `tempo.${options.app}.session`;
+    this.flowKey = `tempo.${options.app}.signin`;
     this.storage = options.storage ?? window.localStorage;
     this.flowStorage = options.flowStorage ?? window.sessionStorage;
     this.fetchFn = options.fetch ?? globalThis.fetch.bind(globalThis);
@@ -83,7 +101,7 @@ export class AuthClient {
   /** Sends the browser to the Hosted UI. `screen: "signup"` opens the sign-up form instead of sign-in. */
   async signIn(returnTo = "/", screen: "login" | "signup" = "login"): Promise<void> {
     const flow: Flow = { state: randomUrlSafe(), verifier: randomUrlSafe(), returnTo: safeReturnTo(returnTo) };
-    this.flowStorage.setItem(FLOW_KEY, JSON.stringify(flow));
+    this.flowStorage.setItem(this.flowKey, JSON.stringify(flow));
     const url = new URL(`${this.config.cognitoDomain}/${screen === "signup" ? "signup" : "oauth2/authorize"}`);
     url.search = new URLSearchParams({
       response_type: "code",
@@ -189,14 +207,14 @@ export class AuthClient {
   }
 
   private takeFlow(): Flow | null {
-    const raw = this.flowStorage.getItem(FLOW_KEY);
-    this.flowStorage.removeItem(FLOW_KEY);
+    const raw = this.flowStorage.getItem(this.flowKey);
+    this.flowStorage.removeItem(this.flowKey);
     return parse<Flow>(raw, (value) => typeof value.state === "string" && typeof value.verifier === "string");
   }
 
   private readSession(): Session | null {
     return parse<Session>(
-      this.storage.getItem(SESSION_KEY),
+      this.storage.getItem(this.sessionKey),
       (value) => typeof value.accessToken === "string" && typeof value.refreshToken === "string" && typeof value.expiresAt === "number"
     );
   }
@@ -204,8 +222,8 @@ export class AuthClient {
   private setSession(session: Session | null): void {
     const changed = (this.session === null) !== (session === null);
     this.session = session;
-    if (session) this.storage.setItem(SESSION_KEY, JSON.stringify(session));
-    else this.storage.removeItem(SESSION_KEY);
+    if (session) this.storage.setItem(this.sessionKey, JSON.stringify(session));
+    else this.storage.removeItem(this.sessionKey);
     if (changed) for (const listener of this.listeners) listener();
   }
 }

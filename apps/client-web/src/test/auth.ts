@@ -1,5 +1,4 @@
-import { AuthClient, type Session } from "../auth/authClient";
-import type { AuthConfig } from "../auth/config";
+import { AuthClient, type AuthConfig, type Session } from "@tempo/api-client/auth";
 
 export const testAuthConfig: AuthConfig = {
   cognitoDomain: "https://tempo-test.auth.eu-central-1.amazoncognito.com",
@@ -31,6 +30,7 @@ export function sessionStorageWith(session: Session): Storage {
 export function signedInAuth(overrides: Partial<ConstructorParameters<typeof AuthClient>[0]> = {}): AuthClient {
   return new AuthClient({
     config: testAuthConfig,
+    app: "client-web",
     storage: sessionStorageWith({ accessToken: "access-1", refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 }),
     flowStorage: memoryStorage(),
     redirect: () => {},
@@ -39,5 +39,5 @@ export function signedInAuth(overrides: Partial<ConstructorParameters<typeof Aut
 }
 
 export function signedOutAuth(overrides: Partial<ConstructorParameters<typeof AuthClient>[0]> = {}): AuthClient {
-  return new AuthClient({ config: testAuthConfig, storage: memoryStorage(), flowStorage: memoryStorage(), redirect: () => {}, ...overrides });
+  return new AuthClient({ config: testAuthConfig, app: "client-web", storage: memoryStorage(), flowStorage: memoryStorage(), redirect: () => {}, ...overrides });
 }
