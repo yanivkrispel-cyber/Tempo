@@ -15,6 +15,7 @@ packages/design-system/
 ├── css/base.css            reset, fonts, focus ring, RTL defaults, page scaffold
 ├── css/components.css      framework-agnostic primitives, class prefix tp-
 ├── docs/specimen.html      every component in Hebrew RTL, light and dark; open it in a browser
+├── docs/preview.html       the primitives added on 2026-10-15, each in its states, for the owner's review
 └── scripts/                build-tokens.mjs (json → css), check-tokens.mjs (shape + WCAG contrast; runs as lint/test)
 ```
 
