@@ -87,10 +87,20 @@ describe("Phase 1 routes and database access (docs/26)", () => {
   it("sends every other /api/v1 route to the function without a gateway authorizer", () => {
     // The API validates both pools' tokens itself; the gateway authorizer
     // knows only the customer pool and would refuse operator tokens.
-    template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
-      RouteKey: "ANY /api/v1/{proxy+}",
-      AuthorizationType: "NONE"
-    });
+    for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
+      template.hasResourceProperties("AWS::ApiGatewayV2::Route", {
+        RouteKey: `${method} /api/v1/{proxy+}`,
+        AuthorizationType: "NONE"
+      });
+    }
+  });
+
+  it("leaves CORS preflights to the gateway: no ANY or OPTIONS route", () => {
+    // ANY includes OPTIONS, so a preflight would reach the function and get 405 (#60, 2026-10-15).
+    const routeKeys = Object.values(template.findResources("AWS::ApiGatewayV2::Route")).map(
+      (route) => route.Properties.RouteKey as string
+    );
+    expect(routeKeys.filter((key) => key.startsWith("ANY ") || key.startsWith("OPTIONS "))).toEqual([]);
   });
 
   it("tells the API where Neon's pooled endpoint is and which password parameters to read", () => {

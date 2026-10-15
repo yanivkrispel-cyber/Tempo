@@ -60,7 +60,7 @@ const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
  * those two passwords from SSM, never the owner URL or the migrator's.
  *
  * Phase 1 routes (contracts/openapi/tempo-api.v1.yaml) reach the function
- * through one `ANY /api/v1/{proxy+}` route without an API Gateway
+ * through one `/api/v1/{proxy+}` route (GET, POST, PUT, PATCH, DELETE) without an API Gateway
  * authorizer: the API validates both pools' tokens itself (ADR-0004
  * amendment, ADR-0023), and the gateway's JWT authorizer knows only the
  * customer pool, so it would turn away operator tokens.
@@ -159,9 +159,12 @@ export class ApiStack extends Stack {
       authorizer
     });
 
+    // Explicit methods, never ANY: ANY includes OPTIONS, which would send CORS
+    // preflights to the function (405) instead of letting the gateway's CORS
+    // configuration answer them. Browsers refuse a non-2xx preflight.
     this.httpApi.addRoutes({
       path: "/api/v1/{proxy+}",
-      methods: [HttpMethod.ANY],
+      methods: [HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE],
       integration
     });
 
