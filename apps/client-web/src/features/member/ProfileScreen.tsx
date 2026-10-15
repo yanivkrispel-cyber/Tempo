@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { Avatar, Button, Card, Chip, Icon, IconButton, ProgressBar, Select, Skeleton, Toggle, shortDate, useToast } from "../../shared/design-system";
+import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useProfile } from "./data";
+import { EditNameDialog } from "./EditNameDialog";
 import styles from "./member.module.css";
 
 export function ProfileScreen() {
   const profile = useProfile();
   const toast = useToast();
   const auth = useAuth();
+  const me = useAccount();
+  const [editing, setEditing] = useState(false);
   const soon = () => toast.show({ message: "האפשרות הזו תגיע בקרוב" });
 
   if (!profile.data) {
@@ -18,7 +23,11 @@ export function ProfileScreen() {
     );
   }
 
-  const { name, email, plan, studio, healthDeclarationSigned } = profile.data;
+  // The plan and the health declaration stay sample data until the studio API exists; the rest is the account.
+  const { plan, healthDeclarationSigned } = profile.data;
+  const name = nameOf(me);
+  const studios = activeMemberships(me);
+  const studio = studios[0];
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.profile}`}>
       <header className={styles.header}>
@@ -26,10 +35,10 @@ export function ProfileScreen() {
         <div className={styles.heading}>
           <h1 className={styles.title}>{name}</h1>
           <span className="tp-ltr tp-muted" dir="ltr">
-            {email}
+            {me.email}
           </span>
         </div>
-        <IconButton icon="edit" label="עריכת פרטים" onClick={soon} />
+        <IconButton icon="edit" label="עריכת פרטים" onClick={() => setEditing(true)} />
       </header>
 
       <Card as="section" tone="base" className={styles.plan} aria-labelledby="plan-name">
@@ -50,16 +59,27 @@ export function ProfileScreen() {
       </Card>
 
       <Card as="section" small className={styles.studio} aria-label="הסטודיו שלך">
-        <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
-          {studio.name.replace(/^סטודיו\s+/, "").charAt(0)}
-        </span>
-        <div className={styles.studioName}>
-          <div>{studio.name}</div>
-          <div className="tp-caption">{studio.tagline}</div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={soon}>
-          החלפת סטודיו
-        </Button>
+        {studio ? (
+          <>
+            <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
+              {studio.organization.displayName.replace(/^סטודיו\s+/, "").charAt(0)}
+            </span>
+            <div className={styles.studioName}>
+              <div>{studio.organization.displayName}</div>
+              <div className="tp-caption">{membershipRoleName(studio)}</div>
+            </div>
+            {studios.length > 1 && (
+              <Button variant="ghost" size="sm" onClick={soon}>
+                החלפת סטודיו
+              </Button>
+            )}
+          </>
+        ) : (
+          <div className={styles.studioName}>
+            <div>עוד לא הצטרפת לסטודיו</div>
+            <div className="tp-caption">בקשו מהסטודיו קישור הצטרפות או הזמנה במייל.</div>
+          </div>
+        )}
       </Card>
 
       <Card as="section" tone="cream" className={styles.settings} aria-labelledby="notifications">
@@ -112,6 +132,8 @@ export function ProfileScreen() {
       <Button variant="ghost-danger" block onClick={() => auth.client?.signOut()}>
         התנתקות
       </Button>
+
+      <EditNameDialog open={editing} onClose={() => setEditing(false)} name={me.displayName ?? ""} />
     </main>
   );
 }

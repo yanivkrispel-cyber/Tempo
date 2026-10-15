@@ -5,10 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiProvider, useApi } from "../api/ApiProvider";
 import { App } from "../app/App";
 import { routes } from "../app/routes";
+import { apiStub, problem, signedInRoutes } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
 import type { AuthClient } from "./authClient";
 
-function renderAt(url: string, auth: AuthClient | null, fetch?: typeof globalThis.fetch) {
+function renderAt(url: string, auth: AuthClient | null, fetch: typeof globalThis.fetch = apiStub(signedInRoutes).fetch) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={fetch} />);
   return router;
@@ -43,7 +44,7 @@ describe("protected routes", () => {
   });
 
   it("keeps /invite and /join public", async () => {
-    renderAt("/invite#tok_123", signedOutAuth());
+    renderAt("/invite#tok_QW5faW52aXRhdGlvbi10b2tlbi1mb3ItdGVzdHM", signedOutAuth());
     expect(await screen.findByRole("heading", { name: "הוזמנת לסטודיו" })).toBeInTheDocument();
   });
 });
@@ -72,9 +73,9 @@ describe("/auth/callback", () => {
 });
 
 describe("API client", () => {
-  it("signs out locally when the API rejects the token", async () => {
+  async function callMe(answer: Response) {
     const auth = signedInAuth();
-    const api = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 401 }));
+    const api = vi.fn<typeof globalThis.fetch>().mockResolvedValue(answer);
     let call: Promise<unknown> | undefined;
     function Probe() {
       const client = useApi();
@@ -87,9 +88,18 @@ describe("API client", () => {
       </ApiProvider>
     );
     await call;
-    const request = api.mock.calls[0]![0] as Request;
+    return { auth, request: api.mock.calls[0]![0] as Request };
+  }
+
+  it("signs out locally when the API rejects the token", async () => {
+    const { auth, request } = await callMe(new Response(null, { status: 401 }));
     expect(request.url).toBe("https://api.test/api/v1/me");
     expect(request.headers.get("Authorization")).toBe("Bearer access-1");
     expect(auth.isSignedIn).toBe(false);
+  });
+
+  it("keeps the session when the API asks for a fresh sign-in for one action (step-up)", async () => {
+    const { auth } = await callMe(problem(401, "auth.step_up_required"));
+    expect(auth.isSignedIn).toBe(true);
   });
 });

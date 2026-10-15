@@ -130,6 +130,24 @@ describe("AuthClient tokens", () => {
     expect(storage.getItem("tempo.client-web.session")).toBeNull();
   });
 
+  it("keeps the session when the device is offline, and sends the request without a token", async () => {
+    const storage = sessionStorageWith({ accessToken: "old", refreshToken: "refresh-1", expiresAt: 0 });
+    const fetch = vi.fn<typeof globalThis.fetch>().mockRejectedValue(new TypeError("Failed to fetch"));
+    const auth = signedInAuth({ storage, fetch, now: () => 1 });
+
+    expect(await auth.getAccessToken()).toBeNull();
+    expect(auth.isSignedIn).toBe(true);
+    expect(storage.getItem("tempo.client-web.session")).not.toBeNull();
+  });
+
+  it("keeps the session when Cognito answers 5xx", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 503 }));
+    const auth = signedInAuth({ storage: sessionStorageWith({ accessToken: "old", refreshToken: "refresh-1", expiresAt: 0 }), fetch, now: () => 1 });
+
+    expect(await auth.getAccessToken()).toBeNull();
+    expect(auth.isSignedIn).toBe(true);
+  });
+
   it("ignores a stored session it cannot read", () => {
     const auth = new AuthClient({ config: testAuthConfig, storage: memoryStorage({ "tempo.client-web.session": "{not json" }), flowStorage: memoryStorage() });
     expect(auth.isSignedIn).toBe(false);
