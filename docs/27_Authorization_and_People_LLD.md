@@ -35,7 +35,7 @@ Out of scope, and where it goes:
 | Leads, pipelines, CRM tasks, notes | 6 (CRM), on top of the person record |
 | Health declarations and other sensitive vertical data | Studio vertical, own LLD (P-5, section 14) |
 | Location or class scoped permissions ("staff sees only their classes") | With Scheduling; the model leaves room (section 3.4) |
-| Support sessions (impersonation) | Open question A-4 |
+| Support sessions (impersonation) | After the pilot starts, own LLD, read-only first (A-4, section 14) |
 
 ## 2. What changes from Phase 1
 
