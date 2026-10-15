@@ -2,7 +2,15 @@ import type { ReactNode } from "react";
 import { Banner, Button, Dialog, Icon, useToast } from "../../shared/design-system";
 import { errorMessage } from "../../api/errors";
 import type { IsoDate } from "../../shared/utilities/dates";
-import { freeCancelDeadline, noPassText, passTakenText, passUseText, waitText } from "./bookingState";
+import {
+  freeCancelDeadline,
+  freeSpots,
+  noPassText,
+  passTakenText,
+  passUseText,
+  waitPassText,
+  waitText,
+} from "./bookingState";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import { useBook, type Booking, type BookingPolicy, type Session } from "./studio";
@@ -47,7 +55,10 @@ export interface BookingSheetProps {
   onClose: () => void;
 }
 
-/** The bottom sheet before booking: when, with whom, which pass it uses, and until when cancelling is free. */
+/**
+ * The bottom sheet before booking: when, with whom, which pass it uses, and until when cancelling is free. On a full
+ * class it joins the waitlist instead: no entry is held while waiting (docs/29 C-2), one is taken on promotion.
+ */
 export function BookingSheet({
   session,
   timeZone,
@@ -59,11 +70,13 @@ export function BookingSheet({
   onClose,
 }: BookingSheetProps) {
   const pass = session?.passPreview ?? null;
+  const waitlist = session !== null && freeSpots(session) === 0;
   const deadline = session ? freeCancelDeadline(session, policy) : null;
   const deadlinePassed = deadline !== null && deadline.getTime() <= now.getTime();
+  const title = session ? `${waitlist ? "רשימת ההמתנה ל" : "הרשמה ל"}${session.classType.name}` : "";
 
   return (
-    <Dialog open={session !== null} onClose={onClose} title={session ? `הרשמה ל${session.classType.name}` : ""}>
+    <Dialog open={session !== null} onClose={onClose} title={title}>
       {session && (
         <>
           <SessionDetails session={session} timeZone={timeZone} today={today}>
@@ -72,7 +85,7 @@ export function BookingSheet({
                 <span className="tp-icon-tile tp-icon-tile--sm">
                   <Icon name="credit-card" />
                 </span>
-                <span>{passUseText(pass)}</span>
+                <span>{waitlist ? waitPassText(pass) : passUseText(pass)}</span>
               </div>
             )}
           </SessionDetails>
@@ -81,7 +94,15 @@ export function BookingSheet({
               {noPassText}
             </Banner>
           )}
-          {pass && deadline && (
+          {pass && waitlist && (
+            <p className={`tp-caption ${styles.sheetNote}`}>
+              {session.waitlistCount === 0
+                ? "השיעור מלא, ואין עדיין אף אחד בהמתנה."
+                : `השיעור מלא. ${session.waitlistCount === 1 ? "ממתין אחד" : `${session.waitlistCount} ממתינים`} לפניך.`}{" "}
+              אם יתפנה מקום, נרשום אותך אוטומטית ונודיע לך.
+            </p>
+          )}
+          {pass && !waitlist && deadline && (
             <p className={`tp-caption ${styles.sheetNote}`}>
               {deadlinePassed
                 ? "עבר זמן הביטול החינמי: אם תבטלו, הכניסה לא תחזור."
@@ -91,7 +112,7 @@ export function BookingSheet({
           <div className={styles.sheetActions}>
             {pass && (
               <Button size="lg" block loading={pending} onClick={() => onConfirm(session)}>
-                אישור ההרשמה
+                {waitlist ? "הצטרפות לרשימת ההמתנה" : "אישור ההרשמה"}
               </Button>
             )}
             <Button variant="ghost" block onClick={onClose} disabled={pending}>

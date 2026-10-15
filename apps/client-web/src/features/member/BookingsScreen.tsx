@@ -1,10 +1,28 @@
 import { useState } from "react";
-import { Button, ButtonLink, Chip, ClassRow, EmptyState, Tabs, TimeSlot, shortDate } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  ButtonLink,
+  Chip,
+  ClassRow,
+  EmptyState,
+  Tabs,
+  TimeSlot,
+  shortDate,
+} from "../../shared/design-system";
 import { nameOf, useAccount } from "../../account/account";
 import { pastStatus, waitText } from "./bookingState";
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
-import { usePastBookings, useStudio, useStudioClock, useUpcomingBookings, type MyBooking, type Studio } from "./studio";
+import {
+  useInbox,
+  usePastBookings,
+  useStudio,
+  useStudioClock,
+  useUpcomingBookings,
+  type MyBooking,
+  type Studio,
+} from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, studioDate } from "./studioTime";
 
@@ -24,7 +42,12 @@ function StudioBookings({ studio }: { studio: Studio }) {
   const upcoming = useUpcomingBookings(studio.id);
   const past = usePastBookings(studio.id, view === "history");
 
+  const inbox = useInbox(studio.id);
   const count = upcoming.data?.length;
+  const promoted = new Set(
+    (inbox.data?.items ?? []).filter((item) => item.kind === "booking.promoted").map((item) => item.data.bookingId),
+  );
+  const waiting = upcoming.data?.some((booking) => booking.status === "waitlisted") ?? false;
 
   function upcomingRow(booking: MyBooking) {
     const session = booking.session;
@@ -42,6 +65,8 @@ function StudioBookings({ studio }: { studio: Studio }) {
         actions={
           booking.status === "waitlisted" ? (
             <Chip tone="warning">{waitText(booking.waitlistPosition)}</Chip>
+          ) : promoted.has(booking.id) ? (
+            <Chip tone="success">נרשמת מההמתנה</Chip>
           ) : (
             <Chip tone="success">נרשמת</Chip>
           )
@@ -87,6 +112,11 @@ function StudioBookings({ studio }: { studio: Studio }) {
               <ul className={styles.list} aria-label="הזמנות קרובות">
                 {upcoming.data.map(upcomingRow)}
               </ul>
+            )}
+            {waiting && (
+              <Banner icon="bell" role="note">
+                כשמתפנה מקום בשיעור שברשימת ההמתנה שלך, נרשום אותך אוטומטית ונשלח התראה.
+              </Banner>
             )}
           </div>
         ) : past.isPending ? (

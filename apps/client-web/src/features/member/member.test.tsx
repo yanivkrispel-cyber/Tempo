@@ -8,6 +8,7 @@ import { routes } from "../../app/routes";
 import { apiStub } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 import {
+  bookingIdOf,
   card,
   createStudio,
   pastBookings,
@@ -249,15 +250,188 @@ describe("my bookings", () => {
   });
 });
 
+const promoted = () => [
+  {
+    id: "0199e5a1-0000-7000-8000-000000000a01",
+    kind: "booking.promoted",
+    data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+    createdAt: "2026-10-13T08:30:00Z",
+    readAt: null,
+  },
+  // Kinds this app does not know yet are left out.
+  {
+    id: "0199e5a1-0000-7000-8000-000000000a02",
+    kind: "billing.new_thing",
+    data: {},
+    createdAt: "2026-10-13T08:20:00Z",
+    readAt: null,
+  },
+  {
+    id: "0199e5a1-0000-7000-8000-000000000a03",
+    kind: "waitlist.expired",
+    data: { sessionId: sessionIds.morning, bookingId: bookingIdOf(sessionIds.morning) },
+    createdAt: "2026-10-13T05:00:00Z",
+    readAt: "2026-10-13T06:00:00Z",
+  },
+];
+
+describe("the waitlist", () => {
+  it("joins the waitlist of a full class without using an entry, and shows the place in line", async () => {
+    const { studio } = renderAt("/book");
+    await userEvent.click(await screen.findByRole("button", { name: "להמתנה ליין יוגה ונשימה ב-20:15" }));
+    const sheet = screen.getByRole("dialog", { name: "רשימת ההמתנה ליין יוגה ונשימה" });
+    expect(sheet).toHaveTextContent("בהמתנה לא נוצלת כניסה. אם יתפנה מקום, תנוצל כניסה אחת מכרטיסיית 10.");
+    expect(sheet).toHaveTextContent("השיעור מלא. ממתין אחד לפניך.");
+
+    await userEvent.click(within(sheet).getByRole("button", { name: "הצטרפות לרשימת ההמתנה" }));
+    expect(
+      await screen.findByText("נכנסת לרשימת ההמתנה, במקום 2 בהמתנה. אם יתפנה מקום נרשום אותך ונודיע לך."),
+    ).toBeInTheDocument();
+    const row = screen.getByRole("link", { name: /יין יוגה ונשימה/ }).closest("li")!;
+    await waitFor(() => expect(within(row).getByText("במקום 2 בהמתנה")).toHaveClass("tp-chip--warning"));
+    expect(studio.passes[0]!.entriesLeft).toBe(7);
+  });
+
+  it("does not offer the waitlist when the studio has it off", async () => {
+    renderAt(`/classes/${sessionIds.yin}`, { policy: { waitlistEnabled: false } });
+    expect(await screen.findByRole("region", { name: "מקומות" })).toHaveTextContent(
+      "14 מתוך 14 רשומים · מלא · 1 בהמתנה · רשימת ההמתנה סגורה",
+    );
+    expect(screen.queryByRole("button", { name: "הצטרפות לרשימת ההמתנה" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "לשיעורים אחרים" })).toHaveAttribute("href", "/book?day=2026-10-13");
+  });
+
+  it("waits from the class screen, says until when a place can open, and leaves the waitlist", async () => {
+    const { api } = renderAt(`/classes/${sessionIds.yin}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הצטרפות לרשימת ההמתנה" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "הצטרפות לרשימת ההמתנה" }));
+
+    expect(
+      await screen.findByText(
+        "במקום 2 בהמתנה. אם יתפנה מקום עד היום 18:15, נרשום אותך אוטומטית, תנוצל כניסה ונודיע לך כאן.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("במקום 2 בהמתנה", { selector: ".tp-chip" })).toHaveClass("tp-chip--warning");
+
+    await userEvent.click(screen.getByRole("button", { name: "יציאה מרשימת ההמתנה" }));
+    const dialog = screen.getByRole("dialog", { name: "לצאת מרשימת ההמתנה?" });
+    expect(dialog).toHaveAccessibleDescription(
+      "המקום שלך בתור יעבור למי שאחריך. בהמתנה לא נוצלה כניסה, אז אין מה להחזיר.",
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "יציאה מההמתנה" }));
+    expect(await screen.findByText("יצאת מרשימת ההמתנה.")).toBeInTheDocument();
+    expect(
+      api.requests.some((request) => request.url.endsWith(`/bookings/${bookingIdOf(sessionIds.yin)}/cancel`)),
+    ).toBe(true);
+  });
+
+  it("lists a waitlist place in my bookings with a note on automatic promotion", async () => {
+    renderAt(`/classes/${sessionIds.yin}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הצטרפות לרשימת ההמתנה" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "הצטרפות לרשימת ההמתנה" }));
+    await screen.findByRole("button", { name: "יציאה מרשימת ההמתנה" });
+
+    const nav = screen.getByRole("navigation", { name: "ניווט" });
+    await userEvent.click(within(nav).getByRole("link", { name: "הזמנות" }));
+    const list = await screen.findByRole("list", { name: "הזמנות קרובות" });
+    expect(titles(list)).toEqual(["פילאטיס מכשירים", "יין יוגה ונשימה", "ויניאסה יוגה"]);
+    expect(within(list).getAllByRole("listitem")[1]).toHaveTextContent("במקום 2 בהמתנה");
+    expect(screen.getByRole("note")).toHaveTextContent("נרשום אותך אוטומטית ונשלח התראה");
+  });
+});
+
+describe("promotion and the inbox", () => {
+  it("tells the member on the home screen and the bell that a place opened", async () => {
+    renderAt("/", { inbox: promoted() });
+    expect(await screen.findByRole("link", { name: "התראות, אחת חדשה" })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByText(/התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית/)).toBeInTheDocument();
+  });
+
+  it("lists the notifications it knows, and opening one marks it read and shows the class", async () => {
+    const { api, studio, router } = renderAt("/inbox", { inbox: promoted() });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("התפנה מקום ונרשמת");
+    await waitFor(() => expect(items[0]).toHaveTextContent("ויניאסה יוגה · מחר 07:00"));
+    expect(within(items[0]!).getByText("חדש")).toBeInTheDocument();
+    expect(items[1]).toHaveTextContent("לא התפנה מקום");
+    expect(within(items[1]!).queryByText("חדש")).not.toBeInTheDocument();
+
+    await userEvent.click(within(items[0]!).getByRole("link"));
+    expect(router.state.location.pathname).toBe(`/classes/${sessionIds.vinyasa}`);
+    expect(await screen.findByText("התפנה מקום, ונרשמת אוטומטית מרשימת ההמתנה.")).toBeInTheDocument();
+    await waitFor(() => expect(studio.inbox[0]!.readAt).not.toBeNull());
+    expect(api.requests.some((request) => request.method === "POST" && request.url.endsWith("/read"))).toBe(true);
+  });
+
+  it("marks a promoted booking in my bookings", async () => {
+    renderAt("/bookings", { inbox: promoted() });
+    const list = await screen.findByRole("list", { name: "הזמנות קרובות" });
+    await waitFor(() => expect(within(list).getAllByRole("listitem")[1]).toHaveTextContent("נרשמת מההמתנה"));
+  });
+
+  it("says when there are no notifications", async () => {
+    renderAt("/inbox");
+    expect(await screen.findByText("אין התראות")).toBeInTheDocument();
+  });
+});
+
+describe("passes", () => {
+  it("shows the entries left over the timetable, and updates them after booking", async () => {
+    renderAt("/book");
+    const strip = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
+    expect(strip).toHaveTextContent("כרטיסיית 10 · נשארו 7 כניסות");
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה ליוגה בהריון ב-19:00" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "הכרטיסייה שלך" })).toHaveTextContent("נשארו 6 כניסות"),
+    );
+  });
+
+  it("says on the timetable when there is no valid pass", async () => {
+    renderAt("/book", { passes: [] });
+    expect(
+      await screen.findByText("אין לך כרטיסייה או מנוי בתוקף. כדי להירשם לשיעורים, פנו לסטודיו."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a membership's weekly cap and end date on the profile, and leaves out a voided pass", async () => {
+    renderAt("/profile", {
+      passes: [
+        {
+          ...card,
+          product: { ...card.product, name: "מנוי חודשי", kind: "membership", weeklyCap: 3 },
+          entries: null,
+          entriesUsed: 0,
+          entriesLeft: null,
+          endsOn: "2026-11-12",
+        },
+        { ...card, id: "0199e5a1-0000-7000-8000-000000000902", status: "voided" },
+      ],
+    });
+    const passes = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
+    expect(within(passes).getAllByRole("listitem")).toHaveLength(1);
+    const membership = within(passes).getByRole("listitem", { name: "מנוי חודשי" });
+    expect(membership).toHaveTextContent("עד 3 שיעורים בשבוע");
+    expect(membership).toHaveTextContent("בתוקף עד 12.11.2026");
+  });
+});
+
 describe("profile", () => {
   it("shows the member, the plan and the settings", async () => {
     renderAt("/profile");
     expect(await screen.findByRole("heading", { level: 1, name: "נגה רוזן" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "נגה רוזן" })).toHaveTextContent("נר");
 
-    const plan = screen.getByRole("region", { name: "חודשי ללא הגבלה" });
-    expect(plan).toHaveTextContent("מתחדש אוטומטית ב-18.10");
-    expect(within(plan).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+    const passes = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
+    const pass = within(passes).getByRole("listitem", { name: "כרטיסיית 10" });
+    expect(pass).toHaveTextContent("נשארו 7 כניסות");
+    expect(pass).toHaveTextContent("בתוקף עד 31.12.2026");
+    expect(within(pass).getByRole("progressbar", { name: "כניסות שנוצלו: 3 מתוך 10" })).toHaveAttribute(
+      "aria-valuenow",
+      "3",
+    );
 
     expect(await screen.findByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
     expect(screen.getByRole("combobox", { name: "תזכורת לפני שיעור" })).toHaveValue("2h");

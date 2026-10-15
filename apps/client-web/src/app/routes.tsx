@@ -9,6 +9,7 @@ import { BookingsScreen } from "../features/member/BookingsScreen";
 import { BookScreen } from "../features/member/BookScreen";
 import { ClassScreen } from "../features/member/ClassScreen";
 import { HomeScreen } from "../features/member/HomeScreen";
+import { InboxScreen } from "../features/member/InboxScreen";
 import { MemberLayout } from "../features/member/MemberLayout";
 import { ProfileScreen } from "../features/member/ProfileScreen";
 import { NotFoundPage } from "./NotFoundPage";
@@ -30,6 +31,7 @@ export const routes: RouteObject[] = [
               { path: "/book", element: <BookScreen /> },
               { path: "/classes/:sessionId", element: <ClassScreen /> },
               { path: "/bookings", element: <BookingsScreen /> },
+              { path: "/inbox", element: <InboxScreen /> },
               { path: "/profile", element: <ProfileScreen /> },
             ],
           },

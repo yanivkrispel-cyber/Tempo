@@ -58,7 +58,7 @@ export const card: Pass = {
   version: "1",
 };
 
-export const policy: Schemas["BookingPolicy"] = {
+export const defaultPolicy: Schemas["BookingPolicy"] = {
   freeCancelHours: 6,
   waitlistCutoffHours: 2,
   bookingHorizonDays: 14,
@@ -116,6 +116,7 @@ export interface StudioOptions {
   /** The member's passes; a card with 7 entries left by default. */
   passes?: Pass[];
   inbox?: InboxItem[];
+  policy?: Partial<Schemas["BookingPolicy"]>;
   /** History rows for `scope=past`. */
   past?: MyBooking[];
 }
@@ -140,6 +141,7 @@ export function createStudio(options: StudioOptions = {}) {
   ];
   const bookings = new Map<string, Booking>();
   const inbox = options.inbox ?? [];
+  const policy = { ...defaultPolicy, ...options.policy };
 
   const live = () => passes.find((pass) => pass.status === "active" && (pass.entriesLeft ?? 1) > 0);
   const summary = (pass: Pass): Schemas["PassSummary"] => ({

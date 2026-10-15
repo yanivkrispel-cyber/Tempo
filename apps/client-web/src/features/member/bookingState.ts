@@ -54,6 +54,13 @@ export function passUseText(pass: PassSummary): string {
   return `כלול ב${pass.name}, בתוקף עד ${formatDate(pass.endsOn)}.`;
 }
 
+/** What waiting will take: nothing now, one entry if a place frees up. */
+export function waitPassText(pass: PassSummary): string {
+  return pass.kind === "punch_card" && pass.entriesLeft != null
+    ? `בהמתנה לא נוצלת כניסה. אם יתפנה מקום, תנוצל כניסה אחת מ${pass.name}.`
+    : `בהמתנה לא נוצל דבר. אם יתפנה מקום, ההרשמה תהיה על ${pass.name}.`;
+}
+
 /** What a booking took, for the confirmation: "בכרטיסיית 10 נשארו 6 כניסות." */
 export function passTakenText(pass: PassSummary | null | undefined): string {
   if (!pass) return "";

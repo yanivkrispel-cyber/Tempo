@@ -13,9 +13,10 @@ import {
 } from "../../shared/design-system";
 import { addDays, daysBetween, type IsoDate } from "../../shared/utilities/dates";
 import { BookingSheet, useBookingFlow } from "./BookingSheet";
-import { categoryName, freeSpots, myState, spotsText } from "./bookingState";
+import { categoryName, freeSpots, myState, spotsText, waitlistOpen, waitText } from "./bookingState";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
+import { PassStrip } from "./Passes";
 import { useBookingPolicy, useSessions, useStudio, useStudioClock, type Session, type Studio } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, hasStarted, minutesBetween } from "./studioTime";
@@ -69,6 +70,10 @@ function StudioBook({ studio }: { studio: Studio }) {
         return <Chip tone="success">נרשמת</Chip>;
       case "no_show":
         return <Chip tone="warning">לא הגעת</Chip>;
+      case "waitlisted":
+        return <Chip tone="warning">{waitText(session.myBooking?.waitlistPosition)}</Chip>;
+      case "expired":
+        return <Chip plain>לא התפנה מקום</Chip>;
       default:
     }
     if (hasStarted(session.startsAt, now)) return <Chip plain>השיעור התחיל</Chip>;
@@ -85,6 +90,19 @@ function StudioBook({ studio }: { studio: Studio }) {
         </Button>
       );
     }
+    if (waitlistOpen(session, policy.data, now)) {
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`להמתנה ל${name}`}
+          loading={flow.pendingId === session.id}
+          onClick={() => setPickedId(session.id)}
+        >
+          להמתנה
+        </Button>
+      );
+    }
     return <Chip plain>מלא</Chip>;
   }
 
@@ -94,6 +112,7 @@ function StudioBook({ studio }: { studio: Studio }) {
         <span className="tp-eyebrow">{studio.name}</span>
         <h1 className={styles.title}>{title}</h1>
       </header>
+      <PassStrip organizationId={studio.id} />
 
       <div className={styles.group}>
         <div className={styles.sectionHead}>

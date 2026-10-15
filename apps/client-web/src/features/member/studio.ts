@@ -83,7 +83,7 @@ export function useSessions(organizationId: string, from: IsoDate, to: IsoDate) 
   });
 }
 
-export function useSession(organizationId: string, sessionId: string) {
+export function useSession(organizationId: string, sessionId: string, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: studioKeys.session(organizationId, sessionId),
@@ -93,6 +93,7 @@ export function useSession(organizationId: string, sessionId: string) {
           params: { path: { organizationId, sessionId } },
         }),
       ),
+    enabled,
     retry: retryOnce,
   });
 }

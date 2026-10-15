@@ -1,16 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
+  Banner,
   ButtonLink,
   Card,
   EmptyState,
   EventCard,
   Icon,
-  IconButton,
   ProgressRing,
   WeekStrip,
   shortDate,
-  useToast,
 } from "../../shared/design-system";
 import { nameOf, useAccount } from "../../account/account";
 import { addDays, dayOfWeek, startOfWeek, type IsoDate } from "../../shared/utilities/dates";
@@ -18,7 +17,16 @@ import { freeSpots, myState, waitText } from "./bookingState";
 import { useProfile } from "./data";
 import { dayName, relativeDay } from "./format";
 import styles from "./member.module.css";
-import { useSessions, useStudio, useStudioClock, useUpcomingBookings, type Session, type Studio } from "./studio";
+import {
+  useInbox,
+  useSessions,
+  useStudio,
+  useStudioClock,
+  useUpcomingBookings,
+  type Session,
+  type Studio,
+} from "./studio";
+import { knownNotices } from "./InboxScreen";
 import { ListSkeleton, LoadError } from "./StudioGate";
 import { useNow } from "./clock";
 import { clockTime, defaultTimeZone, hasStarted, studioToday } from "./studioTime";
@@ -82,7 +90,7 @@ function HomeFrame({
 
 function StudioHome({ studio }: { studio: Studio }) {
   const { timeZone, now, today } = useStudioClock(studio.id);
-  const toast = useToast();
+  const inbox = useInbox(studio.id);
   const [day, setDay] = useState(today);
   const week = Array.from({ length: 7 }, (_, offset) => addDays(startOfWeek(today), offset));
   const upcoming = useUpcomingBookings(studio.id);
@@ -99,10 +107,32 @@ function StudioHome({ studio }: { studio: Studio }) {
   const emptyText =
     day < today ? "היום הזה כבר עבר" : dayOfWeek(day) === 6 ? "אין שיעורים בשבת" : "אין שיעורים ביום הזה";
 
-  const bell = <IconButton icon="bell" label="התראות" onClick={() => toast.show({ message: "אין התראות חדשות" })} />;
+  const promotion = inbox.data
+    ? knownNotices(inbox.data.items).find((item) => item.kind === "booking.promoted" && !item.readAt)
+    : undefined;
+  const unread = inbox.data ? knownNotices(inbox.data.items).filter((item) => !item.readAt).length : 0;
+  const bell = (
+    <Link
+      to="/inbox"
+      className={`tp-btn tp-btn--icon ${styles.bell}`}
+      aria-label={unread === 0 ? "התראות" : unread === 1 ? "התראות, אחת חדשה" : `התראות, ${unread} חדשות`}
+    >
+      <Icon name="bell" />
+      {unread > 0 && (
+        <span className={`tp-chip tp-chip--count ${styles.bellCount}`} aria-hidden="true">
+          {unread}
+        </span>
+      )}
+    </Link>
+  );
 
   return (
     <HomeFrame today={today} studio={studio} bell={bell}>
+      {promotion && (
+        <Banner tone="success" icon="check">
+          התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית. <Link to="/inbox">להתראות</Link>
+        </Banner>
+      )}
       {next ? (
         <Card as="section" tone="elevated" className={styles.next} aria-labelledby="next-class">
           <span className="tp-eyebrow">השיעור הבא שלך</span>

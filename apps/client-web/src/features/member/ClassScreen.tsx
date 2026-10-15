@@ -19,12 +19,22 @@ import {
 } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { BookingSheet, useBookingFlow } from "./BookingSheet";
-import { categoryName, freeCancelDeadline, freeSpots, myState, spotsText, type MyState } from "./bookingState";
+import {
+  categoryName,
+  freeCancelDeadline,
+  freeSpots,
+  myState,
+  spotsText,
+  waitlistOpen,
+  waitText,
+  type MyState,
+} from "./bookingState";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import {
   useBookingPolicy,
   useCancelBooking,
+  useInbox,
   useSession,
   useStudio,
   useStudioClock,
@@ -59,7 +69,8 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const location = useLocation();
   const [booking, setBooking] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [cancelled, setCancelled] = useState<Booking | null>(null);
+  const [cancelled, setCancelled] = useState<{ booking: Booking; waited: boolean } | null>(null);
+  const inbox = useInbox(studio.id);
 
   // Back to wherever the member came from; a link opened straight on this screen goes to the timetable.
   const back = () => (location.key === "default" ? navigate("/book") : navigate(-1));
@@ -104,19 +115,34 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const item = session.data;
   const state = myState(item, now);
   const started = hasStarted(item.startsAt, now);
-  const chip = item.status === "cancelled" ? { label: "השיעור בוטל", tone: "neutral" as const } : stateChips[state];
+  const chip =
+    item.status === "cancelled"
+      ? { label: "השיעור בוטל", tone: "neutral" as const }
+      : state === "waitlisted"
+        ? { label: waitText(item.myBooking?.waitlistPosition), tone: "warning" as const }
+        : stateChips[state];
   const deadline = freeCancelDeadline(item, policy.data);
   const inFreeWindow = deadline !== null && now.getTime() <= deadline.getTime();
   const deadlineText = deadline ? momentText(deadline, timeZone, today) : null;
-  const canBook = item.status === "scheduled" && state === "none" && !started && freeSpots(item) > 0;
+  const open = item.status === "scheduled" && state === "none" && !started;
+  const canBook = open && freeSpots(item) > 0;
+  const canWait = open && freeSpots(item) === 0 && waitlistOpen(item, policy.data, now);
+  const waitUntil = new Date(new Date(item.startsAt).getTime() - (policy.data?.waitlistCutoffHours ?? 2) * 3_600_000);
+  // The inbox says which bookings came off the waitlist (docs/29 section 6.3).
+  const promoted =
+    state === "booked" &&
+    (inbox.data?.items ?? []).some(
+      (notice) => notice.kind === "booking.promoted" && notice.data.bookingId === item.myBooking?.bookingId,
+    );
 
   function confirmCancel() {
     const bookingId = item.myBooking?.bookingId;
     if (!bookingId) return;
+    const waited = state === "waitlisted";
     cancel.mutate(bookingId, {
       onSuccess: (result) => {
         setConfirming(false);
-        setCancelled(result);
+        setCancelled({ booking: result, waited });
       },
       onError: () => setConfirming(false),
     });
@@ -141,12 +167,23 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
 
       {cancelled && (
         <Banner tone="info" icon="info">
-          {cancelledText(cancelled)}
+          {cancelled.waited ? "יצאת מרשימת ההמתנה." : cancelledText(cancelled.booking)}
         </Banner>
       )}
       {cancel.isError && (
         <Banner tone="danger" icon="info">
           {errorMessage(cancel.error, "הביטול לא הצליח. נסו שוב.")}
+        </Banner>
+      )}
+      {promoted && (
+        <Banner tone="success" icon="check">
+          התפנה מקום, ונרשמת אוטומטית מרשימת ההמתנה.
+        </Banner>
+      )}
+      {state === "waitlisted" && (
+        <Banner tone="info" icon="clock">
+          {waitText(item.myBooking?.waitlistPosition)}. אם יתפנה מקום עד {momentText(waitUntil, timeZone, today)}, נרשום
+          אותך אוטומטית, תנוצל כניסה ונודיע לך כאן.
         </Banner>
       )}
       {item.status === "cancelled" && (
@@ -187,6 +224,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
           </span>
           <span>
             {item.bookedCount} מתוך {item.capacity} רשומים · {spotsText(item)}
+            {open && freeSpots(item) === 0 && !canWait && " · רשימת ההמתנה סגורה"}
           </span>
         </Card>
       )}
@@ -197,12 +235,17 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
             ביטול הרשמה
           </Button>
         )}
-        {canBook && (
-          <Button size="lg" block loading={flow.pendingId === item.id} onClick={() => setBooking(true)}>
-            הרשמה לשיעור
+        {state === "waitlisted" && (
+          <Button variant="ghost-danger" size="lg" block onClick={() => setConfirming(true)}>
+            יציאה מרשימת ההמתנה
           </Button>
         )}
-        {state === "none" && !canBook && (
+        {(canBook || canWait) && (
+          <Button size="lg" block loading={flow.pendingId === item.id} onClick={() => setBooking(true)}>
+            {canBook ? "הרשמה לשיעור" : "הצטרפות לרשימת ההמתנה"}
+          </Button>
+        )}
+        {state === "none" && !canBook && !canWait && (
           <ButtonLink to={`/book?day=${item.localDate}`} variant="secondary" block>
             לשיעורים אחרים
           </ButtonLink>
@@ -212,21 +255,23 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
       <Dialog
         open={confirming}
         onClose={() => setConfirming(false)}
-        title="לבטל את ההרשמה?"
+        title={state === "waitlisted" ? "לצאת מרשימת ההמתנה?" : "לבטל את ההרשמה?"}
         description={
-          inFreeWindow
-            ? `עדיין בזמן הביטול החינמי (עד ${deadlineText}), כך שהכניסה תחזור אליך. המקום יעבור למי שממתין.`
-            : deadlineText
-              ? `עבר זמן הביטול החינמי (${deadlineText}). אם תבטלו עכשיו, הכניסה לא תחזור.`
-              : "אם עבר זמן הביטול החינמי, הכניסה לא תחזור."
+          state === "waitlisted"
+            ? "המקום שלך בתור יעבור למי שאחריך. בהמתנה לא נוצלה כניסה, אז אין מה להחזיר."
+            : inFreeWindow
+              ? `עדיין בזמן הביטול החינמי (עד ${deadlineText}), כך שהכניסה תחזור אליך. המקום יעבור למי שממתין.`
+              : deadlineText
+                ? `עבר זמן הביטול החינמי (${deadlineText}). אם תבטלו עכשיו, הכניסה לא תחזור.`
+                : "אם עבר זמן הביטול החינמי, הכניסה לא תחזור."
         }
       >
         <div className={styles.sheetActions}>
           <Button variant="danger" size="lg" block loading={cancel.isPending} onClick={confirmCancel}>
-            {inFreeWindow ? "ביטול ההרשמה" : "ביטול מאוחר"}
+            {state === "waitlisted" ? "יציאה מההמתנה" : inFreeWindow ? "ביטול ההרשמה" : "ביטול מאוחר"}
           </Button>
           <Button variant="ghost" block disabled={cancel.isPending} onClick={() => setConfirming(false)}>
-            השארת ההרשמה
+            {state === "waitlisted" ? "להישאר בהמתנה" : "השארת ההרשמה"}
           </Button>
         </div>
       </Dialog>
