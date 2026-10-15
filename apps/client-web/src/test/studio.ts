@@ -56,6 +56,7 @@ export const card: Pass = {
   status: "active",
   createdAt: "2026-10-01T08:00:00Z",
   version: "1",
+  freezes: [],
 };
 
 export const defaultPolicy: Schemas["BookingPolicy"] = {

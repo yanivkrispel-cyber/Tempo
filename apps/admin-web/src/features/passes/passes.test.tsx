@@ -69,6 +69,7 @@ const pass = (overrides: Record<string, unknown> = {}) => ({
   status: "active",
   createdAt: "2026-10-01T08:00:00Z",
   version: "1",
+  freezes: [],
   ...overrides,
 });
 
@@ -257,5 +258,109 @@ describe("passes on the person card", () => {
     expect(await within(section).findByText(/נותרו 6 מתוך 10 כניסות/)).toBeInTheDocument();
     expect(within(section).queryByRole("button", { name: "מתן כרטיסייה או מנוי" })).not.toBeInTheDocument();
     expect(within(section).queryByRole("button", { name: /^ביטול/ })).not.toBeInTheDocument();
+  });
+
+  describe("freezing a membership", () => {
+    const membership = (overrides: Record<string, unknown> = {}) =>
+      pass({
+        id: id(30),
+        product: {
+          id: twiceAWeek.id,
+          name: twiceAWeek.name,
+          kind: "membership",
+          weeklyCap: 2,
+          classCategory: "pilates",
+        },
+        entries: null,
+        entriesUsed: 0,
+        entriesLeft: null,
+        endsOn: "2026-12-10",
+        note: null,
+        ...overrides,
+      });
+    const freezeRoutes = (passes: unknown[]) => ({
+      [`GET ${base}/people/${personId}`]: person,
+      [`GET ${base}/people/${personId}/consents`]: { items: [] },
+      [`GET ${base}/people/${personId}/passes`]: () => json({ items: passes }),
+    });
+
+    it("shows current and upcoming freezes with the extended end, and offers freezing only on a membership", async () => {
+      renderAt(
+        `/o/neshima/people/${personId}`,
+        freezeRoutes([
+          membership({
+            freezes: [
+              { id: id(40), startsOn: "2026-10-10", endsOn: "2026-11-12" },
+              { id: id(41), startsOn: "2026-11-20", endsOn: "2026-11-30" },
+            ],
+          }),
+          pass(),
+        ]),
+      );
+      const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+      const freezes = await within(section).findByRole("list", { name: "הקפאות של פעמיים בשבוע" });
+      expect(freezes).toHaveTextContent("מוקפא עד 12.11");
+      expect(freezes).toHaveTextContent("הקפאה מתוכננת 20.11–30.11");
+      expect(freezes).toHaveTextContent("התוקף מוארך עד 10.12.2026");
+      // Only the upcoming one can be removed; a started freeze stays.
+      expect(within(freezes).getAllByRole("button", { name: /הסרת ההקפאה/ })).toHaveLength(1);
+      expect(within(section).getAllByRole("button", { name: /^הקפאת/ })).toHaveLength(1);
+      expect(within(section).queryByRole("button", { name: "הקפאת כרטיסיית 10 כניסות" })).not.toBeInTheDocument();
+    });
+
+    it("sends the dates, and explains a refusal inside the dialog", async () => {
+      let frozen = false;
+      let refused = false;
+      const api = renderAt(`/o/neshima/people/${personId}`, {
+        ...freezeRoutes([membership()]),
+        [`GET ${base}/people/${personId}/passes`]: () =>
+          json({
+            items: [
+              membership(frozen ? { freezes: [{ id: id(40), startsOn: "2026-11-01", endsOn: "2026-11-14" }] } : {}),
+            ],
+          }),
+        [`POST ${base}/passes/${id(30)}/freezes`]: () => {
+          if (!refused) {
+            refused = true;
+            return problem(409, "pass.freeze_overlap");
+          }
+          frozen = true;
+          return json(membership(), 201);
+        },
+      });
+      const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+      await userEvent.click(await within(section).findByRole("button", { name: "הקפאת פעמיים בשבוע" }));
+      const dialog = screen.getByRole("dialog", { name: "הקפאת פעמיים בשבוע" });
+      await userEvent.clear(within(dialog).getByRole("textbox", { name: /תחילת ההקפאה/ }));
+      await userEvent.type(within(dialog).getByRole("textbox", { name: /תחילת ההקפאה/ }), "01.11.2026");
+      await userEvent.type(within(dialog).getByRole("textbox", { name: /היום האחרון/ }), "14.11.2026");
+      await userEvent.click(within(dialog).getByRole("button", { name: "הקפאה" }));
+      expect(await within(dialog).findByText("הימים האלה חופפים להקפאה אחרת של המנוי.")).toBeInTheDocument();
+      expect(api.bodies[lastIndex(api, "POST", "/freezes")]).toEqual({ startsOn: "2026-11-01", endsOn: "2026-11-14" });
+
+      await userEvent.click(within(dialog).getByRole("button", { name: "הקפאה" }));
+      expect(await screen.findByText("המנוי הוקפא")).toBeInTheDocument();
+      expect(await within(section).findByText("הקפאה מתוכננת 01.11–14.11")).toBeInTheDocument();
+    });
+
+    it("removes an upcoming freeze after a confirmation", async () => {
+      const api = renderAt(`/o/neshima/people/${personId}`, {
+        ...freezeRoutes([membership({ freezes: [{ id: id(41), startsOn: "2026-11-20", endsOn: "2026-11-30" }] })]),
+        [`DELETE ${base}/passes/${id(30)}/freezes/${id(41)}`]: () => json(membership()),
+      });
+      const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+      await userEvent.click(await within(section).findByRole("button", { name: "הסרת ההקפאה 20.11–30.11" }));
+      const dialog = screen.getByRole("dialog", { name: "להסיר את ההקפאה?" });
+      await userEvent.click(within(dialog).getByRole("button", { name: "הסרת ההקפאה" }));
+      expect(await screen.findByText("ההקפאה הוסרה")).toBeInTheDocument();
+      expect(lastIndex(api, "DELETE", `/freezes/${id(41)}`)).toBeGreaterThan(-1);
+    });
+
+    it("hides freezing from staff without passes.manage", async () => {
+      renderAt(`/o/neshima/people/${personId}`, freezeRoutes([membership()]), "staff");
+      const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+      expect(await within(section).findByText(/פעמיים בשבוע/)).toBeInTheDocument();
+      expect(within(section).queryByRole("button", { name: /^הקפאת/ })).not.toBeInTheDocument();
+    });
   });
 });
