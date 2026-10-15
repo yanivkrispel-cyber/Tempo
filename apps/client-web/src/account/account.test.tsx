@@ -34,6 +34,14 @@ describe("the account step after sign-in", () => {
   });
 });
 
+describe("home on the real account", () => {
+  it("greets the member by their own first name and shows their studio, or none", async () => {
+    renderAt("/", { "POST /api/v1/session": { ...sampleMe, displayName: "דנה כהן", memberships: [] } });
+    expect(await screen.findByRole("heading", { level: 1, name: "היי דנה" })).toBeInTheDocument();
+    expect(screen.queryByText(/סטודיו נשימה/)).not.toBeInTheDocument();
+  });
+});
+
 describe("profile on the real account", () => {
   it("shows the account's name, email, studio and role", async () => {
     renderAt("/profile", { "POST /api/v1/session": { ...sampleMe, displayName: "דנה כהן", email: "dana@example.com" } });
