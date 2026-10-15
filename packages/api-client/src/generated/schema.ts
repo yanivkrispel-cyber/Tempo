@@ -1064,6 +1064,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A short text to everyone registered on a class (`bookings.manage`, or the session's instructor)
+         * @description Reaches every `booked` and `waitlisted` person as an inbox item of kind `session.message` that carries the
+         *     text (`InboxItem.text`). The audit log records that a message went out and to how many people, never the
+         *     text. At most 5 messages per class per hour (409 `session.message_limit`); a cancelled class, or one that
+         *     ended more than a day ago, answers 409 `booking.closed`. No push, SMS or email in this step (docs/30).
+         */
+        post: operations["sendSessionMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings": {
         parameters: {
             query?: never;
@@ -1176,6 +1202,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/bookings/{bookingId}/calendar.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Add to calendar: an iCalendar file for the caller's own booked place (self)
+         * @description One `VEVENT` (RFC 5545): `UID` is `{bookingId}@tempo`, times in UTC, `SUMMARY` the class name, `LOCATION`
+         *     the studio and the room, `DESCRIPTION` one Hebrew line. Sent as an attachment named `tempo-{localDate}.ics`.
+         *     Only a `booked` or `attended` place of the caller; anything else answers 404. Cancelling later does not
+         *     update the calendar entry (no `METHOD:CANCEL` without email, docs/30).
+         */
+        get: operations["getBookingCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/people/{personId}/bookings": {
         parameters: {
             query?: never;
@@ -1272,6 +1324,56 @@ export interface paths {
         /** Void a pass; sessions already booked keep their entry (`passes.manage`) */
         post: operations["voidPass"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/passes/{passId}/freezes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze a period membership for a date range (`passes.manage`)
+         * @description Studio dates, inclusive, 1 to 90 days, starting today or later and before the membership ends. `endsOn` of
+         *     the pass moves out by the frozen days; no booking inside them (the member sees 409 `booking.no_valid_pass`);
+         *     bookings already made inside the period stay (C-11). A punch card answers 409 `pass.not_freezable` (C-12);
+         *     overlapping another freeze answers 409 `pass.freeze_overlap`. The member gets an inbox item `pass.frozen`.
+         */
+        post: operations["freezePass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/passes/{passId}/freezes/{freezeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+                freezeId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a freeze that has not started; validity shrinks back (`passes.manage`)
+         * @description A freeze that already started stays (409 `pass.freeze_started`).
+         */
+        delete: operations["unfreezePass"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2351,6 +2453,23 @@ export interface components {
              */
             sessionId: string;
         };
+        SendSessionMessageRequest: {
+            /**
+             * @example החדר הוחלף לאולם הגדול
+             * @example להביא מגבת
+             */
+            text: string;
+        };
+        SessionMessage: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sessionId: string;
+            /** @description How many booked and waiting people got it. */
+            recipients: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
         CancelBookingRequest: {
             /** @description Staff only (`bookings.manage`), return the entry on a late cancellation. */
             returnEntry?: boolean;
@@ -2461,6 +2580,28 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             version: string;
+            /** @description Frozen periods of a membership, in start order (docs/29 section 16.4); empty for a punch card. Always sent; optional here so sample data without it still types. */
+            freezes?: components["schemas"]["PassFreeze"][];
+        };
+        PassFreeze: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+        };
+        FreezePassRequest: {
+            /**
+             * Format: date
+             * @description Studio date, today or later.
+             */
+            startsOn: string;
+            /**
+             * Format: date
+             * @description Inclusive; at most 90 days after startsOn.
+             */
+            endsOn: string;
         };
         PassList: {
             items: components["schemas"]["Pass"][];
@@ -2497,8 +2638,10 @@ export interface components {
              * @example booking.promoted
              * @example booking.promotion_failed
              * @example booking.moved
+             * @example session.message
              * @example session.cancelled
              * @example waitlist.expired
+             * @example pass.frozen
              */
             kind: string;
             /** @description Ids only. */
@@ -2507,11 +2650,15 @@ export interface components {
                 sessionId?: string;
                 /** Format: uuid */
                 bookingId?: string;
+                /** Format: uuid */
+                passId?: string;
             };
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             readAt?: string | null;
+            /** @description For `session.message`, the staff message (docs/29 section 16.2); null for every other kind. */
+            text?: string | null;
             /** @description The class the notice is about, so a list needs no extra request; null when it has none. */
             session?: {
                 /** Format: uuid */
@@ -4714,6 +4861,39 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    sendSessionMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendSessionMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionMessage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     createBooking: {
         parameters: {
             query?: never;
@@ -4871,6 +5051,32 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getBookingCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calendar file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -5057,6 +5263,68 @@ export interface operations {
             path: {
                 organizationId: components["parameters"]["OrganizationId"];
                 passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    freezePass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezePassRequest"];
+            };
+        };
+        responses: {
+            /** @description Frozen; the pass with its freezes. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    unfreezePass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+                freezeId: string;
             };
             cookie?: never;
         };

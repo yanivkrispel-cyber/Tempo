@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "react-router";
-import { Chip, EmptyState, Icon, IconButton, type ChipTone, type IconName } from "../../shared/design-system";
+import { useNavigate } from "react-router";
+import { Card, Chip, EmptyState, Icon, IconButton, type ChipTone, type IconName } from "../../shared/design-system";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import { metaLine } from "./passText";
@@ -123,11 +123,13 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
   return (
     <li>
       {sessionId ? (
-        <Link to={`/classes/${sessionId}`} className={`tp-card tp-card--sm ${styles.notice}`} onClick={read}>
+        <Card small to={`/classes/${sessionId}`} className={styles.notice} onClick={read}>
           {content}
-        </Link>
+        </Card>
       ) : (
-        <div className={`tp-card tp-card--sm ${styles.notice}`}>{content}</div>
+        <Card small className={styles.notice}>
+          {content}
+        </Card>
       )}
     </li>
   );

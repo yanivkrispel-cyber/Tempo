@@ -174,6 +174,12 @@ interface RosterRowProps {
   onMove?: () => void;
 }
 
+/** What is left on the punch card after this place, so the desk can offer a new card before it runs out. */
+function entriesLeftText(left: number): string {
+  if (left === 0) return "לא נותרו כניסות";
+  return left === 1 ? "נותרה כניסה אחת" : `נותרו ${left} כניסות`;
+}
+
 function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowProps) {
   const studio = useStudio();
   const name = entry.person.displayName;
@@ -200,6 +206,9 @@ function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowPro
           </span>
         </span>
         {entry.passName && <Chip tone="neutral">{entry.passName}</Chip>}
+        {entry.entriesLeft != null && (
+          <Chip tone={entry.entriesLeft <= 1 ? "warning" : "neutral"}>{entriesLeftText(entry.entriesLeft)}</Chip>
+        )}
       </span>
       <span className="tp-row" style={{ gap: 8 }}>
         {markable ? (

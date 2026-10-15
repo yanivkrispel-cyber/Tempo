@@ -27,7 +27,6 @@ import {
   endTime,
   memberName,
   scheduleKeys,
-  useClassTypes,
   useInstructors,
   useRooms,
   useTemplates,
@@ -47,9 +46,6 @@ export function TemplatesPage() {
 function Templates({ timeZone }: { timeZone: string }) {
   const today = todayIn(timeZone);
   const templates = useTemplates();
-  const classTypes = useClassTypes();
-  const rooms = useRooms();
-  const instructors = useInstructors();
   const [show, setShow] = useState<"current" | "ended">("current");
   const [editing, setEditing] = useState<ScheduleTemplate | null>(null);
   const [ending, setEnding] = useState<ScheduleTemplate | null>(null);
@@ -59,13 +55,6 @@ function Templates({ timeZone }: { timeZone: string }) {
   const rows = (templates.data ?? [])
     .filter((template) => (show === "ended") === ended(template))
     .sort((a, b) => a.weekday - b.weekday || a.localStart.localeCompare(b.localStart));
-  const typeName = (id: string) => classTypes.data?.find((item) => item.id === id)?.name ?? "—";
-  const roomName = (id: string | null | undefined) =>
-    id ? (rooms.data?.find((item) => item.id === id)?.name ?? "—") : "—";
-  const instructorName = (id: string | null | undefined) => {
-    const member = id ? instructors.data?.find((item) => item.id === id) : undefined;
-    return member ? memberName(member) : "—";
-  };
   const onChanged = (change: TemplateChange) => setUntouched(change.untouchedSessions);
 
   return (
@@ -130,7 +119,7 @@ function Templates({ timeZone }: { timeZone: string }) {
             </thead>
             <tbody>
               {rows.map((template) => {
-                const label = `${typeName(template.classTypeId)} ביום ${weekdayNames[template.weekday]} ${template.localStart}`;
+                const label = `${template.classType.name} ביום ${weekdayNames[template.weekday]} ${template.localStart}`;
                 return (
                   <tr key={template.id}>
                     <td>
@@ -139,9 +128,11 @@ function Templates({ timeZone }: { timeZone: string }) {
                         {template.localStart} עד {endTime(template.localStart, template.minutes)}
                       </span>
                     </td>
-                    <td>{typeName(template.classTypeId)}</td>
-                    <td>{instructorName(template.instructorMembershipId)}</td>
-                    <td>{roomName(template.roomId)}</td>
+                    <td>
+                      <bdi>{template.classType.name}</bdi>
+                    </td>
+                    <td>{template.instructor ? <bdi>{template.instructor.displayName}</bdi> : "—"}</td>
+                    <td>{template.room ? <bdi>{template.room.name}</bdi> : "—"}</td>
                     <td className="tp-num">{template.capacity}</td>
                     <td className="tp-num">
                       {template.validUntil ? (
@@ -185,7 +176,7 @@ function Templates({ timeZone }: { timeZone: string }) {
       {editing && (
         <EditTemplateDialog
           template={editing}
-          title={typeName(editing.classTypeId)}
+          title={editing.classType.name}
           onChanged={onChanged}
           onClose={() => setEditing(null)}
         />
@@ -193,7 +184,7 @@ function Templates({ timeZone }: { timeZone: string }) {
       {ending && (
         <EndTemplateDialog
           template={ending}
-          title={typeName(ending.classTypeId)}
+          title={ending.classType.name}
           today={today}
           onChanged={onChanged}
           onClose={() => setEnding(null)}

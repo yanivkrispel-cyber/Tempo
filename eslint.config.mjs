@@ -1,4 +1,4 @@
-// ESLint 9 flat config for the frontend workspaces (apps/*, packages/*).
+// ESLint 9 flat config for the frontend workspaces (apps/*, packages/*, tests/e2e).
 // Each workspace runs `eslint .` from its own folder; this root file is found by walking up.
 // The infrastructure workspace keeps its own `tsc --noEmit` lint and is not covered here.
 import js from "@eslint/js";
@@ -18,6 +18,11 @@ export default tseslint.config(
       "packages/api-client/src/generated/**",
       "infrastructure/**",
       "backend/**",
+      // Playwright output and the signed-in browser state (tests/e2e/.gitignore).
+      "tests/e2e/.auth/**",
+      "tests/e2e/test-results/**",
+      "tests/e2e/playwright-report/**",
+      "tests/e2e/blob-report/**",
     ],
   },
   js.configs.recommended,
@@ -45,6 +50,13 @@ export default tseslint.config(
   {
     // Node scripts and tool configs.
     files: ["**/*.{js,mjs,cjs}", "**/vite.config.ts", "**/vitest.config.ts"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+  {
+    // The Playwright suite and its config run in Node.
+    files: ["tests/e2e/**/*.ts"],
     languageOptions: {
       globals: { ...globals.node },
     },

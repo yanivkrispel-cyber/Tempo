@@ -519,11 +519,11 @@ One PR each, in order, chained where they depend on each other:
 
 ## 16. After the skeleton: moves, messages, calendar files, freezes
 
-Added on the night of 2026-10-15 (board #136, lane K-A, items A2 to A5). Each is one PR, in this order, after A1
-(the contract gaps the console screens found). Everything here keeps the rules above: ids only in audit, the
+Added on the night of 2026-10-15 (board #136, lane K-A, items A2 to A5) and shipped the same night, one PR each, after A1 (#148,
+the contract gaps the console screens found). Everything here keeps the rules above: ids only in audit, the
 tenant filter on every statement, guarded updates for places and entries, no new paid resource.
 
-### 16.1 Moving a booking to another class (A2)
+### 16.1 Moving a booking to another class (A2, shipped in #154)
 
 Staff with `bookings.manage` move a `booked` place to another session of the same studio:
 `POST /bookings/{bookingId}/move` with `{ sessionId }`, answer 200 with the **new** `Booking`.
@@ -541,7 +541,7 @@ Staff with `bookings.manage` move a `booked` place to another session of the sam
   an inbox item of kind `booking_moved` with the new session.
 - A member cannot move their own booking in this step (C-9).
 
-### 16.2 A message to everyone registered (A3)
+### 16.2 A message to everyone registered (A3, shipped in #156)
 
 Staff with `bookings.manage`, or the session's instructor (section 6.4), send one short text to a class:
 `POST /sessions/{sessionId}/messages` with `{ text }` (1 to 500 characters after trimming), answer 202 with
@@ -555,7 +555,7 @@ Staff with `bookings.manage`, or the session's instructor (section 6.4), send on
 - At most 5 messages per session per hour (409 `session.message_limit`), so a stuck button cannot flood a class.
 - A session that is `cancelled` or ended more than a day ago answers 409 `booking.closed`.
 
-### 16.3 Add to calendar (A4)
+### 16.3 Add to calendar (A4, shipped in #157)
 
 `GET /me/bookings/{bookingId}/calendar.ics` (self; the booking must be `booked` or `attended`, otherwise 404)
 returns `text/calendar; charset=utf-8` with one `VEVENT`:
@@ -567,14 +567,14 @@ returns `text/calendar; charset=utf-8` with one `VEVENT`:
   apps open it with `Content-Disposition: attachment; filename="tempo-{localDate}.ics"`.
 - Cancelling the booking does not update the calendar entry (no `METHOD:CANCEL` without email, docs/30).
 
-### 16.4 Freezing a membership (A5)
+### 16.4 Freezing a membership (A5, shipped in #158)
 
 Staff with `passes.manage` freeze a period membership (`kind = membership`) for a date range:
 `POST /passes/{passId}/freezes` with `{ startsOn, endsOn }` (studio dates, inclusive, at most 90 days, the start no
 earlier than today), answer 201 with the `Pass` carrying its `freezes`. `DELETE /passes/{passId}/freezes/{freezeId}`
 removes a freeze that has not started yet.
 
-- Migration 0011 adds `scheduling.pass_freezes (organization_id, id, pass_id, starts_on, ends_on, created_by,
+- Migration 0012 adds `scheduling.pass_freezes (organization_id, id, pass_id, starts_on, ends_on, created_by,
   created_at)` with RLS, and `passes.ends_on` is extended by the frozen days when the freeze is created (and
   shortened back on delete). `endsOn` stays the single truth for validity, so `GET /me/passes` and section 5.3 keep
   working without a new rule.

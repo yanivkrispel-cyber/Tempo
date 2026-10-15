@@ -20,6 +20,8 @@ public static class PassEndpoints
         tenant.MapGet("/people/{personId:guid}/passes", ListForPersonAsync).RequirePermission(Permissions.PassesView).WithName("listPersonPasses").Produces<PassListResponse>();
         tenant.MapPost("/people/{personId:guid}/passes", GrantAsync).RequirePermission(Permissions.PassesManage).WithName("grantPass").Produces<PassResponse>(StatusCodes.Status201Created);
         tenant.MapPost("/passes/{passId:guid}/void", VoidAsync).RequirePermission(Permissions.PassesManage).WithName("voidPass").Produces<PassResponse>();
+        tenant.MapPost("/passes/{passId:guid}/freezes", FreezeAsync).RequirePermission(Permissions.PassesManage).WithName("freezePass").Produces<PassResponse>(StatusCodes.Status201Created);
+        tenant.MapDelete("/passes/{passId:guid}/freezes/{freezeId:guid}", UnfreezeAsync).RequirePermission(Permissions.PassesManage).WithName("unfreezePass").Produces<PassResponse>();
         tenant.MapGet("/me/passes", ListMineAsync).RequirePermission(Permissions.ScheduleView).WithName("listMyPasses").Produces<PassListResponse>();
 
         return endpoints;
@@ -59,6 +61,16 @@ public static class PassEndpoints
     private static async Task<IResult> VoidAsync(HttpContext httpContext, Guid passId, IPassService passes) =>
         Results.Ok(ToResponse(await passes.VoidAsync(TenantRouteFilter.Current(httpContext), passId, httpContext.RequestAborted)));
 
+    private static async Task<IResult> FreezeAsync(HttpContext httpContext, Guid passId, FreezePassRequest request, IPassService passes)
+    {
+        var tenant = TenantRouteFilter.Current(httpContext);
+        var frozen = await passes.FreezeAsync(tenant, passId, new NewFreeze(request.StartsOn, request.EndsOn), httpContext.RequestAborted);
+        return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/passes/{passId}", ToResponse(frozen));
+    }
+
+    private static async Task<IResult> UnfreezeAsync(HttpContext httpContext, Guid passId, Guid freezeId, IPassService passes) =>
+        Results.Ok(ToResponse(await passes.UnfreezeAsync(TenantRouteFilter.Current(httpContext), passId, freezeId, httpContext.RequestAborted)));
+
     internal static PassProductResponse ToResponse(PassProductView p) =>
         new(p.Id, p.Kind, p.Name, p.Entries, p.ValidDays, p.WeeklyCap, p.ClassCategory, p.PriceAgorot, p.Status, p.Version.ToString(CultureInfo.InvariantCulture));
 
@@ -75,5 +87,6 @@ public static class PassEndpoints
             p.Note,
             p.Status,
             p.CreatedAt,
-            p.Version.ToString(CultureInfo.InvariantCulture));
+            p.Version.ToString(CultureInfo.InvariantCulture),
+            [.. (p.Freezes ?? []).Select(f => new PassFreezeResponse(f.Id, f.StartsOn, f.EndsOn))]);
 }

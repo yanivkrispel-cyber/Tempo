@@ -131,6 +131,9 @@ public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatform
         var before = await FindAsync(unitOfWork, organizationId, cancellationToken);
         if (before.Status == status)
         {
+            // Nothing changes, but the operator still saw the studio's view (owner email included): audited (#124).
+            await AuditAsync(unitOfWork, caller, "organization.viewed_by_operator", organizationId, null, cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
             return before;
         }
 
@@ -143,7 +146,8 @@ public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatform
         }
 
         var action = status == OrganizationStatus.Suspended ? "organization.suspended" : "organization.reactivated";
-        await AuditAsync(unitOfWork, caller, action, organizationId, new { reason }, cancellationToken);
+        var noteId = await NoteAsync(unitOfWork, caller, organizationId, action, reason, null, cancellationToken);
+        await AuditAsync(unitOfWork, caller, action, organizationId, new { noteId }, cancellationToken);
         var after = await FindAsync(unitOfWork, organizationId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return after;
@@ -208,7 +212,8 @@ public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatform
         // A studio always has an owner (ux_memberships_one_owner and the owner cannot leave).
         var fromId = ownerId ?? throw new InvalidOperationException($"Studio {organizationId} has no owner.");
         await OwnershipService.HandOverAsync(unitOfWork, organizationId, fromId, toMembershipId, null, cancellationToken);
-        await AuditAsync(unitOfWork, caller, "ownership.transferred_by_operator", organizationId, new { from = fromId, to = toMembershipId, reason, ticket }, cancellationToken);
+        var noteId = await NoteAsync(unitOfWork, caller, organizationId, "ownership.transferred_by_operator", reason, ticket, cancellationToken);
+        await AuditAsync(unitOfWork, caller, "ownership.transferred_by_operator", organizationId, new { from = fromId, to = toMembershipId, noteId }, cancellationToken);
         var after = await FindAsync(unitOfWork, organizationId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return after;
@@ -249,6 +254,20 @@ public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatform
             reader.GetString(6),
             await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetString(7),
             new MemberCounts((int)reader.GetInt64(8), (int)reader.GetInt64(9), (int)reader.GetInt64(10), (int)reader.GetInt64(11)));
+
+    /// <summary>
+    /// The operator's free text (reason, ticket) goes to platform_admin.operator_notes, which only the platform
+    /// role reads; the studio's audit log, which its owners and admins read, carries the note's id (#124).
+    /// </summary>
+    private static async Task<Guid> NoteAsync(UnitOfWork unitOfWork, OperatorContext caller, Guid organizationId, string action, string reason, string? ticket, CancellationToken cancellationToken)
+    {
+        var id = Guid.CreateVersion7();
+        await using var insert = unitOfWork.Command(
+            "INSERT INTO platform_admin.operator_notes (id, organization_id, operator_id, action, reason, ticket, created_at) VALUES ($1, $2, $3, $4, $5, $6, now())",
+            id, organizationId, caller.OperatorId, action, reason, ticket);
+        await insert.ExecuteNonQueryAsync(cancellationToken);
+        return id;
+    }
 
     private static Task AuditAsync(UnitOfWork unitOfWork, OperatorContext caller, string action, Guid organizationId, object? data, CancellationToken cancellationToken) =>
         AuditWriter.WriteAsync(

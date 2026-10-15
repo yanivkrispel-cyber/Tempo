@@ -43,6 +43,18 @@ public sealed class PassSelectionTests
         PassSelection.WeekStart(Tuesday).Should().Be(new DateOnly(2026, 10, 18));
     }
 
-    private static PassCandidate Pass(string name, string kind, DateOnly ends, int? entries = null, int used = 0, int? cap = null, string? category = null, DateOnly[]? held = null) =>
-        new(Guid.NewGuid(), name, kind, Tuesday.AddDays(-30), ends, entries, used, cap, category, held ?? []);
+    [Fact]
+    public void AFrozenMembership_BooksNothingInsideTheFrozenDays()
+    {
+        // docs/29 section 16.4: frozen from Monday to Wednesday; Tuesday is out, Thursday is fine.
+        var frozen = Pass("frozen", "membership", ends: Tuesday.AddDays(20), freezes: [(Tuesday.AddDays(-1), Tuesday.AddDays(1))]);
+        var card = Pass("card", "punch_card", ends: Tuesday.AddDays(60), entries: 10);
+
+        PassSelection.Pick([frozen], Tuesday, "pilates").Should().BeNull();
+        PassSelection.Pick([frozen, card], Tuesday, "pilates")!.Name.Should().Be("card", "the card steps in while the membership is frozen");
+        PassSelection.Pick([frozen], Tuesday.AddDays(2), "pilates").Should().NotBeNull();
+    }
+
+    private static PassCandidate Pass(string name, string kind, DateOnly ends, int? entries = null, int used = 0, int? cap = null, string? category = null, DateOnly[]? held = null, (DateOnly From, DateOnly To)[]? freezes = null) =>
+        new(Guid.NewGuid(), name, kind, Tuesday.AddDays(-30), ends, entries, used, cap, category, held ?? [], freezes);
 }
