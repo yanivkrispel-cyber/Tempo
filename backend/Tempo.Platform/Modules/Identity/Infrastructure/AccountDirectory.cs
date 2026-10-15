@@ -10,7 +10,7 @@ public sealed class AccountDirectory(IDataSourceProvider dataSources) : IAccount
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, null, null, cancellationToken);
         await using var command = unitOfWork.Command(
             """
-            SELECT a.id, a.status, a.email_verified
+            SELECT a.id, a.status, a.email_verified, a.mfa_enabled
             FROM identity.external_identities e
             JOIN identity.user_accounts a ON a.id = e.user_account_id
             WHERE e.issuer = $1 AND e.subject = $2
@@ -23,6 +23,6 @@ public sealed class AccountDirectory(IDataSourceProvider dataSources) : IAccount
             return null;
         }
 
-        return new AccountSnapshot(reader.GetGuid(0), StoredValue.Parse<AccountStatus>(reader.GetString(1)), reader.GetBoolean(2));
+        return new AccountSnapshot(reader.GetGuid(0), StoredValue.Parse<AccountStatus>(reader.GetString(1)), reader.GetBoolean(2), reader.GetBoolean(3));
     }
 }

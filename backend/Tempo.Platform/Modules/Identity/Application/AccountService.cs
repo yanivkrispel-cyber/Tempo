@@ -13,7 +13,8 @@ public sealed record AccountView(Guid Id, string Email, bool EmailVerified, stri
 public sealed record SignIn(string Issuer, string Subject, string Username, DateTimeOffset? AuthTime, string CorrelationId);
 
 /// <summary>What Cognito knows about the user. Access tokens carry no email, so it is read with AdminGetUser.</summary>
-public sealed record CognitoUser(string Email, bool EmailVerified);
+/// <summary>What AdminGetUser tells about a user; <paramref name="MfaEnabled"/> means at least one MFA method is set up.</summary>
+public sealed record CognitoUser(string Email, bool EmailVerified, bool MfaEnabled = false);
 
 public interface ICognitoUserReader
 {
@@ -126,12 +127,13 @@ public sealed class AccountService(IDataSourceProvider dataSources, ICognitoUser
 
         await using (var account = unitOfWork.Command(
             """
-            INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at)
-            VALUES ($1, 'active', $2, $3, now(), now(), now())
+            INSERT INTO identity.user_accounts (id, status, email, email_verified, mfa_enabled, identity_synced_at, created_at, updated_at)
+            VALUES ($1, 'active', $2, $3, $4, now(), now(), now())
             """,
             accountId,
             user.Email,
-            user.EmailVerified))
+            user.EmailVerified,
+            user.MfaEnabled))
         {
             await account.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -162,12 +164,13 @@ public sealed class AccountService(IDataSourceProvider dataSources, ICognitoUser
         await using var command = unitOfWork.Command(
             """
             UPDATE identity.user_accounts
-            SET email = $2, email_verified = $3, identity_synced_at = now(), updated_at = now(), version = version + 1
+            SET email = $2, email_verified = $3, mfa_enabled = $4, identity_synced_at = now(), updated_at = now(), version = version + 1
             WHERE id = $1
             """,
             account.Id,
             user.Email,
-            user.EmailVerified);
+            user.EmailVerified,
+            user.MfaEnabled);
         await command.ExecuteNonQueryAsync(cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return account with { Email = user.Email, EmailVerified = user.EmailVerified };
