@@ -124,7 +124,8 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await MembershipQueries.AuditAsync(unitOfWork, tenant.OrganizationId, tenant.UserAccountId, "invitation.created", "invitation", invitationId, tenant.CorrelationId, new { email, role = StoredValue.Of(role) }, cancellationToken);
+        // Audit keeps ids only (docs/27 section 4.7): the email lives on the invitation row, which erase scrubs.
+        await MembershipQueries.AuditAsync(unitOfWork, tenant.OrganizationId, tenant.UserAccountId, "invitation.created", "invitation", invitationId, tenant.CorrelationId, new { role = StoredValue.Of(role), personId }, cancellationToken);
         var created = (await ReadAsync(unitOfWork, tenant.OrganizationId, invitationId, cancellationToken))!;
         await unitOfWork.CommitAsync(cancellationToken);
 

@@ -122,6 +122,25 @@ public sealed class PersonLifecycleServiceTests(PostgresFixture postgres) : ICla
     }
 
     [Fact]
+    public async Task Erase_RevokesThePendingInvitation_AndScrubsItsEmail()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var people = new PeopleService(db);
+        var walkIn = await people.CreateAsync(owner, new NewPerson("Dana", null, null, null, null, "050-2345678"), CancellationToken.None);
+        var invitations = new InvitationService(db, new AccountProfiles(db), new AttemptLimiter(db));
+        var invite = await invitations.CreateAsync(owner, "dana@example.com", MembershipRole.Client, CancellationToken.None, walkIn.Person.Id);
+
+        await new PersonLifecycleService(db, TimeProvider.System).EraseAsync(owner, walkIn.Person.Id, "Asked to be forgotten", CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT status FROM organizations.invitations WHERE id = $1", invite.Invitation.Id) as string).Should().Be("revoked");
+        (await db.AsMasterAsync("SELECT email FROM organizations.invitations WHERE id = $1", invite.Invitation.Id) as string).Should().EndWith("@invalid");
+        (await db.AsMasterAsync("SELECT string_agg(data::text, ' ') FROM audit.audit_events WHERE organization_id = $1", owner.OrganizationId) as string)
+            .Should().NotContain("dana@example.com", "audit keeps ids only");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'invitation.revoked' AND target_id = $1", invite.Invitation.Id)).Should().Be(1L);
+    }
+
+    [Fact]
     public async Task Export_HoldsTheRecordAndTheFullConsentHistory()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

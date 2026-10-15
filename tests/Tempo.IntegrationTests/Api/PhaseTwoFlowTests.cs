@@ -110,6 +110,8 @@ public sealed class PhaseTwoFlowTests(PostgresFixture postgres) : IClassFixture<
         var actions = audit.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("action").GetString()).ToList();
         actions.Should().Contain(["person.created", "consent.recorded", "ownership.transferred", "person.merged", "person.exported", "membership.role_changed"]);
         audit.GetRawText().Should().NotContain("+972").And.NotContain("yoav@example.com");
+        // The stored data keeps ids only; the actor's name is joined from the account when the log is read.
+        string.Join(' ', audit.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("data").GetRawText())).Should().NotContain("dana@example.com");
     }
 
     private async Task<Guid> JoinByInvitationAsync(HttpClient client, string studioPath, string subject, string role)
