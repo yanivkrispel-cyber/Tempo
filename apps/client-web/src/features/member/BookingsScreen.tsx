@@ -13,6 +13,7 @@ import {
 import { bookingFor, useBookings, useClasses, useHistory, useProfile, useToday } from "./data";
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
+import { StudioNotices } from "./StudioNotices";
 
 type View = "upcoming" | "history";
 
@@ -43,6 +44,7 @@ export function BookingsScreen() {
         <span className="tp-eyebrow">{profile.data.name}</span>
         <h1 className={styles.title}>ההזמנות שלי</h1>
       </header>
+      <StudioNotices />
 
       <Tabs
         block

@@ -45,7 +45,7 @@ public sealed record CreateScheduleTemplateRequest(
 
 public sealed record ScheduleTemplateChangeResponse(ScheduleTemplateResponse Template, IReadOnlyList<SessionResponse> UntouchedSessions);
 
-public sealed record SessionClassTypeResponse(Guid Id, string Name, string Category, string Color);
+public sealed record SessionClassTypeResponse(Guid Id, string Name, string Category, string Color, string? Description = null);
 
 public sealed record InstructorResponse(Guid MembershipId, string DisplayName);
 
@@ -135,7 +135,8 @@ public sealed record BookingResponse(
     string? CancelReason,
     PassSummaryResponse? Pass,
     DateTimeOffset CreatedAt,
-    string Version);
+    string Version,
+    string? CancelledFrom = null);
 
 /// <summary>`MyBooking`: a booking with its session.</summary>
 public sealed record MyBookingResponse(
@@ -149,7 +150,8 @@ public sealed record MyBookingResponse(
     PassSummaryResponse? Pass,
     DateTimeOffset CreatedAt,
     string Version,
-    SessionResponse Session);
+    SessionResponse Session,
+    string? CancelledFrom = null);
 
 public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Items, Guid? NextBefore);
 
@@ -172,6 +174,8 @@ public sealed record BookingPolicyInput(int? FreeCancelHours, int? WaitlistCutof
 public sealed record InboxItemDataResponse(Guid? SessionId, Guid? BookingId);
 
 /// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
-public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);
+public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);
+
+public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null);
 
 public sealed record InboxPageResponse(IReadOnlyList<InboxItemResponse> Items, int UnreadCount, Guid? NextBefore);

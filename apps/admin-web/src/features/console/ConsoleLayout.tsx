@@ -3,7 +3,9 @@ import { consoleStudios, membershipRoleName, permissionsOf, useAccount } from ".
 import { useAuth } from "../../auth/AuthProvider";
 import { Button, ButtonLink, EmptyState, Icon, type IconName } from "../../shared/design-system";
 import { IncomingTransferBanner } from "../ownership/Ownership";
+import { securityPath } from "../security/SecurityPage";
 import styles from "./console.module.css";
+import { ConsoleNotices } from "./ConsoleNotices";
 import { StudioContext, type Studio } from "./studio";
 
 interface Section {
@@ -95,12 +97,16 @@ export function ConsoleLayout() {
                 החלפת סטודיו
               </ButtonLink>
             )}
+            <ButtonLink to={securityPath} variant="ghost" size="sm" icon="shield">
+              אבטחת החשבון
+            </ButtonLink>
             <Button variant="ghost" size="sm" icon="log-out" onClick={() => client?.signOut()}>
               התנתקות
             </Button>
           </div>
         </aside>
         <div className={styles.content}>
+          <ConsoleNotices />
           <IncomingTransferBanner />
           <Outlet />
         </div>

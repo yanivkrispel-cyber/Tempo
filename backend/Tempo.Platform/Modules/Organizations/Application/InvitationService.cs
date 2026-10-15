@@ -218,6 +218,10 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         var (organizationId, invitationId, _, _, _, _) = found.Value;
         await unitOfWork.SetTenantAsync(caller.UserAccountId, organizationId, cancellationToken);
         var invitation = (await ReadAsync(unitOfWork, organizationId, invitationId, cancellationToken))!;
+        if (!await MembershipQueries.InviterStillMayInviteAsync(unitOfWork, organizationId, invitationId, cancellationToken))
+        {
+            throw InvitationNotFound();
+        }
 
         string? studioName;
         await using (var studio = unitOfWork.Command("SELECT display_name FROM organizations.organizations WHERE id = $1 AND status = 'active'", organizationId))
@@ -271,6 +275,12 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             throw new DomainRuleViolationException(ViolationKind.Gone, "invitation.expired", "This invitation has expired. Ask for a new one.");
         }
 
+        // The inviter was removed, suspended or demoted after sending it (#121): the same answer as a revoked one.
+        if (!await MembershipQueries.InviterStillMayInviteAsync(unitOfWork, organizationId, invitationId, cancellationToken))
+        {
+            throw InvitationNotFound();
+        }
+
         Guid? personId;
         await using (var person = unitOfWork.Command("SELECT person_id FROM organizations.invitations WHERE organization_id = $1 AND id = $2", organizationId, invitationId))
         {
@@ -281,7 +291,9 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         await using (var accept = unitOfWork.Command(
             """
             UPDATE organizations.invitations
-            SET status = 'accepted', accepted_membership_id = $3, updated_at = now(), version = version + 1
+            SET status = 'accepted', accepted_membership_id = $3, updated_at = now(), version = version + 1,
+                -- An invitation sent by email alone points at the person it created or found, so erase reaches it (#101).
+                person_id = coalesce(person_id, (SELECT p.id FROM people.people p WHERE p.organization_id = $1 AND p.membership_id = $3))
             WHERE organization_id = $1 AND id = $2
             """,
             organizationId,

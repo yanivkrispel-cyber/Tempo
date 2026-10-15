@@ -16,10 +16,12 @@ export interface AppProps {
   apiUrl?: string;
   /** Tests pass a stub for the API. */
   fetch?: typeof globalThis.fetch;
+  /** Tests pass one to look into the cache. */
+  queryClient?: QueryClient;
 }
 
-export function App({ router, auth, apiUrl = "", fetch }: AppProps) {
-  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1 } } }));
+export function App({ router, auth, apiUrl = "", fetch, queryClient: given }: AppProps) {
+  const [queryClient] = useState(() => given ?? new QueryClient({ defaultOptions: { queries: { retry: 1 } } }));
 
   return (
     <AuthProvider client={auth}>

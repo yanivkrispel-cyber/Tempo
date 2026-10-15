@@ -16,6 +16,9 @@ How it moves:
 
 | Kind | Agent | PR | Example (file:line) |
 |---|---|---|---|
+| Focus lost when a card or panel closes (focus should move to a stable heading) | standards-reviewer | #127 | `apps/admin-web/src/features/security/SecurityPage.tsx` (enroll card closing) |
+| Field error text is a fragment, not an instruction ("6 ספרות מהאפליקציה") | standards-reviewer | #127 | `apps/admin-web/src/features/security/SecurityPage.tsx` (code field error) |
+| Studio mutation without a `mutationKey` holding the studio id, so frame banners miss its 402/403 (issue #131) | standards-reviewer | #127 | `apps/admin-web/src/features/members/MemberDialogs.tsx` (`useUpdateMember`) |
 | Typographic dash or symbol in Hebrew UI text where the brand book writes words ("17:30–18:20" for "17:30 עד 18:20") | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/TemplatesPage.tsx:133` |
 | A failed request shown as an empty result ("לא נמצא אף אחד" on a search error) | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/RosterSection.tsx:413` |
 | A feature importing another feature's private module instead of `src/shared` | standards-reviewer | #129 | `apps/admin-web/src/features/passes/PassProductsPage.tsx:21` |

@@ -141,6 +141,49 @@ public sealed class PersonLifecycleServiceTests(PostgresFixture postgres) : ICla
     }
 
     [Fact]
+    public async Task Erase_ScrubsAnInvitationSentByEmailOnly_OnceItWasAccepted()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var invitations = new InvitationService(db, new AccountProfiles(db), new AttemptLimiter(db));
+        var invite = await invitations.CreateAsync(owner, "gal@example.com", MembershipRole.Client, CancellationToken.None);
+        var account = await AccountAsync(db, "gal@example.com");
+        await invitations.AcceptAsync(new AccountSnapshot(account, AccountStatus.Active, true), invite.Token, "c", CancellationToken.None);
+        var people = new PeopleService(db);
+        var record = (await people.ListAsync(owner, new PeopleQuery("gal@example.com", null, null, 10), CancellationToken.None)).Items.Single();
+        (await db.AsMasterAsync("SELECT person_id FROM organizations.invitations WHERE id = $1", invite.Invitation.Id)).Should().Be(record.Id, "accepting links the invitation to the person");
+
+        await new PersonLifecycleService(db, TimeProvider.System).EraseAsync(owner, record.Id, "Asked to be forgotten", CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT count(*) FROM organizations.invitations WHERE organization_id = $1 AND email = 'gal@example.com'", owner.OrganizationId)).Should().Be(0L);
+    }
+
+    [Fact]
+    public async Task Merge_MovesInvitationsToTheSurvivor_RevokesPendingOnes_AndEraseScrubsThem()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var people = new PeopleService(db);
+        var keep = await people.CreateAsync(owner, new NewPerson("Noa Levi", null, null, null, null, "050-2345678"), CancellationToken.None);
+        var drop = await people.CreateAsync(owner, new NewPerson("Noa L", null, null, null, null, "0502345678"), CancellationToken.None);
+        var invitations = new InvitationService(db, new AccountProfiles(db), new AttemptLimiter(db));
+        var invite = await invitations.CreateAsync(owner, "noa@example.com", MembershipRole.Client, CancellationToken.None, drop.Person.Id);
+        var lifecycle = new PersonLifecycleService(db, TimeProvider.System);
+        var candidate = (await lifecycle.ListCandidatesAsync(owner, null, null, 10, CancellationToken.None)).Items.Single();
+
+        await lifecycle.ResolveAsync(owner, candidate.Id, "merge", keep.Person.Id, CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT person_id FROM organizations.invitations WHERE id = $1", invite.Invitation.Id)).Should().Be(keep.Person.Id);
+        (await db.AsMasterAsync("SELECT status FROM organizations.invitations WHERE id = $1", invite.Invitation.Id)).Should().Be("revoked");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'invitation.revoked' AND target_id = $1 AND data->>'reason' = 'person_merged'", invite.Invitation.Id))
+            .Should().Be(1L);
+
+        await lifecycle.EraseAsync(owner, keep.Person.Id, "Asked to be forgotten", CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT email FROM organizations.invitations WHERE id = $1", invite.Invitation.Id) as string).Should().EndWith("@invalid");
+    }
+
+    [Fact]
     public async Task Export_HoldsTheRecordAndTheFullConsentHistory()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

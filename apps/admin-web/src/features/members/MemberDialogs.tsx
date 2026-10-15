@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState } from "react";
 import { useLocation } from "react-router";
-import { roleName } from "../../account/account";
+import { roleName, rolesLabel } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
@@ -92,7 +92,7 @@ export function RoleDialog({
       open
       onClose={onClose}
       title="שינוי תפקיד"
-      description={`התפקיד הנוכחי של ${nameOfMember(member)}: ${roleName(member.role)}.`}
+      description={`התפקיד הנוכחי של ${nameOfMember(member)}: ${rolesLabel(member.roles)}.`}
       actions={
         <>
           <Button variant="secondary" onClick={onClose}>

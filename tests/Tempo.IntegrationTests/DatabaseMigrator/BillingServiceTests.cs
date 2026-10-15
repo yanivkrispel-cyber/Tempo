@@ -114,6 +114,10 @@ public sealed class BillingServiceTests(PostgresFixture postgres) : IClassFixtur
         (await second.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("entitlement.limit_reached");
         await invitations.CreateAsync(owner, "client@example.com", MembershipRole.Client, CancellationToken.None);
 
+        // An expired invitation no longer holds a seat (review on #105).
+        await db.AsMasterAsync("UPDATE organizations.invitations SET expires_at = now() - interval '1 day' WHERE email = 'staff@example.com'");
+        await invitations.CreateAsync(owner, "admin@example.com", MembershipRole.Admin, CancellationToken.None);
+
         var mine = (await new MembershipDirectory(db).ListForAccountAsync(owner.UserAccountId, CancellationToken.None)).Single();
         mine.SubscriptionState.Should().Be("active");
         mine.EntitlementsJson.Should().Contain("\"staff.max\": 2").And.Contain("\"rooms.max\": 20");

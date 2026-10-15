@@ -68,10 +68,27 @@ describe.each([
     expect(covered.some((arn) => arn.includes(aclId))).toBe(true);
   });
 
-  it("uses only managed cache and origin request policies, which the Free plan requires", () => {
+  it("uses only managed cache, origin request and response header policies, which the Free plan requires", () => {
     template.resourceCountIs("AWS::CloudFront::CachePolicy", 0);
     template.resourceCountIs("AWS::CloudFront::OriginRequestPolicy", 0);
     template.resourceCountIs("AWS::CloudFront::ResponseHeadersPolicy", 0);
+  });
+
+  it("serves the apps with the managed security headers and a Content-Security-Policy function (#133)", () => {
+    const distribution = Object.values(template.findResources("AWS::CloudFront::Distribution"))[0];
+    const app = distribution.Properties.DistributionConfig.DefaultCacheBehavior;
+    // Managed SecurityHeadersPolicy.
+    expect(app.ResponseHeadersPolicyId).toBe("67f7725c-6f97-4210-82d7-5512b31e9d03");
+    expect(app.FunctionAssociations).toHaveLength(1);
+    expect(app.FunctionAssociations[0].EventType).toBe("viewer-response");
+    const functions = Object.values(template.findResources("AWS::CloudFront::Function"));
+    expect(functions).toHaveLength(1);
+    const code = functions[0].Properties.FunctionCode as string;
+    expect(code).toContain("content-security-policy");
+    expect(code).toContain("script-src 'self'");
+    expect(code).toContain("frame-ancestors 'none'");
+    expect(code).toContain("https://cognito-idp.");
+    expect(code).not.toContain("unsafe-eval");
   });
 
   it("sends /api/* uncached to the API Function URL through a signing origin access control", () => {

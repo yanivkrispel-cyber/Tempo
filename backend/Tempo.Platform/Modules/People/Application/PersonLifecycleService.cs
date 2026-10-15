@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Scheduling.Application;
 
 namespace Tempo.Platform.Modules.People.Application;
 
@@ -102,7 +103,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             }
 
             var merged = survivor == candidate.PersonA ? candidate.PersonB : candidate.PersonA;
-            await MergeAsync(unitOfWork, tenant, survivor, merged, cancellationToken);
+            await MergeAsync(unitOfWork, tenant, survivor, merged, clock.GetUtcNow(), cancellationToken);
         }
 
         await using (var update = unitOfWork.Command(
@@ -237,7 +238,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
     /// are append-only; the originals stay on the merged record), relationships, and the login link. The merged
     /// record keeps its id for other modules, points at the survivor, and gives up its login.
     /// </summary>
-    private static async Task MergeAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid survivor, Guid merged, CancellationToken cancellationToken)
+    private static async Task MergeAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid survivor, Guid merged, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var survivorView = (await PeopleService.DetailAsync(unitOfWork, tenant.OrganizationId, survivor, cancellationToken, forUpdate: true)).Person;
         var mergedView = (await PeopleService.DetailAsync(unitOfWork, tenant.OrganizationId, merged, cancellationToken, forUpdate: true)).Person;
@@ -344,9 +345,117 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             cancellationToken,
             org, merged, tenant.MembershipId);
 
+        await MoveSchedulingAsync(unitOfWork, tenant, survivor, merged, now, cancellationToken);
         await PeopleService.FlagDuplicatesAsync(unitOfWork, tenant.OrganizationId, survivor, cancellationToken);
         await AuditAsync(unitOfWork, tenant, "person.merged", "person", survivor, new { survivor, merged }, cancellationToken);
     }
+
+    /// <summary>
+    /// Bookings, passes and inbox items move to the survivor (docs/29 section 7). Where both records hold a place in
+    /// one class, the stronger place stays, whichever record it belongs to: attended, then no-show, then booked, then
+    /// waiting (a tie keeps the survivor's). The weaker place is cancelled (booked, waiting) or removed (attended,
+    /// no-show), its entry returns and its seat goes to the waitlist, and it gets its own audit row (review on #111).
+    /// </summary>
+    private static async Task MoveSchedulingAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid survivor, Guid merged, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var org = tenant.OrganizationId;
+        var pairs = new List<(Guid Session, Guid Survivors, string SurvivorStatus, Guid Merged, string MergedStatus)>();
+        await using (var read = unitOfWork.Command(
+            """
+            SELECT s.session_id, s.id, s.status, m.id, m.status
+            FROM scheduling.bookings s
+            JOIN scheduling.bookings m ON m.organization_id = s.organization_id AND m.session_id = s.session_id
+            WHERE s.organization_id = $1 AND s.person_id = $2 AND m.person_id = $3
+              AND s.status IN ('booked', 'waitlisted', 'attended', 'no_show')
+              AND m.status IN ('booked', 'waitlisted', 'attended', 'no_show')
+            FOR UPDATE OF s, m
+            """,
+            org, survivor, merged))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                pairs.Add((reader.GetGuid(0), reader.GetGuid(1), reader.GetString(2), reader.GetGuid(3), reader.GetString(4)));
+            }
+        }
+
+        var freedSessions = new List<Guid>();
+        foreach (var (session, survivors, survivorStatus, mergedBooking, mergedStatus) in pairs)
+        {
+            var (loser, loserStatus) = Rank(mergedStatus) > Rank(survivorStatus) ? (survivors, survivorStatus) : (mergedBooking, mergedStatus);
+            var placeHeld = loserStatus is not "waitlisted";
+            await ExecuteAsync(
+                unitOfWork,
+                "UPDATE scheduling.bookings SET status = $3, cancel_reason = $4, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND id = $2",
+                cancellationToken,
+                org, loser, loserStatus is "attended" or "no_show" ? "removed" : "cancelled", loserStatus is "attended" or "no_show" ? null : "staff");
+            if (placeHeld)
+            {
+                await ExecuteAsync(unitOfWork, "UPDATE scheduling.sessions SET booked_count = booked_count - 1, version = version + 1 WHERE organization_id = $1 AND id = $2", cancellationToken, org, session);
+                freedSessions.Add(session);
+            }
+
+            // One person, one class, one entry: the weaker place's entry always returns.
+            await ExecuteAsync(
+                unitOfWork,
+                """
+                WITH used AS (
+                    UPDATE scheduling.pass_uses SET status = 'returned', updated_at = now(), version = version + 1
+                    WHERE organization_id = $1 AND booking_id = $2 AND status = 'held'
+                    RETURNING pass_id
+                )
+                UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
+                FROM used WHERE p.organization_id = $1 AND p.id = used.pass_id AND p.entries IS NOT NULL
+                """,
+                cancellationToken,
+                org, loser);
+            await AuditAsync(unitOfWork, tenant, loserStatus is "attended" or "no_show" ? "booking.removed" : "booking.cancelled", "booking", loser, new { sessionId = session, reason = "person_merged" }, cancellationToken);
+        }
+
+        await ExecuteAsync(unitOfWork, "UPDATE scheduling.bookings SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+
+        // Invitations follow the survivor, so erasing it later scrubs their emails too (#101). A pending one was
+        // meant to link a login to the merged record, which is gone: it is revoked, and staff invite the survivor.
+        var revokedInvitations = new List<Guid>();
+        await using (var revoke = unitOfWork.Command(
+            """
+            UPDATE organizations.invitations
+            SET status = 'revoked', updated_at = now(), version = version + 1
+            WHERE organization_id = $1 AND person_id = $2 AND status = 'pending'
+            RETURNING id
+            """,
+            org,
+            merged))
+        {
+            await using var reader = await revoke.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                revokedInvitations.Add(reader.GetGuid(0));
+            }
+        }
+
+        foreach (var id in revokedInvitations)
+        {
+            await AuditAsync(unitOfWork, tenant, "invitation.revoked", "invitation", id, new { reason = "person_merged" }, cancellationToken);
+        }
+
+        await ExecuteAsync(unitOfWork, "UPDATE organizations.invitations SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+
+        foreach (var session in freedSessions.Distinct())
+        {
+            await BookingService.PromoteSessionAsync(unitOfWork, tenant, session, now, cancellationToken);
+        }
+    }
+
+    private static int Rank(string status) => status switch
+    {
+        "attended" => 4,
+        "no_show" => 3,
+        "booked" => 2,
+        _ => 1
+    };
 
     private static async Task ExecuteAsync(UnitOfWork unitOfWork, string sql, CancellationToken cancellationToken, params object?[] parameters)
     {

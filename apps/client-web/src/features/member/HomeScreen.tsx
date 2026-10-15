@@ -19,6 +19,7 @@ import { bookingFor, freeSpots, useBookings, useClasses, useProfile, useToday } 
 import { dayName, relativeDay } from "./format";
 import styles from "./member.module.css";
 import type { Booking, StudioClass } from "./sample";
+import { StudioNotices } from "./StudioNotices";
 
 function badge(item: StudioClass, booking: Booking | undefined): string {
   if (booking?.status === "booked") return "נרשמת";
@@ -72,6 +73,7 @@ export function HomeScreen() {
         </div>
         <IconButton icon="bell" label="התראות" onClick={() => toast.show({ message: "אין התראות חדשות" })} />
       </header>
+      <StudioNotices />
 
       {next ? (
         <Card as="section" tone="elevated" className={styles.next} aria-labelledby="next-class">

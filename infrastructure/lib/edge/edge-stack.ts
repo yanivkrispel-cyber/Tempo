@@ -3,9 +3,14 @@ import {
   AllowedMethods,
   CachePolicy,
   Distribution,
+  FunctionCode,
+  FunctionEventType,
+  Function as CloudFrontFunction,
+  FunctionRuntime,
   FunctionUrlOriginAccessControl,
   OriginProtocolPolicy,
   OriginRequestPolicy,
+  ResponseHeadersPolicy,
   Signing,
   ViewerProtocolPolicy
 } from "aws-cdk-lib/aws-cloudfront";
@@ -23,6 +28,39 @@ import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { createLogGroup } from "../constructs/log-group-defaults";
 import { applyStandardTags } from "../constructs/tagging";
+
+/**
+ * The web apps' Content-Security-Policy (#133). The API is same-origin (/api/*); sign-in exchanges the code at the
+ * Cognito domain, two-step sign-in setup calls the Cognito user API (#127), and the design system loads Heebo and
+ * IBM Plex Mono from Google Fonts. Inline style attributes are allowed (React's `style`); inline scripts are not.
+ */
+export function appContentSecurityPolicy(config: TempoEnvironmentConfig): string {
+  const cognitoDomain = `https://tempo-${config.environmentName}-${config.accountId}.auth.${config.region}.amazoncognito.com`;
+  const cognitoApi = `https://cognito-idp.${config.region}.amazonaws.com`;
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    `connect-src 'self' ${cognitoDomain} ${cognitoApi}`,
+    `form-action 'self' ${cognitoDomain}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "upgrade-insecure-requests"
+  ].join("; ");
+}
+
+function cspFunctionSource(policy: string): string {
+  return [
+    "function handler(event) {",
+    "  var response = event.response;",
+    `  response.headers["content-security-policy"] = { value: ${JSON.stringify(policy)} };`,
+    "  return response;",
+    "}"
+  ].join("\n");
+}
 
 export interface EdgeStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -122,6 +160,16 @@ export class EdgeStack extends Stack {
       signing: Signing.SIGV4_ALWAYS
     });
 
+    // The Free plan allows managed response header policies and CloudFront Functions, but no custom response
+    // header policy, so the Content-Security-Policy comes from a viewer-response function (#133) and the other
+    // security headers (HSTS, nosniff, frame options, referrer policy) from the managed SecurityHeadersPolicy.
+    const contentSecurityPolicy = new CloudFrontFunction(this, "ContentSecurityPolicy", {
+      functionName: resourceName(config, "csp"),
+      comment: "Adds the apps' Content-Security-Policy (docs: issue #133)",
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromInline(cspFunctionSource(appContentSecurityPolicy(config)))
+    });
+
     // Only managed cache and origin request policies: the Free plan allows no others.
     this.distribution = new Distribution(this, "Distribution", {
       comment: `Tempo ${config.environmentName}: PWA and API`,
@@ -131,6 +179,8 @@ export class EdgeStack extends Stack {
         origin: S3BucketOrigin.withOriginAccessControl(pwaBucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+        functionAssociations: [{ function: contentSecurityPolicy, eventType: FunctionEventType.VIEWER_RESPONSE }],
         compress: true
       },
       additionalBehaviors: {
@@ -202,7 +252,7 @@ export class EdgeStack extends Stack {
     const canary = new LambdaFunction(this, "CanaryFunction", {
       functionName,
       description: "Calls the API health endpoint through CloudFront and logs the result",
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 128,
       timeout: Duration.seconds(15),
@@ -259,7 +309,7 @@ export class EdgeStack extends Stack {
     });
 
     if (config.observability.alarmNotificationsEnabled && config.observability.alarmEmail) {
-      const topic = new Topic(this, "AlarmTopic", { topicName: resourceName(config, "edge-alarms") });
+      const topic = new Topic(this, "AlarmTopic", { topicName: resourceName(config, "edge-alarms"), enforceSSL: true });
       topic.addSubscription(new EmailSubscription(config.observability.alarmEmail));
       for (const alarm of [cloudFront5xx, canaryFailure]) {
         alarm.addAlarmAction(new SnsAction(topic));
