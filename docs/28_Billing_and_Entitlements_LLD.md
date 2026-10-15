@@ -1,7 +1,8 @@
 # Billing and Entitlements LLD (Phase 3)
 
-> **Status:** Draft for Kris's review, 2026-10-15 (day board #60). Not normative until the open questions in
-> section 14 are answered and this document merges.
+> **Status:** For review, 2026-10-15. Kris decided at 15:40 (board #89) that billing runs in parallel with Studio
+> scheduling (docs/29), thin: the `pilot` plan, one subscription per studio, entitlements and restricted mode, no
+> payment provider. The section 14 defaults apply; B-1, B-2 and B-6 return to Kris before the first studio pays.
 > **Audience:** Engineering, AI coding agents
 > **Inputs:** `10_Billing_Architecture.md`, `04_Multi_Tenant_Architecture.md` section 8, `16_Event_Driven_Architecture.md`,
 > `24_Development_Roadmap.md` section 5, `27_Authorization_and_People_LLD.md`, ADR-0004 (webhooks get their own
@@ -101,6 +102,8 @@ Organization ── BillingAccount ── Subscription ──< SubscriptionEvent
 
 ### 5.2 Enforcing limits
 
+- Studio scheduling (docs/29) adds the keys `rooms.max` and `class_types.max`, checked when a room or a class type is
+  created; the pilot plan sets both generously (20 and 50).
 - A limit is checked where the thing is created, inside the same transaction, with a count: inviting the 4th staff
   member when `staff.max = 3` gives 403 `entitlement.limit_reached` with the key and the limit in the Problem.
 - A downgrade never deletes data. Above a new limit, existing rows stay; only new ones are refused.
@@ -204,8 +207,10 @@ CREATE TABLE billing.webhook_inbox (
 Grants: `tempo_app` reads its tenant's billing account, subscription and snapshot (owner and admin routes only);
 writes go through the worker and `tempo_platform`. Plans are readable by everyone. The inbox is worker-only.
 
-Data migration: every existing studio gets a billing account (manual provider) and a `trialing` subscription on the
-pilot plan (B-4), with `trial_ends_at` per B-3.
+Data migration: every existing studio gets a billing account (manual provider) and an **`active`** subscription on
+the `pilot` plan (B-4). The pilot plan's price is 0, so its periods renew without a charge and never reach
+`past_due`; a `trialing` subscription would fall into `restricted` after B-3's 30 days because nothing pays under
+the manual provider. New studios start the same way until public plans exist (B-6); `trialing` is used from then on.
 
 ## 8. API
 
@@ -262,7 +267,7 @@ One PR each, in order:
 
 1. This LLD (merged after Kris answers section 14).
 2. OpenAPI contract for section 8.
-3. Migration 0009 with the data migration (every studio trialing on the pilot plan) and integration tests.
+3. Migration 0009 with the data migration (every studio `active` on the free pilot plan) and integration tests.
 4. Entitlement catalog, snapshot service, `GET /me` additions, limit checks at the three creation points (invite
    staff, join as client, locations later).
 5. Subscription state machine, the daily billing job, restricted mode in the tenant filter.
@@ -284,6 +289,9 @@ One PR each, in order:
   action with notice to the owner (B-6).
 
 ## 14. Open questions for Kris
+
+State on 2026-10-15: every default below applies (Kris's plan of 15:40, board #89). B-1, B-2 and B-6 are
+asked again before the first studio pays; nothing built tonight depends on their answers.
 
 | Id | Question | Default if nobody objects |
 |---|---|---|
