@@ -36,7 +36,7 @@ public sealed class TestApi : IDisposable
     private readonly RsaSecurityKey signingKey;
     private readonly WebApplicationFactory<Program> factory;
 
-    public TestApi(Action<IEndpointRouteBuilder>? map = null)
+    public TestApi(Action<IEndpointRouteBuilder>? map = null, Action<IServiceCollection>? configure = null)
     {
         signingKey = new RsaSecurityKey(rsa) { KeyId = "test-key" };
         factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
@@ -58,6 +58,8 @@ public sealed class TestApi : IDisposable
                 {
                     services.AddSingleton<IEndpointModule>(new DelegateModule(map));
                 }
+
+                configure?.Invoke(services);
             }));
     }
 

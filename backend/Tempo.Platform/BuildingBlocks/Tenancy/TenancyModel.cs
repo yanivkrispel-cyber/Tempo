@@ -41,8 +41,8 @@ public static class StoredValue
         value.ToString().ToLowerInvariant();
 }
 
-/// <summary>An account as the tenant filter needs it.</summary>
-public sealed record AccountSnapshot(Guid UserAccountId, AccountStatus Status, bool EmailVerified);
+/// <summary>An account as the tenant filter needs it. <paramref name="MfaEnabled"/> is as of the last sign-in.</summary>
+public sealed record AccountSnapshot(Guid UserAccountId, AccountStatus Status, bool EmailVerified, bool MfaEnabled = false);
 
 /// <summary>
 /// A caller's membership in one studio, with the studio's status and the union

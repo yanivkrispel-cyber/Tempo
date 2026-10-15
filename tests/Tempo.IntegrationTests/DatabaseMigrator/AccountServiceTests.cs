@@ -76,6 +76,21 @@ public sealed class AccountServiceTests(PostgresFixture postgres) : IClassFixtur
     }
 
     [Fact]
+    public async Task ANewerSignIn_RecordsWhetherMfaIsSetUp()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var service = new AccountService(db, cognito);
+        await service.StartSessionAsync(SignInAs("sub-1"), CancellationToken.None);
+        var directory = new Tempo.Platform.Modules.Identity.Infrastructure.AccountDirectory(db);
+        (await directory.FindByExternalIdentityAsync(Issuer, "sub-1", CancellationToken.None))!.MfaEnabled.Should().BeFalse();
+
+        cognito.User = new CognitoUser("dana@example.com", true, MfaEnabled: true);
+        await service.StartSessionAsync(SignInAs("sub-1", authTime: DateTimeOffset.UtcNow.AddMinutes(1)), CancellationToken.None);
+
+        (await directory.FindByExternalIdentityAsync(Issuer, "sub-1", CancellationToken.None))!.MfaEnabled.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Session_ForADisabledAccount_IsRefused()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

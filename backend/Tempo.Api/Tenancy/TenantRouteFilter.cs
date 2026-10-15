@@ -27,7 +27,17 @@ public sealed class AllowWhenOrganizationSuspendedAttribute : Attribute;
 ///   <item>an immutable <see cref="TenantContext"/> for the endpoint.</item>
 /// </list>
 /// </summary>
-public sealed class TenantRouteFilter(IAccountDirectory accounts, IMembershipDirectory memberships) : IEndpointFilter
+/// <summary>
+/// `TEMPO_REQUIRE_OWNER_MFA` (docs/27 section 3.6, A-5): when true, owner and
+/// admin memberships need an account with MFA set up. Off by default.
+/// </summary>
+public sealed record OwnerMfaPolicy(bool Required)
+{
+    public static OwnerMfaPolicy From(IConfiguration configuration) =>
+        new(bool.TryParse(configuration["TEMPO_REQUIRE_OWNER_MFA"], out var required) && required);
+}
+
+public sealed class TenantRouteFilter(IAccountDirectory accounts, IMembershipDirectory memberships, OwnerMfaPolicy mfaPolicy) : IEndpointFilter
 {
     public const string RouteValue = "organizationId";
 
@@ -68,6 +78,12 @@ public sealed class TenantRouteFilter(IAccountDirectory accounts, IMembershipDir
             && httpContext.GetEndpoint()?.Metadata.GetMetadata<AllowWhenOrganizationSuspendedAttribute>() is null)
         {
             return Problems.Result(httpContext, StatusCodes.Status403Forbidden, "organization.suspended", "This studio is suspended.");
+        }
+
+        // A-5: owners and admins need MFA once the switch is on (before the pilot).
+        if (mfaPolicy.Required && membership.Role is MembershipRole.Owner or MembershipRole.Admin && !account.MfaEnabled)
+        {
+            return Problems.Result(httpContext, StatusCodes.Status403Forbidden, "auth.mfa_required", "Set up two-step sign-in to manage this studio.");
         }
 
         var permissions = membership.EffectivePermissions;

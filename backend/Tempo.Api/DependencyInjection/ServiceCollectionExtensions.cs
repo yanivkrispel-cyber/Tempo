@@ -51,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<OperatorRouteFilter>();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<TenantRouteFilter>();
+        services.AddSingleton(sp => OwnerMfaPolicy.From(sp.GetRequiredService<IConfiguration>()));
 
         return services;
     }
