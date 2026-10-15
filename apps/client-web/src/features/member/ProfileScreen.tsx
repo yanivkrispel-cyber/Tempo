@@ -20,6 +20,7 @@ import { ConsentRows } from "./ConsentRows";
 import { EditNameDialog } from "./EditNameDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import styles from "./member.module.css";
+import { StudioNotices } from "./StudioNotices";
 
 export function ProfileScreen() {
   const profile = useProfile();
@@ -57,6 +58,7 @@ export function ProfileScreen() {
         </div>
         <IconButton icon="edit" label="עריכת פרטים" onClick={() => setEditing(true)} />
       </header>
+      <StudioNotices />
 
       <Card as="section" tone="base" className={styles.plan} aria-labelledby="plan-name">
         <div className={styles.planHead}>

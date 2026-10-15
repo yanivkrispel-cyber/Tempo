@@ -4,19 +4,19 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, problem, sampleMe } from "../../test/api";
+import { apiStub, json, membershipAs, problem, roleSummary, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}/members`;
 
-const member = (id: string, role: string, overrides: Record<string, unknown> = {}) => ({
+const member = (id: string, role: "owner" | "admin" | "staff" | "client", overrides: Record<string, unknown> = {}) => ({
   id,
   userAccountId: `${id.slice(0, -2)}99`,
   email: `${role}@example.com`,
   displayName: `${role} person`,
   role,
-  roles: [],
+  roles: [roleSummary(role)],
   personId: null,
   status: "active",
   joinedAt: "2026-10-14T08:00:00Z",
@@ -34,7 +34,7 @@ function renderAs(
   routesForApi: Record<string, unknown> = {},
   auth = signedInAuth(),
 ) {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
+  const me = { ...sampleMe, memberships: [membershipAs(role)] };
   const api = apiStub({
     "POST /api/v1/session": me,
     [`GET ${base}`]: { items: [owner, admin, staff, client], nextBefore: null },
@@ -80,6 +80,18 @@ describe("member actions", () => {
     ).toEqual(["מתאמן"]);
   });
 
+  it("reads the roles from `roles`, not the deprecated `role` field", async () => {
+    // `role` still says admin from before a change; `roles` is what the member holds now.
+    const promoted = member("0199e5a1-0000-7000-8000-000000000104", "admin", {
+      displayName: "רון שגב",
+      roles: [roleSummary("staff")],
+    });
+    renderAs("admin", { [`GET ${base}`]: { items: [owner, promoted], nextBefore: null } });
+    expect(within(await rowOf("רון שגב")).getByText("צוות")).toBeInTheDocument();
+    const menu = await openActions("רון שגב");
+    expect(within(menu).getByRole("menuitem", { name: "שינוי תפקיד" })).toBeInTheDocument();
+  });
+
   it("shows no actions to staff, who cannot manage members", async () => {
     renderAs("staff");
     await rowOf("נגה רוזן");
@@ -88,7 +100,8 @@ describe("member actions", () => {
 
   it("changes a role with PUT /roles and the row's version in If-Match", async () => {
     const api = renderAs("owner", {
-      [`PUT ${base}/${client.id}/roles`]: () => json({ ...client, role: "staff", version: "8" }),
+      [`PUT ${base}/${client.id}/roles`]: () =>
+        json({ ...client, role: "staff", roles: [roleSummary("staff")], version: "8" }),
     });
     await openActions("נגה רוזן");
     await userEvent.click(screen.getByRole("menuitem", { name: "שינוי תפקיד" }));

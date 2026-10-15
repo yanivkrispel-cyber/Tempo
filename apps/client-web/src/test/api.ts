@@ -11,9 +11,10 @@ export const sampleMe: Me = {
   memberships: [
     {
       membershipId: "0199e5a1-0000-7000-8000-000000000002",
-      role: "client",
-      roles: [],
-      permissions: [],
+      // The deprecated `role` field disagrees on purpose: the app reads `roles`, and a screen that leans on `role` fails.
+      role: "staff",
+      roles: [{ id: "00000000-0000-7000-8000-000000000004", key: "client", displayName: "מתאמן", isSystem: true }],
+      permissions: ["organization.view"],
       pendingOwnershipTransfer: null,
       status: "active",
       organization: {

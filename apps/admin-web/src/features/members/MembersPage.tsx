@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState } from "react";
-import { roleName } from "../../account/account";
+import { rolesLabel } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
 import {
@@ -18,7 +18,7 @@ import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { OutgoingTransferBanner, TransferDialog } from "../ownership/Ownership";
 import { RemoveDialog, RoleDialog, nameOfMember, useUpdateMember } from "./MemberDialogs";
-import { assignableRoles, canReactivate, canRemove, canSuspend } from "./rules";
+import { assignableRoles, canOfferOwnership, canReactivate, canRemove, canSuspend } from "./rules";
 
 type Member = Schemas["Member"];
 
@@ -31,8 +31,8 @@ const statusLabel: Record<Member["status"], { text: string; tone: ChipTone }> = 
   removed: { text: "הוסר", tone: "danger" },
 };
 
-/** The member's role. Until the Phase 2 API is deployed (K5) dev sends only the deprecated `role`. */
-const memberRole = (member: Member) => (member.roles ?? [])[0]?.displayName ?? roleName(member.role);
+/** The member's roles, from `roles` (the deprecated `role` field is not read). */
+const memberRole = (member: Member) => rolesLabel(member.roles);
 
 export function useMembers() {
   const api = useApi();
@@ -85,14 +85,7 @@ export function MembersPage() {
     if (canSuspend(actor, member)) entries.push({ label: "השעיה", onSelect: () => setStatus(member, "suspended") });
     if (canReactivate(actor, member))
       entries.push({ label: "החזרה לפעילות", onSelect: () => setStatus(member, "active") });
-    // Only the owner hands over the studio, to an active admin, one offer at a time (docs/27 section 3.5).
-    if (
-      studio.can("ownership.transfer") &&
-      actor.role === "owner" &&
-      member.role === "admin" &&
-      member.status === "active" &&
-      !actor.pendingOwnershipTransfer
-    )
+    if (studio.can("ownership.transfer") && canOfferOwnership(actor, member))
       entries.push({ label: "העברת הבעלות", onSelect: () => setDialog({ kind: "transfer", member }) });
     if (canRemove(actor, member))
       entries.push("separator", {

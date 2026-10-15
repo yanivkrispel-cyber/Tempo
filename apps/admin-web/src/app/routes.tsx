@@ -12,6 +12,7 @@ import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
 import { RolesPage } from "../features/roles/RolesPage";
+import { SecurityPage } from "../features/security/SecurityPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
 import { SelectStudioPage } from "../features/studios/SelectStudioPage";
@@ -28,6 +29,8 @@ export const routes: RouteObject[] = [
         children: [
           { path: "/", element: <HomeRedirect /> },
           { path: "/select-organization", element: <SelectStudioPage /> },
+          // The account, not a studio: two-step sign-in setup (docs/27 section 3.6).
+          { path: "/account/security", element: <SecurityPage /> },
           {
             path: "/o/:slug",
             element: <ConsoleLayout />,

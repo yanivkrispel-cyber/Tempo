@@ -4,18 +4,18 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, problem, sampleMe } from "../../test/api";
+import { apiStub, json, membershipAs, problem, roleSummary, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}`;
-const member = (id: string, role: string, displayName: string) => ({
+const member = (id: string, role: "owner" | "admin" | "staff", displayName: string) => ({
   id,
   userAccountId: `${id.slice(0, -2)}99`,
   email: `${role}@example.com`,
   displayName,
   role,
-  roles: [],
+  roles: [roleSummary(role)],
   personId: null,
   status: "active",
   joinedAt: "2026-10-14T08:00:00Z",
@@ -42,15 +42,11 @@ function renderAs(
   const me = {
     ...sampleMe,
     memberships: [
-      {
-        ...studio,
-        role,
-        roles: [],
-        permissions: [],
+      membershipAs(role, {
         pendingOwnershipTransfer: pending
           ? { id: transfer.id, direction: pending, expiresAt: transfer.expiresAt }
           : null,
-      },
+      }),
     ],
   };
   const api = apiStub({
@@ -132,7 +128,8 @@ describe("owner transfer", () => {
 
   it("lets the admin accept the offer", async () => {
     const api = renderAs("admin", "incoming", {
-      [`POST ${base}/ownership-transfer/accept`]: () => json({ ...studio, role: "owner" }),
+      [`POST ${base}/ownership-transfer/accept`]: () =>
+        json({ ...studio, role: "owner", roles: [roleSummary("owner")] }),
     });
     expect(await screen.findByText(/הוצעה לך הבעלות על סטודיו נשימה/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "קבלת הבעלות" }));

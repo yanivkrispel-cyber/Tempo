@@ -23,6 +23,10 @@
   `npx cdk deploy 'TempoDev/*' --require-approval never` from `infrastructure/`. Set `COMMIT_SHA` or health
   reports `version=local`.
 - CDK is bootstrapped in both regions with `--bootstrap-kms-key-id AWS_MANAGED_KEY` (no paid KMS key).
+- admin-web two-step sign-in setup (`/account/security`) is behind `VITE_COGNITO_MFA_SETUP=true`, which lets the sign-in
+  that page starts (only that one) ask for `aws.cognito.signin.user.admin`. Turn it on only after the admin-web Cognito app client allows that scope
+  (`OAuthScope.COGNITO_ADMIN` in `identity-stack.ts`, asked of Kris on #89 on 2026-10-15); otherwise sign-in fails
+  with `invalid_scope`.
 
 ## Dev canary (`TempoDev/Canary`, Q10)
 
