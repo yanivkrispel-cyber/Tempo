@@ -34,3 +34,6 @@ public sealed record AuditEventResponse(
     JsonElement Data);
 
 public sealed record AuditEventPageResponse(IReadOnlyList<AuditEventResponse> Items, Guid? NextBefore);
+
+/// <summary>`ForceOwnerTransferRequest`: the admin who becomes owner, a written reason and the support ticket.</summary>
+public sealed record ForceOwnerTransferRequest(Guid ToMembershipId, string? Reason, string? Ticket);
