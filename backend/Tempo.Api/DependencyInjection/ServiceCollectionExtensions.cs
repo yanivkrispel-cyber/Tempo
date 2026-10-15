@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAccountProfiles, AccountProfiles>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<IMemberService, MemberService>();
+        services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
         services.AddSingleton<IInvitationService, InvitationService>();
         services.AddSingleton<IJoinLinkService, JoinLinkService>();
