@@ -46,7 +46,7 @@ public sealed class PersistenceTests(PostgresFixture postgres) : IClassFixture<P
         var own = await directory.FindAsync(userA, tenantA, CancellationToken.None);
         var other = await directory.FindAsync(userA, tenantB, CancellationToken.None);
 
-        own.Should().Be(new MembershipSnapshot(membershipA, MembershipRole.Owner, MembershipStatus.Active, OrganizationStatus.Active));
+        own.Should().BeEquivalentTo(new MembershipSnapshot(membershipA, MembershipRole.Owner, MembershipStatus.Active, OrganizationStatus.Active, SystemRoles.Owner.Permissions));
         other.Should().BeNull();
     }
 
@@ -128,7 +128,8 @@ public sealed class PersistenceTests(PostgresFixture postgres) : IClassFixture<P
                 ("INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at) VALUES ($1, 'active', 'a@example.com', true, now(), now(), now()), ($2, 'active', 'b@example.com', true, now(), now(), now())", [userA, userB]),
                 ("INSERT INTO identity.external_identities (id, user_account_id, issuer, subject, created_at) VALUES ($1, $2, $3, 'sub-a', now())", [Guid.CreateVersion7(), userA, Issuer]),
                 ("INSERT INTO organizations.organizations (id, slug, display_name, status, created_by_user_id, created_at, updated_at) VALUES ($1, 'studio-a', 'Studio A', 'active', $2, now(), now()), ($3, 'studio-b', 'Studio B', 'active', $4, now(), now())", [tenantA, userA, tenantB, userB]),
-                ("INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) VALUES ($1, $2, $3, 'owner', 'active', now(), now()), ($4, $5, $6, 'owner', 'active', now(), now())", [tenantA, membershipA, userA, tenantB, Guid.CreateVersion7(), userB])
+                ("INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) VALUES ($1, $2, $3, 'owner', 'active', now(), now()), ($4, $5, $6, 'owner', 'active', now(), now())", [tenantA, membershipA, userA, tenantB, Guid.CreateVersion7(), userB]),
+                ("INSERT INTO authz.role_assignments (organization_id, id, membership_id, role_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4, 'active', now(), now())", [tenantA, Guid.CreateVersion7(), membershipA, SystemRoles.Owner.Id])
             };
             foreach (var (sql, values) in statements)
             {

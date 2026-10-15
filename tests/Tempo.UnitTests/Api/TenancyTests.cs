@@ -26,8 +26,10 @@ public sealed class TenancyTests : IDisposable
     private readonly TestApi api = new(endpoints =>
     {
         var tenant = endpoints.MapTenantGroup();
-        tenant.MapGet("/probe", (HttpContext http) => TenantRouteFilter.Current(http));
-        tenant.MapGet("/settings-probe", () => "settings").WithMetadata(new AllowWhenOrganizationSuspendedAttribute());
+        tenant.MapGet("/probe", (HttpContext http) => TenantRouteFilter.Current(http)).RequirePermission(Permissions.OrganizationView);
+        tenant.MapGet("/settings-probe", () => "settings")
+            .RequirePermission(Permissions.OrganizationView)
+            .WithMetadata(new AllowWhenOrganizationSuspendedAttribute());
 
         endpoints.MapPlatformGroup().MapGet("/probe", () => "operator");
 

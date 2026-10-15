@@ -58,6 +58,8 @@ internal static class MembershipQueries
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        await RoleAssignments.SetSystemRoleAsync(unitOfWork, organizationId, membershipId, role, null, cancellationToken);
+
         return ((await FindLiveAsync(unitOfWork, organizationId, userAccountId, cancellationToken))!, true);
     }
 

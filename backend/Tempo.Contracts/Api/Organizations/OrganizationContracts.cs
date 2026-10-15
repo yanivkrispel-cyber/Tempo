@@ -1,3 +1,5 @@
+using Tempo.Contracts.Api.Authorization;
+
 namespace Tempo.Contracts.Api.Organizations;
 
 /// <summary>`Organization` in contracts/openapi/tempo-api.v1.yaml. Send `Version` back in If-Match.</summary>
@@ -18,13 +20,15 @@ public sealed record CreateOrganizationRequest(string? DisplayName, string? Slug
 
 public sealed record UpdateOrganizationRequest(string? DisplayName, string? TimeZone, string? DefaultLocale);
 
-/// <summary>`Member`: a membership with the person's name and email.</summary>
+/// <summary>`Member`: a membership with the person's name and email, its roles and its person record.</summary>
 public sealed record MemberResponse(
     Guid Id,
     Guid UserAccountId,
     string Email,
     string? DisplayName,
     string Role,
+    IReadOnlyList<RoleSummaryResponse> Roles,
+    Guid? PersonId,
     string Status,
     DateTimeOffset JoinedAt,
     string Version);
