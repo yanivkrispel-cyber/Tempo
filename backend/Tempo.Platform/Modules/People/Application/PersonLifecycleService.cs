@@ -190,7 +190,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             org, personId);
 
         // Consent rows stay as proof: they hold states, timestamps and text versions, never names or contacts.
-        await AuditAsync(unitOfWork, tenant, "person.erased", "person", personId, new { reason }, cancellationToken);
+        // The reason is required but not kept: free text can name the person, and person.* audit data never
+        // holds names (section 7; review on #77).
+        await AuditAsync(unitOfWork, tenant, "person.erased", "person", personId, new { reasonGiven = true }, cancellationToken);
         var erased = await PeopleService.DetailAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return erased;

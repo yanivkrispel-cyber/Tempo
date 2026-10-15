@@ -109,6 +109,8 @@ public sealed class PersonLifecycleServiceTests(PostgresFixture postgres) : ICla
         erased.Person.HasLogin.Should().BeFalse();
         erased.ContactPoints.Should().BeEmpty();
         erased.Consents.Should().ContainSingle("consent state and time stay as proof");
+        (await db.AsMasterAsync("SELECT data::text FROM audit.audit_events WHERE action = 'person.erased' AND target_id = $1", record.Id) as string)
+            .Should().NotContain("forgotten", "the free-text reason is not kept in audit");
         var again = () => lifecycle.EraseAsync(owner, record.Id, "Asked to be forgotten", CancellationToken.None);
         (await again.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("person.read_only");
 
