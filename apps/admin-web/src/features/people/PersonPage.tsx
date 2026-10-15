@@ -22,6 +22,7 @@ import {
 import { formatDate, todayIso, toIsoDate, type IsoDate } from "../../shared/utilities/dates";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
+import { PassesSection } from "../passes/PassesSection";
 import { ConsentSection } from "./ConsentSection";
 import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
@@ -162,6 +163,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
       </Card>
 
       <ContactPoints person={person} writable={writable} />
+      {studio.can("passes.view") && <PassesSection person={person} />}
       <ConsentSection person={person} />
       <RelationshipsSection person={person} writable={writable} />
 
@@ -187,6 +189,7 @@ function usePatchPerson(person: PersonDetail) {
   const { organizationId } = useStudio();
   const key = usePersonKey(person.id);
   return useMutation({
+    mutationKey: [organizationId, "people.patchPerson"],
     mutationFn: (body: Schemas["UpdatePersonRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/people/{personId}", {
@@ -284,6 +287,7 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
   const onError = (error: unknown) => toast.show({ tone: "danger", icon: "info", message: contactError(error) });
 
   const makePrimary = useMutation({
+    mutationKey: [organizationId, "people.makePrimary"],
     mutationFn: (contact: ContactPoint) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/people/{personId}/contact-points/{contactPointId}", {
@@ -295,6 +299,7 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
     onSettled: refresh,
   });
   const remove = useMutation({
+    mutationKey: [organizationId, "people.remove"],
     mutationFn: (contact: ContactPoint) =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/people/{personId}/contact-points/{contactPointId}", {
@@ -360,6 +365,7 @@ function AddContact({ person, onAdded }: { person: PersonDetail; onAdded: () => 
   const [type, setType] = useState<"phone" | "email">("phone");
   const [value, setValue] = useState("");
   const add = useMutation({
+    mutationKey: [organizationId, "people.add"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/contact-points", {

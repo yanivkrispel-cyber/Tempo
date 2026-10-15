@@ -28,6 +28,7 @@ export function useUpdateMember() {
   const { organizationId } = useStudio();
   const key = useMembersKey();
   return useMutation({
+    mutationKey: [organizationId, "members.updateMember"],
     mutationFn: ({ member, body }: { member: Member; body: Schemas["UpdateMemberRequest"] }) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/members/{membershipId}", {
@@ -49,6 +50,7 @@ export function useSetMemberRole() {
   const { organizationId } = useStudio();
   const key = useMembersKey();
   return useMutation({
+    mutationKey: [organizationId, "members.setMemberRole"],
     mutationFn: ({ member, role }: { member: Member; role: InvitableRole }) =>
       unwrap(
         api.PUT("/api/v1/organizations/{organizationId}/members/{membershipId}/roles", {
@@ -136,6 +138,7 @@ export function RemoveDialog({ member, onClose }: { member: Member; onClose: () 
   const { organizationId, displayName } = useStudio();
   const key = useMembersKey();
   const remove = useMutation({
+    mutationKey: [organizationId, "members.remove"],
     mutationFn: () =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/members/{membershipId}", {

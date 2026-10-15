@@ -4,7 +4,7 @@
  * `aws.cognito.signin.user.admin` scope, so the app client must allow it and the app must ask for it at sign-in.
  *
  * The flow: AssociateSoftwareToken gives a secret, the user adds it to an authenticator app (QR code or the key by
- * hand), VerifySoftwareToken checks the first code, and SetUserMFASettings turns TOTP on as the preferred method.
+ * hand), VerifySoftwareToken checks the first code, and SetUserMFAPreference turns TOTP on as the preferred method.
  */
 export const accountAdminScope = "aws.cognito.signin.user.admin";
 
@@ -113,14 +113,14 @@ export class CognitoAccount {
     return response.SecretCode;
   }
 
-  /** VerifySoftwareToken with the first code, then SetUserMFASettings: TOTP on and preferred. */
+  /** VerifySoftwareToken with the first code, then SetUserMFAPreference: TOTP on and preferred. */
   async confirmTotp(code: string, deviceName: string): Promise<void> {
     const verified = await this.call<{ Status?: string }>("VerifySoftwareToken", {
       UserCode: code,
       FriendlyDeviceName: deviceName,
     });
     if (verified.Status !== "SUCCESS") throw new CognitoAccountError("code_mismatch", "The code does not match.");
-    await this.call("SetUserMFASettings", { SoftwareTokenMfaSettings: { Enabled: true, PreferredMfa: true } });
+    await this.call("SetUserMFAPreference", { SoftwareTokenMfaSettings: { Enabled: true, PreferredMfa: true } });
   }
 
   private async call<T>(action: string, body: Record<string, unknown>): Promise<T> {

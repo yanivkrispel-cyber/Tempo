@@ -23,6 +23,7 @@ public static class ClassEndpoints
         tenant.MapGet("/sessions/{sessionId:guid}/roster", RosterAsync).RequirePermission(Permissions.ScheduleView).WithName("getSessionRoster").Produces<RosterResponse>();
         tenant.MapPost("/bookings/{bookingId:guid}/attendance", AttendanceAsync).RequirePermission(Permissions.ScheduleView).WithName("markAttendance").Produces<BookingResponse>();
         tenant.MapPatch("/sessions/{sessionId:guid}", UpdateSessionAsync).RequirePermission(Permissions.ScheduleManage).WithName("updateSession").Produces<SessionResponse>();
+        tenant.MapPost("/sessions/{sessionId:guid}/messages", SendMessageAsync).RequirePermission(Permissions.ScheduleView).WithName("sendSessionMessage").Produces<SessionMessageResponse>(StatusCodes.Status202Accepted);
         tenant.MapPost("/sessions/{sessionId:guid}/cancel", CancelSessionAsync).RequirePermission(Permissions.ScheduleManage).WithName("cancelSession").Produces<SessionResponse>();
         tenant.MapGet("/booking-policy", GetPolicyAsync).RequirePermission(Permissions.ScheduleView).WithName("getBookingPolicy").Produces<BookingPolicyResponse>();
         tenant.MapPut("/booking-policy", UpdatePolicyAsync).RequirePermission(Permissions.ScheduleManage).WithName("updateBookingPolicy").Produces<BookingPolicyResponse>();
@@ -84,6 +85,12 @@ public static class ClassEndpoints
         return Results.Ok(ToResponse(updated));
     }
 
+    private static async Task<IResult> SendMessageAsync(HttpContext httpContext, Guid sessionId, SendSessionMessageRequest request, ISessionMessageService messages)
+    {
+        var sent = await messages.SendAsync(TenantRouteFilter.Current(httpContext), sessionId, request.Text, httpContext.RequestAborted);
+        return Results.Accepted(null, new SessionMessageResponse(sent.Id, sent.SessionId, sent.Recipients, sent.CreatedAt));
+    }
+
     private static async Task<IResult> ListInboxAsync(HttpContext httpContext, Guid? before, int? limit, IStudioSettingsService settings)
     {
         var page = await settings.ListInboxAsync(TenantRouteFilter.Current(httpContext), before, limit ?? 50, httpContext.RequestAborted);
@@ -94,7 +101,8 @@ public static class ClassEndpoints
                 new InboxItemDataResponse(i.SessionId, i.BookingId),
                 i.CreatedAt,
                 i.ReadAt,
-                i.SessionId is { } id && i.SessionStartsAt is { } at ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "") : null))],
+                i.SessionId is { } id && i.SessionStartsAt is { } at ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "") : null,
+                i.Text))],
             page.UnreadCount,
             page.NextBefore));
     }
@@ -112,7 +120,7 @@ public static class ClassEndpoints
     }
 
     private static RosterEntryResponse ToResponse(RosterEntryView e) =>
-        new(e.BookingId, new PersonRefResponse(e.Person.Id, e.Person.DisplayName), e.Status, e.WaitlistPosition, e.PassName, e.BookedAt);
+        new(e.BookingId, new PersonRefResponse(e.Person.Id, e.Person.DisplayName), e.Status, e.WaitlistPosition, e.PassName, e.EntriesLeft, e.BookedAt);
 
     private static BookingPolicyResponse ToResponse(BookingPolicyView p) =>
         new(p.FreeCancelHours, p.WaitlistCutoffHours, p.BookingHorizonDays, p.WaitlistEnabled, p.Version.ToString(CultureInfo.InvariantCulture));

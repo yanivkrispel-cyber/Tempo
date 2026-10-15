@@ -3,6 +3,18 @@ export type Time = string;
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
+/** The wall-clock time of an instant in the studio's time zone (the API sends instants in UTC). */
+export function clockTime(instant: string | Date, timeZone: string): Time {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(instant));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "00";
+  return `${part("hour")}:${part("minute")}`;
+}
+
 /** Reads a typed time: "18:30", "18.30", "1830", "930", "18" or "9:05". Returns null for anything else. */
 export function parseTime(text: string): Time | null {
   const match = /^(\d{1,2})(?:[:.]?(\d{2}))?$/.exec(text.trim());

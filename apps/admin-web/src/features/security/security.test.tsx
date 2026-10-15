@@ -81,7 +81,7 @@ describe("two-step sign-in setup", () => {
         { status: 400, body: { __type: "CodeMismatchException" } },
         { body: { Status: "SUCCESS" } },
       ],
-      SetUserMFASettings: [{ body: {} }],
+      SetUserMFAPreference: [{ body: {} }],
     });
     const { api, queryClient } = renderAt("/account/security");
 
@@ -112,7 +112,7 @@ describe("two-step sign-in setup", () => {
     expect(cacheHoldsSecret(queryClient)).toBe(false);
     const verify = cognito.calls.filter((call) => call.target === "VerifySoftwareToken").at(-1)!;
     expect(verify.body).toMatchObject({ UserCode: "123456", FriendlyDeviceName: "Tempo" });
-    expect(cognito.calls.at(-2)!.target).toBe("SetUserMFASettings");
+    expect(cognito.calls.at(-2)!.target).toBe("SetUserMFAPreference");
     // The account is loaded again, so the API reads the new MFA setting (auth.mfa_required goes away).
     await waitFor(() =>
       expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session")).length).toBe(2),
@@ -160,6 +160,8 @@ describe("two-step sign-in setup", () => {
     expect(await screen.findByText("כדי לשנות את הגדרות האבטחה צריך להתחבר מחדש.")).toBeInTheDocument();
     expect(cognito.fetch).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "התחברות מחדש" }));
+    // The redirect waits for the PKCE challenge, so it lands after the click resolves.
+    await waitFor(() => expect(redirect).toHaveBeenCalledTimes(1));
     const url = new URL(redirect.mock.calls[0]![0] as string);
     expect(url.searchParams.get("scope")).toBe(`openid email profile ${accountAdminScope}`);
   });

@@ -23,7 +23,12 @@ public sealed record TemplateView(
     int Capacity,
     DateOnly ValidFrom,
     DateOnly? ValidUntil,
-    long Version);
+    long Version,
+    // What the console shows on a weekly class without a second request (A1, #136). The daily job reads
+    // templates without them, so they stay optional here and required on the API.
+    ClassTypeView? ClassType = null,
+    InstructorView? Instructor = null,
+    RoomView? Room = null);
 
 public sealed record InstructorView(Guid MembershipId, string DisplayName);
 
@@ -126,8 +131,17 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
     private const string RoomColumns = "id, name, default_capacity, status, version";
     private const string ClassTypeColumns = "id, name, category, color, default_minutes, description, status, version";
-    private const string TemplateColumns =
-        "id, class_type_id, weekday, local_start, minutes, instructor_membership_id, room_id, capacity, valid_from, valid_until, version";
+    // $1 organization. A template with its class type, instructor name and room, as the console lists it.
+    private const string TemplateSelect =
+        """
+        SELECT t.id, t.class_type_id, t.weekday, t.local_start, t.minutes, t.instructor_membership_id, t.room_id, t.capacity, t.valid_from, t.valid_until, t.version,
+               ct.id, ct.name, ct.category, ct.color, ct.default_minutes, ct.description, ct.status, ct.version,
+               (SELECT p.display_name FROM people.people p WHERE p.organization_id = t.organization_id AND p.membership_id = t.instructor_membership_id),
+               r.id, r.name, r.default_capacity, r.status, r.version
+        FROM scheduling.templates t
+        JOIN scheduling.class_types ct ON ct.organization_id = t.organization_id AND ct.id = t.class_type_id
+        LEFT JOIN scheduling.rooms r ON r.organization_id = t.organization_id AND r.id = t.room_id
+        """;
 
     // $1 organization, $2 caller's membership. The caller's own place counts only people still waiting ahead of them.
     private const string SessionSelect =
@@ -285,7 +299,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
     {
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await using var command = unitOfWork.Command(
-            $"SELECT {TemplateColumns} FROM scheduling.templates WHERE organization_id = $1 ORDER BY weekday, local_start",
+            $"{TemplateSelect} WHERE t.organization_id = $1 ORDER BY t.weekday, t.local_start",
             tenant.OrganizationId);
         return await ReadTemplatesAsync(command, cancellationToken);
     }
@@ -584,7 +598,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
     private static async Task<TemplateView?> TemplateAsync(UnitOfWork unitOfWork, Guid organizationId, Guid templateId, CancellationToken cancellationToken, bool forUpdate = false)
     {
         await using var command = unitOfWork.Command(
-            $"SELECT {TemplateColumns} FROM scheduling.templates WHERE organization_id = $1 AND id = $2{(forUpdate ? " FOR UPDATE" : "")}",
+            $"{TemplateSelect} WHERE t.organization_id = $1 AND t.id = $2{(forUpdate ? " FOR UPDATE OF t" : "")}",
             organizationId, templateId);
         return (await ReadTemplatesAsync(command, cancellationToken)).SingleOrDefault();
     }
@@ -677,7 +691,22 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 reader.GetInt32(7),
                 await reader.GetFieldValueAsync<DateOnly>(8, cancellationToken),
                 await reader.IsDBNullAsync(9, cancellationToken) ? null : await reader.GetFieldValueAsync<DateOnly>(9, cancellationToken),
-                reader.GetInt64(10)));
+                reader.GetInt64(10),
+                new ClassTypeView(
+                    reader.GetGuid(11),
+                    reader.GetString(12),
+                    reader.GetString(13),
+                    reader.GetString(14),
+                    reader.GetInt32(15),
+                    await reader.IsDBNullAsync(16, cancellationToken) ? null : reader.GetString(16),
+                    reader.GetString(17),
+                    reader.GetInt64(18)),
+                await reader.IsDBNullAsync(5, cancellationToken) || await reader.IsDBNullAsync(19, cancellationToken)
+                    ? null
+                    : new InstructorView(reader.GetGuid(5), reader.GetString(19)),
+                await reader.IsDBNullAsync(20, cancellationToken)
+                    ? null
+                    : new RoomView(reader.GetGuid(20), reader.GetString(21), reader.GetInt32(22), reader.GetString(23), reader.GetInt64(24))));
         }
 
         return templates;

@@ -28,7 +28,10 @@ public sealed record ScheduleTemplateResponse(
     int Capacity,
     DateOnly ValidFrom,
     DateOnly? ValidUntil,
-    string Version);
+    string Version,
+    SessionClassTypeResponse ClassType,
+    InstructorResponse? Instructor,
+    SessionRoomResponse? Room);
 
 public sealed record ScheduleTemplateListResponse(IReadOnlyList<ScheduleTemplateResponse> Items);
 
@@ -159,7 +162,10 @@ public sealed record CreateBookingRequest(Guid? PersonId);
 
 public sealed record CancelBookingRequest(bool? ReturnEntry);
 
-public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, DateTimeOffset BookedAt);
+/// <summary>`MoveBookingRequest`: the class the booked place moves to (docs/29 section 16.1).</summary>
+public sealed record MoveBookingRequest(Guid? SessionId);
+
+public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>
 public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<RosterEntryResponse> Booked, IReadOnlyList<RosterEntryResponse> Waitlisted);
@@ -176,6 +182,12 @@ public sealed record InboxItemDataResponse(Guid? SessionId, Guid? BookingId);
 /// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
 public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);
 
-public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null);
+public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null, string? Text = null);
+
+/// <summary>`SendSessionMessageRequest`: a short text to everyone registered on a class (docs/29 section 16.2).</summary>
+public sealed record SendSessionMessageRequest(string? Text);
+
+/// <summary>`SessionMessage`: what went out, to how many people; never the text back.</summary>
+public sealed record SessionMessageResponse(Guid Id, Guid SessionId, int Recipients, DateTimeOffset CreatedAt);
 
 public sealed record InboxPageResponse(IReadOnlyList<InboxItemResponse> Items, int UnreadCount, Guid? NextBefore);

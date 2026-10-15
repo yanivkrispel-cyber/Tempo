@@ -27,6 +27,10 @@ How it moves:
 | The same default or rule computed in two places instead of one helper | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:130` (`waitlistCutoffHours ?? 2`) |
 | Names that hide what a variable holds (`item` for a session, `booking` for a boolean) | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:70` |
 | An error state with no way to retry | standards-reviewer | #128 | `apps/client-web/src/features/member/Passes.tsx:61` |
+| Typographic dash or symbol in Hebrew UI text where the brand book writes words ("17:30–18:20" for "17:30 עד 18:20") | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/TemplatesPage.tsx:133` |
+| A failed request shown as an empty result ("לא נמצא אף אחד" on a search error) | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/RosterSection.tsx:413` |
+| A feature importing another feature's private module instead of `src/shared` | standards-reviewer | #129 | `apps/admin-web/src/features/passes/PassProductsPage.tsx:21` |
+| Hebrew count without its singular or dual form ("1 שעות" for "שעה אחת") | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/RosterSection.tsx:307` |
 
 ## To gate
 

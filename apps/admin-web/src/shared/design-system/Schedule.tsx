@@ -119,11 +119,13 @@ export interface EventCardProps {
   /** The corner label, e.g. "3 מקומות" or "מלא · המתנה". */
   badge: string;
   to?: string;
+  /** Struck through, on a sunken tile. */
+  cancelled?: boolean;
 }
 
 /** A class tile with its category stripe, a fill bar and a corner label. */
-export function EventCard({ title, meta, color, fill, badge, to }: EventCardProps) {
-  const className = cx("tp-event", `tp-event--${color}`);
+export function EventCard({ title, meta, color, fill, badge, to, cancelled = false }: EventCardProps) {
+  const className = cx("tp-event", cancelled ? "tp-event--cancelled" : `tp-event--${color}`);
   const style = { "--tp-fill": `${Math.round(Math.min(Math.max(fill, 0), 1) * 100)}%` } as CSSProperties;
   const content = (
     <>

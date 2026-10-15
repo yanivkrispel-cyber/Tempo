@@ -180,6 +180,7 @@ function RecordDialog({ person, onClose }: { person: PersonDetail; onClose: () =
   const [state, setState] = useState<"granted" | "withdrawn">("granted");
   const [textVersion, setTextVersion] = useState(draftTextVersion);
   const record = useMutation({
+    mutationKey: [organizationId, "people.record"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/consents", {
