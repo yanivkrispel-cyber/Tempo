@@ -178,6 +178,36 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             "UPDATE people.duplicate_candidates SET status = 'not_duplicate', resolved_by = $3, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND status = 'open' AND (person_a_id = $2 OR person_b_id = $2)",
             cancellationToken,
             org, personId, tenant.MembershipId);
+        // Invitations sent to this record: a pending one can no longer link to it, so it is revoked, and every
+        // one of them gives up the email it was sent to (review on #86).
+        var revoked = new List<Guid>();
+        await using (var revoke = unitOfWork.Command(
+            """
+            UPDATE organizations.invitations
+            SET status = 'revoked', updated_at = now(), version = version + 1
+            WHERE organization_id = $1 AND person_id = $2 AND status = 'pending'
+            RETURNING id
+            """,
+            org,
+            personId))
+        {
+            await using var reader = await revoke.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                revoked.Add(reader.GetGuid(0));
+            }
+        }
+
+        foreach (var id in revoked)
+        {
+            await AuditAsync(unitOfWork, tenant, "invitation.revoked", "invitation", id, new { reason = "person_erased" }, cancellationToken);
+        }
+
+        await ExecuteAsync(
+            unitOfWork,
+            "UPDATE organizations.invitations SET email = 'erased+' || id::text || '@invalid', updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $2",
+            cancellationToken,
+            org, personId);
         await ExecuteAsync(
             unitOfWork,
             $"""
