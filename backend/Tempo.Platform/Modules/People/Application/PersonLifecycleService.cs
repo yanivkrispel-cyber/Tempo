@@ -351,77 +351,84 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
     }
 
     /// <summary>
-    /// Bookings, passes and inbox items move to the survivor (docs/29 section 7). Where both records hold a place
-    /// in one class, the survivor's stays: the merged record's booked or waiting place is cancelled with its entry
-    /// returned and the freed seat goes to the waitlist; an attended or no-show place becomes `removed` and keeps
-    /// its entry, because the class took place (review on #111).
+    /// Bookings, passes and inbox items move to the survivor (docs/29 section 7). Where both records hold a place in
+    /// one class, the stronger place stays, whichever record it belongs to: attended, then no-show, then booked, then
+    /// waiting (a tie keeps the survivor's). The weaker place is cancelled (booked, waiting) or removed (attended,
+    /// no-show), its entry returns and its seat goes to the waitlist, and it gets its own audit row (review on #111).
     /// </summary>
     private static async Task MoveSchedulingAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid survivor, Guid merged, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var org = tenant.OrganizationId;
-        var freedSessions = new List<Guid>();
-        await using (var settle = unitOfWork.Command(
+        var pairs = new List<(Guid Session, Guid Survivors, string SurvivorStatus, Guid Merged, string MergedStatus)>();
+        await using (var read = unitOfWork.Command(
             """
-            WITH target AS (
-                SELECT b.id, b.session_id, b.status AS was
-                FROM scheduling.bookings b
-                WHERE b.organization_id = $1 AND b.person_id = $3 AND b.status IN ('booked', 'waitlisted')
-                  AND EXISTS (SELECT 1 FROM scheduling.bookings s
-                              WHERE s.organization_id = b.organization_id AND s.session_id = b.session_id AND s.person_id = $2
-                                AND s.status IN ('booked', 'waitlisted', 'attended', 'no_show'))
-                FOR UPDATE OF b
-            ),
-            clash AS (
-                UPDATE scheduling.bookings b SET status = 'cancelled', cancel_reason = 'staff', updated_at = now(), version = b.version + 1
-                FROM target t WHERE b.organization_id = $1 AND b.id = t.id
-                RETURNING t.id, t.session_id, t.was
-            ),
-            freed AS (
-                UPDATE scheduling.sessions s SET booked_count = s.booked_count - 1, version = s.version + 1
-                FROM clash WHERE s.organization_id = $1 AND s.id = clash.session_id AND clash.was = 'booked'
-                RETURNING s.id
-            ),
-            returned AS (
-                UPDATE scheduling.pass_uses u SET status = 'returned', updated_at = now(), version = u.version + 1
-                FROM clash WHERE u.organization_id = $1 AND u.booking_id = clash.id AND u.status = 'held'
-                RETURNING u.pass_id
-            ),
-            spent AS (
-                UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
-                FROM returned WHERE p.organization_id = $1 AND p.id = returned.pass_id AND p.entries IS NOT NULL
-                RETURNING p.id
-            )
-            SELECT id FROM freed
+            SELECT s.session_id, s.id, s.status, m.id, m.status
+            FROM scheduling.bookings s
+            JOIN scheduling.bookings m ON m.organization_id = s.organization_id AND m.session_id = s.session_id
+            WHERE s.organization_id = $1 AND s.person_id = $2 AND m.person_id = $3
+              AND s.status IN ('booked', 'waitlisted', 'attended', 'no_show')
+              AND m.status IN ('booked', 'waitlisted', 'attended', 'no_show')
+            FOR UPDATE OF s, m
             """,
             org, survivor, merged))
-        await using (var reader = await settle.ExecuteReaderAsync(cancellationToken))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
             {
-                freedSessions.Add(reader.GetGuid(0));
+                pairs.Add((reader.GetGuid(0), reader.GetGuid(1), reader.GetString(2), reader.GetGuid(3), reader.GetString(4)));
             }
         }
 
-        await ExecuteAsync(
-            unitOfWork,
-            """
-            UPDATE scheduling.bookings b SET status = 'removed', updated_at = now(), version = b.version + 1
-            WHERE b.organization_id = $1 AND b.person_id = $3 AND b.status IN ('attended', 'no_show')
-              AND EXISTS (SELECT 1 FROM scheduling.bookings s
-                          WHERE s.organization_id = b.organization_id AND s.session_id = b.session_id AND s.person_id = $2
-                            AND s.status IN ('booked', 'waitlisted', 'attended', 'no_show'))
-            """,
-            cancellationToken,
-            org, survivor, merged);
+        var freedSessions = new List<Guid>();
+        foreach (var (session, survivors, survivorStatus, mergedBooking, mergedStatus) in pairs)
+        {
+            var (loser, loserStatus) = Rank(mergedStatus) > Rank(survivorStatus) ? (survivors, survivorStatus) : (mergedBooking, mergedStatus);
+            var placeHeld = loserStatus is not "waitlisted";
+            await ExecuteAsync(
+                unitOfWork,
+                "UPDATE scheduling.bookings SET status = $3, cancel_reason = $4, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND id = $2",
+                cancellationToken,
+                org, loser, loserStatus is "attended" or "no_show" ? "removed" : "cancelled", loserStatus is "attended" or "no_show" ? null : "staff");
+            if (placeHeld)
+            {
+                await ExecuteAsync(unitOfWork, "UPDATE scheduling.sessions SET booked_count = booked_count - 1, version = version + 1 WHERE organization_id = $1 AND id = $2", cancellationToken, org, session);
+                freedSessions.Add(session);
+            }
+
+            // One person, one class, one entry: the weaker place's entry always returns.
+            await ExecuteAsync(
+                unitOfWork,
+                """
+                WITH used AS (
+                    UPDATE scheduling.pass_uses SET status = 'returned', updated_at = now(), version = version + 1
+                    WHERE organization_id = $1 AND booking_id = $2 AND status = 'held'
+                    RETURNING pass_id
+                )
+                UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
+                FROM used WHERE p.organization_id = $1 AND p.id = used.pass_id AND p.entries IS NOT NULL
+                """,
+                cancellationToken,
+                org, loser);
+            await AuditAsync(unitOfWork, tenant, loserStatus is "attended" or "no_show" ? "booking.removed" : "booking.cancelled", "booking", loser, new { sessionId = session, reason = "person_merged" }, cancellationToken);
+        }
+
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.bookings SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
 
-        foreach (var session in freedSessions)
+        foreach (var session in freedSessions.Distinct())
         {
             await BookingService.PromoteSessionAsync(unitOfWork, tenant, session, now, cancellationToken);
         }
     }
+
+    private static int Rank(string status) => status switch
+    {
+        "attended" => 4,
+        "no_show" => 3,
+        "booked" => 2,
+        _ => 1
+    };
 
     private static async Task ExecuteAsync(UnitOfWork unitOfWork, string sql, CancellationToken cancellationToken, params object?[] parameters)
     {

@@ -64,11 +64,18 @@ public sealed class MergeSchedulingTests(PostgresFixture postgres) : IClassFixtu
             await passes.GrantAsync(owner, person, new NewPass(card.Id, null, null), CancellationToken.None);
         }
 
-        // A past class both records attended: merging must not hit the one-live-booking index.
+        // A class both records attended (marked by hand): merging must not hit the one-live-booking index.
         var past = await SessionAsync(db, owner, classType.Id, TimeSpan.FromDays(1));
         var keptPast = await bookings.BookAsync(owner, past, keep, CancellationToken.None);
         var droppedPast = await bookings.BookAsync(owner, past, drop, CancellationToken.None);
         await db.AsMasterAsync("UPDATE scheduling.bookings SET status = 'attended' WHERE id IN ($1, $2)", keptPast.Id, droppedPast.Id);
+
+        // Booked in the app as one record and marked no-show; checked in at the desk as the other and attended.
+        var checkedIn = await SessionAsync(db, owner, classType.Id, TimeSpan.FromHours(30));
+        var noShow = await bookings.BookAsync(owner, checkedIn, keep, CancellationToken.None);
+        var attended = await bookings.BookAsync(owner, checkedIn, drop, CancellationToken.None);
+        await db.AsMasterAsync("UPDATE scheduling.bookings SET status = 'no_show' WHERE id = $1", noShow.Id);
+        await db.AsMasterAsync("UPDATE scheduling.bookings SET status = 'attended' WHERE id = $1", attended.Id);
 
         // A full future class: both records booked, Dana waits.
         var full = await SessionAsync(db, owner, classType.Id, TimeSpan.FromDays(2));
@@ -85,6 +92,11 @@ public sealed class MergeSchedulingTests(PostgresFixture postgres) : IClassFixtu
         (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", keptPast.Id)).Should().Be("attended");
         (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", waiting.Id)).Should().Be("booked", "the seat the merge freed goes to the waitlist");
         (await db.AsMasterAsync("SELECT booked_count FROM scheduling.sessions WHERE id = $1", full)).Should().Be(2);
+        (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", attended.Id)).Should().Be("attended", "the stronger row stays, whichever record held it");
+        (await db.AsMasterAsync("SELECT person_id FROM scheduling.bookings WHERE id = $1", attended.Id)).Should().Be(keep);
+        (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", noShow.Id)).Should().Be("removed");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action IN ('booking.removed', 'booking.cancelled') AND target_id IN ($1, $2)", noShow.Id, droppedPast.Id)).Should().Be(2L);
+        (await db.AsMasterAsync("SELECT count(*) FROM scheduling.pass_uses WHERE booking_id IN ($1, $2) AND status = 'held'", noShow.Id, droppedPast.Id)).Should().Be(0L, "one person, one class, one entry");
     }
 
     private static async Task<Guid> SessionAsync(MigratedDatabase db, TenantContext owner, Guid classType, TimeSpan startsIn)
