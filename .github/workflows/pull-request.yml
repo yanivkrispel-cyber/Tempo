@@ -154,6 +154,12 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         run: pnpm install --frozen-lockfile
 
+      - name: Dependency audit (high and critical)
+        if: steps.changes.outputs.relevant == 'true'
+        # Layer 1 (ADR-0025). Accepted advisories live in pnpm-workspace.yaml
+        # (auditConfig.ignoreGhsas), each with the issue that removes it.
+        run: pnpm audit --audit-level high
+
       - name: API client matches the OpenAPI contract
         if: steps.changes.outputs.relevant == 'true'
         run: pnpm --filter @tempo/api-client run check:generated
@@ -232,3 +238,11 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Static analysis (Semgrep OSS, new findings only)
+        # Layer 1 (ADR-0025). Only findings that this PR adds fail the job:
+        # --baseline-commit compares with the PR's base. Known ones are in #115.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          docker run --rm -e BASE_SHA -v "$PWD:/src" -w /src semgrep/semgrep:1.140.0 sh -c             'git config --global --add safe.directory /src && semgrep scan --config p/default --metrics=off --error --baseline-commit "$BASE_SHA"'
