@@ -310,7 +310,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
         var created = (await TemplateAsync(unitOfWork, tenant.OrganizationId, id, cancellationToken))!;
         var count = await MaterializeAsync(unitOfWork, tenant.OrganizationId, created, zone, today, cancellationToken);
-        await AuditAsync(unitOfWork, tenant, "weeklyClass.created", "template", id, new { weekday, sessions = count }, cancellationToken);
+        await AuditAsync(unitOfWork, tenant, "template.created", "template", id, new { weekday, sessions = count }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return new TemplateChange(created, []);
     }

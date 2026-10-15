@@ -43,7 +43,7 @@ public interface IBookingService
     Task<MyBookingPage> ListForPersonAsync(TenantContext tenant, Guid personId, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
 }
 
-public sealed class BookingService(IDataSourceProvider dataSources, TimeProvider clock) : IBookingService
+public sealed partial class BookingService(IDataSourceProvider dataSources, TimeProvider clock) : IBookingService
 {
     private sealed record SessionFacts(Guid Id, DateOnly LocalDate, DateTimeOffset StartsAt, string Status, string Category);
 
@@ -570,10 +570,10 @@ public sealed class BookingService(IDataSourceProvider dataSources, TimeProvider
 
     private static DomainRuleViolationException Conflict(string code, string message) => new(ViolationKind.Conflict, code, message);
 
-    private static Task AuditAsync(UnitOfWork unitOfWork, TenantContext tenant, string action, Guid bookingId, object data, CancellationToken cancellationToken) =>
+    private static Task AuditAsync(UnitOfWork unitOfWork, TenantContext tenant, string action, Guid targetId, object data, CancellationToken cancellationToken, string targetType = "booking") =>
         AuditWriter.WriteAsync(
             unitOfWork,
-            new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, action, "booking", bookingId, tenant.CorrelationId, data),
+            new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, action, targetType, targetId, tenant.CorrelationId, data),
             cancellationToken);
 
     private Task<UnitOfWork> BeginAsync(TenantContext tenant, CancellationToken cancellationToken) =>

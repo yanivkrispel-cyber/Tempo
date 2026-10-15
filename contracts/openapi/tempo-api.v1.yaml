@@ -1481,7 +1481,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateSession
-      x-tempo-planned: true
       summary: "Change one session's instructor, room or capacity (`schedule.manage`)"
       description: "Capacity cannot go below the number booked (409 `session.capacity_below_booked`). Raising it promotes from the waitlist."
       parameters:
@@ -1511,7 +1510,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: cancelSession
-      x-tempo-planned: true
       summary: "Cancel a session: every booking is cancelled and its entry returned (`schedule.manage`)"
       responses:
         "200":
@@ -1532,7 +1530,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: getSessionRoster
-      x-tempo-planned: true
       summary: "Booked and waiting people (`bookings.manage`, or the session's instructor)"
       responses:
         "200":
@@ -1604,7 +1601,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: markAttendance
-      x-tempo-planned: true
       summary: "Mark attended or no-show (`attendance.mark`, or the session's instructor)"
       requestBody:
         required: true
@@ -1813,7 +1809,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: getBookingPolicy
-      x-tempo-planned: true
       summary: "Cancellation window, waitlist cutoff, booking horizon (`schedule.view`)"
       responses:
         "200":
@@ -1827,7 +1822,6 @@ paths:
     put:
       tags: [Schedule]
       operationId: updateBookingPolicy
-      x-tempo-planned: true
       summary: "Change the booking policy (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1855,7 +1849,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: listMyNotifications
-      x-tempo-planned: true
       summary: "The caller's in-app notifications in this studio, newest first (self)"
       parameters:
         - $ref: "#/components/parameters/Before"
@@ -1877,7 +1870,6 @@ paths:
     post:
       tags: [Notifications]
       operationId: markNotificationRead
-      x-tempo-planned: true
       summary: "Mark one notification read (self)"
       responses:
         "204":

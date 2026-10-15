@@ -156,3 +156,22 @@ public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Item
 public sealed record CreateBookingRequest(Guid? PersonId);
 
 public sealed record CancelBookingRequest(bool? ReturnEntry);
+
+public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, DateTimeOffset BookedAt);
+
+/// <summary>`Roster`: booked and waiting people of one session.</summary>
+public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<RosterEntryResponse> Booked, IReadOnlyList<RosterEntryResponse> Waitlisted);
+
+public sealed record AttendanceRequest(string? State);
+
+/// <summary>`BookingPolicy`.</summary>
+public sealed record BookingPolicyResponse(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, string Version);
+
+public sealed record BookingPolicyInput(int? FreeCancelHours, int? WaitlistCutoffHours, int? BookingHorizonDays, bool? WaitlistEnabled);
+
+public sealed record InboxItemDataResponse(Guid? SessionId, Guid? BookingId);
+
+/// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
+public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);
+
+public sealed record InboxPageResponse(IReadOnlyList<InboxItemResponse> Items, int UnreadCount, Guid? NextBefore);
