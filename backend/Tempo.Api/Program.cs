@@ -55,6 +55,7 @@ try
     app.MapPassEndpoints();
     app.MapBookingEndpoints();
     app.MapClassEndpoints();
+    app.MapBillingEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();

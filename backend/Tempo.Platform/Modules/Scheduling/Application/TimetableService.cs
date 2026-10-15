@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Billing;
 using Tempo.Platform.Modules.Scheduling.Domain;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
@@ -171,6 +172,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         var id = Guid.CreateVersion7();
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        await BillingService.CheckLimitAsync(unitOfWork, tenant.OrganizationId, "rooms.max", "SELECT count(*) FROM scheduling.rooms WHERE organization_id = $1 AND status = 'active'", cancellationToken);
         await using var command = unitOfWork.Command(
             $"INSERT INTO scheduling.rooms (organization_id, id, name, default_capacity, status, created_at, updated_at) VALUES ($1, $2, $3, $4, 'active', now(), now()) RETURNING {RoomColumns}",
             tenant.OrganizationId, id, name, capacity);
@@ -220,6 +222,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         var id = Guid.CreateVersion7();
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        await BillingService.CheckLimitAsync(unitOfWork, tenant.OrganizationId, "class_types.max", "SELECT count(*) FROM scheduling.class_types WHERE organization_id = $1 AND status = 'active'", cancellationToken);
         await using var command = unitOfWork.Command(
             $"""
             INSERT INTO scheduling.class_types (organization_id, id, name, category, color, default_minutes, description, status, created_at, updated_at)

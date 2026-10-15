@@ -1884,7 +1884,6 @@ paths:
     get:
       tags: [Billing]
       operationId: getBilling
-      x-tempo-planned: true
       summary: "The studio's plan, subscription state and billing details (`billing.view`)"
       responses:
         "200":
@@ -1902,7 +1901,6 @@ paths:
     patch:
       tags: [Billing]
       operationId: updateBillingAccount
-      x-tempo-planned: true
       summary: "Billing email, legal name, business id (`billing.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1927,7 +1925,6 @@ paths:
     get:
       tags: [Billing]
       operationId: listPlans
-      x-tempo-planned: true
       summary: "Public plans and their entitlements (any signed-in account)"
       responses:
         "200":
