@@ -48,6 +48,7 @@ try
     app.MapOrganizationEndpoints();
     app.MapRoleEndpoints();
     app.MapOwnershipEndpoints();
+    app.MapPeopleEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();

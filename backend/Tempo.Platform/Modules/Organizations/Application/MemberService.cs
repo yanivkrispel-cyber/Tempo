@@ -2,6 +2,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.Organizations.Domain;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 
@@ -173,6 +174,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
         }
 
         await RoleAssignments.RevokeAllAsync(unitOfWork, tenant.OrganizationId, membershipId, cancellationToken);
+        await PersonLinks.UnlinkMembershipAsync(unitOfWork, tenant.OrganizationId, membershipId, cancellationToken);
         await AuditAsync(unitOfWork, tenant, "membership.removed", membershipId, new { role = StoredValue.Of(target.Role), left = isSelf }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
     }

@@ -244,7 +244,8 @@
         "type": "Project",
         "dependencies": {
           "AWSSDK.SimpleSystemsManagement": "[4.0.104.1, )",
-          "Npgsql": "[10.0.3, )"
+          "Npgsql": "[10.0.3, )",
+          "libphonenumber-csharp": "[9.0.38, )"
         }
       },
       "Amazon.Lambda.Core": {
@@ -270,6 +271,12 @@
         "dependencies": {
           "AWSSDK.Core": "[4.0.102.8, 5.0.0)"
         }
+      },
+      "libphonenumber-csharp": {
+        "type": "CentralTransitive",
+        "requested": "[9.0.38, )",
+        "resolved": "9.0.38",
+        "contentHash": "QRvXk+Ih0VjKtq03ouAqhUFDnBe1sqS2wTd6htWyvzPhdVIcyNPuoprDCWnPJk6RIYfsePTOG38VVc1EdH3u7A=="
       },
       "Microsoft.OpenApi": {
         "type": "CentralTransitive",
