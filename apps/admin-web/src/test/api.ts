@@ -48,9 +48,10 @@ export function apiStub(routes: Record<string, unknown>) {
   const bodies: unknown[] = [];
   const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
     const request = input as Request;
-    requests.push(request);
+    // The body goes at its request's index: reading it is async, and requests can overlap.
+    const index = requests.push(request) - 1;
     const text = await request.clone().text();
-    bodies.push(text ? JSON.parse(text) : undefined);
+    bodies[index] = text ? JSON.parse(text) : undefined;
     const route = routes[`${request.method} ${new URL(request.url).pathname}`];
     if (route === undefined) return problem(404, "http.404");
     if (typeof route === "function") return (route as Handler)(request);

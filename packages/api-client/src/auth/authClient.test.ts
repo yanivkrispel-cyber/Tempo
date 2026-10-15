@@ -83,6 +83,17 @@ describe("AuthClient sign-in", () => {
     expect(url.searchParams.get("code_challenge")).toMatch(/^[\w-]{43}$/);
   });
 
+  it("asks for the password again through /logout for step-up, keeping PKCE and state", async () => {
+    const redirect = vi.fn();
+    const flowStorage = memoryStorage();
+    await signedInAuth({ redirect, flowStorage }).signIn("/o/neshima", "reauthenticate");
+    const url = new URL(redirect.mock.calls[0]![0] as string);
+    expect(url.pathname).toBe("/logout");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({ response_type: "code", client_id: "test-client", redirect_uri: "http://localhost:5174/auth/callback", code_challenge_method: "S256" });
+    expect(url.searchParams.get("state")).toBe(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!).state);
+    expect(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!)).toMatchObject({ returnTo: "/o/neshima" });
+  });
+
   it("opens the sign-up form when asked", async () => {
     const redirect = vi.fn();
     await signedOutAuth({ redirect }).signIn("/", "signup");

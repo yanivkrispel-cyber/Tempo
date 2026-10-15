@@ -13,7 +13,10 @@ const messages: Record<string, string> = {
   "organization.creation_limit": "אפשר לפתוח עד 3 סטודיואים לחשבון.",
   "organization.not_found": "הסטודיו לא נמצא, או שאין לך גישה אליו.",
   "permission.denied": "אין לך הרשאה לפעולה הזו.",
-  "concurrency.conflict": "מישהו אחר שינה את הנתונים בינתיים. רעננו ונסו שוב."
+  "concurrency.conflict": "מישהו אחר שינה את הנתונים בינתיים. רעננו ונסו שוב.",
+  "auth.step_up_required": "לפעולה הזו צריך לאמת שוב את הזהות: התחברו מחדש, ואחר כך נסו שוב.",
+  "membership.forbidden_role_change": "אי אפשר לתת את התפקיד הזה לחבר הזה.",
+  "role.exceeds_actor": "אפשר לתת רק תפקיד נמוך מהתפקיד שלך."
 };
 
 /** A sentence for the person in front of the screen; never the server's English text. */

@@ -15,7 +15,11 @@ interface Section {
 
 const sections: Section[] = [
   { to: "", label: "חברי הסטודיו", icon: "users", permission: "members.view" },
-  { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" }
+  { to: "people", label: "אנשים", icon: "user", permission: "people.view" },
+  { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
+  { to: "roles", label: "תפקידים", icon: "shield", permission: "members.view" },
+  { to: "audit", label: "יומן פעולות", icon: "list", permission: "audit.view" },
+  { to: "settings", label: "הגדרות", icon: "settings", permission: "organization.settings.manage" }
 ];
 
 /** `/o/:slug/*`: the studio from the URL, its navigation, and the page. */

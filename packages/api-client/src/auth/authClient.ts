@@ -98,11 +98,18 @@ export class AuthClient {
     return () => this.listeners.delete(listener);
   }
 
-  /** Sends the browser to the Hosted UI. `screen: "signup"` opens the sign-up form instead of sign-in. */
-  async signIn(returnTo = "/", screen: "login" | "signup" = "login"): Promise<void> {
+  /**
+   * Sends the browser to the Hosted UI. `screen: "signup"` opens the sign-up form instead of sign-in.
+   * `screen: "reauthenticate"` asks for the password again, for step-up (docs/27 section 3.6): the Hosted UI
+   * ignores `prompt=login` and signs a user with a live Cognito session straight back in, which would leave
+   * `auth_time` old, so it goes through `/logout` with `response_type=code`, which ends that session and opens
+   * the sign-in form with the same PKCE parameters (checked against dev, 2026-10-15).
+   */
+  async signIn(returnTo = "/", screen: "login" | "signup" | "reauthenticate" = "login"): Promise<void> {
     const flow: Flow = { state: randomUrlSafe(), verifier: randomUrlSafe(), returnTo: safeReturnTo(returnTo) };
     this.flowStorage.setItem(this.flowKey, JSON.stringify(flow));
-    const url = new URL(`${this.config.cognitoDomain}/${screen === "signup" ? "signup" : "oauth2/authorize"}`);
+    const path = { login: "oauth2/authorize", signup: "signup", reauthenticate: "logout" }[screen];
+    const url = new URL(`${this.config.cognitoDomain}/${path}`);
     url.search = new URLSearchParams({
       response_type: "code",
       client_id: this.config.clientId,
