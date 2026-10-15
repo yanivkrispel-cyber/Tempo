@@ -216,7 +216,8 @@ public static class ScheduleEndpoints
             s.Status,
             s.MyBooking is { } m ? new MyBookingStateResponse(m.BookingId, m.Status, m.WaitlistPosition, m.FreeCancelUntil) : null,
             s.PassPreview is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
-            s.Version.ToString(CultureInfo.InvariantCulture));
+            s.Version.ToString(CultureInfo.InvariantCulture),
+            s.FrozenUntil);
 
     private static TimeOnly ParseTime(string value, string field) =>
         TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)

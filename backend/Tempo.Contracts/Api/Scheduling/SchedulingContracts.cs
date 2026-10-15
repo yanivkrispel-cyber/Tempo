@@ -74,7 +74,8 @@ public sealed record SessionResponse(
     string Status,
     MyBookingStateResponse? MyBooking,
     PassSummaryResponse? PassPreview,
-    string Version);
+    string Version,
+    DateOnly? FrozenUntil = null);
 
 public sealed record SessionListResponse(IReadOnlyList<SessionResponse> Items);
 
