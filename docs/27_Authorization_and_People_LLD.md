@@ -1,7 +1,7 @@
 # Authorization and People LLD (Phase 2)
 
-> **Status:** Draft for Kris's review, 2026-10-15. Not normative until the open questions in section 14 are answered
-> and this document merges.
+> **Status:** Approved by Kris, 2026-10-15. Every open question in section 14 is decided (the default in each
+> case); the **Proposed** choices below are **Decisions**.
 > **Audience:** Engineering, AI coding agents
 > **Inputs:** `26_Identity_Organization_Membership_LLD.md` (Phase 1), `03_Domain_Driven_Design.md` section 5,
 > `04_Multi_Tenant_Architecture.md`, `09_Authentication_&_Authorization.md`, `12_CRM_Architecture.md` section 1,
@@ -452,7 +452,7 @@ backend/Tempo.Api/
 ```
 
 `Organizations/Domain/RolePolicy.cs` is deleted in the last PR, after the Phase 1 role matrix passes on the new path.
-Phone normalization needs a library (`libphonenumber-csharp`, Apache 2.0, NuGet): a new dependency for review.
+Phone normalization uses `libphonenumber-csharp` (Apache 2.0, NuGet), approved by Kris on 2026-10-15.
 
 ## 9. Infrastructure
 
@@ -502,9 +502,12 @@ One PR each, in order:
   Neon pooler before step 4 merges.
 - **Consent wording.** The legal text and its versions are product decisions, not code (P-4).
 
-## 14. Open questions for Kris
+## 14. Decisions on the open questions
 
-| Id | Question | Default if nobody objects |
+Kris accepted every default on 2026-10-15 (day board #60, decision 1). P-2 and P-4 still get an accountant's and a
+lawyer's check before the pilot; neither blocks code.
+
+| Id | Question | Decided by Kris, 2026-10-15 |
 |---|---|---|
 | A-1 | Custom roles in Phase 2, or only the four system roles with the model ready for more? | Only the four system roles; custom roles when a studio asks |
 | A-2 | Can staff (instructors) create and edit person records, or only view? | Create and edit (walk-ins at the front desk), not merge, export or erase |
