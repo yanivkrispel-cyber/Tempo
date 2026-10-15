@@ -574,7 +574,7 @@ Staff with `passes.manage` freeze a period membership (`kind = membership`) for 
 earlier than today), answer 201 with the `Pass` carrying its `freezes`. `DELETE /passes/{passId}/freezes/{freezeId}`
 removes a freeze that has not started yet.
 
-- Migration 0011 adds `scheduling.pass_freezes (organization_id, id, pass_id, starts_on, ends_on, created_by,
+- Migration 0012 adds `scheduling.pass_freezes (organization_id, id, pass_id, starts_on, ends_on, created_by,
   created_at)` with RLS, and `passes.ends_on` is extended by the frozen days when the freeze is created (and
   shortened back on delete). `endsOn` stays the single truth for validity, so `GET /me/passes` and section 5.3 keep
   working without a new rule.

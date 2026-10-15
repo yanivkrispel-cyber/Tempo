@@ -1329,6 +1329,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/passes/{passId}/freezes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze a period membership for a date range (`passes.manage`)
+         * @description Studio dates, inclusive, 1 to 90 days, starting today or later and before the membership ends. `endsOn` of
+         *     the pass moves out by the frozen days; no booking inside them (the member sees 409 `booking.no_valid_pass`);
+         *     bookings already made inside the period stay (C-11). A punch card answers 409 `pass.not_freezable` (C-12);
+         *     overlapping another freeze answers 409 `pass.freeze_overlap`. The member gets an inbox item `pass.frozen`.
+         */
+        post: operations["freezePass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/passes/{passId}/freezes/{freezeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+                freezeId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a freeze that has not started; validity shrinks back (`passes.manage`)
+         * @description A freeze that already started stays (409 `pass.freeze_started`).
+         */
+        delete: operations["unfreezePass"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/me/passes": {
         parameters: {
             query?: never;
@@ -2530,6 +2580,28 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             version: string;
+            /** @description Frozen periods of a membership, in start order (docs/29 section 16.4); empty for a punch card. */
+            freezes: components["schemas"]["PassFreeze"][];
+        };
+        PassFreeze: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+        };
+        FreezePassRequest: {
+            /**
+             * Format: date
+             * @description Studio date
+             */
+            startsOn: string;
+            /**
+             * Format: date
+             * @description Inclusive; at most 90 days after startsOn.
+             */
+            endsOn: string;
         };
         PassList: {
             items: components["schemas"]["Pass"][];
@@ -2569,6 +2641,7 @@ export interface components {
              * @example session.message
              * @example session.cancelled
              * @example waitlist.expired
+             * @example pass.frozen
              */
             kind: string;
             /** @description Ids only. */
@@ -2577,6 +2650,8 @@ export interface components {
                 sessionId?: string;
                 /** Format: uuid */
                 bookingId?: string;
+                /** Format: uuid */
+                passId?: string;
             };
             /** Format: date-time */
             createdAt: string;
@@ -5188,6 +5263,68 @@ export interface operations {
             path: {
                 organizationId: components["parameters"]["OrganizationId"];
                 passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    freezePass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezePassRequest"];
+            };
+        };
+        responses: {
+            /** @description Frozen; the pass with its freezes. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    unfreezePass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+                freezeId: string;
             };
             cookie?: never;
         };
