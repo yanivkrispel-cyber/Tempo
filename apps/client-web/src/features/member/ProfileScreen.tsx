@@ -1,5 +1,17 @@
 import { useState } from "react";
-import { Avatar, Button, Card, Chip, Icon, IconButton, ProgressBar, Select, Skeleton, shortDate, useToast } from "../../shared/design-system";
+import {
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  Icon,
+  IconButton,
+  ProgressBar,
+  Select,
+  Skeleton,
+  shortDate,
+  useToast,
+} from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useProfile } from "./data";
@@ -59,7 +71,12 @@ export function ProfileScreen() {
         <span>
           מתחדש אוטומטית ב-{shortDate(plan.renewsOn)} · ויזה <bdi>{plan.card}</bdi>
         </span>
-        <ProgressBar tone="sand" value={plan.periodDays - plan.daysLeft} max={plan.periodDays} label="ימים שעברו בתקופה הנוכחית" />
+        <ProgressBar
+          tone="sand"
+          value={plan.periodDays - plan.daysLeft}
+          max={plan.periodDays}
+          label="ימים שעברו בתקופה הנוכחית"
+        />
         <span className="tp-caption">עוד {plan.daysLeft} ימים בתקופה הנוכחית</span>
       </Card>
 

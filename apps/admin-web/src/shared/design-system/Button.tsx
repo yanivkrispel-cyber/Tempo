@@ -14,8 +14,17 @@ interface ButtonLook {
   icon?: IconName;
 }
 
-function buttonClass({ variant = "primary", size = "md", block = false }: ButtonLook, ...more: Array<string | false | undefined>) {
-  return cx("tp-btn", variant !== "primary" && `tp-btn--${variant}`, size !== "md" && `tp-btn--${size}`, block && "tp-btn--block", ...more);
+function buttonClass(
+  { variant = "primary", size = "md", block = false }: ButtonLook,
+  ...more: Array<string | false | undefined>
+) {
+  return cx(
+    "tp-btn",
+    variant !== "primary" && `tp-btn--${variant}`,
+    size !== "md" && `tp-btn--${size}`,
+    block && "tp-btn--block",
+    ...more,
+  );
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonLook {
@@ -23,7 +32,18 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, Bu
   loading?: boolean;
 }
 
-export function Button({ variant, size, block, icon, loading = false, type = "button", className, onClick, children, ...rest }: ButtonProps) {
+export function Button({
+  variant,
+  size,
+  block,
+  icon,
+  loading = false,
+  type = "button",
+  className,
+  onClick,
+  children,
+  ...rest
+}: ButtonProps) {
   return (
     <button
       type={type}
@@ -54,11 +74,25 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   primary?: boolean;
 }
 
-export function IconButton({ icon, label, size = "md", primary = false, type = "button", className, ...rest }: IconButtonProps) {
+export function IconButton({
+  icon,
+  label,
+  size = "md",
+  primary = false,
+  type = "button",
+  className,
+  ...rest
+}: IconButtonProps) {
   return (
     <button
       type={type}
-      className={cx("tp-btn", "tp-btn--icon", size !== "md" && `tp-btn--${size}`, primary && "tp-btn--primary", className)}
+      className={cx(
+        "tp-btn",
+        "tp-btn--icon",
+        size !== "md" && `tp-btn--${size}`,
+        primary && "tp-btn--primary",
+        className,
+      )}
       aria-label={label}
       {...rest}
     >

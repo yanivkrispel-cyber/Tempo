@@ -5,7 +5,7 @@ export type LinkKind = "invite" | "join";
 
 const keys: Record<LinkKind, string> = {
   invite: "tempo.client-web.pending-invite",
-  join: "tempo.client-web.pending-join"
+  join: "tempo.client-web.pending-join",
 };
 
 function stored(kind: LinkKind): string | null {

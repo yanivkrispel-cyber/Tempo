@@ -21,16 +21,16 @@ const themes = t.color.themes.map((x) => x.id);
 const [first, ...rest] = themes;
 
 const cssName = (n) => "--" + n.replace(/\./g, "\\.");
-const themed = (family) =>
-  (t[family]?.tokens ?? []).filter((tok) => typeof tok.value === "object");
+const themed = (family) => (t[family]?.tokens ?? []).filter((tok) => typeof tok.value === "object");
 const flat = (family) =>
-  (t[family]?.tokens ?? []).map((tok) => `  ${cssName(tok.name)}: ${typeof tok.value === "object" ? tok.value[first] : tok.value};`);
+  (t[family]?.tokens ?? []).map(
+    (tok) => `  ${cssName(tok.name)}: ${typeof tok.value === "object" ? tok.value[first] : tok.value};`,
+  );
 
-const valueFor = (tok, theme) =>
-  typeof tok.value === "object" ? (tok.value[theme] ?? tok.value[first]) : tok.value;
+const valueFor = (tok, theme) => (typeof tok.value === "object" ? (tok.value[theme] ?? tok.value[first]) : tok.value);
 
 const otherFamilies = Object.keys(t).filter(
-  (k) => !["name", "version", "meta", "color", "type", "shadow"].includes(k) && t[k]?.tokens
+  (k) => !["name", "version", "meta", "color", "type", "shadow"].includes(k) && t[k]?.tokens,
 );
 
 const lines = [];

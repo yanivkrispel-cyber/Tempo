@@ -14,15 +14,32 @@ export const sampleMe: Me = {
       role: "owner",
       roles: [{ id: "00000000-0000-7000-8000-000000000001", key: "owner", displayName: "בעלים", isSystem: true }],
       permissions: [
-        "audit.view", "consent.manage", "members.invite.admin", "members.invite.staff", "members.manage", "members.view",
-        "organization.settings.manage", "organization.view", "ownership.transfer", "people.erase", "people.export",
-        "people.manage", "people.merge", "people.view", "roles.manage"
+        "audit.view",
+        "consent.manage",
+        "members.invite.admin",
+        "members.invite.staff",
+        "members.manage",
+        "members.view",
+        "organization.settings.manage",
+        "organization.view",
+        "ownership.transfer",
+        "people.erase",
+        "people.export",
+        "people.manage",
+        "people.merge",
+        "people.view",
+        "roles.manage",
       ],
       pendingOwnershipTransfer: null,
       status: "active",
-      organization: { id: "0199e5a1-0000-7000-8000-000000000003", slug: "neshima", displayName: "סטודיו נשימה", status: "active" }
-    }
-  ]
+      organization: {
+        id: "0199e5a1-0000-7000-8000-000000000003",
+        slug: "neshima",
+        displayName: "סטודיו נשימה",
+        status: "active",
+      },
+    },
+  ],
 };
 
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -33,7 +50,7 @@ export function json(body: unknown, status = 200, headers: Record<string, string
 export function problem(status: number, code: string, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify({ type: "about:blank", title: code, status, code }), {
     status,
-    headers: { "Content-Type": "application/problem+json", ...headers }
+    headers: { "Content-Type": "application/problem+json", ...headers },
   });
 }
 

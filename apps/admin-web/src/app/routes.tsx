@@ -39,12 +39,12 @@ export const routes: RouteObject[] = [
               { path: "people/:personId", element: <PersonPage /> },
               { path: "duplicates", element: <DuplicatesPage /> },
               { path: "settings", element: <SettingsPage /> },
-              { path: "audit", element: <AuditPage /> }
-            ]
-          }
-        ]
-      }
-    ]
+              { path: "audit", element: <AuditPage /> },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { path: "/login", element: <LoginPage /> },
   // Cognito's exact callback URL (infrastructure/config/<env>.ts, cognitoCallbackUrls.adminWeb).
@@ -52,5 +52,5 @@ export const routes: RouteObject[] = [
   // Staff and admin invitations open here as <app>/invite#<token> (docs/26 section 5.3). Join links are for
   // clients and open the client app. Public: a visitor who is not signed in signs in or up first.
   { path: "/invite", element: <InvitePage /> },
-  { path: "*", element: <NotFoundPage /> }
+  { path: "*", element: <NotFoundPage /> },
 ];

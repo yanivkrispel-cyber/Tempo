@@ -4,7 +4,21 @@ import { useState, type FormEvent } from "react";
 import { useParams } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
-import { Banner, Button, ButtonLink, Card, Chip, DateInput, Dialog, Field, Icon, Input, Select, Skeleton, useToast } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  ButtonLink,
+  Card,
+  Chip,
+  DateInput,
+  Dialog,
+  Field,
+  Icon,
+  Input,
+  Select,
+  Skeleton,
+  useToast,
+} from "../../shared/design-system";
 import { formatDate, todayIso, toIsoDate, type IsoDate } from "../../shared/utilities/dates";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
@@ -31,14 +45,20 @@ export function PersonPage() {
   const person = useQuery({
     queryKey: usePersonKey(personId),
     queryFn: () =>
-      unwrap(api.GET("/api/v1/organizations/{organizationId}/people/{personId}", { params: { path: { organizationId, personId } } }))
+      unwrap(
+        api.GET("/api/v1/organizations/{organizationId}/people/{personId}", {
+          params: { path: { organizationId, personId } },
+        }),
+      ),
   });
 
   if (person.isError) {
     return (
       <div className="tp-stack">
         <Banner tone="danger" icon="info">
-          {hasCode(person.error, "person.not_found") ? "האדם לא נמצא." : errorMessage(person.error, "לא הצלחנו לטעון את הפרטים. נסו שוב.")}
+          {hasCode(person.error, "person.not_found")
+            ? "האדם לא נמצא."
+            : errorMessage(person.error, "לא הצלחנו לטעון את הפרטים. נסו שוב.")}
         </Banner>
         <ButtonLink to=".." relative="path" variant="secondary">
           לרשימת האנשים
@@ -74,9 +94,14 @@ function PersonCard({ person }: { person: PersonDetail }) {
     archive.mutate(
       { status: archived ? "archived" : "active" },
       {
-        onSuccess: () => toast.show({ tone: "success", icon: "check", message: archived ? "הרשומה עברה לארכיון" : "הרשומה חזרה לרשימת הפעילים" }),
-        onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) })
-      }
+        onSuccess: () =>
+          toast.show({
+            tone: "success",
+            icon: "check",
+            message: archived ? "הרשומה עברה לארכיון" : "הרשומה חזרה לרשימת הפעילים",
+          }),
+        onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
+      },
     );
 
   return (
@@ -106,12 +131,17 @@ function PersonCard({ person }: { person: PersonDetail }) {
               {studio.can("people.export") && <ExportButton personId={person.id} name={person.displayName} />}
               {writable && (
                 <>
-              <Button variant="secondary" size="sm" icon="edit" onClick={() => setEditing(true)}>
-                עריכה
-              </Button>
-              <Button variant={person.status === "archived" ? "secondary" : "ghost-danger"} size="sm" loading={archive.isPending} onClick={() => setArchived(person.status !== "archived")}>
-                {person.status === "archived" ? "החזרה מהארכיון" : "העברה לארכיון"}
-              </Button>
+                  <Button variant="secondary" size="sm" icon="edit" onClick={() => setEditing(true)}>
+                    עריכה
+                  </Button>
+                  <Button
+                    variant={person.status === "archived" ? "secondary" : "ghost-danger"}
+                    size="sm"
+                    loading={archive.isPending}
+                    onClick={() => setArchived(person.status !== "archived")}
+                  >
+                    {person.status === "archived" ? "החזרה מהארכיון" : "העברה לארכיון"}
+                  </Button>
                 </>
               )}
             </div>
@@ -161,20 +191,25 @@ function usePatchPerson(person: PersonDetail) {
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/people/{personId}", {
           params: { path: { organizationId, personId: person.id }, header: { "If-Match": person.version } },
-          body
-        })
+          body,
+        }),
       ),
     onSuccess: (updated) => queryClient.setQueryData(key, updated),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] }),
   });
 }
 
 function EditPersonDialog({ person, onClose }: { person: PersonDetail; onClose: () => void }) {
   const update = usePatchPerson(person);
-  const [form, setForm] = useState({ displayName: person.displayName, givenName: person.givenName ?? "", familyName: person.familyName ?? "" });
+  const [form, setForm] = useState({
+    displayName: person.displayName,
+    givenName: person.givenName ?? "",
+    familyName: person.familyName ?? "",
+  });
   const [birthDate, setBirthDate] = useState<IsoDate | null>(person.birthDate ?? null);
   const [submitted, setSubmitted] = useState(false);
-  const set = (field: keyof typeof form) => (event: { target: { value: string } }) => setForm({ ...form, [field]: event.target.value });
+  const set = (field: keyof typeof form) => (event: { target: { value: string } }) =>
+    setForm({ ...form, [field]: event.target.value });
   const nameError = form.displayName.trim() === "" ? "צריך שם" : null;
 
   const submit = (event: FormEvent) => {
@@ -187,9 +222,9 @@ function EditPersonDialog({ person, onClose }: { person: PersonDetail; onClose: 
         displayName: form.displayName.trim(),
         givenName: form.givenName.trim() || null,
         familyName: form.familyName.trim() || null,
-        birthDate
+        birthDate,
       },
-      { onSuccess: onClose }
+      { onSuccess: onClose },
     );
   };
 
@@ -241,7 +276,11 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
   const { organizationId } = useStudio();
   const key = usePersonKey(person.id);
   const path = { organizationId, personId: person.id };
-  const refresh = () => Promise.all([queryClient.invalidateQueries({ queryKey: key }), queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] })]);
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: key }),
+      queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] }),
+    ]);
   const onError = (error: unknown) => toast.show({ tone: "danger", icon: "info", message: contactError(error) });
 
   const makePrimary = useMutation({
@@ -249,17 +288,21 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/people/{personId}/contact-points/{contactPointId}", {
           params: { path: { ...path, contactPointId: contact.id }, header: { "If-Match": contact.version } },
-          body: { isPrimary: true }
-        })
+          body: { isPrimary: true },
+        }),
       ),
     onError,
-    onSettled: refresh
+    onSettled: refresh,
   });
   const remove = useMutation({
     mutationFn: (contact: ContactPoint) =>
-      unwrap(api.DELETE("/api/v1/organizations/{organizationId}/people/{personId}/contact-points/{contactPointId}", { params: { path: { ...path, contactPointId: contact.id } } })),
+      unwrap(
+        api.DELETE("/api/v1/organizations/{organizationId}/people/{personId}/contact-points/{contactPointId}", {
+          params: { path: { ...path, contactPointId: contact.id } },
+        }),
+      ),
     onError,
-    onSettled: refresh
+    onSettled: refresh,
   });
 
   return (
@@ -272,7 +315,10 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
           {person.contactPoints.map((contact) => (
             <li key={contact.id} className="tp-row" style={{ justifyContent: "space-between" }}>
               <span className="tp-row" style={{ gap: 8 }}>
-                <Icon name={contact.type === "phone" ? "phone" : "mail"} label={contact.type === "phone" ? "טלפון" : "מייל"} />
+                <Icon
+                  name={contact.type === "phone" ? "phone" : "mail"}
+                  label={contact.type === "phone" ? "טלפון" : "מייל"}
+                />
                 <bdi className="tp-ltr">{contact.type === "phone" ? displayPhone(contact.value) : contact.value}</bdi>
                 {contact.isPrimary && <Chip tone="brand">ראשי</Chip>}
                 {contact.verified && <Chip tone="success">מאומת</Chip>}
@@ -280,11 +326,21 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
               {writable && !contact.verified && (
                 <span className="tp-row" style={{ gap: 4 }}>
                   {!contact.isPrimary && (
-                    <Button variant="ghost" size="sm" onClick={() => makePrimary.mutate(contact)} aria-label={`הפיכת ${contact.value} לראשי`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => makePrimary.mutate(contact)}
+                      aria-label={`הפיכת ${contact.value} לראשי`}
+                    >
                       ראשי
                     </Button>
                   )}
-                  <Button variant="ghost-danger" size="sm" onClick={() => remove.mutate(contact)} aria-label={`מחיקת ${contact.value}`}>
+                  <Button
+                    variant="ghost-danger"
+                    size="sm"
+                    onClick={() => remove.mutate(contact)}
+                    aria-label={`מחיקת ${contact.value}`}
+                  >
                     מחיקה
                   </Button>
                 </span>
@@ -308,13 +364,13 @@ function AddContact({ person, onAdded }: { person: PersonDetail; onAdded: () => 
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/contact-points", {
           params: { path: { organizationId, personId: person.id } },
-          body: { type, value: value.trim(), isPrimary: false }
-        })
+          body: { type, value: value.trim(), isPrimary: false },
+        }),
       ),
     onSuccess: async () => {
       setValue("");
       await onAdded();
-    }
+    },
   });
 
   const submit = (event: FormEvent) => {
@@ -332,7 +388,13 @@ function AddContact({ person, onAdded }: { person: PersonDetail; onAdded: () => 
           </Select>
         </Field>
         <Field label={type === "phone" ? "מספר" : "כתובת"} error={add.isError ? contactError(add.error) : undefined}>
-          <Input type={type === "phone" ? "tel" : "email"} dir="ltr" className="tp-ltr" value={value} onChange={(event) => setValue(event.target.value)} />
+          <Input
+            type={type === "phone" ? "tel" : "email"}
+            dir="ltr"
+            className="tp-ltr"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
         </Field>
         <Button type="submit" variant="secondary" icon="plus" loading={add.isPending}>
           הוספה

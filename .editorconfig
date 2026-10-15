@@ -20,7 +20,7 @@ trim_trailing_whitespace = false
 [*.cs]
 indent_size = 4
 
-[*.{js,ts,jsx,tsx}]
+[*.{js,mjs,cjs,ts,mts,cts,jsx,tsx,css,html}]
 indent_size = 2
 
 [*.csproj]

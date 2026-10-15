@@ -17,7 +17,11 @@ const day = (iso: string) => formatDate(toIsoDate(new Date(iso)));
 function useRefreshAfterTransfer() {
   const queryClient = useQueryClient();
   const { organizationId } = useStudio();
-  return () => Promise.all([queryClient.invalidateQueries({ queryKey: meKey }), queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "members"] })]);
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: meKey }),
+      queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "members"] }),
+    ]);
 }
 
 /**
@@ -33,12 +37,17 @@ export function TransferDialog({ member, name, onClose }: { member: Member; name
   const { organizationId, displayName } = useStudio();
   const start = useMutation({
     mutationFn: () =>
-      unwrap(api.POST("/api/v1/organizations/{organizationId}/ownership-transfer", { params: { path: { organizationId } }, body: { toMembershipId: member.id } })),
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/ownership-transfer", {
+          params: { path: { organizationId } },
+          body: { toMembershipId: member.id },
+        }),
+      ),
     onSuccess: async () => {
       await refresh();
       toast.show({ tone: "success", icon: "check", message: `ההצעה נשלחה ל${name}` });
       onClose();
-    }
+    },
   });
   const stepUp = hasCode(start.error, "auth.step_up_required");
 
@@ -84,10 +93,15 @@ export function OutgoingTransferBanner() {
   const { organizationId, membership } = useStudio();
   const pending = membership.pendingOwnershipTransfer;
   const cancel = useMutation({
-    mutationFn: () => unwrap(api.DELETE("/api/v1/organizations/{organizationId}/ownership-transfer", { params: { path: { organizationId } } })),
+    mutationFn: () =>
+      unwrap(
+        api.DELETE("/api/v1/organizations/{organizationId}/ownership-transfer", {
+          params: { path: { organizationId } },
+        }),
+      ),
     onSuccess: () => toast.show({ tone: "success", icon: "check", message: "ההצעה בוטלה" }),
     onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
-    onSettled: refresh
+    onSettled: refresh,
   });
 
   if (pending?.direction !== "outgoing") return null;
@@ -113,12 +127,24 @@ export function IncomingTransferBanner() {
   const answer = useMutation({
     mutationFn: (accept: boolean) =>
       accept
-        ? unwrap(api.POST("/api/v1/organizations/{organizationId}/ownership-transfer/accept", { params: { path: { organizationId } } }))
-        : unwrap(api.POST("/api/v1/organizations/{organizationId}/ownership-transfer/decline", { params: { path: { organizationId } } })),
+        ? unwrap(
+            api.POST("/api/v1/organizations/{organizationId}/ownership-transfer/accept", {
+              params: { path: { organizationId } },
+            }),
+          )
+        : unwrap(
+            api.POST("/api/v1/organizations/{organizationId}/ownership-transfer/decline", {
+              params: { path: { organizationId } },
+            }),
+          ),
     onSuccess: (_, accept) =>
-      toast.show({ tone: "success", icon: "check", message: accept ? `מעכשיו הבעלות על ${displayName} שלך` : "ההצעה נדחתה" }),
+      toast.show({
+        tone: "success",
+        icon: "check",
+        message: accept ? `מעכשיו הבעלות על ${displayName} שלך` : "ההצעה נדחתה",
+      }),
     onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
-    onSettled: refresh
+    onSettled: refresh,
   });
 
   if (pending?.direction !== "incoming") return null;
@@ -126,14 +152,19 @@ export function IncomingTransferBanner() {
     <Banner tone="warning" icon="info">
       <div className="tp-stack" style={{ gap: 8 }}>
         <span>
-          הוצעה לך הבעלות על {displayName}. ההצעה בתוקף עד {day(pending.expiresAt)}. אם תקבלו אותה, תהיו הבעלים של הסטודיו, ובעלי
-          הסטודיו הנוכחיים יהיו מנהלים.
+          הוצעה לך הבעלות על {displayName}. ההצעה בתוקף עד {day(pending.expiresAt)}. אם תקבלו אותה, תהיו הבעלים של
+          הסטודיו, ובעלי הסטודיו הנוכחיים יהיו מנהלים.
         </span>
         <div className="tp-row">
           <Button size="sm" loading={answer.isPending && answer.variables} onClick={() => answer.mutate(true)}>
             קבלת הבעלות
           </Button>
-          <Button variant="secondary" size="sm" loading={answer.isPending && !answer.variables} onClick={() => answer.mutate(false)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={answer.isPending && !answer.variables}
+            onClick={() => answer.mutate(false)}
+          >
             דחייה
           </Button>
         </div>

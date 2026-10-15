@@ -11,7 +11,7 @@ import {
   Skeleton,
   WeekStrip,
   shortDate,
-  useToast
+  useToast,
 } from "../../shared/design-system";
 import { activeMemberships, nameOf, useAccount } from "../../account/account";
 import { addDays, dayOfWeek, startOfWeek } from "../../shared/utilities/dates";
@@ -55,8 +55,10 @@ export function HomeScreen() {
     .filter((item) => bookingFor(bookings.data, item.id)?.status === "booked")
     .sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`))[0];
   const dayClasses = classes.data.filter((item) => item.date === day);
-  const dayTitle = day === today ? "השיעורים של היום" : day === addDays(today, 1) ? "השיעורים של מחר" : `השיעורים של ${dayName(day)}`;
-  const emptyText = day < today ? "היום הזה כבר עבר" : dayOfWeek(day) === 6 ? "אין שיעורים בשבת" : "אין שיעורים ביום הזה";
+  const dayTitle =
+    day === today ? "השיעורים של היום" : day === addDays(today, 1) ? "השיעורים של מחר" : `השיעורים של ${dayName(day)}`;
+  const emptyText =
+    day < today ? "היום הזה כבר עבר" : dayOfWeek(day) === 6 ? "אין שיעורים בשבת" : "אין שיעורים ביום הזה";
 
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
@@ -130,7 +132,12 @@ export function HomeScreen() {
 
       <section aria-label="ההתקדמות שלך" className={styles.stats}>
         <Card small className={styles.stat}>
-          <ProgressRing size="sm" value={member.visitsThisMonth} max={member.monthlyGoal} label={`ביקורים החודש, מתוך יעד של ${member.monthlyGoal}`}>
+          <ProgressRing
+            size="sm"
+            value={member.visitsThisMonth}
+            max={member.monthlyGoal}
+            label={`ביקורים החודש, מתוך יעד של ${member.monthlyGoal}`}
+          >
             {member.visitsThisMonth}
           </ProgressRing>
           <span className="tp-stat__label">ביקורים החודש</span>

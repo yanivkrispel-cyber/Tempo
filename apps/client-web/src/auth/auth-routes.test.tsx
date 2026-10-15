@@ -9,7 +9,11 @@ import { routes } from "../app/routes";
 import { apiStub, problem, signedInRoutes } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
 
-function renderAt(url: string, auth: AuthClient | null, fetch: typeof globalThis.fetch = apiStub(signedInRoutes).fetch) {
+function renderAt(
+  url: string,
+  auth: AuthClient | null,
+  fetch: typeof globalThis.fetch = apiStub(signedInRoutes).fetch,
+) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={fetch} />);
   return router;
@@ -53,9 +57,11 @@ describe("/auth/callback", () => {
   it("completes the sign-in and opens the remembered page", async () => {
     const redirect = vi.fn();
     const flowStorage = memoryStorage();
-    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ access_token: "a", refresh_token: "r", expires_in: 3600 }), { status: 200 })
-    );
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ access_token: "a", refresh_token: "r", expires_in: 3600 }), { status: 200 }),
+      );
     const auth = signedOutAuth({ redirect, flowStorage, fetch });
     await auth.signIn("/bookings");
     const state = new URL(redirect.mock.calls[0]![0] as string).searchParams.get("state")!;
@@ -85,7 +91,7 @@ describe("API client", () => {
     render(
       <ApiProvider baseUrl="https://api.test" auth={auth} fetch={api}>
         <Probe />
-      </ApiProvider>
+      </ApiProvider>,
     );
     await call;
     return { auth, request: api.mock.calls[0]![0] as Request };

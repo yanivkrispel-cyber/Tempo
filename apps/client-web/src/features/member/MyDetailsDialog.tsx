@@ -28,8 +28,8 @@ export function MyDetailsDialog({ organizationId, studioName, profile, onClose }
         onSuccess: () => {
           toast.show({ tone: "success", icon: "check", message: "הפרטים נשמרו" });
           onClose();
-        }
-      }
+        },
+      },
     );
   };
 
@@ -52,10 +52,20 @@ export function MyDetailsDialog({ organizationId, studioName, profile, onClose }
     >
       <form id="my-details" className="tp-stack" onSubmit={submit} noValidate>
         <Field label="שם פרטי">
-          <Input value={givenName} onChange={(event) => setGivenName(event.target.value)} maxLength={100} autoComplete="given-name" />
+          <Input
+            value={givenName}
+            onChange={(event) => setGivenName(event.target.value)}
+            maxLength={100}
+            autoComplete="given-name"
+          />
         </Field>
         <Field label="שם משפחה">
-          <Input value={familyName} onChange={(event) => setFamilyName(event.target.value)} maxLength={100} autoComplete="family-name" />
+          <Input
+            value={familyName}
+            onChange={(event) => setFamilyName(event.target.value)}
+            maxLength={100}
+            autoComplete="family-name"
+          />
         </Field>
         <Field label="תאריך לידה">
           <DateInput value={birthDate} onChange={setBirthDate} max={todayIso()} />

@@ -14,7 +14,7 @@ const noSubscription = () => () => {};
 export function AuthProvider({ client, children }: { client: AuthClient | null; children: ReactNode }) {
   const isSignedIn = useSyncExternalStore(
     client ? (listener) => client.subscribe(listener) : noSubscription,
-    () => client?.isSignedIn ?? false
+    () => client?.isSignedIn ?? false,
   );
   return <AuthContext.Provider value={{ client, isSignedIn }}>{children}</AuthContext.Provider>;
 }

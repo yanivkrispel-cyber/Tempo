@@ -22,7 +22,7 @@ const actionLabels: Record<string, string> = {
   "ownership.transfer_started": "הצעה להעברת בעלות",
   "ownership.transfer_cancelled": "ביטול העברת בעלות",
   "ownership.transfer_declined": "דחיית העברת בעלות",
-  "ownership.transferred": "העברת בעלות"
+  "ownership.transferred": "העברת בעלות",
 };
 
 export function actionLabel(action: string): string {

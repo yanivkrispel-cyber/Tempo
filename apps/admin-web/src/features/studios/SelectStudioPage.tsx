@@ -64,12 +64,14 @@ function CreateStudio() {
   const create = useMutation({
     // The contract's defaults, sent explicitly (the generated type requires them); the settings screen changes them.
     mutationFn: (body: { displayName: string; slug: string }) =>
-      unwrap(api.POST("/api/v1/organizations", { body: { ...body, timeZone: "Asia/Jerusalem", defaultLocale: "he-IL" } })),
+      unwrap(
+        api.POST("/api/v1/organizations", { body: { ...body, timeZone: "Asia/Jerusalem", defaultLocale: "he-IL" } }),
+      ),
     onSuccess: async (studio) => {
       await queryClient.invalidateQueries({ queryKey: meKey });
       toast.show({ tone: "success", icon: "check", message: `${studio.displayName} נפתח` });
       void navigate(`/o/${studio.slug}`);
-    }
+    },
   });
 
   const name = displayName.trim();
@@ -95,7 +97,12 @@ function CreateStudio() {
         <Field label="שם הסטודיו" required error={submitted ? nameError : undefined}>
           <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={100} />
         </Field>
-        <Field label="כתובת" required help="מופיעה בכתובת הניהול, למשל studio-neshima" error={submitted ? slugError : undefined}>
+        <Field
+          label="כתובת"
+          required
+          help="מופיעה בכתובת הניהול, למשל studio-neshima"
+          error={submitted ? slugError : undefined}
+        >
           <Input
             dir="ltr"
             className="tp-ltr"

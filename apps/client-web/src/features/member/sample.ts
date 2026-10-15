@@ -53,34 +53,39 @@ const classTypes = {
   mat: { title: "פילאטיס מזרן", kind: "pilates", color: "taupe", room: "האולם הגדול", minutes: 45 },
   power: { title: "פילאטיס כוח", kind: "pilates", color: "amber", room: "האולם הגדול", minutes: 45 },
   prenatal: { title: "יוגה בהריון", kind: "yoga", color: "mauve", room: "החדר הקטן", minutes: 60 },
-  yin: { title: "יין יוגה ונשימה", kind: "yoga", color: "blue", room: "החדר הקטן", minutes: 75 }
-} as const satisfies Record<string, { title: string; kind: ClassKind; color: ClassColor; room: string; minutes: number }>;
+  yin: { title: "יין יוגה ונשימה", kind: "yoga", color: "blue", room: "החדר הקטן", minutes: 75 },
+} as const satisfies Record<
+  string,
+  { title: string; kind: ClassKind; color: ClassColor; room: string; minutes: number }
+>;
 
-type Plan = Array<[start: Time, type: keyof typeof classTypes, coach: string, booked: number, capacity: number, waiting: number]>;
+type Plan = Array<
+  [start: Time, type: keyof typeof classTypes, coach: string, booked: number, capacity: number, waiting: number]
+>;
 
 // Four day plans from the mockup, repeated through the week. The studio is closed on Saturday.
 const dayPlans: Plan[] = [
   [
     ["17:30", "reformer", "דנה", 8, 8, 0],
     ["19:00", "prenatal", "נועה", 6, 10, 0],
-    ["20:15", "yin", "עומר", 14, 14, 1]
+    ["20:15", "yin", "עומר", 14, 14, 1],
   ],
   [
     ["07:00", "reformer", "דנה", 6, 8, 0],
     ["09:30", "vinyasa", "נועה", 8, 14, 0],
     ["18:00", "power", "עומר", 10, 10, 1],
-    ["19:30", "mat", "יעל", 4, 12, 0]
+    ["19:30", "mat", "יעל", 4, 12, 0],
   ],
   [
     ["07:00", "vinyasa", "נועה", 5, 14, 0],
     ["09:30", "reformer", "דנה", 3, 8, 0],
     ["18:30", "reformer", "דנה", 2, 8, 0],
-    ["20:00", "yin", "עומר", 6, 14, 0]
+    ["20:00", "yin", "עומר", 6, 14, 0],
   ],
   [
     ["08:00", "reformer", "דנה", 8, 8, 3],
-    ["09:30", "vinyasa", "נועה", 11, 14, 0]
-  ]
+    ["09:30", "vinyasa", "נועה", 11, 14, 0],
+  ],
 ];
 
 /** The classes from `today` through the next six days. */
@@ -96,8 +101,8 @@ export function sampleClasses(today: IsoDate): StudioClass[] {
           booked,
           capacity,
           waiting,
-          ...classTypes[type]
-        }))
+          ...classTypes[type],
+        })),
   );
 }
 
@@ -109,7 +114,7 @@ function sampleBookings(classes: StudioClass[]): Booking[] {
   return [
     ...(reformer ? [{ classId: reformer.id, status: "booked" as const }] : []),
     ...(power ? [{ classId: power.id, status: "waiting" as const, position: power.waiting + 1 }] : []),
-    ...(vinyasa ? [{ classId: vinyasa.id, status: "booked" as const }] : [])
+    ...(vinyasa ? [{ classId: vinyasa.id, status: "booked" as const }] : []),
   ];
 }
 
@@ -120,13 +125,13 @@ function sampleHistory(today: IsoDate): PastVisit[] {
     [5, "vinyasa", "attended"],
     [7, "reformer", "cancelled"],
     [8, "mat", "attended"],
-    [12, "reformer", "attended"]
+    [12, "reformer", "attended"],
   ];
   return visits.map(([daysAgo, type, status]) => ({
     id: `past-${daysAgo}`,
     title: classTypes[type].title,
     date: addDays(today, -daysAgo),
-    status
+    status,
   }));
 }
 
@@ -139,7 +144,7 @@ function sampleProfile(today: IsoDate): MemberProfile {
     visitsThisMonth: 14,
     monthlyGoal: 18,
     streakWeeks: 6,
-    healthDeclarationSigned: true
+    healthDeclarationSigned: true,
   };
 }
 
@@ -183,7 +188,7 @@ export function createSampleApi(today: IsoDate) {
       item.waiting += 1;
       bookings = [...bookings, { classId, status: "waiting", position: item.waiting }];
       return item.waiting;
-    }
+    },
   };
 }
 

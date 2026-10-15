@@ -3,7 +3,18 @@ import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Card, Chip, Dialog, Field, Input, Select, Skeleton, useToast } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  Field,
+  Input,
+  Select,
+  Skeleton,
+  useToast,
+} from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 
@@ -14,14 +25,18 @@ type Channel = Schemas["ConsentChannel"];
 
 const purposes: { value: Purpose; label: string }[] = [
   { value: "reminders", label: "תזכורות" },
-  { value: "marketing", label: "עדכונים ומבצעים" }
+  { value: "marketing", label: "עדכונים ומבצעים" },
 ];
 const channels: { value: Channel; label: string }[] = [
   { value: "email", label: "מייל" },
   { value: "push", label: "התראה" },
-  { value: "whatsapp", label: "וואטסאפ" }
+  { value: "whatsapp", label: "וואטסאפ" },
 ];
-const methodLabel: Record<Consent["method"], string> = { self: "בחירה אישית", staff_on_behalf: "נרשם על ידי הסטודיו", import: "ייבוא" };
+const methodLabel: Record<Consent["method"], string> = {
+  self: "בחירה אישית",
+  staff_on_behalf: "נרשם על ידי הסטודיו",
+  import: "ייבוא",
+};
 
 /** The version of the consent wording the studio uses until Kris writes the texts (docs/27 P-4). */
 const draftTextVersion = "draft-2026-10-15";
@@ -36,7 +51,8 @@ export function ConsentSection({ person }: { person: PersonDetail }) {
   const studio = useStudio();
   const [history, setHistory] = useState(false);
   const [recording, setRecording] = useState(false);
-  const latest = (purpose: Purpose, channel: Channel) => person.consents.find((c) => c.purpose === purpose && c.channel === channel);
+  const latest = (purpose: Purpose, channel: Channel) =>
+    person.consents.find((c) => c.purpose === purpose && c.channel === channel);
   const live = person.status === "active" || person.status === "archived";
 
   return (
@@ -78,7 +94,10 @@ export function ConsentSection({ person }: { person: PersonDetail }) {
                       {!consent ? (
                         <span className="tp-muted">לא נבחר</span>
                       ) : (
-                        <Chip tone={consent.state === "granted" ? "success" : "neutral"} title={`${day(consent.occurredAt)} · ${methodLabel[consent.method]}`}>
+                        <Chip
+                          tone={consent.state === "granted" ? "success" : "neutral"}
+                          title={`${day(consent.occurredAt)} · ${methodLabel[consent.method]}`}
+                        >
                           {consent.state === "granted" ? "מאושר" : "בוטל"}
                         </Chip>
                       )}
@@ -101,13 +120,24 @@ function HistoryDialog({ personId, onClose }: { personId: string; onClose: () =>
   const { organizationId } = useStudio();
   const history = useQuery({
     queryKey: ["studio", organizationId, "person", personId, "consents"],
-    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}/people/{personId}/consents", { params: { path: { organizationId, personId } } }))
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/v1/organizations/{organizationId}/people/{personId}/consents", {
+          params: { path: { organizationId, personId } },
+        }),
+      ),
   });
   const purpose = (value: Purpose) => purposes.find((p) => p.value === value)?.label ?? value;
   const channel = (value: Channel) => channels.find((c) => c.value === value)?.label ?? value;
 
   return (
-    <Dialog open onClose={onClose} title="היסטוריית הסכמות" description="כל בחירה נשמרת. בחירה חדשה לא מוחקת את הקודמת." actions={<Button onClick={onClose}>סגירה</Button>}>
+    <Dialog
+      open
+      onClose={onClose}
+      title="היסטוריית הסכמות"
+      description="כל בחירה נשמרת. בחירה חדשה לא מוחקת את הקודמת."
+      actions={<Button onClick={onClose}>סגירה</Button>}
+    >
       {history.isError ? (
         <Banner tone="danger" icon="info">
           {errorMessage(history.error, "לא הצלחנו לטעון את ההיסטוריה.")}
@@ -117,14 +147,20 @@ function HistoryDialog({ personId, onClose }: { personId: string; onClose: () =>
       ) : history.data.items.length === 0 ? (
         <p className="tp-muted">עוד לא נרשמה אף בחירה.</p>
       ) : (
-        <ul className="tp-stack" style={{ listStyle: "none", padding: 0, margin: 0, gap: 8 }} aria-label="הבחירות, מהחדשה לישנה">
+        <ul
+          className="tp-stack"
+          style={{ listStyle: "none", padding: 0, margin: 0, gap: 8 }}
+          aria-label="הבחירות, מהחדשה לישנה"
+        >
           {history.data.items.map((consent) => (
             <li key={consent.id} className="tp-row" style={{ justifyContent: "space-between" }}>
               <span>
-                {purpose(consent.purpose)} · {channel(consent.channel)}: <strong>{consent.state === "granted" ? "מאושר" : "בוטל"}</strong>
+                {purpose(consent.purpose)} · {channel(consent.channel)}:{" "}
+                <strong>{consent.state === "granted" ? "מאושר" : "בוטל"}</strong>
               </span>
               <span className="tp-caption tp-muted">
-                {day(consent.occurredAt)} · {methodLabel[consent.method]} · <bdi className="tp-ltr">{consent.textVersion}</bdi>
+                {day(consent.occurredAt)} · {methodLabel[consent.method]} ·{" "}
+                <bdi className="tp-ltr">{consent.textVersion}</bdi>
               </span>
             </li>
           ))}
@@ -148,14 +184,14 @@ function RecordDialog({ person, onClose }: { person: PersonDetail; onClose: () =
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/consents", {
           params: { path: { organizationId, personId: person.id } },
-          body: { purpose, channel, state, textVersion: textVersion.trim() }
-        })
+          body: { purpose, channel, state, textVersion: textVersion.trim() },
+        }),
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person", person.id] });
       toast.show({ tone: "success", icon: "check", message: "הבחירה נרשמה" });
       onClose();
-    }
+    },
   });
 
   const submit = (event: FormEvent) => {
@@ -206,7 +242,13 @@ function RecordDialog({ person, onClose }: { person: PersonDetail; onClose: () =
           </Select>
         </Field>
         <Field label="גרסת הנוסח" help="הגרסה של הנוסח שהאדם ראה." error={textVersion.trim() ? undefined : "צריך גרסה"}>
-          <Input dir="ltr" className="tp-ltr" value={textVersion} onChange={(event) => setTextVersion(event.target.value)} maxLength={40} />
+          <Input
+            dir="ltr"
+            className="tp-ltr"
+            value={textVersion}
+            onChange={(event) => setTextVersion(event.target.value)}
+            maxLength={40}
+          />
         </Field>
         {record.isError && (
           <Banner tone="danger" icon="info">

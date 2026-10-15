@@ -15,7 +15,7 @@ type Person = Schemas["Person"];
 const reasonLabel: Record<Candidate["reason"], string> = {
   email: "אותו מייל",
   phone: "אותו טלפון",
-  name_birth_date: "אותו שם ותאריך לידה"
+  name_birth_date: "אותו שם ותאריך לידה",
 };
 
 /** `/o/:slug/duplicates`: pairs the API flagged as possibly one person (docs/27 section 4.6); nothing merges by itself. */
@@ -27,11 +27,11 @@ export function DuplicatesPage() {
     queryFn: ({ pageParam }) =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/duplicate-candidates", {
-          params: { path: { organizationId }, query: { status: "open", limit: 20, before: pageParam ?? undefined } }
-        })
+          params: { path: { organizationId }, query: { status: "open", limit: 20, before: pageParam ?? undefined } },
+        }),
       ),
     initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextBefore ?? null
+    getNextPageParam: (page) => page.nextBefore ?? null,
   });
   const items = candidates.data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -40,7 +40,9 @@ export function DuplicatesPage() {
       <header>
         <span className="tp-eyebrow">ניהול</span>
         <h1>כפילויות</h1>
-        <p className="tp-muted">רשומות שאולי שייכות לאותו אדם. איחוד מעביר את פרטי הקשר, ההסכמות והקשרים לרשומה שנשארת.</p>
+        <p className="tp-muted">
+          רשומות שאולי שייכות לאותו אדם. איחוד מעביר את פרטי הקשר, ההסכמות והקשרים לרשומה שנשארת.
+        </p>
       </header>
 
       {candidates.isError ? (
@@ -61,7 +63,11 @@ export function DuplicatesPage() {
 
       {candidates.hasNextPage && (
         <div>
-          <Button variant="secondary" loading={candidates.isFetchingNextPage} onClick={() => void candidates.fetchNextPage()}>
+          <Button
+            variant="secondary"
+            loading={candidates.isFetchingNextPage}
+            onClick={() => void candidates.fetchNextPage()}
+          >
             עוד כפילויות
           </Button>
         </div>
@@ -80,20 +86,26 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/duplicate-candidates/{candidateId}/resolve", {
           params: { path: { organizationId, candidateId: candidate.id } },
-          body
-        })
+          body,
+        }),
       ),
-    onSuccess: (_, body) => toast.show({ tone: "success", icon: "check", message: body.resolution === "merge" ? "הרשומות אוחדו" : "סומנו כשני אנשים" }),
-    onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error, "לא הצלחנו לשמור. נסו שוב.") }),
+    onSuccess: (_, body) =>
+      toast.show({
+        tone: "success",
+        icon: "check",
+        message: body.resolution === "merge" ? "הרשומות אוחדו" : "סומנו כשני אנשים",
+      }),
+    onError: (error) =>
+      toast.show({ tone: "danger", icon: "info", message: errorMessage(error, "לא הצלחנו לשמור. נסו שוב.") }),
     onSettled: () => {
       // A merge moves contacts, consent and relationships to the survivor, so cached person cards are dropped
       // rather than shown stale while they refetch.
       queryClient.removeQueries({ queryKey: ["studio", organizationId, "person"] });
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "duplicates"] }),
-        queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] })
+        queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] }),
       ]);
-    }
+    },
   });
   const { personA, personB } = candidate;
   // Two records that both sign in are two people; the API refuses to merge them.
@@ -104,11 +116,19 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       <div className="tp-row">
         <Chip tone="warning">{reasonLabel[candidate.reason]}</Chip>
       </div>
-      <div className="tp-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: "var(--space-4)" }}>
+      <div
+        className="tp-grid"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: "var(--space-4)" }}
+      >
         {[personA, personB].map((person) => (
           <PersonSummary key={person.id} person={person}>
             {!bothSignIn && (
-              <Button variant="secondary" size="sm" loading={resolve.isPending && resolve.variables?.survivorPersonId === person.id} onClick={() => resolve.mutate({ resolution: "merge", survivorPersonId: person.id })}>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={resolve.isPending && resolve.variables?.survivorPersonId === person.id}
+                onClick={() => resolve.mutate({ resolution: "merge", survivorPersonId: person.id })}
+              >
                 איחוד לרשומה הזו
               </Button>
             )}
@@ -117,7 +137,12 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       </div>
       {bothSignIn && <p className="tp-caption tp-muted">לשתי הרשומות יש חשבון, ולכן אלה שני אנשים שונים.</p>}
       <div>
-        <Button variant="ghost" size="sm" loading={resolve.isPending && resolve.variables?.resolution === "not_duplicate"} onClick={() => resolve.mutate({ resolution: "not_duplicate" })}>
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={resolve.isPending && resolve.variables?.resolution === "not_duplicate"}
+          onClick={() => resolve.mutate({ resolution: "not_duplicate" })}
+        >
           אלה שני אנשים שונים
         </Button>
       </div>

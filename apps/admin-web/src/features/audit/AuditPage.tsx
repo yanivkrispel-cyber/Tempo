@@ -26,11 +26,11 @@ export function AuditPage() {
     queryFn: ({ pageParam }) =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/audit-events", {
-          params: { path: { organizationId }, query: { limit: 50, before: pageParam ?? undefined } }
-        })
+          params: { path: { organizationId }, query: { limit: 50, before: pageParam ?? undefined } },
+        }),
       ),
     initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextBefore ?? null
+    getNextPageParam: (page) => page.nextBefore ?? null,
   });
   const rows = events.data?.pages.flatMap((page) => page.items) ?? [];
 

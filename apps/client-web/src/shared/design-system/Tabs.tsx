@@ -21,12 +21,20 @@ export interface TabsProps<T extends string> {
 }
 
 /** WAI-ARIA tabs with automatic activation: arrows, Home and End move and select. */
-export function Tabs<T extends string>({ tabs, value, onChange, label, block = false, className, children }: TabsProps<T>) {
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  label,
+  block = false,
+  className,
+  children,
+}: TabsProps<T>) {
   const id = useId();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const selected = Math.max(
     tabs.findIndex((tab) => tab.value === value),
-    0
+    0,
   );
   const tabId = (index: number) => `${id}-tab-${index}`;
   const panelId = `${id}-panel`;
@@ -36,11 +44,19 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, block = f
     const back = forward === "ArrowLeft" ? "ArrowRight" : "ArrowLeft";
     const last = tabs.length - 1;
     const target =
-      event.key === forward ? (selected === last ? 0 : selected + 1)
-      : event.key === back ? (selected === 0 ? last : selected - 1)
-      : event.key === "Home" ? 0
-      : event.key === "End" ? last
-      : undefined;
+      event.key === forward
+        ? selected === last
+          ? 0
+          : selected + 1
+        : event.key === back
+          ? selected === 0
+            ? last
+            : selected - 1
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : undefined;
     const tab = target === undefined ? undefined : tabs[target];
     if (target === undefined || !tab) return;
     event.preventDefault();
@@ -51,7 +67,12 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, block = f
   return (
     <>
       {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- roving tabindex on the tabs (WAI-ARIA tabs pattern); the tablist is not a tab stop. */}
-      <div role="tablist" aria-label={label} className={cx("tp-tabs", block && "tp-tabs--block", className)} onKeyDown={onKeyDown}>
+      <div
+        role="tablist"
+        aria-label={label}
+        className={cx("tp-tabs", block && "tp-tabs--block", className)}
+        onKeyDown={onKeyDown}
+      >
         {tabs.map((tab, index) => (
           <button
             key={tab.value}
