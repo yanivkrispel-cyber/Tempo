@@ -16,8 +16,9 @@ export function readAppConfig(env: ImportMetaEnv = import.meta.env, origin = win
   const clientId = env.VITE_COGNITO_CLIENT_ID ?? "";
   return {
     apiUrl: (env.VITE_API_URL ?? "").replace(/\/+$/, ""),
-    auth: cognitoDomain && clientId
-      ? { cognitoDomain, clientId, redirectUri: `${origin}/auth/callback`, logoutUri: `${origin}/` }
-      : null
+    auth:
+      cognitoDomain && clientId
+        ? { cognitoDomain, clientId, redirectUri: `${origin}/auth/callback`, logoutUri: `${origin}/` }
+        : null,
   };
 }

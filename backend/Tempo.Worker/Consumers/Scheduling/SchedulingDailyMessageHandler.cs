@@ -14,6 +14,11 @@ public sealed class SchedulingDailyMessageHandler(ILogger logger, SchedulingDail
     public async Task HandleAsync(SQSEvent.SQSMessage record, string correlationId, ILambdaContext context)
     {
         var (sessions, expired) = await job.RunAsync(CancellationToken.None);
+        foreach (var zone in job.SkippedTimeZones)
+        {
+            logger.Warning("Scheduling daily job skipped studios with unknown time zone {TimeZone}. CorrelationId={CorrelationId}", zone, correlationId);
+        }
+
         logger.Information(
             "Scheduling daily job: {Sessions} sessions materialized, {ExpiredWaitlist} waitlist places closed. CorrelationId={CorrelationId}",
             sessions,

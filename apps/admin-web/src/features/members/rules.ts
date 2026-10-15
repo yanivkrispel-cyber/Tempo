@@ -22,6 +22,9 @@ export function assignableRoles(actor: MyMembership, target: Member): InvitableR
   return roles.filter((role) => role !== target.role);
 }
 
-export const canSuspend = (actor: MyMembership, target: Member) => outranks(actor, target) && target.status === "active";
-export const canReactivate = (actor: MyMembership, target: Member) => outranks(actor, target) && target.status === "suspended";
-export const canRemove = (actor: MyMembership, target: Member) => outranks(actor, target) && target.status !== "removed";
+export const canSuspend = (actor: MyMembership, target: Member) =>
+  outranks(actor, target) && target.status === "active";
+export const canReactivate = (actor: MyMembership, target: Member) =>
+  outranks(actor, target) && target.status === "suspended";
+export const canRemove = (actor: MyMembership, target: Member) =>
+  outranks(actor, target) && target.status !== "removed";

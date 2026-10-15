@@ -14,7 +14,12 @@ const code = "join_" + "b".repeat(20);
 const studio = { id: "0199e5a1-0000-7000-8000-000000000003", displayName: "סטודיו נשימה" };
 const membership = sampleMe.memberships[0]!;
 
-const invitation = { organization: studio, role: "client", invitedByDisplayName: "דנה כהן", expiresAt: "2026-10-22T09:00:00Z" };
+const invitation = {
+  organization: studio,
+  role: "client",
+  invitedByDisplayName: "דנה כהן",
+  expiresAt: "2026-10-22T09:00:00Z",
+};
 
 function renderAt(url: string, auth: AuthClient, routesForApi: Record<string, unknown>) {
   const api = apiStub({ "POST /api/v1/session": sampleMe, ...routesForApi });
@@ -45,7 +50,7 @@ describe("/invite", () => {
   it("accepts, refreshes the account and opens the home screen", async () => {
     const { router, api } = renderAt(`/invite#${token}`, signedInAuth(), {
       "POST /api/v1/invitations/preview": invitation,
-      "POST /api/v1/invitations/accept": membership
+      "POST /api/v1/invitations/accept": membership,
     });
     await userEvent.click(await screen.findByRole("button", { name: "אישור ההצטרפות" }));
 
@@ -58,7 +63,9 @@ describe("/invite", () => {
   });
 
   it("says when the invitation is gone and forgets the token", async () => {
-    renderAt(`/invite#${token}`, signedInAuth(), { "POST /api/v1/invitations/preview": problem(404, "invitation.not_found") });
+    renderAt(`/invite#${token}`, signedInAuth(), {
+      "POST /api/v1/invitations/preview": problem(404, "invitation.not_found"),
+    });
     expect(await screen.findByRole("alert")).toHaveTextContent("ההזמנה לא נמצאה");
     await waitFor(() => expect(window.sessionStorage.getItem("tempo.client-web.pending-invite")).toBeNull());
   });
@@ -66,7 +73,7 @@ describe("/invite", () => {
   it("offers another account when the invitation was sent to a different email", async () => {
     renderAt(`/invite#${token}`, signedInAuth(), {
       "POST /api/v1/invitations/preview": invitation,
-      "POST /api/v1/invitations/accept": problem(403, "invitation.email_mismatch")
+      "POST /api/v1/invitations/accept": problem(403, "invitation.email_mismatch"),
     });
     await userEvent.click(await screen.findByRole("button", { name: "אישור ההצטרפות" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("ההזמנה נשלחה לכתובת מייל אחרת");
@@ -76,7 +83,7 @@ describe("/invite", () => {
 
   it("asks to wait after too many attempts", async () => {
     renderAt(`/invite#${token}`, signedInAuth(), {
-      "POST /api/v1/invitations/preview": problem(429, "rate_limited", { "Retry-After": "120" })
+      "POST /api/v1/invitations/preview": problem(429, "rate_limited", { "Retry-After": "120" }),
     });
     expect(await screen.findByRole("alert")).toHaveTextContent("יותר מדי ניסיונות. נסו שוב בעוד 2 דקות.");
   });
@@ -86,7 +93,7 @@ describe("/join", () => {
   it("previews the studio, joins and opens the home screen", async () => {
     const { router, api } = renderAt(`/join#${code}`, signedInAuth(), {
       "POST /api/v1/join/preview": { organization: studio },
-      "POST /api/v1/join": membership
+      "POST /api/v1/join": membership,
     });
     expect(await screen.findByRole("heading", { name: "הצטרפות לסטודיו נשימה" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "הצטרפות" }));

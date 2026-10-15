@@ -19,14 +19,25 @@ export function useStudioProfile(organizationId: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: profileKey(organizationId ?? ""),
-    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}/me/profile", { params: { path: { organizationId: organizationId! } } })),
-    enabled: Boolean(organizationId)
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/v1/organizations/{organizationId}/me/profile", {
+          params: { path: { organizationId: organizationId! } },
+        }),
+      ),
+    enabled: Boolean(organizationId),
   });
 }
 
 /** The latest choice for a purpose and channel; none recorded means not granted (marketing must be opted in). */
-export function consentGranted(profile: PersonDetail | undefined, purpose: ConsentPurpose, channel: ConsentChannel): boolean {
-  return profile?.consents.find((consent) => consent.purpose === purpose && consent.channel === channel)?.state === "granted";
+export function consentGranted(
+  profile: PersonDetail | undefined,
+  purpose: ConsentPurpose,
+  channel: ConsentChannel,
+): boolean {
+  return (
+    profile?.consents.find((consent) => consent.purpose === purpose && consent.channel === channel)?.state === "granted"
+  );
 }
 
 /** Records one consent choice (append-only: a withdrawal is a new row) and updates the profile in place. */
@@ -38,16 +49,26 @@ export function useRecordConsent(organizationId: string) {
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/me/consents", {
           params: { path: { organizationId } },
-          body: { purpose: choice.purpose, channel: choice.channel, state: choice.granted ? "granted" : "withdrawn", textVersion: consentTextVersion }
-        })
+          body: {
+            purpose: choice.purpose,
+            channel: choice.channel,
+            state: choice.granted ? "granted" : "withdrawn",
+            textVersion: consentTextVersion,
+          },
+        }),
       ),
     onSuccess: (recorded) =>
-      queryClient.setQueryData<PersonDetail>(profileKey(organizationId), (profile) =>
-        profile && {
-          ...profile,
-          consents: [...profile.consents.filter((c) => !(c.purpose === recorded.purpose && c.channel === recorded.channel)), recorded]
-        }
-      )
+      queryClient.setQueryData<PersonDetail>(
+        profileKey(organizationId),
+        (profile) =>
+          profile && {
+            ...profile,
+            consents: [
+              ...profile.consents.filter((c) => !(c.purpose === recorded.purpose && c.channel === recorded.channel)),
+              recorded,
+            ],
+          },
+      ),
   });
 }
 
@@ -60,9 +81,9 @@ export function useUpdateStudioProfile(organizationId: string, version: string |
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/me/profile", {
           params: { path: { organizationId }, header: version ? { "If-Match": version } : {} },
-          body
-        })
+          body,
+        }),
       ),
-    onSuccess: (profile) => queryClient.setQueryData(profileKey(organizationId), profile)
+    onSuccess: (profile) => queryClient.setQueryData(profileKey(organizationId), profile),
   });
 }

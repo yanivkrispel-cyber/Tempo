@@ -22,7 +22,7 @@ export function useMe() {
     enabled: isSignedIn,
     staleTime: Infinity,
     // A 4xx (disabled account, rejected token) will not change on a retry; a network error or a 5xx might.
-    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500)
+    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500),
   });
 }
 
@@ -38,13 +38,15 @@ export function useUpdateMe() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: Schemas["UpdateMeRequest"]) => unwrap(api.PATCH("/api/v1/me", { body })),
-    onSuccess: (me) => queryClient.setQueryData(meKey, me)
+    onSuccess: (me) => queryClient.setQueryData(meKey, me),
   });
 }
 
 /** The studios the caller can use now: active memberships in active studios. */
 export function activeMemberships(me: Me): MyMembership[] {
-  return me.memberships.filter((membership) => membership.status === "active" && membership.organization.status === "active");
+  return me.memberships.filter(
+    (membership) => membership.status === "active" && membership.organization.status === "active",
+  );
 }
 
 /** The name to show: the display name, else the part of the email before `@`. */

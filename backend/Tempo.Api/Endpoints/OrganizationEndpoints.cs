@@ -48,7 +48,7 @@ public static class OrganizationEndpoints
         // Any member may leave; removing someone else is the service's rank rule (members.manage).
         tenant.MapDelete("/members/{membershipId:guid}", RemoveMemberAsync)
             .RequirePermission(Permissions.OrganizationView)
-            .WithName("removeMember")
+            .WithName("removeMember").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute())
             .Produces(StatusCodes.Status204NoContent);
 
         return endpoints;

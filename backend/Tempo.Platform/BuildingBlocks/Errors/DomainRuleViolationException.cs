@@ -61,4 +61,7 @@ public sealed class DomainRuleViolationException : Exception
 
     /// <summary>For <see cref="ViolationKind.TooManyRequests"/>: when to try again (the Retry-After header).</summary>
     public TimeSpan? RetryAfter { get; init; }
+
+    /// <summary>Extra members of the Problem, e.g. `key` and `limit` on `entitlement.limit_reached`.</summary>
+    public IReadOnlyDictionary<string, object?>? Extensions { get; init; }
 }

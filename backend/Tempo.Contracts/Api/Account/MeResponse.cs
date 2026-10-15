@@ -26,7 +26,9 @@ public sealed record MyMembershipResponse(
     IReadOnlyList<string> Permissions,
     PendingOwnershipTransferResponse? PendingOwnershipTransfer,
     string Status,
-    MyOrganizationResponse Organization);
+    MyOrganizationResponse Organization,
+    string? SubscriptionState = null,
+    System.Text.Json.JsonElement? Entitlements = null);
 
 public sealed record MyOrganizationResponse(Guid Id, string Slug, string DisplayName, string Status);
 

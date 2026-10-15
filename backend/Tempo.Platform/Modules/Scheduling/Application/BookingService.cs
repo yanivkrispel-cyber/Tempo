@@ -21,7 +21,8 @@ public sealed record BookingView(
     string? CancelReason,
     PassSummaryView? Pass,
     DateTimeOffset CreatedAt,
-    long Version);
+    long Version,
+    string? CancelledFrom = null);
 
 public sealed record MyBookingView(BookingView Booking, SessionView Session);
 
@@ -449,7 +450,16 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         var bookings = await BookingsAsync(
             unitOfWork,
             tenant.OrganizationId,
-            $"JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id WHERE b.organization_id = $1 AND b.person_id = $2 AND ($3::uuid IS NULL OR b.id < $3) AND {filter} ORDER BY b.id DESC LIMIT $5",
+            $"""
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE b.organization_id = $1 AND b.person_id = $2 AND {filter}
+              AND ($3::uuid IS NULL OR (s.starts_at, b.id) {(upcoming ? ">" : "<")} (
+                  SELECT s2.starts_at, b2.id FROM scheduling.bookings b2
+                  JOIN scheduling.sessions s2 ON s2.organization_id = b2.organization_id AND s2.id = b2.session_id
+                  WHERE b2.organization_id = $1 AND b2.id = $3))
+            ORDER BY s.starts_at {(upcoming ? "ASC" : "DESC")}, b.id {(upcoming ? "ASC" : "DESC")}
+            LIMIT $5
+            """,
             cancellationToken,
             personId, before, clock.GetUtcNow(), limit + 1);
         var page = bookings.Take(limit).ToList();
@@ -457,11 +467,6 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = ANY($3)", cancellationToken, page.Select(b => b.SessionId).Distinct().ToArray()))
             .ToDictionary(s => s.Id);
         var items = page.Select(b => new MyBookingView(b, sessions[b.SessionId])).ToList();
-        if (upcoming)
-        {
-            items = [.. items.OrderBy(i => i.Session.StartsAt)];
-        }
-
         return new MyBookingPage(items, bookings.Count > limit ? page[^1].Id : null);
     }
 
@@ -476,10 +481,11 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                    END,
                    b.late_cancel, b.cancel_reason,
                    ps.id, pp.name, pp.kind, ps.ends_on, ps.entries - ps.entries_used,
-                   b.created_at, b.version
+                   b.created_at, b.version,
+                   CASE WHEN b.status = 'cancelled' THEN CASE WHEN u.pass_id IS NULL THEN 'waitlisted' ELSE 'booked' END END
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
-            LEFT JOIN scheduling.pass_uses u ON u.organization_id = b.organization_id AND u.booking_id = b.id AND u.status = 'held'
+            LEFT JOIN scheduling.pass_uses u ON u.organization_id = b.organization_id AND u.booking_id = b.id
             LEFT JOIN scheduling.passes ps ON ps.organization_id = u.organization_id AND ps.id = u.pass_id
             LEFT JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
             {where}
@@ -510,7 +516,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetString(7),
                 pass,
                 await reader.GetFieldValueAsync<DateTimeOffset>(13, cancellationToken),
-                reader.GetInt64(14)));
+                reader.GetInt64(14),
+                await reader.IsDBNullAsync(15, cancellationToken) ? null : reader.GetString(15)));
         }
 
         return bookings;

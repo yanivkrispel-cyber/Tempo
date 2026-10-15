@@ -43,7 +43,7 @@ function useMemberMutation<T>(mutationFn: (classId: string) => Promise<T>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["member"] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["member"] }),
   });
 }
 

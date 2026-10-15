@@ -42,7 +42,8 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.MapOpenApi();
+    // The contract is public (contracts/openapi in a public repo); ArchitectureTests lists every anonymous route.
+    app.MapOpenApi().AllowAnonymous();
     app.MapHealthEndpoints();
     app.MapAccountEndpoints();
     app.MapOrganizationEndpoints();
@@ -55,6 +56,7 @@ try
     app.MapPassEndpoints();
     app.MapBookingEndpoints();
     app.MapClassEndpoints();
+    app.MapBillingEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();

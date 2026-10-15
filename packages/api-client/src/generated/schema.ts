@@ -1308,6 +1308,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark all of the caller's notifications in this studio read (self) */
+        post: operations["markAllNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/me/notifications/{itemId}/read": {
         parameters: {
             query?: never;
@@ -1508,9 +1527,9 @@ export interface components {
             permissions: components["schemas"]["PermissionKey"][];
             pendingOwnershipTransfer?: components["schemas"]["PendingOwnershipTransfer"] | null;
             status: components["schemas"]["MembershipStatus"];
-            /** @description Planned (docs/28). The studio's subscription state, for banners and restricted mode. */
+            /** @description The studio's subscription state (docs/28), for banners and restricted mode. */
             subscriptionState?: components["schemas"]["SubscriptionState"] | null;
-            /** @description Planned (docs/28). The studio's entitlements, to hide or upsell features. */
+            /** @description The studio's entitlements (docs/28), to hide or upsell features. */
             entitlements?: components["schemas"]["Entitlements"] | null;
             organization: {
                 /** Format: uuid */
@@ -2165,6 +2184,8 @@ export interface components {
                 name: string;
                 category: string;
                 color: components["schemas"]["ClassColor"];
+                /** @description About the class (AppClass). */
+                description?: string | null;
             };
             instructor?: components["schemas"]["InstructorRef"] | null;
             room?: {
@@ -2223,7 +2244,15 @@ export interface components {
             lateCancel: boolean;
             /** @enum {string|null} */
             cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | null;
-            /** @description The pass whose entry this booking holds; null while waiting or after the entry returned. */
+            /**
+             * @description For a cancelled booking, whether it held a place or a waitlist place; null otherwise.
+             * @enum {string|null}
+             */
+            cancelledFrom?: "booked" | "waitlisted" | null;
+            /**
+             * @description The pass this booking used, with its entries left now; still set after a cancellation (the entry may
+             *     have returned). Null while waiting, and for a waitlist place that never got a seat.
+             */
             pass?: components["schemas"]["PassSummary"] | null;
             /** Format: date-time */
             createdAt: string;
@@ -2394,6 +2423,14 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             readAt?: string | null;
+            /** @description The class the notice is about, so a list needs no extra request; null when it has none. */
+            session?: {
+                /** Format: uuid */
+                id: string;
+                /** Format: date-time */
+                startsAt: string;
+                classTypeName: string;
+            } | null;
         };
         InboxPage: {
             items: components["schemas"]["InboxItem"][];
@@ -5027,6 +5064,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InboxPage"];
                 };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    markAllNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];

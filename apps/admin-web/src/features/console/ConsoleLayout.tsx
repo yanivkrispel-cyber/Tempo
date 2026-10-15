@@ -21,7 +21,7 @@ const sections: Section[] = [
   { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
   { to: "roles", label: "תפקידים", icon: "shield", permission: "members.view" },
   { to: "audit", label: "יומן פעולות", icon: "list", permission: "audit.view" },
-  { to: "settings", label: "הגדרות", icon: "settings", permission: "organization.settings.manage" }
+  { to: "settings", label: "הגדרות", icon: "settings", permission: "organization.settings.manage" },
 ];
 
 /** `/o/:slug/*`: the studio from the URL, its navigation, and the page. */
@@ -57,7 +57,7 @@ export function ConsoleLayout() {
     slug: membership.organization.slug,
     displayName: membership.organization.displayName,
     membership,
-    can: (permission) => permissions.has(permission)
+    can: (permission) => permissions.has(permission),
   };
 
   return (

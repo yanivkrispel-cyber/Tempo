@@ -13,7 +13,8 @@ import { systemRoleIds } from "../roles/catalog";
 type Member = Schemas["Member"];
 type InvitableRole = Schemas["InvitableRole"];
 
-export const nameOfMember = (member: Member) => member.displayName?.trim() || member.email.split("@")[0] || member.email;
+export const nameOfMember = (member: Member) =>
+  member.displayName?.trim() || member.email.split("@")[0] || member.email;
 
 function useMembersKey() {
   const { organizationId } = useStudio();
@@ -31,10 +32,10 @@ export function useUpdateMember() {
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/members/{membershipId}", {
           params: { path: { organizationId, membershipId: member.id }, header: { "If-Match": member.version } },
-          body
-        })
+          body,
+        }),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 }
 
@@ -52,14 +53,22 @@ export function useSetMemberRole() {
       unwrap(
         api.PUT("/api/v1/organizations/{organizationId}/members/{membershipId}/roles", {
           params: { path: { organizationId, membershipId: member.id }, header: { "If-Match": member.version } },
-          body: { roleIds: [systemRoleIds[role]] }
-        })
+          body: { roleIds: [systemRoleIds[role]] },
+        }),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 }
 
-export function RoleDialog({ member, roles, onClose }: { member: Member; roles: InvitableRole[]; onClose: () => void }) {
+export function RoleDialog({
+  member,
+  roles,
+  onClose,
+}: {
+  member: Member;
+  roles: InvitableRole[];
+  onClose: () => void;
+}) {
   const [role, setRole] = useState<InvitableRole>(roles[0]!);
   const update = useSetMemberRole();
   const toast = useToast();
@@ -74,8 +83,8 @@ export function RoleDialog({ member, roles, onClose }: { member: Member; roles: 
         onSuccess: () => {
           toast.show({ tone: "success", icon: "check", message: `${nameOfMember(member)}: ${roleName(role)}` });
           onClose();
-        }
-      }
+        },
+      },
     );
 
   return (
@@ -128,12 +137,16 @@ export function RemoveDialog({ member, onClose }: { member: Member; onClose: () 
   const key = useMembersKey();
   const remove = useMutation({
     mutationFn: () =>
-      unwrap(api.DELETE("/api/v1/organizations/{organizationId}/members/{membershipId}", { params: { path: { organizationId, membershipId: member.id } } })),
+      unwrap(
+        api.DELETE("/api/v1/organizations/{organizationId}/members/{membershipId}", {
+          params: { path: { organizationId, membershipId: member.id } },
+        }),
+      ),
     onSuccess: () => {
       toast.show({ tone: "success", icon: "check", message: `הסרנו את ${nameOfMember(member)} מהסטודיו` });
       onClose();
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
   return (

@@ -25,7 +25,10 @@ describe("admin-web routes", () => {
   });
 
   it("opens the only studio straight away", async () => {
-    const api = apiStub({ "POST /api/v1/session": sampleMe, [`GET /api/v1/organizations/${sampleMe.memberships[0]!.organization.id}/members`]: members });
+    const api = apiStub({
+      "POST /api/v1/session": sampleMe,
+      [`GET /api/v1/organizations/${sampleMe.memberships[0]!.organization.id}/members`]: members,
+    });
     const router = renderAt("/", signedInAuth(), api);
     await waitFor(() => expect(router.state.location.pathname).toBe("/o/neshima"));
     expect(await screen.findByRole("heading", { level: 1, name: "חברי הסטודיו" })).toBeInTheDocument();

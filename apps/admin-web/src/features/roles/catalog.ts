@@ -8,7 +8,7 @@ export const systemRoleIds: Record<Schemas["Role"], string> = {
   owner: "00000000-0000-7000-8000-000000000001",
   admin: "00000000-0000-7000-8000-000000000002",
   staff: "00000000-0000-7000-8000-000000000003",
-  client: "00000000-0000-7000-8000-000000000004"
+  client: "00000000-0000-7000-8000-000000000004",
 };
 
 /** What each permission allows, in Hebrew (docs/27 section 3.1). Keys the app does not know show as they are. */
@@ -27,7 +27,7 @@ const permissionLabels: Record<string, string> = {
   "people.export": "ייצוא הנתונים של אדם",
   "people.erase": "מחיקת הנתונים של אדם",
   "consent.manage": "רישום הסכמות בשם אחרים",
-  "ownership.transfer": "העברת הבעלות על הסטודיו"
+  "ownership.transfer": "העברת הבעלות על הסטודיו",
 };
 
 export function permissionLabel(key: string): string {

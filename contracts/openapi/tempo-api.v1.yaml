@@ -15,8 +15,14 @@ info:
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
 
-    **Restricted studios.** When a studio's subscription is `restricted`, writes answer 402
-    `billing.restricted`, except cancelling a booking, export and the billing page (docs/28 section 4).
+    **Restricted studios.** When a studio's subscription is `restricted`, every write on a studio route
+    (POST, PUT, PATCH, DELETE) answers 402 `billing.restricted`, whether or not the operation lists 402, except:
+    cancelBooking, exportPerson, erasePerson, recordMyConsent, updateBillingAccount, removeMember,
+    start/cancel/accept/declineOwnershipTransfer, revokeInvitation and disableJoinLink (docs/28 section 4).
+    Reads always work. `GET /me` carries each studio's `subscriptionState` and `entitlements`.
+
+    **Plan limits.** Creating above a plan limit answers 403 `entitlement.limit_reached` with the Problem
+    members `key` (e.g. `rooms.max`) and `limit`.
 
     **Permissions.** Every studio route checks one permission key (docs/27 section 3.1); the operation summary
     names it. Apps read `permissions` from `GET /me` to show or hide actions; the API is the only enforcement.
@@ -1863,6 +1869,20 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/me/notifications/read-all:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: "Mark all of the caller's notifications in this studio read (self)"
+      responses:
+        "204":
+          description: Done.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/me/notifications/{itemId}/read:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1884,7 +1904,6 @@ paths:
     get:
       tags: [Billing]
       operationId: getBilling
-      x-tempo-planned: true
       summary: "The studio's plan, subscription state and billing details (`billing.view`)"
       responses:
         "200":
@@ -1902,7 +1921,6 @@ paths:
     patch:
       tags: [Billing]
       operationId: updateBillingAccount
-      x-tempo-planned: true
       summary: "Billing email, legal name, business id (`billing.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1927,7 +1945,6 @@ paths:
     get:
       tags: [Billing]
       operationId: listPlans
-      x-tempo-planned: true
       summary: "Public plans and their entitlements (any signed-in account)"
       responses:
         "200":
@@ -2267,12 +2284,12 @@ components:
             - type: "null"
         status: { $ref: "#/components/schemas/MembershipStatus" }
         subscriptionState:
-          description: Planned (docs/28). The studio's subscription state, for banners and restricted mode.
+          description: The studio's subscription state (docs/28), for banners and restricted mode.
           oneOf:
             - $ref: "#/components/schemas/SubscriptionState"
             - type: "null"
         entitlements:
-          description: Planned (docs/28). The studio's entitlements, to hide or upsell features.
+          description: The studio's entitlements (docs/28), to hide or upsell features.
           oneOf:
             - $ref: "#/components/schemas/Entitlements"
             - type: "null"
@@ -3097,6 +3114,7 @@ components:
             name: { type: string }
             category: { type: string }
             color: { $ref: "#/components/schemas/ClassColor" }
+            description: { type: [string, "null"], description: "About the class (AppClass)." }
         instructor:
           oneOf:
             - $ref: "#/components/schemas/InstructorRef"
@@ -3177,8 +3195,14 @@ components:
         cancelReason:
           type: [string, "null"]
           enum: [self, staff, session_cancelled, no_valid_pass, null]
+        cancelledFrom:
+          type: [string, "null"]
+          enum: [booked, waitlisted, null]
+          description: For a cancelled booking, whether it held a place or a waitlist place; null otherwise.
         pass:
-          description: The pass whose entry this booking holds; null while waiting or after the entry returned.
+          description: |
+            The pass this booking used, with its entries left now; still set after a cancellation (the entry may
+            have returned). Null while waiting, and for a waitlist place that never got a seat.
           oneOf:
             - $ref: "#/components/schemas/PassSummary"
             - type: "null"
@@ -3377,6 +3401,16 @@ components:
             bookingId: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
         readAt: { type: [string, "null"], format: date-time }
+        session:
+          description: The class the notice is about, so a list needs no extra request; null when it has none.
+          oneOf:
+            - type: object
+              required: [id, startsAt, classTypeName]
+              properties:
+                id: { type: string, format: uuid }
+                startsAt: { type: string, format: date-time }
+                classTypeName: { type: string }
+            - type: "null"
 
     InboxPage:
       type: object

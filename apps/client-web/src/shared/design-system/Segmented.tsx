@@ -18,7 +18,14 @@ export interface SegmentedProps<T extends string> {
 }
 
 /** A few mutually exclusive options that filter or switch a view in place. */
-export function Segmented<T extends string>({ options, value, onChange, label, block = false, className }: SegmentedProps<T>) {
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  block = false,
+  className,
+}: SegmentedProps<T>) {
   return (
     <div role="group" aria-label={label} className={cx("tp-seg", block && "tp-seg--block", className)}>
       {options.map((option) => (

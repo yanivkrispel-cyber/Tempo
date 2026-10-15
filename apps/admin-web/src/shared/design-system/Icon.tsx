@@ -108,7 +108,7 @@ const shapes = {
       <path d="M2 21a7 7 0 0 1 14 0" />
       <path d="M16 3.1a4 4 0 0 1 0 7.8M22 21a7 7 0 0 0-4-6.3" />
     </>
-  )
+  ),
 };
 
 export type IconName = keyof typeof shapes;

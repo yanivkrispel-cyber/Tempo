@@ -20,7 +20,7 @@ type Kind = "guardian_of" | "has_guardian" | "has_emergency_contact";
 const kinds: { value: Kind; label: string }[] = [
   { value: "has_guardian", label: "ההורה או האפוטרופוס הוא…" },
   { value: "guardian_of", label: "הורה או אפוטרופוס של…" },
-  { value: "has_emergency_contact", label: "איש הקשר לחירום הוא…" }
+  { value: "has_emergency_contact", label: "איש הקשר לחירום הוא…" },
 ];
 
 function describe(relationship: Relationship, personId: string): string {
@@ -40,12 +40,12 @@ export function RelationshipsSection({ person, writable }: { person: PersonDetai
     mutationFn: (relationship: Relationship) =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/people/{personId}/relationships/{relationshipId}", {
-          params: { path: { organizationId, personId: person.id, relationshipId: relationship.id } }
-        })
+          params: { path: { organizationId, personId: person.id, relationshipId: relationship.id } },
+        }),
       ),
     onSuccess: () => toast.show({ tone: "success", icon: "check", message: "הקשר הוסר" }),
     onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person"] })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person"] }),
   });
 
   return (
@@ -73,7 +73,12 @@ export function RelationshipsSection({ person, writable }: { person: PersonDetai
                   </Link>
                 </span>
                 {writable && (
-                  <Button variant="ghost-danger" size="sm" onClick={() => remove.mutate(relationship)} aria-label={`הסרת הקשר עם ${relationship.otherDisplayName}`}>
+                  <Button
+                    variant="ghost-danger"
+                    size="sm"
+                    onClick={() => remove.mutate(relationship)}
+                    aria-label={`הסרת הקשר עם ${relationship.otherDisplayName}`}
+                  >
                     הסרה
                   </Button>
                 )}
@@ -101,10 +106,10 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
     queryFn: () =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/people", {
-          params: { path: { organizationId }, query: { query: phoneSearchText(query), status: "active", limit: 8 } }
-        })
+          params: { path: { organizationId }, query: { query: phoneSearchText(query), status: "active", limit: 8 } },
+        }),
       ),
-    enabled: query.length >= 2 && !picked
+    enabled: query.length >= 2 && !picked,
   });
   const candidates = (found.data?.items ?? []).filter((candidate) => candidate.id !== person.id);
 
@@ -112,21 +117,23 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
     mutationFn: (other: string) => {
       // The path's person is the guardian or the emergency contact.
       const [from, to, type] =
-        kind === "guardian_of" ? [person.id, other, "guardian_of" as const]
-        : kind === "has_guardian" ? [other, person.id, "guardian_of" as const]
-        : [other, person.id, "emergency_contact_for" as const];
+        kind === "guardian_of"
+          ? [person.id, other, "guardian_of" as const]
+          : kind === "has_guardian"
+            ? [other, person.id, "guardian_of" as const]
+            : [other, person.id, "emergency_contact_for" as const];
       return unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/relationships", {
           params: { path: { organizationId, personId: from } },
-          body: { type, toPersonId: to }
-        })
+          body: { type, toPersonId: to },
+        }),
       );
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person"] });
       toast.show({ tone: "success", icon: "check", message: "הקשר נוסף" });
       onClose();
-    }
+    },
   });
 
   const submit = (event: FormEvent) => {
@@ -176,14 +183,23 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
             {query.length >= 2 && (
               <ul className="tp-menu" role="listbox" aria-label="תוצאות">
                 {candidates.length === 0 ? (
-                  <li className="tp-menu__item" aria-disabled="true">
+                  <li className="tp-menu__item" role="option" aria-selected="false" aria-disabled="true">
                     {found.isFetching ? "מחפשים…" : "לא נמצא אף אחד"}
                   </li>
                 ) : (
                   candidates.map((candidate) => (
-                    <li key={candidate.id} role="option" aria-selected="false" className="tp-menu__item" tabIndex={0}
+                    <li
+                      key={candidate.id}
+                      role="option"
+                      aria-selected="false"
+                      className="tp-menu__item"
+                      tabIndex={0}
                       onClick={() => setPicked({ id: candidate.id, displayName: candidate.displayName })}
-                      onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && (event.preventDefault(), setPicked({ id: candidate.id, displayName: candidate.displayName }))}>
+                      onKeyDown={(event) =>
+                        (event.key === "Enter" || event.key === " ") &&
+                        (event.preventDefault(), setPicked({ id: candidate.id, displayName: candidate.displayName }))
+                      }
+                    >
                       {candidate.displayName}
                     </li>
                   ))

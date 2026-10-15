@@ -24,7 +24,12 @@ export function Avatar({ name, src, size = "md", tone = "sand", className }: Ava
     <span
       role="img"
       aria-label={name}
-      className={cx("tp-avatar", size !== "md" && `tp-avatar--${size}`, tone !== "sand" && `tp-avatar--${tone}`, className)}
+      className={cx(
+        "tp-avatar",
+        size !== "md" && `tp-avatar--${size}`,
+        tone !== "sand" && `tp-avatar--${tone}`,
+        className,
+      )}
     >
       {src ? <img src={src} alt="" /> : initials(name)}
     </span>

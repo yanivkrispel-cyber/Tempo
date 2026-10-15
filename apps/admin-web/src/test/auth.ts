@@ -4,7 +4,7 @@ export const testAuthConfig: AuthConfig = {
   cognitoDomain: "https://tempo-test.auth.eu-central-1.amazoncognito.com",
   clientId: "test-client",
   redirectUri: "http://localhost:5173/auth/callback",
-  logoutUri: "http://localhost:5173/"
+  logoutUri: "http://localhost:5173/",
 };
 
 /** An in-memory Web Storage, so tests never share window.localStorage. */
@@ -18,7 +18,7 @@ export function memoryStorage(entries: Record<string, string> = {}): Storage {
     getItem: (key) => map.get(key) ?? null,
     key: (index) => [...map.keys()][index] ?? null,
     removeItem: (key) => void map.delete(key),
-    setItem: (key, value) => void map.set(key, String(value))
+    setItem: (key, value) => void map.set(key, String(value)),
   };
 }
 
@@ -31,13 +31,24 @@ export function signedInAuth(overrides: Partial<ConstructorParameters<typeof Aut
   return new AuthClient({
     config: testAuthConfig,
     app: "admin-web",
-    storage: sessionStorageWith({ accessToken: "access-1", refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 }),
+    storage: sessionStorageWith({
+      accessToken: "access-1",
+      refreshToken: "refresh-1",
+      expiresAt: Date.now() + 3_600_000,
+    }),
     flowStorage: memoryStorage(),
     redirect: () => {},
-    ...overrides
+    ...overrides,
   });
 }
 
 export function signedOutAuth(overrides: Partial<ConstructorParameters<typeof AuthClient>[0]> = {}): AuthClient {
-  return new AuthClient({ config: testAuthConfig, app: "admin-web", storage: memoryStorage(), flowStorage: memoryStorage(), redirect: () => {}, ...overrides });
+  return new AuthClient({
+    config: testAuthConfig,
+    app: "admin-web",
+    storage: memoryStorage(),
+    flowStorage: memoryStorage(),
+    redirect: () => {},
+    ...overrides,
+  });
 }

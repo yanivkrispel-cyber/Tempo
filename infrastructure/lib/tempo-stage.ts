@@ -10,6 +10,7 @@ import { MessagingStack } from "./async/messaging-stack";
 import { ApiStack } from "./api/api-stack";
 import { ObservabilityStack } from "./observability/observability-stack";
 import { EdgeStack } from "./edge/edge-stack";
+import { DevCanaryStack } from "./observability/dev-canary-stack";
 
 export interface TempoStageProps extends StageProps {
   readonly config: TempoEnvironmentConfig;
@@ -68,6 +69,16 @@ export class TempoStage extends Stage {
         env: { account: config.accountId, region: "us-east-1" },
         crossRegionReferences: true,
         apiFunctionUrlDomain: api.functionUrlDomain
+      });
+    }
+
+    if (config.featureFlags.enableDevCanary && config.featureFlags.enableSmokeTestSignIn) {
+      new DevCanaryStack(this, "Canary", {
+        config,
+        env,
+        httpApi: api.httpApi,
+        userPool: identity.userPool,
+        clientWebClient: identity.clientWebClient
       });
     }
 

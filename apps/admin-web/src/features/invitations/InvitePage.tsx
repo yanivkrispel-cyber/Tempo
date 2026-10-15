@@ -49,7 +49,7 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
     queryKey: ["invitation-preview", token],
     queryFn: () => unwrap(api.POST("/api/v1/invitations/preview", { body: { token } })),
     enabled: Boolean(me.data),
-    retry: false
+    retry: false,
   });
 
   const accept = useMutation({
@@ -59,7 +59,7 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
       await queryClient.invalidateQueries({ queryKey: meKey });
       toast.show({ tone: "success", icon: "check", message: `הצטרפת לצוות של ${membership.organization.displayName}` });
       void navigate(`/o/${membership.organization.slug}`, { replace: true });
-    }
+    },
   });
 
   // An unknown, expired or revoked invitation will not come back: forget the token.

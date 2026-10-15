@@ -11,10 +11,20 @@ import {
   Segmented,
   Skeleton,
   TimeSlot,
-  useToast
+  useToast,
 } from "../../shared/design-system";
 import { addDays } from "../../shared/utilities/dates";
-import { bookingFor, freeSpots, spotsText, useBook, useBookings, useClasses, useJoinWaitlist, useProfile, useToday } from "./data";
+import {
+  bookingFor,
+  freeSpots,
+  spotsText,
+  useBook,
+  useBookings,
+  useClasses,
+  useJoinWaitlist,
+  useProfile,
+  useToday,
+} from "./data";
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
 import type { ClassKind, StudioClass } from "./sample";
@@ -24,7 +34,7 @@ type Filter = "all" | ClassKind;
 const filters: ReadonlyArray<{ value: Filter; label: string }> = [
   { value: "all", label: "הכל" },
   { value: "pilates", label: "פילאטיס" },
-  { value: "yoga", label: "יוגה" }
+  { value: "yoga", label: "יוגה" },
 ];
 
 export function BookScreen() {
@@ -53,7 +63,10 @@ export function BookScreen() {
   }
 
   const rows = classes.data.filter((item) => item.date === day && (filter === "all" || item.kind === filter));
-  const dayOptions = days.map((value) => ({ value, label: value === today || value === addDays(today, 1) ? relativeDay(value, today) : shortDayName(value) }));
+  const dayOptions = days.map((value) => ({
+    value,
+    label: value === today || value === addDays(today, 1) ? relativeDay(value, today) : shortDayName(value),
+  }));
 
   function confirm(item: StudioClass) {
     book.mutate(item.id, {
@@ -61,14 +74,14 @@ export function BookScreen() {
         setPicked(null);
         toast.show({ tone: "success", message: "נרשמת לשיעור. תזכורת תגיע שעתיים לפני." });
       },
-      onError: () => toast.show({ tone: "danger", message: "ההרשמה לא הצליחה. נסו שוב." })
+      onError: () => toast.show({ tone: "danger", message: "ההרשמה לא הצליחה. נסו שוב." }),
     });
   }
 
   function wait(item: StudioClass) {
     joinWaitlist.mutate(item.id, {
       onSuccess: () => toast.show({ tone: "success", message: "נכנסת לרשימת ההמתנה. נודיע לך כשיתפנה מקום." }),
-      onError: () => toast.show({ tone: "danger", message: "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב." })
+      onError: () => toast.show({ tone: "danger", message: "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב." }),
     });
   }
 
@@ -95,7 +108,9 @@ export function BookScreen() {
                 as="li"
                 slot={<TimeSlot time={item.start}>{item.minutes} דק׳</TimeSlot>}
                 title={item.title}
-                meta={booking?.status === "booked" ? `${item.coach} · נרשמת לשיעור` : `${item.coach} · ${spotsText(item)}`}
+                meta={
+                  booking?.status === "booked" ? `${item.coach} · נרשמת לשיעור` : `${item.coach} · ${spotsText(item)}`
+                }
                 actions={
                   booking?.status === "booked" ? (
                     <Chip tone="success">נרשמת</Chip>
@@ -106,7 +121,13 @@ export function BookScreen() {
                       הרשמה
                     </Button>
                   ) : (
-                    <Button variant="ghost" size="sm" aria-label={`להמתנה ל${name}`} loading={joinWaitlist.isPending && joinWaitlist.variables === item.id} onClick={() => wait(item)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`להמתנה ל${name}`}
+                      loading={joinWaitlist.isPending && joinWaitlist.variables === item.id}
+                      onClick={() => wait(item)}
+                    >
                       להמתנה
                     </Button>
                   )

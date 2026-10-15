@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Banner, ButtonLink, Chip, ClassRow, EmptyState, Skeleton, Tabs, TimeSlot, shortDate } from "../../shared/design-system";
+import {
+  Banner,
+  ButtonLink,
+  Chip,
+  ClassRow,
+  EmptyState,
+  Skeleton,
+  Tabs,
+  TimeSlot,
+  shortDate,
+} from "../../shared/design-system";
 import { bookingFor, useBookings, useClasses, useHistory, useProfile, useToday } from "./data";
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
@@ -41,7 +51,7 @@ export function BookingsScreen() {
         onChange={setView}
         tabs={[
           { value: "upcoming", label: `קרובים · ${upcoming.length}` },
-          { value: "history", label: "היסטוריה" }
+          { value: "history", label: "היסטוריה" },
         ]}
       >
         {view === "upcoming" ? (
@@ -101,11 +111,7 @@ export function BookingsScreen() {
                     <td>{visit.title}</td>
                     <td className="tp-muted">{shortDate(visit.date)}</td>
                     <td>
-                      {visit.status === "attended" ? (
-                        <Chip tone="success">הגעת</Chip>
-                      ) : (
-                        <Chip plain>בוטל בזמן</Chip>
-                      )}
+                      {visit.status === "attended" ? <Chip tone="success">הגעת</Chip> : <Chip plain>בוטל בזמן</Chip>}
                     </td>
                   </tr>
                 ))}

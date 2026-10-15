@@ -19,7 +19,7 @@ import {
   Segmented,
   Tabs,
   Textarea,
-  Toggle
+  Toggle,
 } from "./index";
 
 describe("Button", () => {
@@ -35,7 +35,7 @@ describe("Button", () => {
     render(
       <Button variant="secondary" size="lg" block>
         ביטול
-      </Button>
+      </Button>,
     );
     expect(screen.getByRole("button")).toHaveClass("tp-btn", "tp-btn--secondary", "tp-btn--lg", "tp-btn--block");
   });
@@ -45,7 +45,7 @@ describe("Button", () => {
     render(
       <Button loading onClick={onClick}>
         הזמנה
-      </Button>
+      </Button>,
     );
     const button = screen.getByRole("button", { name: "הזמנה" });
     expect(button).toHaveAttribute("aria-busy", "true");
@@ -75,7 +75,7 @@ describe("Button", () => {
         <ButtonLink to="/" variant="ghost">
           לדף הבית
         </ButtonLink>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
     const link = screen.getByRole("link", { name: "לדף הבית" });
     expect(link).toHaveAttribute("href", "/");
@@ -88,7 +88,7 @@ describe("Field", () => {
     render(
       <Field label="שם מלא" help="כפי שיופיע בסטודיו" required>
         <Input />
-      </Field>
+      </Field>,
     );
     const input = screen.getByLabelText(/שם מלא/);
     expect(input).toBeRequired();
@@ -100,7 +100,7 @@ describe("Field", () => {
     const { container } = render(
       <Field label="הערות" help="לא חובה" error="עד 500 תווים">
         <Textarea />
-      </Field>
+      </Field>,
     );
     const textarea = screen.getByLabelText("הערות");
     expect(textarea).toHaveAttribute("aria-invalid", "true");
@@ -137,9 +137,9 @@ describe("Segmented", () => {
         onChange={onChange}
         options={[
           { value: "day", label: "יום" },
-          { value: "week", label: "שבוע" }
+          { value: "week", label: "שבוע" },
         ]}
-      />
+      />,
     );
     expect(screen.getByRole("group", { name: "תצוגה" })).toHaveClass("tp-seg");
     expect(screen.getByRole("button", { name: "שבוע" })).toHaveAttribute("aria-pressed", "true");
@@ -154,7 +154,7 @@ describe("Tabs", () => {
   const tabs = [
     { value: "upcoming", label: "קרובים" },
     { value: "past", label: "היסטוריה" },
-    { value: "waitlist", label: "המתנה" }
+    { value: "waitlist", label: "המתנה" },
   ] as const;
 
   function BookingTabs({ dir }: { dir: "rtl" | "ltr" }) {
@@ -208,7 +208,7 @@ describe("Progress", () => {
     render(
       <ProgressRing value={6} max={12} label="תפוסה" size="sm">
         6/12
-      </ProgressRing>
+      </ProgressRing>,
     );
     const ring = screen.getByRole("progressbar", { name: "תפוסה" });
     expect(ring).toHaveAttribute("aria-valuenow", "6");
@@ -241,7 +241,7 @@ describe("Display", () => {
         <Banner tone="info" icon="info">
           השיעור מתחיל בעוד שעה
         </Banner>
-      </>
+      </>,
     );
     expect(screen.getByRole("alert")).toHaveClass("tp-banner", "tp-banner--danger");
     expect(screen.getByRole("status")).toHaveTextContent("השיעור מתחיל בעוד שעה");
@@ -257,7 +257,7 @@ describe("Display", () => {
       <>
         <Chip tone="cat-rose">יוגה</Chip>
         <CountBadge count={3} label="3 הודעות חדשות" />
-      </>
+      </>,
     );
     expect(screen.getByText("יוגה")).toHaveClass("tp-chip", "tp-chip--cat-rose");
     expect(screen.getByRole("img", { name: "3 הודעות חדשות" })).toHaveTextContent("3");
@@ -268,7 +268,7 @@ describe("Display", () => {
       <>
         <Icon name="bell" />
         <Icon name="check" label="הושלם" />
-      </>
+      </>,
     );
     expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("img", { name: "הושלם" })).toHaveClass("tp-icon");
