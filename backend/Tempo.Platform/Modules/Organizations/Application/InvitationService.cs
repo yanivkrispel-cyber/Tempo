@@ -218,6 +218,10 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         var (organizationId, invitationId, _, _, _, _) = found.Value;
         await unitOfWork.SetTenantAsync(caller.UserAccountId, organizationId, cancellationToken);
         var invitation = (await ReadAsync(unitOfWork, organizationId, invitationId, cancellationToken))!;
+        if (!await MembershipQueries.InviterStillMayInviteAsync(unitOfWork, organizationId, invitationId, cancellationToken))
+        {
+            throw InvitationNotFound();
+        }
 
         string? studioName;
         await using (var studio = unitOfWork.Command("SELECT display_name FROM organizations.organizations WHERE id = $1 AND status = 'active'", organizationId))
@@ -269,6 +273,12 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         if (expiresAt <= DateTimeOffset.UtcNow)
         {
             throw new DomainRuleViolationException(ViolationKind.Gone, "invitation.expired", "This invitation has expired. Ask for a new one.");
+        }
+
+        // The inviter was removed, suspended or demoted after sending it (#121): the same answer as a revoked one.
+        if (!await MembershipQueries.InviterStillMayInviteAsync(unitOfWork, organizationId, invitationId, cancellationToken))
+        {
+            throw InvitationNotFound();
         }
 
         Guid? personId;
