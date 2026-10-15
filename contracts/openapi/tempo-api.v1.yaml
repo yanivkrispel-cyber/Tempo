@@ -2860,7 +2860,7 @@ components:
 
     PersonExport:
       type: object
-      required: [exportedAt, person, consentHistory]
+      required: [exportedAt, person, consentHistory, bookings, passes]
       properties:
         exportedAt: { type: string, format: date-time }
         organization:
@@ -2873,6 +2873,43 @@ components:
         consentHistory:
           type: array
           items: { $ref: "#/components/schemas/Consent" }
+        bookings:
+          type: array
+          description: Every booking of this person, in class order (docs/29 section 7).
+          items: { $ref: "#/components/schemas/ExportBooking" }
+        passes:
+          type: array
+          description: Every pass granted to this person, in start order. No staff note.
+          items: { $ref: "#/components/schemas/ExportPass" }
+
+    ExportBooking:
+      type: object
+      required: [id, sessionId, className, startsAt, status, lateCancel, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        className: { type: string, examples: [פילאטיס מכשירים] }
+        startsAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/BookingStatus" }
+        lateCancel: { type: boolean }
+        cancelReason:
+          type: [string, "null"]
+          enum: [self, staff, session_cancelled, no_valid_pass, null]
+        createdAt: { type: string, format: date-time }
+
+    ExportPass:
+      type: object
+      required: [id, productName, kind, startsOn, endsOn, entriesUsed, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        productName: { type: string, examples: [כרטיסיית 10] }
+        kind: { $ref: "#/components/schemas/PassKind" }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        entries: { type: [integer, "null"] }
+        entriesUsed: { type: integer }
+        status: { type: string, enum: [active, voided] }
+        createdAt: { type: string, format: date-time }
 
     DuplicateCandidate:
       type: object
