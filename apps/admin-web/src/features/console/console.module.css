@@ -41,12 +41,14 @@
 
 @media (max-width: 767px) {
   .frame {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): a bare 1fr never shrinks below its content, so the one-row nav widened the page (#163). */
+    grid-template-columns: minmax(0, 1fr);
     padding: var(--space-4);
     gap: var(--space-4);
   }
   .side {
     position: static;
+    min-width: 0;
   }
   .side nav {
     flex-direction: row;

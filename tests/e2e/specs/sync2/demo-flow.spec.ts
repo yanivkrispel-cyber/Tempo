@@ -12,15 +12,11 @@ import { createSession, removeE2eSchedule, sessionsBetween, studioDay, studioPar
  * audit log has it all. The signed-in smoke user is the owner in admin-web and the member in client-web; a second,
  * fictional e2e member fills the classes through the staff API. One serial file: each step builds on the last.
  */
-/**
- * client-web runs on the Pixel 7 project. The console does not fit a phone yet (every page lays out about 1350px wide
- * at 412px, so dialogs open off screen and cannot be reached: a product bug, see the README), so the console steps use
- * a desktop-sized page in the same signed-in session.
- */
+/** The console steps get their own page on the same phone, in the same signed-in session (#163). */
 const test = base.extend<{ consolePage: Page }>({
   consolePage: async ({ browser }, use) => {
     const context = await browser.newContext({
-      ...devices["Desktop Chrome"],
+      ...devices["Pixel 7"],
       locale: "he-IL",
       timezoneId: "Asia/Jerusalem",
       storageState: sessionStatePath,
@@ -235,7 +231,7 @@ test("console: a cancellation inside the free window returns the entry and promo
     testInfo,
     "console cancel-booking dialog",
     undefined,
-    "the danger button label fails color-contrast (.tp-btn--danger)",
+    "the danger button label fails color-contrast (.tp-btn--danger, #164)",
   );
   await dialog.getByRole("button", { name: "ביטול ההרשמה", exact: true }).click();
   await expect(page.getByText(`ההרשמה של ${fillerName} בוטלה`)).toBeVisible();
@@ -260,7 +256,7 @@ test("client-web: the promoted member sees the booking and the notice", async ({
     testInfo,
     "client-web home with a notice",
     undefined,
-    "a chip fails color-contrast (.tp-chip)",
+    "a chip fails color-contrast (.tp-chip, #164)",
   );
 
   await page.goto(`${clientUrl}/inbox`);

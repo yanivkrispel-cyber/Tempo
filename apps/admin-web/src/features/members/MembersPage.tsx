@@ -8,11 +8,12 @@ import {
   Banner,
   Button,
   Chip,
-  DropdownMenu,
-  Skeleton,
-  useToast,
   type ChipTone,
+  DropdownMenu,
   type MenuEntry,
+  Skeleton,
+  TableScroll,
+  useToast,
 } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
@@ -117,7 +118,7 @@ export function MembersPage() {
           <Skeleton height={48} />
         </div>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="חברי הסטודיו">
           <table className="tp-table">
             <caption className="tp-sr-only">חברי הסטודיו</caption>
             <thead>
@@ -160,7 +161,7 @@ export function MembersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {dialog?.kind === "role" && (

@@ -10,14 +10,15 @@ import {
   Button,
   Card,
   Chip,
+  type ChipTone,
   Dialog,
   Field,
   Input,
   Segmented,
   Select,
   Skeleton,
+  TableScroll,
   useToast,
-  type ChipTone,
 } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
@@ -82,7 +83,7 @@ export function InvitationsPage() {
         ) : rows.length === 0 ? (
           <p className="tp-muted">{filter === "pending" ? "אין הזמנות שממתינות לתשובה." : "עוד לא נשלחו הזמנות."}</p>
         ) : (
-          <div className="tp-table-wrap">
+          <TableScroll label="הזמנות במייל">
             <table className="tp-table">
               <caption className="tp-sr-only">הזמנות במייל</caption>
               <thead>
@@ -103,7 +104,7 @@ export function InvitationsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
 
         {invitations.hasNextPage && (

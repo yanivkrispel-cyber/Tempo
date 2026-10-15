@@ -12,6 +12,7 @@ import {
   Input,
   Segmented,
   Skeleton,
+  TableScroll,
   useToast,
 } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
@@ -64,7 +65,7 @@ export function RoomsPage() {
           {show === "active" ? "חדר קובע כמה מקומות יש בשיעור כברירת מחדל. אפשר גם בלי חדרים." : undefined}
         </EmptyState>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="חדרים">
           <table className="tp-table">
             <caption className="tp-sr-only">חדרים</caption>
             <thead>
@@ -102,7 +103,7 @@ export function RoomsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {editing && <RoomDialog room={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
