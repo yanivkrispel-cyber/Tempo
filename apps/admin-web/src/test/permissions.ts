@@ -24,6 +24,8 @@ export const permissionsFor = {
     "people.erase",
     "consent.manage",
     "ownership.transfer",
+    "billing.view",
+    "billing.manage",
     ...scheduling.manager,
   ],
   staff: ["organization.view", "members.view", "people.view", "people.manage", ...scheduling.staff],

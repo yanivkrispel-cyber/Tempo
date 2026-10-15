@@ -78,6 +78,49 @@ describe("studio settings", () => {
   });
 });
 
+describe("the Tempo plan", () => {
+  const billing = (overrides: Record<string, unknown> = {}) => ({
+    plan: {
+      id: "0199e5a1-0000-7000-8000-000000000801",
+      planKey: "pilot",
+      displayName: "פיילוט",
+      priceMinor: 0,
+      currency: "ILS",
+      interval: "month",
+      entitlements: {},
+    },
+    state: "active",
+    provider: "manual",
+    currentPeriodEnd: null,
+    entitlements: {},
+    version: "1",
+    ...overrides,
+  });
+
+  it("shows the plan and its state on the settings page", async () => {
+    renderAt("/o/neshima/settings", { [`GET ${base}/billing`]: billing() });
+    const card = await screen.findByRole("region", { name: "המנוי ל־Tempo" });
+    expect(await within(card).findByText("פיילוט")).toBeInTheDocument();
+    expect(card).toHaveTextContent("פעיל");
+    expect(card).toHaveTextContent("ללא תשלום");
+  });
+
+  it("says when a studio is restricted, with the period end", async () => {
+    renderAt("/o/neshima/settings", {
+      [`GET ${base}/billing`]: billing({ state: "restricted", currentPeriodEnd: "2026-11-01T00:00:00Z" }),
+    });
+    const card = await screen.findByRole("region", { name: "המנוי ל־Tempo" });
+    expect(await within(card).findByText("מוגבל")).toBeInTheDocument();
+    expect(card).toHaveTextContent("התקופה הנוכחית עד 01.11.2026");
+  });
+
+  it("is not shown to staff, who cannot see billing", async () => {
+    renderAt("/o/neshima/settings", {}, "staff");
+    expect(await screen.findByRole("heading", { level: 1, name: "הגדרות הסטודיו" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "המנוי ל־Tempo" })).not.toBeInTheDocument();
+  });
+});
+
 describe("audit log", () => {
   it("lists events with who and what, in Hebrew, and pages back", async () => {
     const event = (id: string, overrides: Record<string, unknown>) => ({
