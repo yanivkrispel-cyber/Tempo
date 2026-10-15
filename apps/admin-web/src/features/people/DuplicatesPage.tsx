@@ -85,11 +85,15 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       ),
     onSuccess: (_, body) => toast.show({ tone: "success", icon: "check", message: body.resolution === "merge" ? "הרשומות אוחדו" : "סומנו כשני אנשים" }),
     onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error, "לא הצלחנו לשמור. נסו שוב.") }),
-    onSettled: () =>
-      Promise.all([
+    onSettled: () => {
+      // A merge moves contacts, consent and relationships to the survivor, so cached person cards are dropped
+      // rather than shown stale while they refetch.
+      queryClient.removeQueries({ queryKey: ["studio", organizationId, "person"] });
+      return Promise.all([
         queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "duplicates"] }),
         queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] })
-      ])
+      ]);
+    }
   });
   const { personA, personB } = candidate;
   // Two records that both sign in are two people; the API refuses to merge them.

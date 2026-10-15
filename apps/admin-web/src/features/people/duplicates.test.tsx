@@ -59,6 +59,36 @@ describe("duplicates", () => {
   });
 });
 
+describe("after a merge", () => {
+  it("does not show the survivor's card from before the merge", async () => {
+    let merged = false;
+    const survivorBefore = { ...member, contactPoints: [{ id: "0199e5a1-0000-7000-8000-000000000c01", type: "phone", value: "+972501234567", isPrimary: true, verified: false, version: "1" }], consents: [], relationships: [] };
+    const survivorAfter = { ...survivorBefore, contactPoints: [...survivorBefore.contactPoints, { id: "0199e5a1-0000-7000-8000-000000000c02", type: "email", value: "moved@example.com", isPrimary: true, verified: false, version: "1" }] };
+    const api = apiStub({
+      "POST /api/v1/session": sampleMe,
+      [`GET ${base}/people/${member.id}`]: () => json(merged ? survivorAfter : survivorBefore),
+      [`GET ${base}/duplicate-candidates`]: () => json({ items: merged ? [] : [candidate()], nextBefore: null }),
+      [`POST ${base}/duplicate-candidates/${candidate().id}/resolve`]: () => {
+        merged = true;
+        return json({ ...candidate(), status: "merged" });
+      }
+    });
+    const router = createMemoryRouter(routes, { initialEntries: [`/o/neshima/people/${member.id}`] });
+    render(<App router={router} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} />);
+    await screen.findByRole("region", { name: "פרטי קשר" });
+
+    await router.navigate("/o/neshima/duplicates");
+    const card = await screen.findByRole("region", { name: "נועה ונועה לוי" });
+    await userEvent.click(within(within(card).getByText("נועה לוי").closest(".tp-card--sm") as HTMLElement).getByRole("button", { name: "איחוד לרשומה הזו" }));
+    await screen.findByText("הרשומות אוחדו");
+
+    await router.navigate(`/o/neshima/people/${member.id}`);
+    // The first card that shows is already the merged one: a cached card from before would lack the moved email.
+    await screen.findByRole("heading", { level: 1, name: "נועה לוי" });
+    expect(screen.getByRole("region", { name: "פרטי קשר" })).toHaveTextContent("moved@example.com");
+  });
+});
+
 describe("export", () => {
   it("downloads the person's data as JSON", async () => {
     const createObjectURL = vi.fn(() => "blob:test");
