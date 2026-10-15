@@ -178,6 +178,30 @@ public sealed class OrganizationServiceTests(PostgresFixture postgres) : IClassF
     }
 
     [Fact]
+    public async Task RoleAssignments_FollowCreateRoleChangeAndRemoval()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (_, owner, studio) = await StudioAsync(db);
+        var staff = await JoinAsync(db, studio, "staff@example.com", MembershipRole.Staff);
+        var members = new MemberService(db, new AccountProfiles(db));
+
+        (await LiveRoleAsync(db, owner.MembershipId)).Should().Be("owner");
+        (await new MembershipDirectory(db).FindAsync(owner.UserAccountId, studio.Id, CancellationToken.None))!
+            .Permissions.Should().BeEquivalentTo(SystemRoles.Owner.Permissions, "permissions come from the owner's assignment");
+
+        await members.UpdateAsync(owner, staff.MembershipId, MembershipRole.Admin, null, null, CancellationToken.None);
+        (await LiveRoleAsync(db, staff.MembershipId)).Should().Be("admin");
+
+        await members.UpdateAsync(owner, staff.MembershipId, MembershipRole.Client, null, null, CancellationToken.None);
+        (await LiveRoleAsync(db, staff.MembershipId)).Should().Be("client");
+        (await db.AsMasterAsync("SELECT count(*) FROM authz.role_assignments WHERE membership_id = $1 AND status = 'revoked'", staff.MembershipId))
+            .Should().Be(1L, "the admin assignment was revoked, not deleted");
+
+        await members.RemoveAsync(owner, staff.MembershipId, CancellationToken.None);
+        (await LiveRoleAsync(db, staff.MembershipId)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task Members_OfAnotherStudioAreInvisible()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);
@@ -198,6 +222,11 @@ public sealed class OrganizationServiceTests(PostgresFixture postgres) : IClassF
         var membership = await new MembershipDirectory(db).FindAsync(owner.UserAccountId, studio.Id, CancellationToken.None);
         return (service, Tenant(studio.Id, owner.UserAccountId, membership!.MembershipId, MembershipRole.Owner), studio);
     }
+
+    private static async Task<string?> LiveRoleAsync(MigratedDatabase db, Guid membershipId) =>
+        await db.AsMasterAsync(
+            "SELECT string_agg(r.key, ',') FROM authz.role_assignments a JOIN authz.roles r ON r.id = a.role_id WHERE a.membership_id = $1 AND a.status = 'active'",
+            membershipId) as string;
 
     private static async Task<TenantContext> JoinAsync(MigratedDatabase db, OrganizationView studio, string email, MembershipRole role)
     {

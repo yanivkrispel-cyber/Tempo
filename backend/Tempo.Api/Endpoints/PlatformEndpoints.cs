@@ -21,7 +21,7 @@ public static class PlatformEndpoints
         platform.MapPost("/organizations/{organizationId:guid}/reactivate", ReactivateAsync).WithName("platformReactivateOrganization").Produces<PlatformOrganizationResponse>();
         platform.MapGet("/stats", StatsAsync).WithName("platformGetStats").Produces<PlatformStatsResponse>();
 
-        endpoints.MapTenantGroup().MapGet("/audit-events", ListAuditEventsAsync).WithName("listAuditEvents").Produces<AuditEventPageResponse>();
+        endpoints.MapTenantGroup().MapGet("/audit-events", ListAuditEventsAsync).RequirePermission(Permissions.AuditView).WithName("listAuditEvents").Produces<AuditEventPageResponse>();
 
         return endpoints;
     }

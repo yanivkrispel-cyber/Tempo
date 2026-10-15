@@ -21,6 +21,9 @@ public sealed class AllowWhenOrganizationSuspendedAttribute : Attribute;
 ///   so ids cannot be probed;</item>
 ///   <item>a suspended membership is 403 `membership.suspended`, a suspended
 ///   studio 403 `organization.suspended`;</item>
+///   <item>the caller's permissions (the union of their live role
+///   assignments) against the route's <see cref="RequirePermissionAttribute"/>:
+///   missing, 403 `permission.denied` (docs/27 section 3.4);</item>
 ///   <item>an immutable <see cref="TenantContext"/> for the endpoint.</item>
 /// </list>
 /// </summary>
@@ -67,13 +70,21 @@ public sealed class TenantRouteFilter(IAccountDirectory accounts, IMembershipDir
             return Problems.Result(httpContext, StatusCodes.Status403Forbidden, "organization.suspended", "This studio is suspended.");
         }
 
+        var permissions = membership.EffectivePermissions;
+        var required = httpContext.GetEndpoint()?.Metadata.GetMetadata<RequirePermissionAttribute>();
+        if (required is null || !permissions.Contains(required.Permission))
+        {
+            return Problems.Result(httpContext, StatusCodes.Status403Forbidden, "permission.denied", "You do not have permission to do this.");
+        }
+
         httpContext.Items[ItemKey] = new TenantContext(
             organizationId,
             account.UserAccountId,
             membership.MembershipId,
             membership.Role,
             membership.OrganizationStatus,
-            httpContext.Items[CorrelationIdMiddleware.ItemKey] as string ?? httpContext.TraceIdentifier);
+            httpContext.Items[CorrelationIdMiddleware.ItemKey] as string ?? httpContext.TraceIdentifier,
+            permissions);
 
         return await next(context);
     }

@@ -3,6 +3,7 @@ using Tempo.Api.ErrorHandling;
 using Tempo.Api.Middleware;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Account;
+using Tempo.Contracts.Api.Authorization;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Identity.Application;
 
@@ -95,6 +96,9 @@ public static class AccountEndpoints
         new(
             m.MembershipId,
             StoredValue.Of(m.Role),
+            [.. m.EffectiveRoles.Select(r => new RoleSummaryResponse(r.Id, r.Key, r.DisplayName, r.IsSystem))],
+            [.. m.EffectivePermissions.Order(StringComparer.Ordinal)],
+            m.PendingOwnershipTransfer is { } t ? new PendingOwnershipTransferResponse(t.Id, t.Direction, t.ExpiresAt) : null,
             StoredValue.Of(m.Status),
             new MyOrganizationResponse(m.OrganizationId, m.Slug, m.DisplayName, StoredValue.Of(m.OrganizationStatus)));
 

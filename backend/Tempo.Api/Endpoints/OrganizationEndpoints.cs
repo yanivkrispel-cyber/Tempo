@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Tempo.Api.Middleware;
 using Tempo.Api.Tenancy;
+using Tempo.Contracts.Api.Authorization;
 using Tempo.Contracts.Api.Organizations;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
@@ -24,23 +25,29 @@ public static class OrganizationEndpoints
         var tenant = endpoints.MapTenantGroup();
 
         tenant.MapGet(string.Empty, GetAsync)
+            .RequirePermission(Permissions.OrganizationView)
             .WithName("getOrganization")
             .WithMetadata(new AllowWhenOrganizationSuspendedAttribute())
             .Produces<OrganizationResponse>();
 
         tenant.MapPatch(string.Empty, UpdateAsync)
+            .RequirePermission(Permissions.OrganizationSettingsManage)
             .WithName("updateOrganization")
             .Produces<OrganizationResponse>();
 
         tenant.MapGet("/members", ListMembersAsync)
+            .RequirePermission(Permissions.MembersView)
             .WithName("listMembers")
             .Produces<MemberPageResponse>();
 
         tenant.MapPatch("/members/{membershipId:guid}", UpdateMemberAsync)
+            .RequirePermission(Permissions.MembersManage)
             .WithName("updateMember")
             .Produces<MemberResponse>();
 
+        // Any member may leave; removing someone else is the service's rank rule (members.manage).
         tenant.MapDelete("/members/{membershipId:guid}", RemoveMemberAsync)
+            .RequirePermission(Permissions.OrganizationView)
             .WithName("removeMember")
             .Produces(StatusCodes.Status204NoContent);
 
@@ -136,6 +143,9 @@ public static class OrganizationEndpoints
             o.CreatedAt,
             o.Version.ToString(CultureInfo.InvariantCulture));
 
+    // Phase 2 has system roles only, and RoleAssignments keeps one per membership in step with its role.
+    private static RoleSummaryResponse ToResponse(SystemRole r) => new(r.Id, r.Key, r.DisplayName, true);
+
     private static MemberResponse ToResponse(MemberView m) =>
         new(
             m.Id,
@@ -143,6 +153,8 @@ public static class OrganizationEndpoints
             m.Email,
             m.DisplayName,
             StoredValue.Of(m.Role),
+            [ToResponse(SystemRoles.Of(m.Role))],
+            m.PersonId,
             StoredValue.Of(m.Status),
             m.JoinedAt,
             m.Version.ToString(CultureInfo.InvariantCulture));

@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.Organizations.Domain;
+using Tempo.Platform.Modules.Organizations.Infrastructure;
 
 namespace Tempo.Platform.Modules.Organizations.Application;
 
@@ -14,7 +15,8 @@ public sealed record MemberView(
     MembershipRole Role,
     MembershipStatus Status,
     DateTimeOffset JoinedAt,
-    long Version);
+    long Version,
+    Guid? PersonId = null);
 
 /// <summary>A members page: newest first, keyset on the membership id (UUID v7, so time-ordered).</summary>
 public sealed record MemberQuery(MembershipRole? Role, MembershipStatus? Status, Guid? Before, int Limit);
@@ -36,7 +38,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
 {
     public const int MaxLimit = 100;
 
-    private sealed record Row(Guid Id, Guid UserAccountId, MembershipRole Role, MembershipStatus Status, DateTimeOffset CreatedAt, long Version);
+    private sealed record Row(Guid Id, Guid UserAccountId, MembershipRole Role, MembershipStatus Status, DateTimeOffset CreatedAt, long Version, Guid? PersonId = null);
 
     public async Task<MemberPage> ListAsync(TenantContext tenant, MemberQuery query, CancellationToken cancellationToken)
     {
@@ -52,13 +54,14 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             // Removed members show only when asked for by status.
             await using var command = unitOfWork.Command(
                 """
-                SELECT id, user_account_id, role, status, created_at, version
-                FROM organizations.memberships
-                WHERE organization_id = $1
-                  AND ($2::text IS NULL OR role = $2)
-                  AND (($3::text IS NULL AND status <> 'removed') OR status = $3)
-                  AND ($4::uuid IS NULL OR id < $4)
-                ORDER BY id DESC
+                SELECT m.id, m.user_account_id, m.role, m.status, m.created_at, m.version, p.id
+                FROM organizations.memberships m
+                LEFT JOIN people.people p ON p.organization_id = m.organization_id AND p.membership_id = m.id
+                WHERE m.organization_id = $1
+                  AND ($2::text IS NULL OR m.role = $2)
+                  AND (($3::text IS NULL AND m.status <> 'removed') OR m.status = $3)
+                  AND ($4::uuid IS NULL OR m.id < $4)
+                ORDER BY m.id DESC
                 LIMIT $5
                 """,
                 tenant.OrganizationId,
@@ -131,6 +134,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
 
         if (newRole != target.Role)
         {
+            await RoleAssignments.SetSystemRoleAsync(unitOfWork, tenant.OrganizationId, membershipId, newRole, tenant.MembershipId, cancellationToken);
             await AuditAsync(unitOfWork, tenant, "membership.role_changed", membershipId, new { before = StoredValue.Of(target.Role), after = StoredValue.Of(newRole) }, cancellationToken);
         }
 
@@ -168,6 +172,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        await RoleAssignments.RevokeAllAsync(unitOfWork, tenant.OrganizationId, membershipId, cancellationToken);
         await AuditAsync(unitOfWork, tenant, "membership.removed", membershipId, new { role = StoredValue.Of(target.Role), left = isSelf }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
     }
@@ -197,7 +202,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             .. rows.Select(r =>
             {
                 var profile = found.GetValueOrDefault(r.UserAccountId);
-                return new MemberView(r.Id, r.UserAccountId, profile?.Email ?? string.Empty, profile?.DisplayName, r.Role, r.Status, r.CreatedAt, r.Version);
+                return new MemberView(r.Id, r.UserAccountId, profile?.Email ?? string.Empty, profile?.DisplayName, r.Role, r.Status, r.CreatedAt, r.Version, r.PersonId);
             })
         ];
     }
@@ -209,7 +214,8 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             StoredValue.Parse<MembershipRole>(reader.GetString(2)),
             StoredValue.Parse<MembershipStatus>(reader.GetString(3)),
             await reader.GetFieldValueAsync<DateTimeOffset>(4, cancellationToken),
-            reader.GetInt64(5));
+            reader.GetInt64(5),
+            reader.FieldCount > 6 && !await reader.IsDBNullAsync(6, cancellationToken) ? reader.GetGuid(6) : null);
 
     private static Task AuditAsync(UnitOfWork unitOfWork, TenantContext tenant, string action, Guid membershipId, object data, CancellationToken cancellationToken) =>
         AuditWriter.WriteAsync(

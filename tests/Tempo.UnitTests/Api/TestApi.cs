@@ -83,6 +83,9 @@ public sealed class TestApi : IDisposable
 
     public HttpClient CreateClient() => factory.CreateClient();
 
+    /// <summary>The host's services, e.g. to inspect the mapped endpoints.</summary>
+    public IServiceProvider Services => factory.Services;
+
     public async Task<HttpResponseMessage> GetAsync(string path, string? token)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);

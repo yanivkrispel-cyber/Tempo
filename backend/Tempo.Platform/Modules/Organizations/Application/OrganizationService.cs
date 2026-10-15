@@ -5,6 +5,7 @@ using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.Organizations.Domain;
+using Tempo.Platform.Modules.Organizations.Infrastructure;
 
 namespace Tempo.Platform.Modules.Organizations.Application;
 
@@ -113,6 +114,8 @@ public sealed partial class OrganizationService(IDataSourceProvider dataSources)
         {
             await owner.ExecuteNonQueryAsync(cancellationToken);
         }
+
+        await RoleAssignments.SetSystemRoleAsync(unitOfWork, organizationId, membershipId, MembershipRole.Owner, null, cancellationToken);
 
         await AuditWriter.WriteAsync(unitOfWork, new AuditEvent(organizationId, "user", caller.UserAccountId, "organization.created", "organization", organizationId, correlationId, new { slug = request.Slug, displayName }), cancellationToken);
         await AuditWriter.WriteAsync(unitOfWork, new AuditEvent(organizationId, "user", caller.UserAccountId, "membership.created", "membership", membershipId, correlationId, new { role = "owner" }), cancellationToken);
