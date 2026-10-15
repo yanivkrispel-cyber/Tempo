@@ -54,7 +54,7 @@ export class DevCanaryStack extends Stack {
     const canary = new LambdaFunction(this, "CanaryFunction", {
       functionName,
       description: "Development canary: health every 5 minutes, sign-in and a tenant read every hour (Q10)",
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 256,
       timeout: Duration.seconds(30),

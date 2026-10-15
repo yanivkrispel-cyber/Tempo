@@ -39,6 +39,7 @@ export class SecureQueue extends Construct {
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue", {
       queueName: `${props.queueName}-dlq`,
       encryption: QueueEncryption.SQS_MANAGED,
+      enforceSSL: true,
       retentionPeriod: Duration.days(14),
       fifo: props.fifo
     });
@@ -46,6 +47,7 @@ export class SecureQueue extends Construct {
     this.queue = new Queue(this, "Queue", {
       queueName: props.queueName,
       encryption: QueueEncryption.SQS_MANAGED,
+      enforceSSL: true,
       retentionPeriod: Duration.days(props.retentionDays ?? 14),
       visibilityTimeout,
       receiveMessageWaitTime: Duration.seconds(20),
