@@ -443,7 +443,9 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                        SELECT s.local_date FROM scheduling.pass_uses u
                        JOIN scheduling.bookings b ON b.organization_id = u.organization_id AND b.id = u.booking_id
                        JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
-                       WHERE u.organization_id = ps.organization_id AND u.pass_id = ps.id AND u.status = 'held'), '{}')
+                       WHERE u.organization_id = ps.organization_id AND u.pass_id = ps.id AND u.status = 'held'), '{}'),
+                   coalesce(ARRAY(SELECT f.starts_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
+                   coalesce(ARRAY(SELECT f.ends_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}')
             FROM scheduling.passes ps
             JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
             WHERE ps.organization_id = $1 AND ps.person_id = $2 AND ps.status = 'active' AND ps.ends_on >= $3
@@ -463,7 +465,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 reader.GetInt32(6),
                 await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetInt32(7),
                 await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8),
-                await reader.GetFieldValueAsync<DateOnly[]>(9, cancellationToken)));
+                await reader.GetFieldValueAsync<DateOnly[]>(9, cancellationToken),
+                [.. (await reader.GetFieldValueAsync<DateOnly[]>(10, cancellationToken)).Zip(await reader.GetFieldValueAsync<DateOnly[]>(11, cancellationToken))]));
         }
 
         return candidates;

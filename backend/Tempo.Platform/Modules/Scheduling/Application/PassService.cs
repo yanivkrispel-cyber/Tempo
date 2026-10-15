@@ -31,10 +31,16 @@ public sealed record PassView(
     string? Note,
     string Status,
     DateTimeOffset CreatedAt,
-    long Version)
+    long Version,
+    IReadOnlyList<PassFreezeView>? Freezes = null)
 {
     public int? EntriesLeft => Entries is { } entries ? entries - EntriesUsed : null;
 }
+
+/// <summary>Days a membership is frozen (docs/29 section 16.4), studio dates, inclusive.</summary>
+public sealed record PassFreezeView(Guid Id, DateOnly StartsOn, DateOnly EndsOn);
+
+public sealed record NewFreeze(DateOnly? StartsOn, DateOnly? EndsOn);
 
 public sealed record NewPassProduct(string? Kind, string? Name, int? Entries, int? ValidDays, int? WeeklyCap, string? ClassCategory, int? PriceAgorot);
 
@@ -59,6 +65,12 @@ public interface IPassService
     Task<PassView> GrantAsync(TenantContext tenant, Guid personId, NewPass pass, CancellationToken cancellationToken);
 
     Task<PassView> VoidAsync(TenantContext tenant, Guid passId, CancellationToken cancellationToken);
+
+    /// <summary>Freezes a period membership (docs/29 section 16.4): validity extends by the frozen days, no booking inside them.</summary>
+    Task<PassView> FreezeAsync(TenantContext tenant, Guid passId, NewFreeze freeze, CancellationToken cancellationToken);
+
+    /// <summary>Removes a freeze that has not started yet; validity shrinks back.</summary>
+    Task<PassView> UnfreezeAsync(TenantContext tenant, Guid passId, Guid freezeId, CancellationToken cancellationToken);
 }
 
 public sealed class PassService(IDataSourceProvider dataSources, TimeProvider clock) : IPassService
@@ -71,7 +83,10 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
         SELECT ps.id, ps.person_id, pp.id, pp.name, pp.kind, pp.weekly_cap, pp.class_category,
                ps.starts_on, ps.ends_on, ps.entries, ps.entries_used, ps.note,
                CASE WHEN ps.status = 'voided' THEN 'voided' WHEN ps.ends_on < $2 THEN 'expired' ELSE 'active' END,
-               ps.created_at, ps.version
+               ps.created_at, ps.version,
+               coalesce(ARRAY(SELECT f.id FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
+               coalesce(ARRAY(SELECT f.starts_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
+               coalesce(ARRAY(SELECT f.ends_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}')
         FROM scheduling.passes ps
         JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
         """;
@@ -255,10 +270,157 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
                 await reader.IsDBNullAsync(11, cancellationToken) ? null : reader.GetString(11),
                 reader.GetString(12),
                 await reader.GetFieldValueAsync<DateTimeOffset>(13, cancellationToken),
-                reader.GetInt64(14)));
+                reader.GetInt64(14),
+                Freezes(
+                    await reader.GetFieldValueAsync<Guid[]>(15, cancellationToken),
+                    await reader.GetFieldValueAsync<DateOnly[]>(16, cancellationToken),
+                    await reader.GetFieldValueAsync<DateOnly[]>(17, cancellationToken))));
         }
 
         return passes;
+    }
+
+    private static List<PassFreezeView> Freezes(Guid[] ids, DateOnly[] starts, DateOnly[] ends) =>
+        [.. ids.Select((id, i) => new PassFreezeView(id, starts[i], ends[i]))];
+
+    public const int MaxFreezeDays = 90;
+
+    public async Task<PassView> FreezeAsync(TenantContext tenant, Guid passId, NewFreeze freeze, CancellationToken cancellationToken)
+    {
+        var startsOn = freeze.StartsOn ?? throw Invalid("startsOn", "Say when the freeze starts.");
+        var endsOn = freeze.EndsOn ?? throw Invalid("endsOn", "Say when the freeze ends.");
+        var days = endsOn.DayNumber - startsOn.DayNumber + 1;
+        if (days < 1 || days > MaxFreezeDays)
+        {
+            throw Invalid("endsOn", $"A freeze runs 1 to {MaxFreezeDays} days.");
+        }
+
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var today = await TodayAsync(unitOfWork, tenant.OrganizationId, cancellationToken);
+        if (startsOn < today)
+        {
+            throw Invalid("startsOn", "A freeze starts today or later.");
+        }
+
+        var (personId, passEndsOn) = await LockMembershipAsync(unitOfWork, tenant.OrganizationId, passId, cancellationToken);
+        if (startsOn > passEndsOn)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.freeze_outside", "The freeze starts after the membership ends.");
+        }
+
+        await using (var overlap = unitOfWork.Command(
+            "SELECT count(*)::int FROM scheduling.pass_freezes WHERE organization_id = $1 AND pass_id = $2 AND starts_on <= $4 AND ends_on >= $3",
+            tenant.OrganizationId, passId, startsOn, endsOn))
+        {
+            if ((int)(await overlap.ExecuteScalarAsync(cancellationToken))! > 0)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.freeze_overlap", "These days overlap another freeze.");
+            }
+        }
+
+        var freezeId = Guid.CreateVersion7();
+        await using (var insert = unitOfWork.Command(
+            "INSERT INTO scheduling.pass_freezes (organization_id, id, pass_id, starts_on, ends_on, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, now())",
+            tenant.OrganizationId, freezeId, passId, startsOn, endsOn, tenant.MembershipId))
+        {
+            await insert.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        // Validity moves out by the frozen days, so ends_on stays the single truth for "valid on this date".
+        await using (var extend = unitOfWork.Command(
+            "UPDATE scheduling.passes SET ends_on = ends_on + $3, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND id = $2",
+            tenant.OrganizationId, passId, days))
+        {
+            await extend.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await AuditAsync(unitOfWork, tenant, "pass.frozen", "pass", passId, new { personId, freezeId, startsOn, endsOn, days }, cancellationToken);
+        await using (var inbox = unitOfWork.Command(
+            "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, 'pass.frozen', jsonb_build_object('passId', $4::uuid), now())",
+            tenant.OrganizationId, Guid.CreateVersion7(), personId, passId))
+        {
+            await inbox.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        var frozen = (await PassesAsync(unitOfWork, tenant.OrganizationId, "WHERE ps.organization_id = $1 AND ps.id = $3", cancellationToken, passId)).Single();
+        await unitOfWork.CommitAsync(cancellationToken);
+        return frozen;
+    }
+
+    public async Task<PassView> UnfreezeAsync(TenantContext tenant, Guid passId, Guid freezeId, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var today = await TodayAsync(unitOfWork, tenant.OrganizationId, cancellationToken);
+        var (personId, _) = await LockMembershipAsync(unitOfWork, tenant.OrganizationId, passId, cancellationToken);
+        DateOnly startsOn;
+        DateOnly endsOn;
+        await using (var read = unitOfWork.Command(
+            "SELECT starts_on, ends_on FROM scheduling.pass_freezes WHERE organization_id = $1 AND id = $2 AND pass_id = $3",
+            tenant.OrganizationId, freezeId, passId))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new DomainRuleViolationException(ViolationKind.NotFound, "pass.freeze_not_found", "Freeze not found.");
+            }
+
+            startsOn = await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken);
+            endsOn = await reader.GetFieldValueAsync<DateOnly>(1, cancellationToken);
+        }
+
+        if (startsOn <= today)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.freeze_started", "A freeze that has started stays.");
+        }
+
+        var days = endsOn.DayNumber - startsOn.DayNumber + 1;
+        await using (var delete = unitOfWork.Command("DELETE FROM scheduling.pass_freezes WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, freezeId))
+        {
+            await delete.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var shrink = unitOfWork.Command(
+            "UPDATE scheduling.passes SET ends_on = ends_on - $3, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND id = $2",
+            tenant.OrganizationId, passId, days))
+        {
+            await shrink.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await AuditAsync(unitOfWork, tenant, "pass.unfrozen", "pass", passId, new { personId, freezeId, days }, cancellationToken);
+        var pass = (await PassesAsync(unitOfWork, tenant.OrganizationId, "WHERE ps.organization_id = $1 AND ps.id = $3", cancellationToken, passId)).Single();
+        await unitOfWork.CommitAsync(cancellationToken);
+        return pass;
+    }
+
+    /// <summary>The pass row, locked; only an active period membership can be frozen (C-12).</summary>
+    private static async Task<(Guid PersonId, DateOnly EndsOn)> LockMembershipAsync(UnitOfWork unitOfWork, Guid organizationId, Guid passId, CancellationToken cancellationToken)
+    {
+        await using var command = unitOfWork.Command(
+            """
+            SELECT ps.person_id, ps.status, pp.kind, ps.ends_on
+            FROM scheduling.passes ps
+            JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
+            WHERE ps.organization_id = $1 AND ps.id = $2
+            FOR UPDATE OF ps
+            """,
+            organizationId, passId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new DomainRuleViolationException(ViolationKind.NotFound, "pass.not_found", "Pass not found.");
+        }
+
+        if (reader.GetString(1) != "active")
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.voided", "This pass is void.");
+        }
+
+        if (reader.GetString(2) != "membership")
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.not_freezable", "Only a period membership can be frozen; a punch card keeps its validity.");
+        }
+
+        return (reader.GetGuid(0), await reader.GetFieldValueAsync<DateOnly>(3, cancellationToken));
     }
 
     private static async Task<PassProductView> ProductAsync(UnitOfWork unitOfWork, Guid organizationId, Guid productId, CancellationToken cancellationToken)
