@@ -67,6 +67,14 @@ const messages: Record<string, string> = {
   "weeklyCap.invalid": "המכסה השבועית צריכה להיות בין 1 ל־14 שיעורים.",
   "pass.not_found": "הכרטיסייה או המנוי לא נמצאו.",
   "pass.voided": "הכרטיסייה או המנוי כבר בוטלו.",
+  // Freezing a membership (docs/29 section 16.4).
+  "pass.not_freezable": "אפשר להקפיא רק מנוי לתקופה. כרטיסייה לא מוקפאת.",
+  "pass.freeze_overlap": "הימים האלה חופפים להקפאה אחרת של המנוי.",
+  "pass.freeze_outside": "ההקפאה צריכה להתחיל לפני שהמנוי נגמר.",
+  "pass.freeze_started": "ההקפאה כבר התחילה, ואי אפשר להסיר אותה.",
+  "pass.freeze_not_found": "ההקפאה לא נמצאה. ייתכן שהוסרה כבר.",
+  "startsOn.invalid": "ההקפאה מתחילה היום או אחר כך.",
+  "endsOn.invalid": "ההקפאה נמשכת בין יום אחד ל־90 ימים.",
 };
 
 /** The sentence for a Problem code, when the app has one. */

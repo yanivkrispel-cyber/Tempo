@@ -145,6 +145,16 @@ describe("booking a class", () => {
     );
   });
 
+  it("says the membership is frozen, and until when, instead of offering to book", async () => {
+    renderAt("/book", { frozenUntil: "2026-10-20" });
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
+    const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
+    expect(within(sheet).getByRole("status")).toHaveTextContent(
+      "המנוי שלך מוקפא עד 20.10.2026, ולכן אי אפשר להירשם לשיעור הזה.",
+    );
+    expect(within(sheet).queryByRole("button", { name: "אישור ההרשמה" })).not.toBeInTheDocument();
+  });
+
   it("says clearly when there is no valid pass, and does not offer to book", async () => {
     const { api } = renderAt("/book", { passes: [{ ...card, entriesUsed: 10, entriesLeft: 0 }] });
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
@@ -163,7 +173,9 @@ describe("booking a class", () => {
     studio.passes[0]!.entriesLeft = 0;
     await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
     const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
-    expect(await within(sheet).findByRole("alert")).toHaveTextContent("אין כרטיסייה בתוקף, פנו לסטודיו.");
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent(
+      "אין כרטיסייה או מנוי בתוקף לשיעור הזה. אם המנוי מוקפא, אי אפשר להירשם בימי ההקפאה. פנו לסטודיו.",
+    );
 
     await userEvent.click(within(sheet).getByRole("button", { name: "סגירה" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -499,6 +511,38 @@ describe("passes", () => {
     expect(
       await screen.findByText("אין לך כרטיסייה או מנוי בתוקף. כדי להירשם לשיעורים, פנו לסטודיו."),
     ).toBeInTheDocument();
+  });
+
+  it("says a membership is frozen and when it resumes, and mentions an upcoming freeze", async () => {
+    const membership = {
+      ...card,
+      product: { ...card.product, name: "מנוי חודשי", kind: "membership" as const, weeklyCap: null },
+      entries: null,
+      entriesUsed: 0,
+      entriesLeft: null,
+      endsOn: "2026-12-12",
+    };
+    renderAt("/profile", {
+      passes: [
+        {
+          ...membership,
+          freezes: [{ id: "0199e5a1-0000-7000-8000-000000000a01", startsOn: "2026-10-10", endsOn: "2026-10-20" }],
+        },
+        {
+          ...membership,
+          id: "0199e5a1-0000-7000-8000-000000000903",
+          product: { ...membership.product, name: "מנוי בוקר" },
+          freezes: [{ id: "0199e5a1-0000-7000-8000-000000000a02", startsOn: "2026-11-01", endsOn: "2026-11-14" }],
+        },
+      ],
+    });
+    const passes = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
+    const frozen = within(passes).getByRole("listitem", { name: "מנוי חודשי" });
+    expect(frozen).toHaveTextContent("המנוי מוקפא. הוא חוזר להיות בתוקף ב־21.10.2026.");
+    expect(frozen).toHaveTextContent("בתוקף עד 12.12.2026");
+    const upcoming = within(passes).getByRole("listitem", { name: "מנוי בוקר" });
+    expect(upcoming).toHaveTextContent("הקפאה מתוכננת: 01.11.2026 עד 14.11.2026");
+    expect(upcoming).not.toHaveTextContent("המנוי מוקפא");
   });
 
   it("shows a membership's weekly cap and end date on the profile, and leaves out a voided pass", async () => {

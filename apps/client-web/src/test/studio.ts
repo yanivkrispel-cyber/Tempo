@@ -56,6 +56,7 @@ export const card: Pass = {
   status: "active",
   createdAt: "2026-10-01T08:00:00Z",
   version: "1",
+  freezes: [],
 };
 
 export const defaultPolicy: Schemas["BookingPolicy"] = {
@@ -119,6 +120,8 @@ export interface StudioOptions {
   policy?: Partial<Schemas["BookingPolicy"]>;
   /** History rows for `scope=past`. */
   past?: MyBooking[];
+  /** The member's membership is frozen through this day: no pass preview, `Session.frozenUntil` set (A5). */
+  frozenUntil?: string;
 }
 
 /** The studio's state and the stub routes that read and change it. */
@@ -193,10 +196,11 @@ export function createStudio(options: StudioOptions = {}) {
   place(sessions[5]!, "booked", passes[0] ?? null);
 
   const view = (target: Session): Session => {
-    const pass = live();
+    const pass = options.frozenUntil ? undefined : live();
     return {
       ...target,
       passPreview: target.myBooking || target.status !== "scheduled" || !pass ? null : summary(pass),
+      frozenUntil: options.frozenUntil ?? null,
     };
   };
 

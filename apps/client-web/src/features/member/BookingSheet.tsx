@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Banner, Button, Dialog, Icon, useToast } from "../../shared/design-system";
 import { errorMessage } from "../../api/errors";
-import type { IsoDate } from "../../shared/utilities/dates";
+import { formatDate, type IsoDate } from "../../shared/utilities/dates";
 import { freeCancelDeadline, freeSpots, noPassText, waitText } from "./bookingState";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
@@ -109,7 +109,9 @@ export function BookingSheet({
           )}
           {!pass && (
             <Banner tone="warning" icon="info" className={styles.sheetNote}>
-              {noPassText}
+              {session.frozenUntil
+                ? `המנוי שלך מוקפא עד ${formatDate(session.frozenUntil)}, ולכן אי אפשר להירשם לשיעור הזה.`
+                : noPassText}
             </Banner>
           )}
           {pass && waitlist && (

@@ -1,9 +1,10 @@
 import { Banner, Card, Icon, ProgressBar, Skeleton } from "../../shared/design-system";
 import { formatDate } from "../../shared/utilities/dates";
 import { entriesText, livePasses } from "./bookingState";
+import { freezeNote } from "./passText";
 import styles from "./member.module.css";
 import { passLine } from "./passText";
-import { useMyPasses, type Pass } from "./studio";
+import { useMyPasses, useStudioClock, type Pass } from "./studio";
 import { LoadError } from "./StudioGate";
 
 const noPass = "אין לך כרטיסייה או מנוי בתוקף. כדי להירשם לשיעורים, פנו לסטודיו.";
@@ -47,6 +48,7 @@ export function PassStrip({ organizationId }: { organizationId: string }) {
 /** The profile's card: every live pass, with the entries used and left and the end date. */
 export function PassesCard({ organizationId }: { organizationId: string }) {
   const passes = useMyPasses(organizationId);
+  const { today } = useStudioClock(organizationId);
   if (passes.isPending) return <Skeleton height={140} />;
   const live = passes.data ? livePasses(passes.data) : [];
 
@@ -84,6 +86,7 @@ export function PassesCard({ organizationId }: { organizationId: string }) {
               ) : (
                 pass.product.weeklyCap != null && <span>עד {pass.product.weeklyCap} שיעורים בשבוע</span>
               )}
+              {freezeNote(pass.freezes, today)}
               <span className="tp-caption">בתוקף עד {formatDate(pass.endsOn)}</span>
             </li>
           ))}

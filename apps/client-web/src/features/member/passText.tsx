@@ -1,9 +1,9 @@
 // Sentences about a pass. The pass's name is the studio's own text (any language), so it sits in its own <bdi> and
 // never takes a Hebrew prefix letter ("מ", "ב", "ל").
 import type { ReactNode } from "react";
-import { formatDate } from "../../shared/utilities/dates";
+import { addDays, formatDate, type IsoDate } from "../../shared/utilities/dates";
 import { entriesText } from "./bookingState";
-import type { PassSummary } from "./studio";
+import type { Pass, PassSummary } from "./studio";
 
 const isCard = (pass: PassSummary) => pass.kind === "punch_card" && pass.entriesLeft != null;
 
@@ -77,4 +77,19 @@ export function metaLine(parts: ReadonlyArray<string | null | undefined>): React
       <bdi>{part}</bdi>
     </span>
   ));
+}
+
+/** A membership frozen today says when it resumes; otherwise the next freeze is mentioned. Nothing when there is none. */
+export function freezeNote(freezes: Pass["freezes"], today: IsoDate): ReactNode {
+  const ongoing = freezes?.find((freeze) => freeze.startsOn <= today && freeze.endsOn >= today);
+  if (ongoing) {
+    return <span role="status">המנוי מוקפא. הוא חוזר להיות בתוקף ב־{formatDate(addDays(ongoing.endsOn, 1))}.</span>;
+  }
+  const next = freezes?.find((freeze) => freeze.startsOn > today);
+  if (!next) return null;
+  return (
+    <span className="tp-caption">
+      הקפאה מתוכננת: {formatDate(next.startsOn)} עד {formatDate(next.endsOn)}. בימים האלה אי אפשר להירשם לשיעורים.
+    </span>
+  );
 }
