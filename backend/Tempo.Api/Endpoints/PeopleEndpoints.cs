@@ -3,9 +3,11 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Authorization;
+using Tempo.Contracts.Api.Organizations;
 using Tempo.Contracts.Api.People;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.People.Application;
 
 namespace Tempo.Api.Endpoints;
@@ -26,6 +28,7 @@ public static class PeopleEndpoints
         tenant.MapPatch("/people/{personId:guid}", UpdateAsync).RequirePermission(Permissions.PeopleManage).WithName("updatePerson").Produces<PersonDetailResponse>();
         tenant.MapPost("/people/{personId:guid}/contact-points", AddContactAsync).RequirePermission(Permissions.PeopleManage).WithName("addContactPoint").Produces<ContactPointResponse>(StatusCodes.Status201Created);
         tenant.MapPatch("/people/{personId:guid}/contact-points/{contactPointId:guid}", UpdateContactAsync).RequirePermission(Permissions.PeopleManage).WithName("updateContactPoint").Produces<ContactPointResponse>();
+        tenant.MapPost("/people/{personId:guid}/invite", InviteAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("invitePerson").Produces<CreatedInvitationResponse>(StatusCodes.Status201Created);
         tenant.MapDelete("/people/{personId:guid}/contact-points/{contactPointId:guid}", DeleteContactAsync).RequirePermission(Permissions.PeopleManage).WithName("deleteContactPoint").Produces(StatusCodes.Status204NoContent);
 
         return endpoints;
@@ -64,6 +67,32 @@ public static class PeopleEndpoints
             OrganizationEndpoints.ParseVersion(ifMatch),
             httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
+    }
+
+    /// <summary>Invites a recorded person to the app as a client; accepting links the login to this record (section 4.5).</summary>
+    private static async Task<IResult> InviteAsync(
+        HttpContext httpContext,
+        Guid personId,
+        InvitePersonRequest request,
+        IPeopleService people,
+        IInvitationService invitations,
+        AppLinks links)
+    {
+        var tenant = TenantRouteFilter.Current(httpContext);
+        var email = await people.PrepareInvitationAsync(tenant, personId, request.Email ?? string.Empty, httpContext.RequestAborted);
+        var created = await invitations.CreateAsync(tenant, email, MembershipRole.Client, httpContext.RequestAborted, personId);
+        var i = created.Invitation;
+        return Results.Created(
+            $"/api/v1/organizations/{tenant.OrganizationId}/invitations/{i.Id}",
+            new CreatedInvitationResponse(
+                i.Id,
+                i.Email,
+                StoredValue.Of(i.Role),
+                StoredValue.Of(i.Status),
+                i.ExpiresAt,
+                i.CreatedAt,
+                new InvitedByResponse(i.InvitedByMembershipId, i.InvitedByDisplayName),
+                links.Invitation(i.Role, created.Token)));
     }
 
     private static async Task<IResult> AddContactAsync(HttpContext httpContext, Guid personId, CreateContactPointRequest request, IPeopleService people)

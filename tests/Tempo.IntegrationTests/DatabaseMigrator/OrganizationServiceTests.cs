@@ -101,6 +101,8 @@ public sealed class OrganizationServiceTests(PostgresFixture postgres) : IClassF
         var (_, owner, studio) = await StudioAsync(db);
         for (var i = 0; i < 4; i++)
         {
+            // UUIDv7 ids are ordered by millisecond only; two in the same millisecond can sort either way.
+            await Task.Delay(2);
             await JoinAsync(db, studio, $"client{i}@example.com", MembershipRole.Client);
         }
 

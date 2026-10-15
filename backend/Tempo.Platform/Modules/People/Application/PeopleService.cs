@@ -86,11 +86,19 @@ public interface IPeopleService
     Task<ContactPointView> UpdateContactAsync(TenantContext tenant, Guid personId, Guid contactPointId, string? value, bool makePrimary, long? expectedVersion, CancellationToken cancellationToken);
 
     Task DeleteContactAsync(TenantContext tenant, Guid personId, Guid contactPointId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Before inviting a recorded person to the app: the person must be live and have no login
+    /// (`person.has_login`); the email becomes one of their contacts if it is new. Returns the normalized email.
+    /// </summary>
+    Task<string> PrepareInvitationAsync(TenantContext tenant, Guid personId, string email, CancellationToken cancellationToken);
 }
 
 public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleService
 {
     public const int MaxLimit = 100;
+
+    private static readonly object EmailContactChanged = new { fields = new[] { "contact.email" } };
 
     private const string PersonColumns =
         """
@@ -357,6 +365,33 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
 
         await AuditAsync(unitOfWork, tenant, "person.updated", personId, new { fields = new[] { $"contact.{contact.Type}" } }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    public async Task<string> PrepareInvitationAsync(TenantContext tenant, Guid personId, string email, CancellationToken cancellationToken)
+    {
+        var normalized = ContactValues.Email(email);
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var person = (await DetailAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken, forUpdate: true));
+        if (person.Person.Status is "anonymized" or "merged")
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "person.read_only", "This record can no longer change.");
+        }
+
+        if (person.Person.HasLogin)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "person.has_login", "This person already signs in.");
+        }
+
+        if (!person.ContactPoints.Any(c => c.Type == "email" && c.Value == normalized))
+        {
+            var isPrimary = !person.ContactPoints.Any(c => c.Type == "email" && c.IsPrimary);
+            await InsertContactAsync(unitOfWork, tenant.OrganizationId, personId, "email", normalized, isPrimary, cancellationToken);
+            await FlagDuplicatesAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken);
+            await AuditAsync(unitOfWork, tenant, "person.updated", personId, EmailContactChanged, cancellationToken);
+        }
+
+        await unitOfWork.CommitAsync(cancellationToken);
+        return normalized;
     }
 
     /// <summary>
