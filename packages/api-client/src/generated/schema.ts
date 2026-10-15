@@ -1110,6 +1110,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/bookings/{bookingId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a booked place to another class (`bookings.manage`)
+         * @description The entry moves with the place: nothing is spent or returned. The old row becomes `cancelled` with
+         *     `cancelReason: moved` (never a late cancel) and the old class promotes its waitlist. A full target answers
+         *     409 `session.full` (a move never joins a waitlist); a pass that does not cover the target answers 409
+         *     `booking.no_valid_pass`; a place that is not `booked` answers 409 `booking.not_cancellable`. Returns the
+         *     **new** booking. The member gets an inbox item of kind `booking.moved`.
+         */
+        post: operations["moveBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/bookings/{bookingId}/attendance": {
         parameters: {
             query?: never;
@@ -2006,7 +2033,7 @@ export interface components {
             status: components["schemas"]["BookingStatus"];
             lateCancel: boolean;
             /** @enum {string|null} */
-            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | null;
+            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | "moved" | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2295,7 +2322,7 @@ export interface components {
             waitlistPosition?: number | null;
             lateCancel: boolean;
             /** @enum {string|null} */
-            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | null;
+            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | "moved" | null;
             /**
              * @description For a cancelled booking, whether it held a place or a waitlist place; null otherwise.
              * @enum {string|null}
@@ -2316,6 +2343,13 @@ export interface components {
              * @description Book someone else (`bookings.manage`). Omit to book yourself.
              */
             personId?: string;
+        };
+        MoveBookingRequest: {
+            /**
+             * Format: uuid
+             * @description The class the place moves to.
+             */
+            sessionId: string;
         };
         CancelBookingRequest: {
             /** @description Staff only (`bookings.manage`), return the entry on a late cancellation. */
@@ -2462,6 +2496,7 @@ export interface components {
              * @description Clients must ignore kinds they do not know.
              * @example booking.promoted
              * @example booking.promotion_failed
+             * @example booking.moved
              * @example session.cancelled
              * @example waitlist.expired
              */
@@ -4739,6 +4774,39 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    moveBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];

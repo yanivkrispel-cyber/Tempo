@@ -21,6 +21,7 @@ public static class BookingEndpoints
 
         tenant.MapPost("/sessions/{sessionId:guid}/bookings", BookAsync).RequirePermission(Permissions.ScheduleView).WithName("createBooking").Produces<BookingResponse>(StatusCodes.Status201Created);
         tenant.MapPost("/bookings/{bookingId:guid}/cancel", CancelAsync).RequirePermission(Permissions.ScheduleView).WithName("cancelBooking").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<BookingResponse>();
+        tenant.MapPost("/bookings/{bookingId:guid}/move", MoveAsync).RequirePermission(Permissions.BookingsManage).WithName("moveBooking").Produces<BookingResponse>();
         tenant.MapGet("/me/bookings", ListMineAsync).RequirePermission(Permissions.ScheduleView).WithName("listMyBookings").Produces<MyBookingPageResponse>();
         tenant.MapGet("/people/{personId:guid}/bookings", ListForPersonAsync).RequirePermission(Permissions.BookingsManage).WithName("listPersonBookings").Produces<MyBookingPageResponse>();
 
@@ -44,6 +45,12 @@ public static class BookingEndpoints
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CancelBookingRequest? request,
         IBookingService bookings) =>
         Results.Ok(ToResponse(await bookings.CancelAsync(TenantRouteFilter.Current(httpContext), bookingId, request?.ReturnEntry == true, httpContext.RequestAborted)));
+
+    private static async Task<IResult> MoveAsync(HttpContext httpContext, Guid bookingId, MoveBookingRequest request, IBookingService bookings)
+    {
+        var target = request.SessionId ?? throw new DomainRuleViolationException(ViolationKind.Validation, "sessionId.required", "Say which class to move to.", "sessionId");
+        return Results.Ok(ToResponse(await bookings.MoveAsync(TenantRouteFilter.Current(httpContext), bookingId, target, httpContext.RequestAborted)));
+    }
 
     private static async Task<IResult> ListMineAsync(HttpContext httpContext, string? scope, Guid? before, int? limit, IBookingService bookings)
     {
