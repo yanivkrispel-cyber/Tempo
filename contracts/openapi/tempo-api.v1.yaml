@@ -1214,7 +1214,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listRooms
-      x-tempo-planned: true
       summary: "The studio's rooms (`schedule.view`)"
       responses:
         "200":
@@ -1228,7 +1227,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createRoom
-      x-tempo-planned: true
       summary: "Add a room (`schedule.manage`, limit `rooms.max`)"
       requestBody:
         required: true
@@ -1254,7 +1252,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateRoom
-      x-tempo-planned: true
       summary: "Rename, resize or archive a room (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1282,7 +1279,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listClassTypes
-      x-tempo-planned: true
       summary: "The studio's class types (`schedule.view`)"
       responses:
         "200":
@@ -1296,7 +1292,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createClassType
-      x-tempo-planned: true
       summary: "Add a class type (`schedule.manage`, limit `class_types.max`)"
       requestBody:
         required: true
@@ -1322,7 +1317,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateClassType
-      x-tempo-planned: true
       summary: "Edit or archive a class type (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1350,7 +1344,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listScheduleTemplates
-      x-tempo-planned: true
       summary: "Weekly classes (`schedule.manage`)"
       responses:
         "200":
@@ -1364,7 +1357,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createScheduleTemplate
-      x-tempo-planned: true
       summary: "Add a weekly class; sessions appear for the next eight weeks (`schedule.manage`)"
       requestBody:
         required: true
@@ -1390,7 +1382,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateScheduleTemplate
-      x-tempo-planned: true
       summary: "Change or end a weekly class (`schedule.manage`)"
       description: "Applies to future sessions without live bookings. Sessions that have bookings keep their values and are listed in `untouchedSessions`."
       parameters:
@@ -1419,7 +1410,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listSessions
-      x-tempo-planned: true
       summary: "Sessions in a date range (`schedule.view`)"
       parameters:
         - name: from
@@ -1453,7 +1443,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createSession
-      x-tempo-planned: true
       summary: "Add a one-off session (`schedule.manage`)"
       requestBody:
         required: true
@@ -1479,7 +1468,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: getSession
-      x-tempo-planned: true
       summary: "One session with the caller's booking state (`schedule.view`)"
       responses:
         "200":

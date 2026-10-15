@@ -51,6 +51,7 @@ try
     app.MapPeopleEndpoints();
     app.MapConsentEndpoints();
     app.MapPersonLifecycleEndpoints();
+    app.MapScheduleEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();
