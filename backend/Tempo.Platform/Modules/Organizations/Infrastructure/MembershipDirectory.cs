@@ -40,7 +40,8 @@ public sealed class MembershipDirectory(IDataSourceProvider dataSources) : IMemb
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, userAccountId, null, cancellationToken);
         await using var command = unitOfWork.Command(
             $"""
-            SELECT m.id, m.role, m.status, o.status, {PermissionsOf}
+            SELECT m.id, m.role, m.status, o.status, {PermissionsOf},
+                   (SELECT s.state FROM billing.subscriptions s WHERE s.organization_id = m.organization_id AND s.state <> 'canceled')
             FROM organizations.memberships m
             JOIN organizations.organizations o ON o.id = m.organization_id
             WHERE m.organization_id = $1 AND m.user_account_id = $2 AND m.status <> 'removed'
@@ -58,7 +59,8 @@ public sealed class MembershipDirectory(IDataSourceProvider dataSources) : IMemb
             StoredValue.Parse<MembershipRole>(reader.GetString(1)),
             StoredValue.Parse<MembershipStatus>(reader.GetString(2)),
             StoredValue.Parse<OrganizationStatus>(reader.GetString(3)),
-            (await reader.GetFieldValueAsync<string[]>(4, cancellationToken)).ToHashSet(StringComparer.Ordinal));
+            (await reader.GetFieldValueAsync<string[]>(4, cancellationToken)).ToHashSet(StringComparer.Ordinal),
+            await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5));
     }
 
     public async Task<IReadOnlyList<AccountMembership>> ListForAccountAsync(Guid userAccountId, CancellationToken cancellationToken)

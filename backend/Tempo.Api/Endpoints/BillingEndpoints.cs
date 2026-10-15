@@ -14,7 +14,7 @@ public static class BillingEndpoints
     {
         var tenant = endpoints.MapTenantGroup();
         tenant.MapGet("/billing", GetAsync).RequirePermission(Permissions.BillingView).WithName("getBilling").Produces<BillingOverviewResponse>();
-        tenant.MapPatch("/billing/account", UpdateAccountAsync).RequirePermission(Permissions.BillingManage).WithName("updateBillingAccount").Produces<BillingOverviewResponse>();
+        tenant.MapPatch("/billing/account", UpdateAccountAsync).RequirePermission(Permissions.BillingManage).WithName("updateBillingAccount").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<BillingOverviewResponse>();
 
         endpoints.MapAccountGroup().MapGet("/plans", ListPlansAsync).WithName("listPlans").Produces<PlanListResponse>();
         return endpoints;

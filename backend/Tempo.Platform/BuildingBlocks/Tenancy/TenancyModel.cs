@@ -55,7 +55,8 @@ public sealed record MembershipSnapshot(
     MembershipRole Role,
     MembershipStatus Status,
     OrganizationStatus OrganizationStatus,
-    IReadOnlySet<string>? Permissions = null)
+    IReadOnlySet<string>? Permissions = null,
+    string? SubscriptionState = null)
 {
     public IReadOnlySet<string> EffectivePermissions => Permissions ?? SystemRoles.Of(Role).Permissions;
 }

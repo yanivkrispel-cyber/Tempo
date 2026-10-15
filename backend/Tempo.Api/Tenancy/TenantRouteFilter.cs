@@ -12,6 +12,13 @@ namespace Tempo.Api.Tenancy;
 public sealed class AllowWhenOrganizationSuspendedAttribute : Attribute;
 
 /// <summary>
+/// Marks a tenant write that still works while the studio's subscription is restricted (docs/28 section 4,
+/// B-8): cancelling a booking, exporting a person, the billing details, handing the studio over.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
+public sealed class AllowWhenSubscriptionRestrictedAttribute : Attribute;
+
+/// <summary>
 /// Resolves the tenant of every `/api/v1/organizations/{organizationId}`
 /// route from the route only (docs/26 section 6):
 /// <list type="number">
@@ -78,6 +85,14 @@ public sealed class TenantRouteFilter(IAccountDirectory accounts, IMembershipDir
             && httpContext.GetEndpoint()?.Metadata.GetMetadata<AllowWhenOrganizationSuspendedAttribute>() is null)
         {
             return Problems.Result(httpContext, StatusCodes.Status403Forbidden, "organization.suspended", "This studio is suspended.");
+        }
+
+        // docs/28 section 4: a restricted studio reads and exports, and nobody creates anything new.
+        if (membership.SubscriptionState == "restricted"
+            && !HttpMethods.IsGet(httpContext.Request.Method) && !HttpMethods.IsHead(httpContext.Request.Method)
+            && httpContext.GetEndpoint()?.Metadata.GetMetadata<AllowWhenSubscriptionRestrictedAttribute>() is null)
+        {
+            return Problems.Result(httpContext, StatusCodes.Status402PaymentRequired, "billing.restricted", "This studio's subscription is paused. You can still view, export and cancel bookings.");
         }
 
         // A-5: owners and admins need MFA once the switch is on (before the pilot).
