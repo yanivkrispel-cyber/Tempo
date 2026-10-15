@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import type { AuthClient } from "../../auth/authClient";
+import { apiStub, signedInRoutes } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 // Tuesday 13 October 2026, the mockup's day.
@@ -14,7 +15,7 @@ function renderAt(url: string, auth: AuthClient = signedInAuth()) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(
     <div dir="rtl">
-      <App router={router} auth={auth} today={today} />
+      <App router={router} auth={auth} fetch={apiStub(signedInRoutes).fetch} today={today} />
     </div>
   );
   return router;

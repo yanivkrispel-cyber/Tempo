@@ -5,10 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiProvider, useApi } from "../api/ApiProvider";
 import { App } from "../app/App";
 import { routes } from "../app/routes";
+import { apiStub, signedInRoutes } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
 import type { AuthClient } from "./authClient";
 
-function renderAt(url: string, auth: AuthClient | null, fetch?: typeof globalThis.fetch) {
+function renderAt(url: string, auth: AuthClient | null, fetch: typeof globalThis.fetch = apiStub(signedInRoutes).fetch) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={fetch} />);
   return router;
@@ -43,7 +44,7 @@ describe("protected routes", () => {
   });
 
   it("keeps /invite and /join public", async () => {
-    renderAt("/invite#tok_123", signedOutAuth());
+    renderAt("/invite#tok_QW5faW52aXRhdGlvbi10b2tlbi1mb3ItdGVzdHM", signedOutAuth());
     expect(await screen.findByRole("heading", { name: "הוזמנת לסטודיו" })).toBeInTheDocument();
   });
 });
