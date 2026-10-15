@@ -252,7 +252,7 @@ export class EdgeStack extends Stack {
     const canary = new LambdaFunction(this, "CanaryFunction", {
       functionName,
       description: "Calls the API health endpoint through CloudFront and logs the result",
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 128,
       timeout: Duration.seconds(15),
@@ -309,7 +309,7 @@ export class EdgeStack extends Stack {
     });
 
     if (config.observability.alarmNotificationsEnabled && config.observability.alarmEmail) {
-      const topic = new Topic(this, "AlarmTopic", { topicName: resourceName(config, "edge-alarms") });
+      const topic = new Topic(this, "AlarmTopic", { topicName: resourceName(config, "edge-alarms"), enforceSSL: true });
       topic.addSubscription(new EmailSubscription(config.observability.alarmEmail));
       for (const alarm of [cloudFront5xx, canaryFailure]) {
         alarm.addAlarmAction(new SnsAction(topic));
