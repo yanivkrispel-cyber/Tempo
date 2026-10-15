@@ -1600,6 +1600,38 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/organizations/{organizationId}/bookings/{bookingId}/move:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/BookingId"
+    post:
+      tags: [Bookings]
+      operationId: moveBooking
+      summary: "Move a booked place to another class (`bookings.manage`)"
+      description: |
+        The entry moves with the place: nothing is spent or returned. The old row becomes `cancelled` with
+        `cancelReason: moved` (never a late cancel) and the old class promotes its waitlist. A full target answers
+        409 `session.full` (a move never joins a waitlist); a pass that does not cover the target answers 409
+        `booking.no_valid_pass`; a place that is not `booked` answers 409 `booking.not_cancellable`. Returns the
+        **new** booking. The member gets an inbox item of kind `booking.moved`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MoveBookingRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/organizations/{organizationId}/bookings/{bookingId}/attendance:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -2894,7 +2926,7 @@ components:
         lateCancel: { type: boolean }
         cancelReason:
           type: [string, "null"]
-          enum: [self, staff, session_cancelled, no_valid_pass, null]
+          enum: [self, staff, session_cancelled, no_valid_pass, moved, null]
         createdAt: { type: string, format: date-time }
 
     ExportPass:
@@ -3253,7 +3285,7 @@ components:
         lateCancel: { type: boolean }
         cancelReason:
           type: [string, "null"]
-          enum: [self, staff, session_cancelled, no_valid_pass, null]
+          enum: [self, staff, session_cancelled, no_valid_pass, moved, null]
         cancelledFrom:
           type: [string, "null"]
           enum: [booked, waitlisted, null]
@@ -3275,6 +3307,12 @@ components:
           type: string
           format: uuid
           description: Book someone else (`bookings.manage`). Omit to book yourself.
+
+    MoveBookingRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: { type: string, format: uuid, description: The class the place moves to. }
 
     CancelBookingRequest:
       type: object
@@ -3454,7 +3492,7 @@ components:
         kind:
           type: string
           description: Clients must ignore kinds they do not know.
-          examples: [booking.promoted, booking.promotion_failed, session.cancelled, waitlist.expired]
+          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.cancelled, waitlist.expired]
         data:
           type: object
           description: Ids only.

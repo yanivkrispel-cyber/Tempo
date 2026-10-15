@@ -162,6 +162,9 @@ public sealed record CreateBookingRequest(Guid? PersonId);
 
 public sealed record CancelBookingRequest(bool? ReturnEntry);
 
+/// <summary>`MoveBookingRequest`: the class the booked place moves to (docs/29 section 16.1).</summary>
+public sealed record MoveBookingRequest(Guid? SessionId);
+
 public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>
