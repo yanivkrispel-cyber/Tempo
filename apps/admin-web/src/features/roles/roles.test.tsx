@@ -27,6 +27,7 @@ describe("roles", () => {
     const client = screen.getByRole("region", { name: "מתאמן" });
     expect(within(client).queryByText("התפקיד שלך")).not.toBeInTheDocument();
     expect(within(client).getByText("future.permission")).toBeInTheDocument();
+    expect(within(owner).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["צפייה בפרטי הסטודיו", "העברת הבעלות על הסטודיו"]);
     expect(screen.getByRole("link", { name: "תפקידים" })).toHaveAttribute("aria-current", "page");
   });
 });

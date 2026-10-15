@@ -8,6 +8,7 @@ import { ConsoleLayout } from "../features/console/ConsoleLayout";
 import { InvitationsPage } from "../features/invitations/InvitationsPage";
 import { InvitePage } from "../features/invitations/InvitePage";
 import { MembersPage } from "../features/members/MembersPage";
+import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
 import { RolesPage } from "../features/roles/RolesPage";
@@ -36,6 +37,7 @@ export const routes: RouteObject[] = [
               { path: "roles", element: <RolesPage /> },
               { path: "people", element: <PeoplePage /> },
               { path: "people/:personId", element: <PersonPage /> },
+              { path: "duplicates", element: <DuplicatesPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "audit", element: <AuditPage /> }
             ]

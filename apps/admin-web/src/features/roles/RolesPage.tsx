@@ -4,7 +4,7 @@ import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
 import { Banner, Card, Chip, Icon, Skeleton } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
-import { permissionLabel } from "./catalog";
+import { inCatalogOrder, permissionLabel } from "./catalog";
 
 /** `/o/:slug/roles`: the studio's roles and what each may do (GET /roles, docs/27 section 3.2). */
 export function RolesPage() {
@@ -43,7 +43,7 @@ export function RolesPage() {
                 {mine.has(role.id) && <Chip tone="brand">התפקיד שלך</Chip>}
               </div>
               <ul className="tp-stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }} aria-label={`ההרשאות של ${role.displayName}`}>
-                {role.permissions.map((key) => (
+                {inCatalogOrder(role.permissions).map((key) => (
                   <li key={key} className="tp-row" style={{ gap: 8, flexWrap: "nowrap" }}>
                     <Icon name="check" />
                     <span>{permissionLabel(key)}</span>

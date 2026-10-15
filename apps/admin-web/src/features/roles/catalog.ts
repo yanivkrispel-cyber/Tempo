@@ -33,3 +33,11 @@ const permissionLabels: Record<string, string> = {
 export function permissionLabel(key: string): string {
   return permissionLabels[key] ?? key;
 }
+
+const catalogOrder = Object.keys(permissionLabels);
+
+/** The catalog's order (studio, members, roles, audit, people, consent, ownership); keys the app does not know last. */
+export function inCatalogOrder(keys: readonly string[]): string[] {
+  const rank = (key: string) => (catalogOrder.includes(key) ? catalogOrder.indexOf(key) : catalogOrder.length);
+  return [...keys].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}

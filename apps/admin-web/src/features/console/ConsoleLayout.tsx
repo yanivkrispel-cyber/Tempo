@@ -2,6 +2,7 @@ import { NavLink, Outlet, useParams } from "react-router";
 import { consoleStudios, membershipRoleName, permissionsOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { Button, ButtonLink, EmptyState, Icon, type IconName } from "../../shared/design-system";
+import { IncomingTransferBanner } from "../ownership/Ownership";
 import styles from "./console.module.css";
 import { StudioContext, type Studio } from "./studio";
 
@@ -16,6 +17,7 @@ interface Section {
 const sections: Section[] = [
   { to: "", label: "חברי הסטודיו", icon: "users", permission: "members.view" },
   { to: "people", label: "אנשים", icon: "user", permission: "people.view" },
+  { to: "duplicates", label: "כפילויות", icon: "users", permission: "people.merge" },
   { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
   { to: "roles", label: "תפקידים", icon: "shield", permission: "members.view" },
   { to: "audit", label: "יומן פעולות", icon: "list", permission: "audit.view" },
@@ -93,6 +95,7 @@ export function ConsoleLayout() {
           </div>
         </aside>
         <div className={styles.content}>
+          <IncomingTransferBanner />
           <Outlet />
         </div>
       </div>

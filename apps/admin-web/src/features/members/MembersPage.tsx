@@ -7,6 +7,7 @@ import { errorMessage } from "../../api/errors";
 import { Banner, Button, Chip, DropdownMenu, Skeleton, useToast, type ChipTone, type MenuEntry } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
+import { OutgoingTransferBanner, TransferDialog } from "../ownership/Ownership";
 import { RemoveDialog, RoleDialog, nameOfMember, useUpdateMember } from "./MemberDialogs";
 import { assignableRoles, canReactivate, canRemove, canSuspend } from "./rules";
 
@@ -45,7 +46,7 @@ export function MembersPage() {
   const members = useMembers();
   const studio = useStudio();
   const rows = members.data?.pages.flatMap((page) => page.items) ?? [];
-  const [dialog, setDialog] = useState<{ kind: "role" | "remove"; member: Member } | null>(null);
+  const [dialog, setDialog] = useState<{ kind: "role" | "remove" | "transfer"; member: Member } | null>(null);
   const update = useUpdateMember();
   const toast = useToast();
   const manages = studio.can("members.manage");
@@ -66,6 +67,9 @@ export function MembersPage() {
     if (roles.length > 0) entries.push({ label: "שינוי תפקיד", onSelect: () => setDialog({ kind: "role", member }) });
     if (canSuspend(actor, member)) entries.push({ label: "השעיה", onSelect: () => setStatus(member, "suspended") });
     if (canReactivate(actor, member)) entries.push({ label: "החזרה לפעילות", onSelect: () => setStatus(member, "active") });
+    // Only the owner hands over the studio, to an active admin, one offer at a time (docs/27 section 3.5).
+    if (studio.can("ownership.transfer") && actor.role === "owner" && member.role === "admin" && member.status === "active" && !actor.pendingOwnershipTransfer)
+      entries.push({ label: "העברת הבעלות", onSelect: () => setDialog({ kind: "transfer", member }) });
     if (canRemove(actor, member)) entries.push("separator", { label: "הסרה מהסטודיו", danger: true, onSelect: () => setDialog({ kind: "remove", member }) });
     return entries;
   };
@@ -76,6 +80,8 @@ export function MembersPage() {
         <span className="tp-eyebrow">ניהול</span>
         <h1>חברי הסטודיו</h1>
       </header>
+
+      <OutgoingTransferBanner />
 
       {members.isError ? (
         <Banner tone="danger" icon="info">
@@ -138,6 +144,7 @@ export function MembersPage() {
 
       {dialog?.kind === "role" && <RoleDialog member={dialog.member} roles={assignableRoles(studio.membership, dialog.member)} onClose={() => setDialog(null)} />}
       {dialog?.kind === "remove" && <RemoveDialog member={dialog.member} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "transfer" && <TransferDialog member={dialog.member} name={nameOfMember(dialog.member)} onClose={() => setDialog(null)} />}
 
       {members.hasNextPage && (
         <div>
