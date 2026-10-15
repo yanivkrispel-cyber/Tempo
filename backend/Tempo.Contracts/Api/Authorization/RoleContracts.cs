@@ -14,3 +14,18 @@ public sealed record PermissionListResponse(IReadOnlyList<PermissionResponse> It
 
 /// <summary>`SetMemberRolesRequest`: the member's full set of roles.</summary>
 public sealed record SetMemberRolesRequest(IReadOnlyList<Guid>? RoleIds);
+
+/// <summary>`MemberRef`: a membership and, when known, its display name.</summary>
+public sealed record MemberRefResponse(Guid MembershipId, string? DisplayName);
+
+/// <summary>`OwnershipTransfer`.</summary>
+public sealed record OwnershipTransferResponse(
+    Guid Id,
+    string Status,
+    MemberRefResponse From,
+    MemberRefResponse To,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset CreatedAt);
+
+/// <summary>`StartOwnershipTransferRequest`.</summary>
+public sealed record StartOwnershipTransferRequest(Guid ToMembershipId);
