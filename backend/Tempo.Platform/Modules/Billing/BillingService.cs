@@ -174,7 +174,7 @@ public sealed class BillingService(IDataSourceProvider dataSources) : IBillingSe
     public const string StaffCountSql =
         """
         SELECT (SELECT count(*) FROM organizations.memberships WHERE organization_id = $1 AND role <> 'client' AND status IN ('active', 'suspended', 'invited'))
-             + (SELECT count(*) FROM organizations.invitations WHERE organization_id = $1 AND role <> 'client' AND status = 'pending')
+             + (SELECT count(*) FROM organizations.invitations WHERE organization_id = $1 AND role <> 'client' AND status = 'pending' AND expires_at > now())
         """;
 
     /// <summary>The live plan's entitlements with unexpired operator overrides on top.</summary>
