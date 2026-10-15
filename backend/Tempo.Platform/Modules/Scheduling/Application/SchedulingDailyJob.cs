@@ -59,6 +59,18 @@ public sealed class SchedulingDailyJob(IDataSourceProvider dataSources, TimeProv
             }
 
             var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), zone).DateTime);
+            // Lock the template at the version read, so an edit cannot commit between this check and the inserts.
+            // An edit waiting on the lock then rebuilds the unbooked sessions itself (review on #117).
+            await using (var hold = unitOfWork.Command(
+                "SELECT 1 FROM scheduling.templates WHERE organization_id = $1 AND id = $2 AND version = $3 FOR UPDATE",
+                organizationId, template.Id, template.Version))
+            {
+                if (await hold.ExecuteScalarAsync(cancellationToken) is null)
+                {
+                    continue;
+                }
+            }
+
             sessions += await TimetableService.MaterializeAsync(unitOfWork, organizationId, template, zone, today, cancellationToken);
         }
 
