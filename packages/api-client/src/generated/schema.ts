@@ -2580,8 +2580,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             version: string;
-            /** @description Frozen periods of a membership, in start order (docs/29 section 16.4); empty for a punch card. */
-            freezes: components["schemas"]["PassFreeze"][];
+            /** @description Frozen periods of a membership, in start order (docs/29 section 16.4); empty for a punch card. Always sent; optional here so sample data without it still types. */
+            freezes?: components["schemas"]["PassFreeze"][];
         };
         PassFreeze: {
             /** Format: uuid */
@@ -2594,7 +2594,7 @@ export interface components {
         FreezePassRequest: {
             /**
              * Format: date
-             * @description Studio date
+             * @description Studio date, today or later.
              */
             startsOn: string;
             /**
