@@ -1,4 +1,7 @@
-/** The audit actions the API writes, in Hebrew (docs/26 section 8, docs/27 section 7). Unknown ones show as sent. */
+/**
+ * The audit actions the API writes, in Hebrew (docs/26 section 8, docs/27 section 7, docs/29 sections 4 to 16).
+ * Unknown ones show as sent.
+ */
 const actionLabels: Record<string, string> = {
   "organization.created": "פתיחת הסטודיו",
   "organization.updated": "עדכון הגדרות הסטודיו",
@@ -19,10 +22,39 @@ const actionLabels: Record<string, string> = {
   "person.created": "הוספת אדם",
   "person.updated": "עדכון פרטי אדם",
   "person.archived": "העברת אדם לארכיון",
+  "person.erased": "מחיקת פרטי אדם",
+  "person.exported": "ייצוא פרטי אדם",
+  "person.merged": "איחוד כפילות",
+  "duplicate.resolved": "סימון כפילות כטופלה",
+  "consent.recorded": "רישום הסכמה",
   "ownership.transfer_started": "הצעה להעברת בעלות",
   "ownership.transfer_cancelled": "ביטול העברת בעלות",
   "ownership.transfer_declined": "דחיית העברת בעלות",
   "ownership.transferred": "העברת בעלות",
+  "ownership.transferred_by_operator": "העברת בעלות על ידי צוות Tempo",
+  "room.created": "הוספת חדר",
+  "room.updated": "עדכון חדר",
+  "class_type.created": "הוספת סוג שיעור",
+  "class_type.updated": "עדכון סוג שיעור",
+  "template.created": "הוספת שיעור קבוע",
+  "template.updated": "עדכון שיעור קבוע",
+  "session.created": "הוספת שיעור",
+  "session.updated": "עדכון שיעור",
+  "session.cancelled": "ביטול שיעור",
+  "session.message_sent": "הודעה לרשומים",
+  "booking.created": "הרשמה לשיעור",
+  "booking.waitlisted": "כניסה לרשימת ההמתנה",
+  "booking.promoted": "קבלת מקום מרשימת ההמתנה",
+  "booking.cancelled": "ביטול הרשמה",
+  "booking.removed": "הסרת הרשמה באיחוד כפילות",
+  "booking.moved": "העברה לשיעור אחר",
+  "booking.attendance_marked": "סימון נוכחות",
+  "pass_product.created": "הוספת כרטיסייה או מנוי למכירה",
+  "pass_product.archived": "הוצאת כרטיסייה או מנוי מהמכירה",
+  "pass.granted": "מתן כרטיסייה או מנוי",
+  "pass.voided": "ביטול כרטיסייה או מנוי",
+  "pass.frozen": "הקפאת מנוי",
+  "pass.unfrozen": "ביטול הקפאת מנוי",
 };
 
 export function actionLabel(action: string): string {
