@@ -4,7 +4,7 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, sampleMe } from "../../test/api";
+import { apiStub, json, membershipAs, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 const studio = sampleMe.memberships[0]!;
@@ -37,7 +37,7 @@ function renderAs(
   routesForApi: Record<string, unknown> = {},
   url = "/o/neshima/invitations",
 ) {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
+  const me = { ...sampleMe, memberships: [membershipAs(role)] };
   const api = apiStub({
     "POST /api/v1/session": me,
     [`GET ${base}`]: organization(false),

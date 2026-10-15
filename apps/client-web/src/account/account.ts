@@ -61,7 +61,10 @@ export function roleName(role: Schemas["Role"]): string {
   return roleNames[role];
 }
 
-/** The caller's role in a studio. Until the Phase 2 API is deployed (K5) dev sends only the deprecated `role`. */
+/**
+ * The names of the caller's roles in a studio, from `roles` ("מתאמן", or "מנהל · מדריך"). The deprecated `role` field
+ * is not read (contract, `MyMembership`).
+ */
 export function membershipRoleName(membership: MyMembership): string {
-  return (membership.roles ?? [])[0]?.displayName ?? roleName(membership.role);
+  return (membership.roles ?? []).map((role) => role.displayName).join(" · ") || "ללא תפקיד";
 }
