@@ -13,6 +13,7 @@ import {
   shortDate,
   useToast
 } from "../../shared/design-system";
+import { activeMemberships, nameOf, useAccount } from "../../account/account";
 import { addDays, dayOfWeek, startOfWeek } from "../../shared/utilities/dates";
 import { bookingFor, freeSpots, useBookings, useClasses, useProfile, useToday } from "./data";
 import { dayName, relativeDay } from "./format";
@@ -32,6 +33,7 @@ export function HomeScreen() {
   const classes = useClasses();
   const bookings = useBookings();
   const profile = useProfile();
+  const me = useAccount();
   const [day, setDay] = useState(today);
   const week = Array.from({ length: 7 }, (_, offset) => addDays(startOfWeek(today), offset));
 
@@ -45,7 +47,10 @@ export function HomeScreen() {
     );
   }
 
+  // The greeting and the studio are the account's; the classes, the goal and the streak stay sample data.
   const member = profile.data;
+  const studio = activeMemberships(me)[0]?.organization.displayName;
+  const firstName = nameOf(me).split(" ")[0];
   const next = classes.data
     .filter((item) => bookingFor(bookings.data, item.id)?.status === "booked")
     .sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`))[0];
@@ -58,9 +63,10 @@ export function HomeScreen() {
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className="tp-eyebrow">
-            {dayName(today)} · {shortDate(today)} · {member.studio.name}
+            {dayName(today)} · {shortDate(today)}
+            {studio && <> · {studio}</>}
           </span>
-          <h1 className={styles.title}>היי {member.name.split(" ")[0]}</h1>
+          <h1 className={styles.title}>היי {firstName}</h1>
         </div>
         <IconButton icon="bell" label="התראות" onClick={() => toast.show({ message: "אין התראות חדשות" })} />
       </header>
