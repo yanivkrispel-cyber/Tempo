@@ -1214,7 +1214,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listRooms
-      x-tempo-planned: true
       summary: "The studio's rooms (`schedule.view`)"
       responses:
         "200":
@@ -1228,7 +1227,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createRoom
-      x-tempo-planned: true
       summary: "Add a room (`schedule.manage`, limit `rooms.max`)"
       requestBody:
         required: true
@@ -1254,7 +1252,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateRoom
-      x-tempo-planned: true
       summary: "Rename, resize or archive a room (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1282,7 +1279,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listClassTypes
-      x-tempo-planned: true
       summary: "The studio's class types (`schedule.view`)"
       responses:
         "200":
@@ -1296,7 +1292,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createClassType
-      x-tempo-planned: true
       summary: "Add a class type (`schedule.manage`, limit `class_types.max`)"
       requestBody:
         required: true
@@ -1322,7 +1317,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateClassType
-      x-tempo-planned: true
       summary: "Edit or archive a class type (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1350,7 +1344,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listScheduleTemplates
-      x-tempo-planned: true
       summary: "Weekly classes (`schedule.manage`)"
       responses:
         "200":
@@ -1364,7 +1357,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createScheduleTemplate
-      x-tempo-planned: true
       summary: "Add a weekly class; sessions appear for the next eight weeks (`schedule.manage`)"
       requestBody:
         required: true
@@ -1390,7 +1382,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateScheduleTemplate
-      x-tempo-planned: true
       summary: "Change or end a weekly class (`schedule.manage`)"
       description: "Applies to future sessions without live bookings. Sessions that have bookings keep their values and are listed in `untouchedSessions`."
       parameters:
@@ -1419,7 +1410,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listSessions
-      x-tempo-planned: true
       summary: "Sessions in a date range (`schedule.view`)"
       parameters:
         - name: from
@@ -1453,7 +1443,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createSession
-      x-tempo-planned: true
       summary: "Add a one-off session (`schedule.manage`)"
       requestBody:
         required: true
@@ -1479,7 +1468,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: getSession
-      x-tempo-planned: true
       summary: "One session with the caller's booking state (`schedule.view`)"
       responses:
         "200":
@@ -1493,7 +1481,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateSession
-      x-tempo-planned: true
       summary: "Change one session's instructor, room or capacity (`schedule.manage`)"
       description: "Capacity cannot go below the number booked (409 `session.capacity_below_booked`). Raising it promotes from the waitlist."
       parameters:
@@ -1523,7 +1510,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: cancelSession
-      x-tempo-planned: true
       summary: "Cancel a session: every booking is cancelled and its entry returned (`schedule.manage`)"
       responses:
         "200":
@@ -1544,7 +1530,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: getSessionRoster
-      x-tempo-planned: true
       summary: "Booked and waiting people (`bookings.manage`, or the session's instructor)"
       responses:
         "200":
@@ -1563,7 +1548,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: createBooking
-      x-tempo-planned: true
       summary: "Book a place, or join the waitlist when full (self, or `bookings.manage` with `personId`)"
       description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass`, `session.full` (waitlist off or past its cutoff), `session.cancelled`."
       requestBody:
@@ -1591,7 +1575,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: cancelBooking
-      x-tempo-planned: true
       summary: "Cancel a booking or leave the waitlist (self, or `bookings.manage`)"
       description: "Inside the free-cancellation window the entry returns; later it stays used and `lateCancel` is true. `returnEntry` (staff only) returns it anyway. Allowed in restricted mode."
       requestBody:
@@ -1618,7 +1601,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: markAttendance
-      x-tempo-planned: true
       summary: "Mark attended or no-show (`attendance.mark`, or the session's instructor)"
       requestBody:
         required: true
@@ -1644,7 +1626,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: listMyBookings
-      x-tempo-planned: true
       summary: "The caller's bookings in this studio (self)"
       parameters:
         - name: scope
@@ -1671,7 +1652,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: listPersonBookings
-      x-tempo-planned: true
       summary: "One person's bookings (`bookings.manage`)"
       parameters:
         - name: scope
@@ -1697,7 +1677,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listPassProducts
-      x-tempo-planned: true
       summary: "Punch cards and memberships the studio sells (`passes.view`)"
       responses:
         "200":
@@ -1711,7 +1690,6 @@ paths:
     post:
       tags: [Passes]
       operationId: createPassProduct
-      x-tempo-planned: true
       summary: "Add a punch card or membership product (`passes.manage`)"
       requestBody:
         required: true
@@ -1737,7 +1715,6 @@ paths:
     post:
       tags: [Passes]
       operationId: archivePassProduct
-      x-tempo-planned: true
       summary: "Stop selling a product; granted passes keep working (`passes.manage`)"
       responses:
         "200":
@@ -1757,7 +1734,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listPersonPasses
-      x-tempo-planned: true
       summary: "One person's passes, newest first (`passes.view`)"
       responses:
         "200":
@@ -1771,7 +1747,6 @@ paths:
     post:
       tags: [Passes]
       operationId: grantPass
-      x-tempo-planned: true
       summary: "Grant a pass, e.g. paid at the desk (`passes.manage`)"
       requestBody:
         required: true
@@ -1798,7 +1773,6 @@ paths:
     post:
       tags: [Passes]
       operationId: voidPass
-      x-tempo-planned: true
       summary: "Void a pass; sessions already booked keep their entry (`passes.manage`)"
       responses:
         "200":
@@ -1818,7 +1792,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listMyPasses
-      x-tempo-planned: true
       summary: "The caller's passes in this studio (self)"
       responses:
         "200":
@@ -1836,7 +1809,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: getBookingPolicy
-      x-tempo-planned: true
       summary: "Cancellation window, waitlist cutoff, booking horizon (`schedule.view`)"
       responses:
         "200":
@@ -1850,7 +1822,6 @@ paths:
     put:
       tags: [Schedule]
       operationId: updateBookingPolicy
-      x-tempo-planned: true
       summary: "Change the booking policy (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1878,7 +1849,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: listMyNotifications
-      x-tempo-planned: true
       summary: "The caller's in-app notifications in this studio, newest first (self)"
       parameters:
         - $ref: "#/components/parameters/Before"
@@ -1900,7 +1870,6 @@ paths:
     post:
       tags: [Notifications]
       operationId: markNotificationRead
-      x-tempo-planned: true
       summary: "Mark one notification read (self)"
       responses:
         "204":

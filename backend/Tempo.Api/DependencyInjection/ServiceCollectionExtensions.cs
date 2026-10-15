@@ -9,6 +9,7 @@ using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.People.Application;
+using Tempo.Platform.Modules.Scheduling.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 using Tempo.Platform.Modules.PlatformAdmin;
 
@@ -38,6 +39,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMemberService, MemberService>();
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();
+        services.AddSingleton<ITimetableService, TimetableService>();
+        services.AddSingleton<IPassService, PassService>();
+        services.AddSingleton<BookingService>();
+        services.AddSingleton<IBookingService>(provider => provider.GetRequiredService<BookingService>());
+        services.AddSingleton<IClassService>(provider => provider.GetRequiredService<BookingService>());
+        services.AddSingleton<IStudioSettingsService, StudioSettingsService>();
         services.AddSingleton<IConsentService, ConsentService>();
         services.AddSingleton<IPersonLifecycleService, PersonLifecycleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
