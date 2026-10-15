@@ -171,9 +171,16 @@ export class AuthClient {
     this.setSession(null);
   }
 
-  /** Drops the local session and ends the Hosted UI session too, so the next sign-in asks for a password. */
+  /**
+   * Drops the local session and ends the Hosted UI session too, so the next sign-in asks for a password. The refresh
+   * token is revoked first, so a copy taken earlier (it lives in localStorage) stops working now instead of after its
+   * 30 days. `keepalive` lets the revoke finish while the browser navigates to `/logout`; a failure is ignored, since
+   * signing out locally must always work.
+   */
   signOut(): void {
+    const refreshToken = this.session?.refreshToken;
     this.setSession(null);
+    if (refreshToken) this.revoke(refreshToken);
     const url = new URL(`${this.config.cognitoDomain}/logout`);
     url.search = new URLSearchParams({ client_id: this.config.clientId, logout_uri: this.config.logoutUri }).toString();
     this.redirect(url.toString());
@@ -199,6 +206,19 @@ export class AuthClient {
     const next = this.toSession(tokens, tokens.refresh_token ?? session.refreshToken);
     this.setSession(next);
     return next.accessToken;
+  }
+
+  private revoke(refreshToken: string): void {
+    try {
+      this.fetchFn(`${this.config.cognitoDomain}/oauth2/revoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ token: refreshToken, client_id: this.config.clientId }).toString(),
+        keepalive: true
+      }).catch(() => undefined);
+    } catch {
+      // A fetch that throws synchronously must not stop the sign-out.
+    }
   }
 
   private postToken(body: Record<string, string>): Promise<Response> {

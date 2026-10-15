@@ -20,7 +20,7 @@ public static class BookingEndpoints
         var tenant = endpoints.MapTenantGroup();
 
         tenant.MapPost("/sessions/{sessionId:guid}/bookings", BookAsync).RequirePermission(Permissions.ScheduleView).WithName("createBooking").Produces<BookingResponse>(StatusCodes.Status201Created);
-        tenant.MapPost("/bookings/{bookingId:guid}/cancel", CancelAsync).RequirePermission(Permissions.ScheduleView).WithName("cancelBooking").Produces<BookingResponse>();
+        tenant.MapPost("/bookings/{bookingId:guid}/cancel", CancelAsync).RequirePermission(Permissions.ScheduleView).WithName("cancelBooking").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<BookingResponse>();
         tenant.MapGet("/me/bookings", ListMineAsync).RequirePermission(Permissions.ScheduleView).WithName("listMyBookings").Produces<MyBookingPageResponse>();
         tenant.MapGet("/people/{personId:guid}/bookings", ListForPersonAsync).RequirePermission(Permissions.BookingsManage).WithName("listPersonBookings").Produces<MyBookingPageResponse>();
 

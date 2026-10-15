@@ -24,22 +24,22 @@ public static class OwnershipEndpoints
 
         tenant.MapPost("/ownership-transfer", StartAsync)
             .RequirePermission(Permissions.OwnershipTransfer)
-            .WithName("startOwnershipTransfer")
+            .WithName("startOwnershipTransfer").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute())
             .Produces<OwnershipTransferResponse>(StatusCodes.Status201Created);
 
         tenant.MapDelete("/ownership-transfer", CancelAsync)
             .RequirePermission(Permissions.OwnershipTransfer)
-            .WithName("cancelOwnershipTransfer")
+            .WithName("cancelOwnershipTransfer").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute())
             .Produces(StatusCodes.Status204NoContent);
 
         tenant.MapPost("/ownership-transfer/accept", AcceptAsync)
             .RequirePermission(Permissions.OrganizationView)
-            .WithName("acceptOwnershipTransfer")
+            .WithName("acceptOwnershipTransfer").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute())
             .Produces<MyMembershipResponse>();
 
         tenant.MapPost("/ownership-transfer/decline", DeclineAsync)
             .RequirePermission(Permissions.OrganizationView)
-            .WithName("declineOwnershipTransfer")
+            .WithName("declineOwnershipTransfer").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute())
             .Produces(StatusCodes.Status204NoContent);
 
         return endpoints;

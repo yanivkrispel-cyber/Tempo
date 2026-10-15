@@ -128,6 +128,7 @@ export function TimeInput({ value, onChange, step = 15, from = "05:00", to = "23
       />
       <ul id={listId} role="listbox" aria-label="שעות" className="tp-menu tp-listbox tp-popover" hidden={!open || options.length === 0}>
         {options.map((time, index) => (
+          // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- the input owns the keyboard (combobox with aria-activedescendant); the option click is for pointer users.
           <li
             key={time}
             id={optionId(index)}

@@ -4,6 +4,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Security;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Billing;
 using Tempo.Platform.Modules.Organizations.Domain;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 
@@ -82,6 +83,11 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         var (token, hash) = SecretToken.New(TokenBytes);
         var invitationId = Guid.CreateVersion7();
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+
+        if (role != MembershipRole.Client)
+        {
+            await BillingService.CheckLimitAsync(unitOfWork, tenant.OrganizationId, "staff.max", BillingService.StaffCountSql, cancellationToken);
+        }
 
         // One pending invitation per email and studio: a new one replaces the old.
         var replaced = new List<Guid>();

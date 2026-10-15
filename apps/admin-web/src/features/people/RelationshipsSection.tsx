@@ -176,7 +176,7 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
             {query.length >= 2 && (
               <ul className="tp-menu" role="listbox" aria-label="תוצאות">
                 {candidates.length === 0 ? (
-                  <li className="tp-menu__item" aria-disabled="true">
+                  <li className="tp-menu__item" role="option" aria-selected="false" aria-disabled="true">
                     {found.isFetching ? "מחפשים…" : "לא נמצא אף אחד"}
                   </li>
                 ) : (

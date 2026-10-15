@@ -206,6 +206,38 @@ describe("AuthClient tokens", () => {
     expect(auth.isSignedIn).toBe(true);
   });
 
+  it("revokes the refresh token on sign-out, then ends the Hosted UI session", () => {
+    const redirect = vi.fn();
+    const storage = sessionStorageWith({ accessToken: "access-1", refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 });
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+    const auth = signedInAuth({ storage, fetch, redirect });
+    auth.signOut();
+    expect(fetch).toHaveBeenCalledOnce();
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe(`${testAuthConfig.cognitoDomain}/oauth2/revoke`);
+    expect(init?.keepalive).toBe(true);
+    const body = new URLSearchParams(init?.body as string);
+    expect(body.get("token")).toBe("refresh-1");
+    expect(body.get("client_id")).toBe("test-client");
+    expect(storage.getItem("tempo.client-web.session")).toBeNull();
+    expect(new URL(redirect.mock.calls[0]![0] as string).pathname).toBe("/logout");
+  });
+
+  it("still signs out when the revoke call fails", () => {
+    const redirect = vi.fn();
+    const fetch = vi.fn<typeof globalThis.fetch>().mockRejectedValue(new TypeError("Failed to fetch"));
+    const auth = signedInAuth({ fetch, redirect });
+    auth.signOut();
+    expect(auth.isSignedIn).toBe(false);
+    expect(redirect).toHaveBeenCalledOnce();
+  });
+
+  it("does not call Cognito's revoke when already signed out", () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    signedOutAuth({ fetch }).signOut();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("ignores a stored session it cannot read", () => {
     const auth = new AuthClient({ config: testAuthConfig, app: "client-web", storage: memoryStorage({ "tempo.client-web.session": "{not json" }), flowStorage: memoryStorage() });
     expect(auth.isSignedIn).toBe(false);

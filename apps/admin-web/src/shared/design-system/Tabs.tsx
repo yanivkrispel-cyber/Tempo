@@ -50,6 +50,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, block = f
 
   return (
     <>
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- roving tabindex on the tabs (WAI-ARIA tabs pattern); the tablist is not a tab stop. */}
       <div role="tablist" aria-label={label} className={cx("tp-tabs", block && "tp-tabs--block", className)} onKeyDown={onKeyDown}>
         {tabs.map((tab, index) => (
           <button

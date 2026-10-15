@@ -100,7 +100,9 @@ public static class AccountEndpoints
             [.. m.EffectivePermissions.Order(StringComparer.Ordinal)],
             m.PendingOwnershipTransfer is { } t ? new PendingOwnershipTransferResponse(t.Id, t.Direction, t.ExpiresAt) : null,
             StoredValue.Of(m.Status),
-            new MyOrganizationResponse(m.OrganizationId, m.Slug, m.DisplayName, StoredValue.Of(m.OrganizationStatus)));
+            new MyOrganizationResponse(m.OrganizationId, m.Slug, m.DisplayName, StoredValue.Of(m.OrganizationStatus)),
+            m.SubscriptionState,
+            m.EntitlementsJson is { } json ? System.Text.Json.JsonDocument.Parse(json).RootElement.Clone() : null);
 
     /// <summary>
     /// The sign-in behind a validated customer access token. Cognito access
