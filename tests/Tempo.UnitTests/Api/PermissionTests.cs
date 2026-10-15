@@ -105,12 +105,16 @@ public sealed class PermissionTests : IDisposable
     [Fact]
     public void SystemRoles_MatchThePhaseOneMatrix()
     {
-        SystemRoles.Owner.Permissions.Should().HaveCount(15);
+        SystemRoles.Owner.Permissions.Should().BeEquivalentTo(Permissions.Catalog.Keys);
         string[] ownerOnly = [Permissions.RolesManage, Permissions.MembersInviteAdmin, Permissions.PeopleErase, Permissions.OwnershipTransfer];
-        string[] staff = [Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage];
-        SystemRoles.Admin.Permissions.Should().HaveCount(11).And.NotContain(ownerOnly);
+        string[] staff =
+        [
+            Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage,
+            Permissions.ScheduleView, Permissions.BookingsManage, Permissions.AttendanceMark, Permissions.PassesView
+        ];
+        SystemRoles.Admin.Permissions.Should().HaveCount(17).And.NotContain(ownerOnly);
         SystemRoles.Staff.Permissions.Should().BeEquivalentTo(staff);
-        SystemRoles.Client.Permissions.Should().ContainSingle().Which.Should().Be(Permissions.OrganizationView);
+        SystemRoles.Client.Permissions.Should().BeEquivalentTo(Permissions.OrganizationView, Permissions.ScheduleView);
     }
 
     private static string Probe(string name) => $"/api/v1/organizations/{StudioId}/{name}";

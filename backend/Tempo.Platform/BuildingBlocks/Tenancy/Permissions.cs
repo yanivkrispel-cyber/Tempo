@@ -23,6 +23,14 @@ public static class Permissions
     public const string ConsentManage = "consent.manage";
     public const string OwnershipTransfer = "ownership.transfer";
 
+    // Studio scheduling and passes (docs/29 section 8), seeded by migration 0010.
+    public const string ScheduleView = "schedule.view";
+    public const string ScheduleManage = "schedule.manage";
+    public const string BookingsManage = "bookings.manage";
+    public const string AttendanceMark = "attendance.mark";
+    public const string PassesView = "passes.view";
+    public const string PassesManage = "passes.manage";
+
     /// <summary>Every key with what it allows, for the role screen (`GET /permissions`).</summary>
     public static readonly IReadOnlyDictionary<string, string> Catalog = new Dictionary<string, string>
     {
@@ -40,7 +48,13 @@ public static class Permissions
         [PeopleExport] = "Export one person's data",
         [PeopleErase] = "Anonymize a person",
         [ConsentManage] = "Record consent on someone's behalf",
-        [OwnershipTransfer] = "Start an owner transfer"
+        [OwnershipTransfer] = "Start an owner transfer",
+        [ScheduleView] = "See the timetable",
+        [ScheduleManage] = "Manage rooms, class types, weekly classes, sessions and the booking policy",
+        [BookingsManage] = "Book and cancel for others, read any class roster",
+        [AttendanceMark] = "Mark attendance on any class",
+        [PassesView] = "See pass products and anyone's passes",
+        [PassesManage] = "Create pass products, grant and void passes"
     };
 }
 
@@ -65,7 +79,9 @@ public static class SystemRoles
         {
             Permissions.OrganizationView, Permissions.OrganizationSettingsManage, Permissions.MembersView,
             Permissions.MembersInviteStaff, Permissions.MembersManage, Permissions.AuditView, Permissions.PeopleView,
-            Permissions.PeopleManage, Permissions.PeopleMerge, Permissions.PeopleExport, Permissions.ConsentManage
+            Permissions.PeopleManage, Permissions.PeopleMerge, Permissions.PeopleExport, Permissions.ConsentManage,
+            Permissions.ScheduleView, Permissions.ScheduleManage, Permissions.BookingsManage, Permissions.AttendanceMark,
+            Permissions.PassesView, Permissions.PassesManage
         });
 
     public static readonly SystemRole Staff = new(
@@ -73,14 +89,18 @@ public static class SystemRoles
         MembershipRole.Staff,
         "staff",
         "צוות",
-        new HashSet<string> { Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage });
+        new HashSet<string>
+        {
+            Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage,
+            Permissions.ScheduleView, Permissions.BookingsManage, Permissions.AttendanceMark, Permissions.PassesView
+        });
 
     public static readonly SystemRole Client = new(
         Guid.Parse("00000000-0000-7000-8000-000000000004"),
         MembershipRole.Client,
         "client",
         "מתאמן",
-        new HashSet<string> { Permissions.OrganizationView });
+        new HashSet<string> { Permissions.OrganizationView, Permissions.ScheduleView });
 
     public static readonly IReadOnlyList<SystemRole> All = [Owner, Admin, Staff, Client];
 
