@@ -12,15 +12,11 @@ import { createSession, removeE2eSchedule, sessionsBetween, studioDay, studioPar
  * audit log has it all. The signed-in smoke user is the owner in admin-web and the member in client-web; a second,
  * fictional e2e member fills the classes through the staff API. One serial file: each step builds on the last.
  */
-/**
- * client-web runs on the Pixel 7 project. The console does not fit a phone yet (every page lays out about 1350px wide
- * at 412px, so dialogs open off screen and cannot be reached: a product bug, see the README), so the console steps use
- * a desktop-sized page in the same signed-in session.
- */
+/** The console steps get their own page on the same phone, in the same signed-in session (#163). */
 const test = base.extend<{ consolePage: Page }>({
   consolePage: async ({ browser }, use) => {
     const context = await browser.newContext({
-      ...devices["Desktop Chrome"],
+      ...devices["Pixel 7"],
       locale: "he-IL",
       timezoneId: "Asia/Jerusalem",
       storageState: sessionStatePath,
@@ -215,7 +211,9 @@ test("client-web: the class fills and the next member joins the waitlist", async
   await expectNoSeriousA11yViolations(page, testInfo, "client-web class screen, waitlisted");
 });
 
-test("console: a cancellation inside the free window returns the entry and promotes the first in line", async ({ consolePage: page }, testInfo) => {
+test("console: a cancellation inside the free window returns the entry and promotes the first in line", async ({
+  consolePage: page,
+}, testInfo) => {
   await page.goto(admin(`/schedule/sessions/${waitlistSessionId}`));
   await expect(page.getByRole("heading", { level: 1, name: typeName })).toBeVisible();
   const roster = page.getByRole("region", { name: "משתתפים" });
@@ -233,7 +231,7 @@ test("console: a cancellation inside the free window returns the entry and promo
     testInfo,
     "console cancel-booking dialog",
     undefined,
-    "the danger button label fails color-contrast (.tp-btn--danger)",
+    "the danger button label fails color-contrast (.tp-btn--danger, #164)",
   );
   await dialog.getByRole("button", { name: "ביטול ההרשמה", exact: true }).click();
   await expect(page.getByText(`ההרשמה של ${fillerName} בוטלה`)).toBeVisible();
@@ -253,7 +251,13 @@ test("client-web: the promoted member sees the booking and the notice", async ({
 
   await page.goto(`${clientUrl}/`);
   await expect(page.getByRole("link", { name: /^התראות, / })).toBeVisible();
-  await expectNoSeriousA11yViolations(page, testInfo, "client-web home with a notice", undefined, "a chip fails color-contrast (.tp-chip)");
+  await expectNoSeriousA11yViolations(
+    page,
+    testInfo,
+    "client-web home with a notice",
+    undefined,
+    "a chip fails color-contrast (.tp-chip, #164)",
+  );
 
   await page.goto(`${clientUrl}/inbox`);
   await expect(page.getByRole("heading", { level: 1, name: "התראות" })).toBeVisible();
@@ -261,7 +265,9 @@ test("client-web: the promoted member sees the booking and the notice", async ({
   await expectNoSeriousA11yViolations(page, testInfo, "client-web inbox");
 });
 
-test("console: the roster of the booked class, and attendance on a class about to start", async ({ consolePage: page }, testInfo) => {
+test("console: the roster of the booked class, and attendance on a class about to start", async ({
+  consolePage: page,
+}, testInfo) => {
   // The weekly class's roster has the member who booked from the phone.
   await page.goto(admin(`/schedule/sessions/${weeklySessionId}`));
   await expect(page.getByRole("heading", { level: 1, name: typeName })).toBeVisible();
@@ -284,7 +290,9 @@ test("console: the roster of the booked class, and attendance on a class about t
   await page.goto(admin(`/schedule/sessions/${soonId}`));
   const roster = page.getByRole("region", { name: "משתתפים" });
   await expect(roster.getByRole("link", { name: fillerName })).toBeVisible();
-  const present = roster.getByRole("group", { name: `נוכחות של ${fillerName}` }).getByRole("button", { name: "הגיע.ה", exact: true });
+  const present = roster
+    .getByRole("group", { name: `נוכחות של ${fillerName}` })
+    .getByRole("button", { name: "הגיע.ה", exact: true });
   await expect(present).toHaveAttribute("aria-pressed", "false");
   await expectNoSeriousA11yViolations(page, testInfo, "console roster with attendance");
   const marked = page.waitForResponse((response) => response.url().includes("/attendance"));

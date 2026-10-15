@@ -14,6 +14,7 @@ import {
   Segmented,
   Select,
   Skeleton,
+  TableScroll,
   Textarea,
   useToast,
 } from "../../shared/design-system";
@@ -92,7 +93,7 @@ export function ClassTypesPage() {
             : undefined}
         </EmptyState>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="סוגי שיעורים">
           <table className="tp-table">
             <caption className="tp-sr-only">סוגי שיעורים</caption>
             <thead>
@@ -145,7 +146,7 @@ export function ClassTypesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {editing && (

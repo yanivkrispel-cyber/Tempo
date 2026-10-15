@@ -13,6 +13,7 @@ import {
   Input,
   Select,
   Skeleton,
+  TableScroll,
   useToast,
 } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
@@ -70,7 +71,7 @@ export function ConsentSection({ person }: { person: PersonDetail }) {
           )}
         </div>
       </div>
-      <div className="tp-table-wrap">
+      <TableScroll label="הסכמות לפי מטרה וערוץ">
         <table className="tp-table tp-table--compact">
           <caption className="tp-sr-only">הסכמות לפי מטרה וערוץ</caption>
           <thead>
@@ -108,7 +109,7 @@ export function ConsentSection({ person }: { person: PersonDetail }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {history && <HistoryDialog personId={person.id} onClose={() => setHistory(false)} />}
       {recording && <RecordDialog person={person} onClose={() => setRecording(false)} />}
     </Card>

@@ -19,6 +19,7 @@ import {
   ProgressBar,
   ProgressRing,
   Segmented,
+  TableScroll,
   Tabs,
   Textarea,
   Toggle,
@@ -82,6 +83,24 @@ describe("Button", () => {
     const link = screen.getByRole("link", { name: "לדף הבית" });
     expect(link).toHaveAttribute("href", "/");
     expect(link).toHaveClass("tp-btn", "tp-btn--ghost");
+  });
+});
+
+describe("TableScroll", () => {
+  it("is a named region a keyboard can focus, so a wide table scrolls on a phone", async () => {
+    render(
+      <TableScroll label="אנשים">
+        <table>
+          <tbody>
+            <tr>
+              <td>שירה</td>
+            </tr>
+          </tbody>
+        </table>
+      </TableScroll>,
+    );
+    await userEvent.tab();
+    expect(screen.getByRole("region", { name: "אנשים" })).toHaveFocus();
   });
 });
 

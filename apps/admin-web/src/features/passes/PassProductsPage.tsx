@@ -15,6 +15,7 @@ import {
   Segmented,
   Select,
   Skeleton,
+  TableScroll,
   useToast,
 } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
@@ -90,7 +91,7 @@ export function PassProductsPage() {
             : undefined}
         </EmptyState>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="כרטיסיות ומנויים">
           <table className="tp-table">
             <caption className="tp-sr-only">כרטיסיות ומנויים</caption>
             <thead>
@@ -135,7 +136,7 @@ export function PassProductsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {creating && <ProductDialog onClose={() => setCreating(false)} />}

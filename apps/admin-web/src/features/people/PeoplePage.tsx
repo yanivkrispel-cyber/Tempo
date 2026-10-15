@@ -4,7 +4,18 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
-import { Banner, Button, Chip, DateInput, Dialog, Field, Input, Segmented, Skeleton } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Chip,
+  DateInput,
+  Dialog,
+  Field,
+  Input,
+  Segmented,
+  Skeleton,
+  TableScroll,
+} from "../../shared/design-system";
 import { displayPhone, phoneSearchText } from "../../shared/utilities/phones";
 import { todayIso, type IsoDate } from "../../shared/utilities/dates";
 import { useDebounced } from "../../shared/useDebounced";
@@ -77,7 +88,7 @@ export function PeoplePage() {
               : "עוד אין אנשים בסטודיו."}
         </p>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="אנשים">
           <table className="tp-table">
             <caption className="tp-sr-only">אנשים</caption>
             <thead>
@@ -95,7 +106,7 @@ export function PeoplePage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {people.hasNextPage && (

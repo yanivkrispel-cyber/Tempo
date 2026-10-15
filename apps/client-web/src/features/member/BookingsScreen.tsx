@@ -6,9 +6,10 @@ import {
   Chip,
   ClassRow,
   EmptyState,
+  shortDate,
+  TableScroll,
   Tabs,
   TimeSlot,
-  shortDate,
 } from "../../shared/design-system";
 import { nameOf, useAccount } from "../../account/account";
 import { pastStatus, waitText } from "./bookingState";
@@ -128,7 +129,7 @@ function StudioBookings({ studio }: { studio: Studio }) {
           <EmptyState icon="list" title="עוד אין שיעורים קודמים" />
         ) : (
           <div className={styles.group}>
-            <div className="tp-table-wrap">
+            <TableScroll label="שיעורים קודמים">
               <table className="tp-table tp-table--compact">
                 <caption className="tp-sr-only">שיעורים קודמים</caption>
                 <thead>
@@ -157,7 +158,7 @@ function StudioBookings({ studio }: { studio: Studio }) {
                     })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             {past.hasNextPage && (
               <Button variant="ghost" block loading={past.isFetchingNextPage} onClick={() => void past.fetchNextPage()}>
                 עוד שיעורים קודמים

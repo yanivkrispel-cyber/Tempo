@@ -16,6 +16,7 @@ import {
   Segmented,
   Select,
   Skeleton,
+  TableScroll,
   TimeInput,
   useToast,
 } from "../../shared/design-system";
@@ -99,7 +100,7 @@ function Templates({ timeZone }: { timeZone: string }) {
           {show === "current" ? "מוסיפים שיעור קבוע מהמערכת השבועית, בכפתור שיעור חדש." : undefined}
         </EmptyState>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="שיעורים קבועים">
           <table className="tp-table">
             <caption className="tp-sr-only">שיעורים קבועים</caption>
             <thead>
@@ -170,7 +171,7 @@ function Templates({ timeZone }: { timeZone: string }) {
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {editing && (
