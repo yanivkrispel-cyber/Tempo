@@ -1,0 +1,3 @@
+# Local Vite settings (copied from .env.example).
+.env.local
+.env.*.local

@@ -1,0 +1,43 @@
+import { AuthClient, type Session } from "../auth/authClient";
+import type { AuthConfig } from "../auth/config";
+
+export const testAuthConfig: AuthConfig = {
+  cognitoDomain: "https://tempo-test.auth.eu-central-1.amazoncognito.com",
+  clientId: "test-client",
+  redirectUri: "http://localhost:5174/auth/callback",
+  logoutUri: "http://localhost:5174/"
+};
+
+/** An in-memory Web Storage, so tests never share window.localStorage. */
+export function memoryStorage(entries: Record<string, string> = {}): Storage {
+  const map = new Map(Object.entries(entries));
+  return {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (key) => map.get(key) ?? null,
+    key: (index) => [...map.keys()][index] ?? null,
+    removeItem: (key) => void map.delete(key),
+    setItem: (key, value) => void map.set(key, String(value))
+  };
+}
+
+export function sessionStorageWith(session: Session): Storage {
+  return memoryStorage({ "tempo.client-web.session": JSON.stringify(session) });
+}
+
+/** An AuthClient that is already signed in, with a token valid for an hour. */
+export function signedInAuth(overrides: Partial<ConstructorParameters<typeof AuthClient>[0]> = {}): AuthClient {
+  return new AuthClient({
+    config: testAuthConfig,
+    storage: sessionStorageWith({ accessToken: "access-1", refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 }),
+    flowStorage: memoryStorage(),
+    redirect: () => {},
+    ...overrides
+  });
+}
+
+export function signedOutAuth(overrides: Partial<ConstructorParameters<typeof AuthClient>[0]> = {}): AuthClient {
+  return new AuthClient({ config: testAuthConfig, storage: memoryStorage(), flowStorage: memoryStorage(), redirect: () => {}, ...overrides });
+}
