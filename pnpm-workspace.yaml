@@ -10,3 +10,14 @@ minimumReleaseAgeExclude:
   - aws-cdk-lib@2.262.2
   - aws-cdk@2.1134.0
   - constructs@10.8.0
+# `pnpm audit --audit-level high` runs in CI (ADR-0025). Each ignored advisory
+# names the issue that removes it; nothing else goes here.
+auditConfig:
+  ignoreGhsas:
+    # #114: infrastructure's vitest 2.1.9 (dev-only CDK test runner)
+    - GHSA-5xrq-8626-4rwp
+    - GHSA-5gmw-xhrv-c9v3
+    - GHSA-85c8-ppgw-ccpr
+    - GHSA-fx2h-pf6j-xcff
+    - GHSA-2v37-7h3g-55p8
+    - GHSA-68fv-2mgg-jv7q
