@@ -105,6 +105,12 @@ export interface FeatureFlags {
    * allows ADMIN_USER_PASSWORD_AUTH, which only callers with IAM credentials can use. Never in production.
    */
   readonly enableSmokeTestSignIn?: boolean;
+  /**
+   * The development canary (Wave Q, Q10): health every 5 minutes, a signed-in tenant read every hour, an email
+   * through SNS when two of three checks fail. Needs enableSmokeTestSignIn. Never in production, which has the
+   * edge canary.
+   */
+  readonly enableDevCanary?: boolean;
 }
 
 export interface TempoEnvironmentConfig {
@@ -242,6 +248,9 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     }
     if (!config.github.githubEnvironment) {
       errors.push("production requires github.githubEnvironment for protected-environment approval");
+    }
+    if (config.featureFlags.enableDevCanary) {
+      errors.push("production must not enable featureFlags.enableDevCanary");
     }
     if (config.featureFlags.enableSmokeTestSignIn) {
       errors.push("production must not enable featureFlags.enableSmokeTestSignIn");
