@@ -70,6 +70,7 @@ export function NewClassDialog({ day, today, onClose }: { day: IsoDate; today: I
   };
 
   const create = useMutation({
+    mutationKey: [organizationId, "schedule.create"],
     mutationFn: async () => {
       const common = {
         classTypeId: classType!.id,

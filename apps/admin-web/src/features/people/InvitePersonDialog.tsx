@@ -26,6 +26,7 @@ export function InvitePersonDialog({ person, onClose }: { person: PersonDetail; 
   );
   const [submitted, setSubmitted] = useState(false);
   const invite = useMutation({
+    mutationKey: [organizationId, "people.invite"],
     mutationFn: (address: string) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/invite", {

@@ -179,6 +179,7 @@ function EditSessionDialog({ session, onClose }: { session: Session; onClose: ()
         : null;
 
   const update = useMutation({
+    mutationKey: [organizationId, "schedule.update"],
     mutationFn: (body: Schemas["UpdateSessionRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/sessions/{sessionId}", {
@@ -276,6 +277,7 @@ function CancelSessionDialog({ session, onClose }: { session: Session; onClose: 
   const { organizationId } = useStudio();
   const refresh = useRefreshSession(session);
   const cancel = useMutation({
+    mutationKey: [organizationId, "schedule.cancel"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/sessions/{sessionId}/cancel", {

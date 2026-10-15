@@ -37,6 +37,7 @@ export function RelationshipsSection({ person, writable }: { person: PersonDetai
   const { organizationId } = useStudio();
   const [adding, setAdding] = useState(false);
   const remove = useMutation({
+    mutationKey: [organizationId, "people.remove"],
     mutationFn: (relationship: Relationship) =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/people/{personId}/relationships/{relationshipId}", {
@@ -101,6 +102,7 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
   const [picked, setPicked] = useState<PickedPerson | null>(null);
 
   const add = useMutation({
+    mutationKey: [organizationId, "people.add"],
     mutationFn: (other: string) => {
       // The path's person is the guardian or the emergency contact.
       const [from, to, type] =

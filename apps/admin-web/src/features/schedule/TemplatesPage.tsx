@@ -242,6 +242,7 @@ function usePatchTemplate(template: ScheduleTemplate) {
   const queryClient = useQueryClient();
   const { organizationId } = useStudio();
   return useMutation({
+    mutationKey: [organizationId, "schedule.patchTemplate"],
     mutationFn: (body: Schemas["UpdateScheduleTemplateRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/schedule-templates/{templateId}", {

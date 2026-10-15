@@ -58,6 +58,7 @@ function SettingsForm({ organization }: { organization: Organization }) {
   const editable = studio.can("organization.settings.manage");
 
   const save = useMutation({
+    mutationKey: [organization.id, "settings.updateSettings"],
     mutationFn: (body: Schemas["UpdateOrganizationRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}", {

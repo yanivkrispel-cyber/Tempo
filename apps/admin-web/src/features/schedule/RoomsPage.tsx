@@ -115,6 +115,7 @@ function usePatchRoom(room: Room) {
   const queryClient = useQueryClient();
   const { organizationId } = useStudio();
   return useMutation({
+    mutationKey: [organizationId, "schedule.patchRoom"],
     mutationFn: (body: Schemas["UpdateRoomRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/rooms/{roomId}", {
@@ -167,6 +168,7 @@ function RoomDialog({ room, onClose }: { room: Room | null; onClose: () => void 
   const [submitted, setSubmitted] = useState(false);
 
   const save = useMutation({
+    mutationKey: [organizationId, "schedule.save"],
     mutationFn: () => {
       const body = { name: name.trim(), defaultCapacity: wholeNumber(capacity) ?? 0 };
       return room

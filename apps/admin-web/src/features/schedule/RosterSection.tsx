@@ -219,6 +219,7 @@ function AttendanceToggle({ entry }: { entry: RosterEntry }) {
   const refresh = useRefreshSchedule();
   const { organizationId } = useStudio();
   const mark = useMutation({
+    mutationKey: [organizationId, "schedule.mark"],
     mutationFn: (state: "attended" | "no_show") =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/bookings/{bookingId}/attendance", {
@@ -279,6 +280,7 @@ function CancelBookingDialog({ entry, session, now, onClose }: CancelBookingDial
   const checking = holdsEntry && policy.isPending;
 
   const cancel = useMutation({
+    mutationKey: [organizationId, "schedule.cancel"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/bookings/{bookingId}/cancel", {
@@ -353,6 +355,7 @@ function AddBookingDialog({ session, onClose }: { session: Session; onClose: () 
   const [picked, setPicked] = useState<PickedPerson | null>(null);
 
   const book = useMutation({
+    mutationKey: [organizationId, "schedule.book"],
     mutationFn: (personId: string) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings", {

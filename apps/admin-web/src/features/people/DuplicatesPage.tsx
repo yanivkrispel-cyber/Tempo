@@ -82,6 +82,7 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
   const toast = useToast();
   const { organizationId } = useStudio();
   const resolve = useMutation({
+    mutationKey: [organizationId, "people.resolve"],
     mutationFn: (body: Schemas["ResolveDuplicateRequest"]) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/duplicate-candidates/{candidateId}/resolve", {

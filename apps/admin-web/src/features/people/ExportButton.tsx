@@ -19,6 +19,7 @@ export function ExportButton({ personId, name }: { personId: string; name: strin
   const { pathname } = useLocation();
   const { organizationId } = useStudio();
   const exportData = useMutation({
+    mutationKey: [organizationId, "people.exportData"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/export", {
