@@ -4,7 +4,7 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, problem, sampleMe } from "../../test/api";
+import { apiStub, json, membershipAs, problem, roleSummary, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 const studio = sampleMe.memberships[0]!;
@@ -16,7 +16,7 @@ const member = (id: number, overrides: Record<string, unknown> = {}) => ({
   email: `member${id}@example.com`,
   displayName: `חבר ${id}`,
   role: "client",
-  roles: [],
+  roles: [roleSummary("client")],
   personId: null,
   status: "active",
   joinedAt: "2026-10-14T08:00:00Z",
@@ -34,11 +34,8 @@ function renderAt(url: string, routesForApi: Record<string, unknown>) {
 describe("choosing a studio", () => {
   it("lists the studios this account manages, not the ones it is a client of", async () => {
     const asClient = {
-      ...studio,
+      ...membershipAs("client"),
       membershipId: "0199e5a1-0000-7000-8000-000000000009",
-      role: "client",
-      roles: [],
-      permissions: [],
       organization: {
         ...studio.organization,
         id: "0199e5a1-0000-7000-8000-000000000010",
@@ -118,7 +115,7 @@ describe("the console", () => {
     renderAt("/o/neshima", {
       [membersPath]: {
         items: [
-          member(1, { role: "owner", displayName: "דנה כהן" }),
+          member(1, { role: "owner", roles: [roleSummary("owner")], displayName: "דנה כהן" }),
           member(2, { status: "suspended", displayName: null }),
         ],
         nextBefore: null,

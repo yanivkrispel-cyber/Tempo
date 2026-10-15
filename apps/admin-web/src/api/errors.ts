@@ -23,6 +23,8 @@ const messages: Record<string, string> = {
   "ownership.transfer_expired": "פג התוקף של ההצעה.",
   "ownership.transfer_stale": "התפקידים בסטודיו השתנו מאז ההצעה, ולכן היא בוטלה.",
   "auth.mfa_required": "כדי לנהל את הסטודיו צריך להפעיל בחשבון אימות דו־שלבי.",
+  "billing.restricted":
+    "המנוי של הסטודיו מושהה, ולכן אי אפשר להוסיף או לשנות דבר. אפשר עדיין לצפות, לייצא, לבטל הזמנות ולהסיר חברים.",
   "person.read_only": "הרשומה הזו כבר לא ניתנת לשינוי (נמחקה או אוחדה).",
   "person.erase_self": "אי אפשר למחוק את הנתונים שלך מכאן.",
   "person.has_login": "לאדם הזה כבר יש חשבון באפליקציה.",
@@ -31,6 +33,11 @@ const messages: Record<string, string> = {
   "relationship.self": "אי אפשר לקשר אדם לעצמו.",
   "consent.invalid": "הבחירה לא תקינה. בדקו את המטרה, הערוץ והגרסה.",
 };
+
+/** The sentence for a Problem code, when the app has one. */
+export function codeMessage(code: string): string | undefined {
+  return messages[code];
+}
 
 /** A sentence for the person in front of the screen; never the server's English text. */
 export function errorMessage(error: unknown, fallback = "משהו השתבש. נסו שוב."): string {

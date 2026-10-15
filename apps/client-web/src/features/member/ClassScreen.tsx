@@ -45,6 +45,7 @@ import {
   type Studio,
 } from "./studio";
 import { LoadError, NoStudio } from "./StudioGate";
+import { useBookingPaused } from "./StudioNotices";
 import { clockTime, hasStarted, momentText } from "./studioTime";
 
 export function ClassScreen() {
@@ -65,6 +66,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const sessionQuery = useSession(studio.id, sessionId);
   const policy = useBookingPolicy(studio.id);
   const flow = useBookingFlow(studio.id);
+  const paused = useBookingPaused();
   const cancel = useCancelBooking(studio.id);
   const navigate = useNavigate();
   const location = useLocation();
@@ -256,6 +258,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
             size="lg"
             block
             loading={flow.pendingId === session.id}
+            disabled={paused}
             onClick={() => {
               flow.reset();
               setSheetOpen(true);

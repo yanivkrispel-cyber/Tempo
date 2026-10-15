@@ -26,6 +26,7 @@ import {
 } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, studioDate } from "./studioTime";
+import { StudioNotices } from "./StudioNotices";
 
 type View = "upcoming" | "history";
 
@@ -80,6 +81,7 @@ function StudioBookings({ studio }: { studio: Studio }) {
         <span className="tp-eyebrow">{nameOf(me)}</span>
         <h1 className={styles.title}>{title}</h1>
       </header>
+      <StudioNotices />
 
       <Tabs
         block

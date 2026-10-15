@@ -22,8 +22,15 @@ const messages: Record<string, string> = {
   "person.not_found": "לא מצאנו את הרשומה שלך בסטודיו. פנו לסטודיו.",
   "person.read_only": "הרשומה שלך בסטודיו לא פעילה. פנו לסטודיו.",
   "permission.denied": "אין לך הרשאה לפעולה הזו.",
-  "billing.restricted": "הסטודיו לא מקבל הרשמות כרגע. לפרטים פנו לסטודיו.",
+  "auth.mfa_required":
+    "לחשבון שלך יש תפקיד ניהול בסטודיו, ולכן צריך להפעיל בו אימות דו־שלבי. הפעילו אותו במסוף הניהול, בעמוד אבטחת החשבון, ואז חזרו לכאן.",
+  "billing.restricted": "ההרשמה לשיעורים בסטודיו מושהית כרגע. אפשר עדיין לראות ולבטל הזמנות קיימות.",
 };
+
+/** The sentence for a Problem code, when the app has one. */
+export function codeMessage(code: string): string | undefined {
+  return messages[code];
+}
 
 /** A sentence for the person in front of the screen; never the server's English text. */
 export function errorMessage(error: unknown, fallback = "משהו השתבש. נסו שוב."): string {

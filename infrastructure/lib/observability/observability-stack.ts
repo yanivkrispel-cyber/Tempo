@@ -203,7 +203,8 @@ export class ObservabilityStack extends Stack {
     }
 
     const topic = new Topic(this, "AlarmTopic", {
-      topicName: resourceName(config, "alarms")
+      topicName: resourceName(config, "alarms"),
+      enforceSSL: true
     });
     topic.addSubscription(new EmailSubscription(config.observability.alarmEmail));
 

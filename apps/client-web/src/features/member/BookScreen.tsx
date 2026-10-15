@@ -21,6 +21,7 @@ import { metaLine } from "./passText";
 import { useBookingPolicy, useSessions, useStudio, useStudioClock, type Session, type Studio } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, hasStarted, minutesBetween } from "./studioTime";
+import { StudioNotices, useBookingPaused } from "./StudioNotices";
 
 const title = "מערכת שיעורים";
 
@@ -32,6 +33,7 @@ export function BookScreen() {
 function StudioBook({ studio }: { studio: Studio }) {
   const { timeZone, now, today } = useStudioClock(studio.id);
   const policy = useBookingPolicy(studio.id);
+  const paused = useBookingPaused();
   const [params] = useSearchParams();
 
   // The timetable is open from today to the booking horizon, a week of the strip at a time.
@@ -95,6 +97,7 @@ function StudioBook({ studio }: { studio: Studio }) {
           size="sm"
           aria-label={`הרשמה ${name}`}
           loading={flow.pendingId === session.id}
+          disabled={paused}
           onClick={() => pick(session.id)}
         >
           הרשמה
@@ -108,6 +111,7 @@ function StudioBook({ studio }: { studio: Studio }) {
           size="sm"
           aria-label={`להמתנה ${name}`}
           loading={flow.pendingId === session.id}
+          disabled={paused}
           onClick={() => pick(session.id)}
         >
           להמתנה
@@ -123,6 +127,7 @@ function StudioBook({ studio }: { studio: Studio }) {
         <span className="tp-eyebrow">{studio.name}</span>
         <h1 className={styles.title}>{title}</h1>
       </header>
+      <StudioNotices />
       <PassStrip organizationId={studio.id} />
 
       <div className={styles.group}>

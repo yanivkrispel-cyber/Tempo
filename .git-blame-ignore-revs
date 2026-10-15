@@ -1,0 +1,5 @@
+# Commits that only reformat code. Locally: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub applies this file automatically.)
+
+# chore(web): format apps/ and packages/ with Prettier (Q5b, #120)
+9fb11a5726de6a915f6583f281e7d5483c0ce6b5

@@ -4,7 +4,7 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, problem, sampleMe } from "../../test/api";
+import { apiStub, json, membershipAs, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 const studio = sampleMe.memberships[0]!;
@@ -22,8 +22,8 @@ const organization = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-function renderAt(url: string, routesForApi: Record<string, unknown>, role = "owner") {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
+function renderAt(url: string, routesForApi: Record<string, unknown>, role: "owner" | "staff" = "owner") {
+  const me = { ...sampleMe, memberships: [membershipAs(role)] };
   const api = apiStub({ "POST /api/v1/session": me, ...routesForApi });
   render(
     <App

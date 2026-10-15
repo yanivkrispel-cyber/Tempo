@@ -19,6 +19,13 @@ describe("readAppConfig", () => {
     });
   });
 
+  it("offers the account scope as optional only when two-step sign-in setup is on", () => {
+    const env = { VITE_COGNITO_DOMAIN: "https://auth.example", VITE_COGNITO_CLIENT_ID: "abc" } as ImportMetaEnv;
+    expect(readAppConfig(env, "http://localhost:5173").auth?.optionalScopes).toBeUndefined();
+    const on = readAppConfig({ ...env, VITE_COGNITO_MFA_SETUP: "true" }, "http://localhost:5173").auth;
+    expect(on?.optionalScopes).toEqual(["aws.cognito.signin.user.admin"]);
+  });
+
   it("has no auth when the Cognito variables are missing", () => {
     expect(readAppConfig({} as ImportMetaEnv, "http://localhost:5173").auth).toBeNull();
   });

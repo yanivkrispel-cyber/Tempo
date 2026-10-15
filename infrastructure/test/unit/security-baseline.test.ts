@@ -1,7 +1,7 @@
 import { Stack } from "aws-cdk-lib";
 import { Template, Match } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
-import { dev } from "./helpers/synth";
+import { dev, devWithEdge, prod } from "./helpers/synth";
 
 const PROHIBITED_RESOURCE_TYPES = [
   "AWS::EKS::Cluster",
@@ -200,6 +200,57 @@ describe("Mandatory tags (LLD section 5)", () => {
         "ManagedBy",
         "Owner"
       ]);
+    }
+  });
+});
+
+describe("Transport and runtimes (#109, cdk-nag SQS4, SNS3, L1)", () => {
+  const stages = [dev, prod, devWithEdge];
+  const templates = () =>
+    stages.flatMap((stage) =>
+      stage.node
+        .findAll()
+        .filter(Stack.isStack)
+        .map((stack) => Template.fromStack(stack)),
+    );
+  const deniesPlainHttp = (statements: Array<Record<string, unknown>>) =>
+    statements.some(
+      (s) => s.Effect === "Deny" && JSON.stringify(s.Condition ?? {}).includes('"aws:SecureTransport":"false"'),
+    );
+
+  it("every SQS queue and SNS topic denies requests without TLS", () => {
+    let queues = 0;
+    let topics = 0;
+    for (const template of templates()) {
+      const policies = {
+        ...template.findResources("AWS::SQS::QueuePolicy"),
+        ...template.findResources("AWS::SNS::TopicPolicy"),
+      };
+      const covered = new Set<string>();
+      for (const policy of Object.values(policies)) {
+        if (!deniesPlainHttp(policy.Properties.PolicyDocument.Statement)) continue;
+        for (const ref of [...(policy.Properties.Queues ?? []), ...(policy.Properties.Topics ?? [])])
+          covered.add(JSON.stringify(ref));
+      }
+      for (const id of Object.keys(template.findResources("AWS::SQS::Queue"))) {
+        queues += 1;
+        expect(covered, `queue ${id}`).toContain(JSON.stringify({ Ref: id }));
+      }
+      for (const id of Object.keys(template.findResources("AWS::SNS::Topic"))) {
+        topics += 1;
+        expect(covered, `topic ${id}`).toContain(JSON.stringify({ Ref: id }));
+      }
+    }
+    expect(queues).toBeGreaterThan(0);
+    expect(topics).toBeGreaterThan(0);
+  });
+
+  it("Node.js functions run on Node 24", () => {
+    for (const template of templates()) {
+      for (const fn of Object.values(template.findResources("AWS::Lambda::Function"))) {
+        const runtime = fn.Properties.Runtime as string | undefined;
+        if (runtime?.startsWith("nodejs")) expect(runtime).toBe("nodejs24.x");
+      }
     }
   });
 });

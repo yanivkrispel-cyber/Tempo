@@ -16,6 +16,9 @@ How it moves:
 
 | Kind | Agent | PR | Example (file:line) |
 |---|---|---|---|
+| Focus lost when a card or panel closes (focus should move to a stable heading) | standards-reviewer | #127 | `apps/admin-web/src/features/security/SecurityPage.tsx` (enroll card closing) |
+| Field error text is a fragment, not an instruction ("6 ספרות מהאפליקציה") | standards-reviewer | #127 | `apps/admin-web/src/features/security/SecurityPage.tsx` (code field error) |
+| Studio mutation without a `mutationKey` holding the studio id, so frame banners miss its 402/403 (issue #131) | standards-reviewer | #127 | `apps/admin-web/src/features/members/MemberDialogs.tsx` (`useUpdateMember`) |
 | A failed read shown as an empty state ("nothing here") instead of an error with a retry | standards-reviewer | #128 | `apps/client-web/src/features/member/HomeScreen.tsx:160` |
 | Focus drops to `<body>` when the pressed control unmounts after a mutation | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:147` |
 | A `shared/design-system` wrapper changed in one app but not the other | standards-reviewer | #128 | `apps/client-web/src/shared/design-system/Schedule.tsx:157` |

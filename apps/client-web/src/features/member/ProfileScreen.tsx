@@ -9,6 +9,7 @@ import { EditNameDialog } from "./EditNameDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
 import styles from "./member.module.css";
+import { StudioNotices } from "./StudioNotices";
 
 export function ProfileScreen() {
   const profile = useProfile();
@@ -46,6 +47,7 @@ export function ProfileScreen() {
         </div>
         <IconButton icon="edit" label="עריכת פרטים" onClick={() => setEditing(true)} />
       </header>
+      <StudioNotices />
 
       {studio && <PassesCard organizationId={studio.organization.id} />}
 

@@ -20,7 +20,16 @@ export interface AuthConfig {
   redirectUri: string;
   /** Must be one of the client's exact logout URLs. */
   logoutUri: string;
+  /**
+   * Scopes the app client allows beyond `openid email profile`, asked for only by a sign-in that names them
+   * (`signIn(returnTo, screen, { scopes })`), never by every sign-in. Two-step sign-in setup needs
+   * `aws.cognito.signin.user.admin`, which lets the token change the account in Cognito, so only the sign-in that
+   * the setup page starts carries it. A scope the client does not allow makes the Hosted UI refuse (`invalid_scope`).
+   */
+  optionalScopes?: readonly string[];
 }
+
+export const defaultScopes: readonly string[] = ["openid", "email", "profile"];
 
 export interface Session {
   accessToken: string;
@@ -67,7 +76,8 @@ interface TokenResponse {
 }
 
 export class AuthClient {
-  private readonly config: AuthConfig;
+  /** Where the app signs in; read by the two-step sign-in setup (Cognito's region and the optional scopes). */
+  readonly config: AuthConfig;
   private readonly sessionKey: string;
   private readonly flowKey: string;
   private readonly storage: Storage;
@@ -108,7 +118,13 @@ export class AuthClient {
    * `auth_time` old, so it goes through `/logout` with `response_type=code`, which ends that session and opens
    * the sign-in form with the same PKCE parameters (checked against dev, 2026-10-15).
    */
-  async signIn(returnTo = "/", screen: "login" | "signup" | "reauthenticate" = "login"): Promise<void> {
+  async signIn(
+    returnTo = "/",
+    screen: "login" | "signup" | "reauthenticate" = "login",
+    options: { scopes?: readonly string[] } = {},
+  ): Promise<void> {
+    // Only scopes the config declares as optional: anything else would make the Hosted UI refuse the sign-in.
+    const extra = (options.scopes ?? []).filter((scope) => (this.config.optionalScopes ?? []).includes(scope));
     const flow: Flow = { state: randomUrlSafe(), verifier: randomUrlSafe(), returnTo: safeReturnTo(returnTo) };
     this.flowStorage.setItem(this.flowKey, JSON.stringify(flow));
     const path = { login: "oauth2/authorize", signup: "signup", reauthenticate: "logout" }[screen];
@@ -117,7 +133,7 @@ export class AuthClient {
       response_type: "code",
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
-      scope: "openid email profile",
+      scope: [...defaultScopes, ...extra].join(" "),
       state: flow.state,
       code_challenge_method: "S256",
       code_challenge: await codeChallenge(flow.verifier),

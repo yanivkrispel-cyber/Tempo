@@ -31,6 +31,7 @@ import { knownNotices } from "./InboxScreen";
 import { ListSkeleton, LoadError } from "./StudioGate";
 import { useNow } from "./clock";
 import { clockTime, defaultTimeZone, hasStarted, studioToday } from "./studioTime";
+import { StudioNotices } from "./StudioNotices";
 
 function badge(session: Session, now: Date): string {
   if (session.status === "cancelled") return "בוטל";
@@ -84,6 +85,7 @@ function HomeFrame({
         </div>
         {bell}
       </header>
+      <StudioNotices />
       {children}
     </main>
   );
