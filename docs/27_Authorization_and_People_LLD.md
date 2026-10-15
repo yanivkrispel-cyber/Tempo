@@ -7,8 +7,8 @@
 > `04_Multi_Tenant_Architecture.md`, `09_Authentication_&_Authorization.md`, `12_CRM_Architecture.md` section 1,
 > `20_Security.md`, `24_Development_Roadmap.md` section 4, ADR-0006, ADR-0007, ADR-0021, ADR-0023, the Studio mockup
 > (`docs/design/mockups/studio-2026-10-13/`)
-> **Decision policy:** as in docs/26. **Proposed** marks a design choice this draft recommends; it becomes a
-> **Decision** when the document merges. **Open** needs Kris's answer; each has a default.
+> **Decision policy:** as in docs/26. Every **Proposed** choice below is a **Decision** since the document merged
+> (#47); the former open questions are decided in section 14.
 
 ## 1. Scope
 
@@ -33,7 +33,7 @@ Out of scope, and where it goes:
 | Plans, entitlements, restricted mode | 3 (Billing) |
 | Sending messages, honouring consent at send time | 4 (Communications); Phase 2 only records consent |
 | Leads, pipelines, CRM tasks, notes | 6 (CRM), on top of the person record |
-| Health declarations and other sensitive vertical data | Studio vertical, own LLD (open question P-5) |
+| Health declarations and other sensitive vertical data | Studio vertical, own LLD (P-5, section 14) |
 | Location or class scoped permissions ("staff sees only their classes") | With Scheduling; the model leaves room (section 3.4) |
 | Support sessions (impersonation) | Open question A-4 |
 
@@ -72,7 +72,7 @@ Phase 2 catalog:
 | `roles.manage` | Create and edit custom roles, assign any role but owner | owner |
 | `audit.view` | Read the studio's audit log | owner, admin |
 | `people.view` | List and read person records | owner, admin, staff |
-| `people.manage` | Create and edit people, contact points, relationships | owner, admin, staff (open question A-2) |
+| `people.manage` | Create and edit people, contact points, relationships | owner, admin, staff (A-2, section 14) |
 | `people.merge` | Resolve duplicate candidates | owner, admin |
 | `people.export` | Export one person's data | owner, admin |
 | `people.erase` | Anonymize a person | owner |
@@ -91,7 +91,7 @@ Rules that are not permissions, because no role should be able to change them:
 
 - **System roles** `owner`, `admin`, `staff`, `client`: rows with `organization_id IS NULL`, seeded by migration,
   identical in every studio, not editable. Their permission sets are the Phase 1 equivalents in the table above.
-- **Custom roles** (open question A-1): rows with an `organization_id`, created by a member with `roles.manage`,
+- **Custom roles** (A-1: not in Phase 2; the model is ready): rows with an `organization_id`, created by a member with `roles.manage`,
   holding any subset of the catalog except `ownership.transfer` and `people.erase`.
 - A member with `members.manage` but not `roles.manage` can assign only roles whose permissions are a subset of their
   own. This prevents an admin from creating a role stronger than themselves.
@@ -147,7 +147,7 @@ it, so step-up means "signed in with MFA within 10 minutes".
 Privileged actions in Phase 2: owner transfer, creating or editing custom roles, assigning `admin` or any role with
 `roles.manage`, `people.erase`, `people.export`.
 
-Owner MFA (docs/26 open question O-3): this draft keeps O-3's default, mandatory for owners and admins before the
+Owner MFA (docs/26 O-3, and A-5 in section 14): O-3's default stands, mandatory for owners and admins before the
 pilot. Enforcement: the API reads the user's MFA setting with `AdminGetUser` (already granted on the customer pool)
 at session time and stores `mfa_enabled` on the account; owner and admin routes return 403 `auth.mfa_required` when it
 is off, once the switch `TEMPO_REQUIRE_OWNER_MFA` is on.
@@ -156,7 +156,7 @@ is off, once the switch `TEMPO_REQUIRE_OWNER_MFA` is on.
 
 ### 4.1 One person record per studio
 
-**Open P-1.** `09_Authentication_&_Authorization.md` speaks of a "canonical person". Two shapes:
+**Decided P-1 (shape A).** `09_Authentication_&_Authorization.md` speaks of a "canonical person". Two shapes:
 
 - **A, per studio (default).** A person record belongs to one studio. The same human in two studios is two records,
   each linked to the same `UserAccount` if they sign in. Nothing about a person crosses studios.
@@ -202,7 +202,7 @@ Phase 2 records consent; Phase 4 enforces it when sending.
 - `person_relationships`: `guardian_of` (parent or guardian of a child) and `emergency_contact_for`.
 - A guardian with a login can book for and see the bookings of the people they are guardian of. This is the first
   "relationship" policy input from `09` section 5; it arrives with Scheduling but the data comes now.
-- **Open P-3:** do studios serve children (kids yoga) at the pilot? If not, `guardian_of` waits; the table still ships.
+- **P-3 (decided):** the table ships now; booking on a child's behalf waits for Scheduling.
 
 ### 4.5 Linking memberships and people
 
@@ -236,7 +236,7 @@ A person has at most one login per studio, and a login has at most one person pe
   that other modules need (a booking happened) keep the id. Audit keeps ids only.
 - **Export** (`people.export`, step-up): a JSON document of one person's record, contacts, consent history and
   relationships, built synchronously in Phase 2 (small), returned once, audited.
-- Retention of archived people: open question P-2.
+- Retention of archived people: seven years (P-2), to confirm with an accountant before the pilot.
 
 ## 5. Database
 
@@ -403,9 +403,9 @@ Tenant routes under `/api/v1/organizations/{organizationId}` (customer scheme). 
 | Method and path | Permission |
 |---|---|
 | `GET /roles` | `members.view` |
-| `POST /roles`, `PATCH /roles/{roleId}`, `DELETE /roles/{roleId}` | `roles.manage`, step-up |
+| `POST /roles`, `PATCH /roles/{roleId}`, `DELETE /roles/{roleId}` | `roles.manage`, step-up. **Not in Phase 2** (A-1: system roles only); added when a studio asks for custom roles |
 | `GET /permissions` (the catalog, for the role editor) | `roles.manage` |
-| `PUT /members/{membershipId}/roles` (the full set) | `members.manage` or `roles.manage`, rank rule; step-up when it grants `admin` |
+| `PUT /members/{membershipId}/roles` (the full set; exactly one system role in Phase 2) | `members.manage`, rank rule first, then step-up when it grants `admin` |
 | `POST /ownership-transfer`, `DELETE /ownership-transfer` | `ownership.transfer`, step-up |
 | `POST /ownership-transfer/accept`, `POST /ownership-transfer/decline` | the target member |
 | `GET /people?query=&status=&before=&limit=` | `people.view` |
