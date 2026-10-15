@@ -458,7 +458,9 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
     /// <summary>
     /// Creates the template's missing sessions from <paramref name="today"/> to the horizon. The occurrence key
-    /// (template, local date) is unique, so running it twice adds nothing (docs/29 section 4.1).
+    /// (template, local date) is unique, so running it twice adds nothing (docs/29 section 4.1). Rows are
+    /// created only while the template still has the version that was read, so a job working from an older
+    /// snapshot never adds sessions for a rule staff have since changed (#108).
     /// </summary>
     internal static async Task<int> MaterializeAsync(UnitOfWork unitOfWork, Guid organizationId, TemplateView template, TimeZoneInfo zone, DateOnly today, CancellationToken cancellationToken)
     {
@@ -472,16 +474,16 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 INSERT INTO scheduling.sessions (organization_id, id, template_id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, room_id, capacity, status, created_at, updated_at)
                 SELECT t.organization_id, $3, t.id, $4, t.class_type_id, $5, $6, t.instructor_membership_id, t.room_id, t.capacity, 'scheduled', now(), now()
                 FROM scheduling.templates t
-                WHERE t.organization_id = $1 AND t.id = $2
+                WHERE t.organization_id = $1 AND t.id = $2 AND t.version = $7
                 ON CONFLICT (organization_id, template_id, local_date) WHERE template_id IS NOT NULL DO NOTHING
                 """,
-                organizationId, template.Id, Guid.CreateVersion7(), date, startsAt, startsAt.AddMinutes(template.Minutes));
+                organizationId, template.Id, Guid.CreateVersion7(), date, startsAt, startsAt.AddMinutes(template.Minutes), template.Version);
             created += await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
         await using (var mark = unitOfWork.Command(
-            "UPDATE scheduling.templates SET materialized_until = $3 WHERE organization_id = $1 AND id = $2",
-            organizationId, template.Id, until))
+            "UPDATE scheduling.templates SET materialized_until = $3 WHERE organization_id = $1 AND id = $2 AND version = $4",
+            organizationId, template.Id, until, template.Version))
         {
             await mark.ExecuteNonQueryAsync(cancellationToken);
         }
