@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Avatar, Button, Card, Chip, Icon, IconButton, ProgressBar, Select, Skeleton, Toggle, shortDate, useToast } from "../../shared/design-system";
+import { Avatar, Button, Card, Chip, Icon, IconButton, ProgressBar, Select, Skeleton, shortDate, useToast } from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useProfile } from "./data";
+import { useStudioProfile } from "../../account/studioProfile";
+import { ConsentRows } from "./ConsentRows";
 import { EditNameDialog } from "./EditNameDialog";
+import { MyDetailsDialog } from "./MyDetailsDialog";
 import styles from "./member.module.css";
 
 export function ProfileScreen() {
@@ -12,7 +15,11 @@ export function ProfileScreen() {
   const auth = useAuth();
   const me = useAccount();
   const [editing, setEditing] = useState(false);
+  const [details, setDetails] = useState(false);
   const soon = () => toast.show({ message: "האפשרות הזו תגיע בקרוב" });
+  const studios = activeMemberships(me);
+  const studio = studios[0];
+  const studioProfile = useStudioProfile(studio?.organization.id);
 
   if (!profile.data) {
     return (
@@ -26,8 +33,6 @@ export function ProfileScreen() {
   // The plan and the health declaration stay sample data until the studio API exists; the rest is the account.
   const { plan, healthDeclarationSigned } = profile.data;
   const name = nameOf(me);
-  const studios = activeMemberships(me);
-  const studio = studios[0];
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.profile}`}>
       <header className={styles.header}>
@@ -86,16 +91,7 @@ export function ProfileScreen() {
         <h2 id="notifications" className={`tp-label tp-muted ${styles.settingsTitle}`}>
           התראות
         </h2>
-        <div className="tp-setting">
-          <span aria-hidden="true">התראות בדחיפה</span>
-          <Toggle label="התראות בדחיפה" hideLabel defaultChecked />
-        </div>
-        <hr className="tp-divider" />
-        <div className="tp-setting">
-          <span aria-hidden="true">תזכורות במייל</span>
-          <Toggle label="תזכורות במייל" hideLabel defaultChecked />
-        </div>
-        <hr className="tp-divider" />
+        <ConsentRows organizationId={studio?.organization.id} studioName={studio?.organization.displayName} />
         <div className="tp-setting">
           <span className={styles.settingText}>
             <span>תזכורת לפני שיעור</span>
@@ -113,6 +109,15 @@ export function ProfileScreen() {
         <h2 id="account" className={`tp-label tp-muted ${styles.settingsTitle}`}>
           חשבון
         </h2>
+        {studio && studioProfile.data && (
+          <>
+            <button type="button" className="tp-setting" onClick={() => setDetails(true)}>
+              <span>הפרטים שלי</span>
+              <Icon name="chevron-left" />
+            </button>
+            <hr className="tp-divider" />
+          </>
+        )}
         <div className="tp-setting">
           <span>הצהרת בריאות</span>
           {healthDeclarationSigned ? <Chip tone="success">נחתמה</Chip> : <Chip tone="warning">חסרה</Chip>}
@@ -134,6 +139,14 @@ export function ProfileScreen() {
       </Button>
 
       <EditNameDialog open={editing} onClose={() => setEditing(false)} name={me.displayName ?? ""} />
+      {details && studio && studioProfile.data && (
+        <MyDetailsDialog
+          organizationId={studio.organization.id}
+          studioName={studio.organization.displayName}
+          profile={studioProfile.data}
+          onClose={() => setDetails(false)}
+        />
+      )}
     </main>
   );
 }
