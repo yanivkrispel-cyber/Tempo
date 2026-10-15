@@ -89,6 +89,24 @@ public sealed class OwnershipServiceTests(PostgresFixture postgres) : IClassFixt
     }
 
     [Fact]
+    public async Task Accept_AfterTheTargetWasDemoted_IsStale_AndChangesNothing()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, admin, _) = await StudioWithAdminAndStaffAsync(db);
+        var service = new OwnershipService(db, new FixedClock(DateTimeOffset.UtcNow));
+        var started = await service.StartAsync(owner, admin.MembershipId, CancellationToken.None);
+
+        await new MemberService(db, new Tempo.Platform.Modules.Identity.Infrastructure.AccountProfiles(db))
+            .UpdateAsync(owner, admin.MembershipId, MembershipRole.Staff, null, null, CancellationToken.None);
+        var accept = () => service.AcceptAsync(admin with { Role = MembershipRole.Staff }, CancellationToken.None);
+
+        (await accept.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("ownership.transfer_stale");
+        (await RoleOfAsync(db, owner.MembershipId)).Should().Be(("owner", "owner"));
+        (await RoleOfAsync(db, admin.MembershipId)).Should().Be(("staff", "staff"));
+        (await db.AsMasterAsync("SELECT status FROM organizations.ownership_transfers WHERE id = $1", started.Id)).Should().Be("cancelled");
+    }
+
+    [Fact]
     public async Task Accept_After72Hours_IsGone()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

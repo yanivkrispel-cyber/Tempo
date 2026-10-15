@@ -147,6 +147,18 @@ public sealed class OwnershipService(IDataSourceProvider dataSources, TimeProvid
             throw new DomainRuleViolationException(ViolationKind.Gone, "ownership.transfer_expired", "This offer has expired.");
         }
 
+        // Roles may have changed since the offer: the target must still be an active admin and the
+        // offering member still the owner. Otherwise the offer is void (and the swap would break the
+        // one-owner indexes).
+        if (await RoleOfAsync(unitOfWork, tenant.OrganizationId, pending.ToMembershipId, cancellationToken) != ("admin", "active")
+            || await RoleOfAsync(unitOfWork, tenant.OrganizationId, pending.FromMembershipId, cancellationToken) != ("owner", "active"))
+        {
+            await SetStatusAsync(unitOfWork, tenant.OrganizationId, pending.Id, OwnershipTransferStatus.Cancelled, cancellationToken);
+            await AuditAsync(unitOfWork, tenant, "ownership.transfer_cancelled", pending.Id, new { reason = "roles_changed" }, cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "ownership.transfer_stale", "Roles changed since this offer was made, so it no longer applies.");
+        }
+
         await HandOverAsync(unitOfWork, tenant.OrganizationId, pending.FromMembershipId, pending.ToMembershipId, tenant.MembershipId, cancellationToken);
         await SetStatusAsync(unitOfWork, tenant.OrganizationId, pending.Id, OwnershipTransferStatus.Accepted, cancellationToken);
         await AuditAsync(unitOfWork, tenant, "ownership.transferred", pending.Id, new { from = pending.FromMembershipId, to = pending.ToMembershipId }, cancellationToken);
@@ -193,6 +205,16 @@ public sealed class OwnershipService(IDataSourceProvider dataSources, TimeProvid
 
             await RoleAssignments.SetSystemRoleAsync(unitOfWork, organizationId, membershipId, role, grantedByMembershipId, cancellationToken);
         }
+    }
+
+    private static async Task<(string Role, string Status)?> RoleOfAsync(UnitOfWork unitOfWork, Guid organizationId, Guid membershipId, CancellationToken cancellationToken)
+    {
+        await using var command = unitOfWork.Command(
+            "SELECT role, status FROM organizations.memberships WHERE organization_id = $1 AND id = $2 FOR UPDATE",
+            organizationId,
+            membershipId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? (reader.GetString(0), reader.GetString(1)) : null;
     }
 
     private bool IsExpired(OwnershipTransferView transfer) => transfer.ExpiresAt <= clock.GetUtcNow();
