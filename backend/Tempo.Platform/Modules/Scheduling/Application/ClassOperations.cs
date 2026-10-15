@@ -36,7 +36,9 @@ public sealed partial class BookingService : IClassService
     {
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await StaffOrInstructorAsync(unitOfWork, tenant, sessionId, Permissions.BookingsManage, cancellationToken);
-        var session = (await TimetableService.SessionsAsync(unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = $3", cancellationToken, sessionId)).Single();
+        // Staff skip the instructor lookup, so an id from another studio (or none) must still answer 404, not 500 (#124).
+        var session = (await TimetableService.SessionsAsync(unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = $3", cancellationToken, sessionId)).SingleOrDefault()
+            ?? throw new DomainRuleViolationException(ViolationKind.NotFound, "session.not_found", "Class not found.");
         await using var command = unitOfWork.Command(
             """
             SELECT b.id, p.id, p.display_name, b.status,
@@ -236,8 +238,16 @@ public sealed partial class BookingService : IClassService
             return;
         }
 
+        // The instructor rule holds only while the caller is still an active staff member: a session keeps its
+        // instructor_membership_id after a demotion to client or a suspension (#124).
         await using var command = unitOfWork.Command(
-            "SELECT instructor_membership_id = $3 FROM scheduling.sessions WHERE organization_id = $1 AND id = $2",
+            """
+            SELECT s.instructor_membership_id = $3
+               AND EXISTS (SELECT 1 FROM organizations.memberships m
+                           WHERE m.organization_id = s.organization_id AND m.id = $3 AND m.status = 'active' AND m.role <> 'client')
+            FROM scheduling.sessions s
+            WHERE s.organization_id = $1 AND s.id = $2
+            """,
             tenant.OrganizationId, sessionId, tenant.MembershipId);
         var result = await command.ExecuteScalarAsync(cancellationToken);
         if (result is null)

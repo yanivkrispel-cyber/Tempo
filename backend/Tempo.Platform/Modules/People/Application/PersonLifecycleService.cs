@@ -11,7 +11,20 @@ public sealed record DuplicateCandidateView(Guid Id, string Reason, string Statu
 
 public sealed record DuplicateCandidatePage(IReadOnlyList<DuplicateCandidateView> Items, Guid? NextBefore);
 
-public sealed record PersonExportView(DateTimeOffset ExportedAt, Guid OrganizationId, string OrganizationName, PersonDetailView Person, IReadOnlyList<ConsentView> ConsentHistory);
+/// <summary>One booking as the data subject sees it in their export: the class, when, and what became of the place.</summary>
+public sealed record ExportBookingView(Guid Id, Guid SessionId, string ClassName, DateTimeOffset StartsAt, string Status, bool LateCancel, string? CancelReason, DateTimeOffset CreatedAt);
+
+/// <summary>One pass in the export; no note, because erase clears it and the export is about the person, not staff remarks.</summary>
+public sealed record ExportPassView(Guid Id, string ProductName, string Kind, DateOnly StartsOn, DateOnly EndsOn, int? Entries, int EntriesUsed, string Status, DateTimeOffset CreatedAt);
+
+public sealed record PersonExportView(
+    DateTimeOffset ExportedAt,
+    Guid OrganizationId,
+    string OrganizationName,
+    PersonDetailView Person,
+    IReadOnlyList<ConsentView> ConsentHistory,
+    IReadOnlyList<ExportBookingView> Bookings,
+    IReadOnlyList<ExportPassView> Passes);
 
 /// <summary>
 /// Duplicate candidates and merge, export and erasure (docs/27 sections 4.6
@@ -140,6 +153,64 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             }
         }
 
+        // The person's bookings and passes belong in the export (docs/29 section 7, #124): what they booked, what
+        // became of it, and the cards and memberships they hold or held. Ids only, plus the class and product names.
+        var bookings = new List<ExportBookingView>();
+        await using (var command = unitOfWork.Command(
+            """
+            SELECT b.id, b.session_id, ct.name, s.starts_at, b.status, b.late_cancel, b.cancel_reason, b.created_at
+            FROM scheduling.bookings b
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
+            WHERE b.organization_id = $1 AND b.person_id = $2
+            ORDER BY s.starts_at, b.id
+            """,
+            tenant.OrganizationId,
+            personId))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                bookings.Add(new ExportBookingView(
+                    reader.GetGuid(0),
+                    reader.GetGuid(1),
+                    reader.GetString(2),
+                    await reader.GetFieldValueAsync<DateTimeOffset>(3, cancellationToken),
+                    reader.GetString(4),
+                    reader.GetBoolean(5),
+                    await reader.IsDBNullAsync(6, cancellationToken) ? null : reader.GetString(6),
+                    await reader.GetFieldValueAsync<DateTimeOffset>(7, cancellationToken)));
+            }
+        }
+
+        var passes = new List<ExportPassView>();
+        await using (var command = unitOfWork.Command(
+            """
+            SELECT ps.id, pp.name, pp.kind, ps.starts_on, ps.ends_on, ps.entries, ps.entries_used, ps.status, ps.created_at
+            FROM scheduling.passes ps
+            JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
+            WHERE ps.organization_id = $1 AND ps.person_id = $2
+            ORDER BY ps.starts_on, ps.id
+            """,
+            tenant.OrganizationId,
+            personId))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                passes.Add(new ExportPassView(
+                    reader.GetGuid(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    await reader.GetFieldValueAsync<DateOnly>(3, cancellationToken),
+                    await reader.GetFieldValueAsync<DateOnly>(4, cancellationToken),
+                    await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetInt32(5),
+                    reader.GetInt32(6),
+                    reader.GetString(7),
+                    await reader.GetFieldValueAsync<DateTimeOffset>(8, cancellationToken)));
+            }
+        }
+
         string organizationName;
         await using (var org = unitOfWork.Command("SELECT display_name FROM organizations.organizations WHERE id = $1", tenant.OrganizationId))
         {
@@ -148,7 +219,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
 
         await AuditAsync(unitOfWork, tenant, "person.exported", "person", personId, new { }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return new PersonExportView(clock.GetUtcNow(), tenant.OrganizationId, organizationName, detail, history);
+        return new PersonExportView(clock.GetUtcNow(), tenant.OrganizationId, organizationName, detail, history, bookings, passes);
     }
 
     public async Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken)

@@ -516,3 +516,80 @@ One PR each, in order, chained where they depend on each other:
 | C-6 | When a punch card's validity starts | On the grant date (staff can set another start date). |
 | C-7 | Can an instructor see rosters of other classes? | No: their own sessions only, unless their role has `bookings.manage` (staff does by default). |
 | C-8 | A studio cancels a class | Every entry returns, waiters are removed, everyone gets an inbox item. |
+
+## 16. After the skeleton: moves, messages, calendar files, freezes
+
+Added on the night of 2026-10-15 (board #136, lane K-A, items A2 to A5). Each is one PR, in this order, after A1
+(the contract gaps the console screens found). Everything here keeps the rules above: ids only in audit, the
+tenant filter on every statement, guarded updates for places and entries, no new paid resource.
+
+### 16.1 Moving a booking to another class (A2)
+
+Staff with `bookings.manage` move a `booked` place to another session of the same studio:
+`POST /bookings/{bookingId}/move` with `{ sessionId }`, answer 200 with the **new** `Booking`.
+
+- The target must be `scheduled`, not started, and have a free place. A full target answers 409 `session.full`:
+  a move never joins a waitlist (staff can cancel and let the member join the line themselves).
+- The entry moves with the place: the held `pass_uses` row is re-pointed at the new booking, so nothing is
+  returned or spent. The pass must still cover the target (category, validity, weekly cap in the target's week);
+  otherwise 409 `booking.no_valid_pass` and nothing changes.
+- The old row becomes `cancelled` with the new `cancelReason` value `moved` (never a late cancel), the old session's
+  `booked_count` drops by one and its waitlist is promoted as after any cancellation (section 6.3). Both sessions are
+  locked `FOR UPDATE` in id order inside one transaction, so two staff moving into the last place cannot overbook.
+- Audit: `booking.moved` on the new booking with `{ fromSessionId, toSessionId, previousBookingId }`. The member gets
+  an inbox item of kind `booking_moved` with the new session.
+- A member cannot move their own booking in this step (C-9).
+
+### 16.2 A message to everyone registered (A3)
+
+Staff with `bookings.manage`, or the session's instructor (section 6.4), send one short text to a class:
+`POST /sessions/{sessionId}/messages` with `{ text }` (1 to 500 characters after trimming), answer 202 with
+`{ recipients }`.
+
+- Recipients are everyone with a live place: `booked` and `waitlisted` (a room change matters to the line too).
+  Each gets an inbox item of kind `session_message` that carries the text and the session summary. No push, SMS or
+  email in this step: delivery channels are docs/30.
+- Audit: `session.message_sent` with `{ sessionId, recipients }` only. The text is never in the audit log; the
+  inbox item is its only copy, and erasing a person deletes their inbox items of this kind.
+- At most 5 messages per session per hour (409 `session.message_limit`), so a stuck button cannot flood a class.
+- A session that is `cancelled` or ended more than a day ago answers 409 `booking.closed`.
+
+### 16.3 Add to calendar (A4)
+
+`GET /me/bookings/{bookingId}/calendar.ics` (self; the booking must be `booked` or `attended`, otherwise 404)
+returns `text/calendar; charset=utf-8` with one `VEVENT`:
+
+- `UID` = `{bookingId}@tempo`, `DTSTAMP` now, `DTSTART`/`DTEND` in UTC (`Z`), `SUMMARY` = the class name,
+  `LOCATION` = studio name plus the room when set, `DESCRIPTION` = one Hebrew line with the instructor's first name
+  when set. `METHOD:PUBLISH`, `PRODID` = Tempo. No other person's data.
+- Lines are folded at 75 octets with CRLF, and commas, semicolons and backslashes are escaped (RFC 5545). The
+  apps open it with `Content-Disposition: attachment; filename="tempo-{localDate}.ics"`.
+- Cancelling the booking does not update the calendar entry (no `METHOD:CANCEL` without email, docs/30).
+
+### 16.4 Freezing a membership (A5)
+
+Staff with `passes.manage` freeze a period membership (`kind = membership`) for a date range:
+`POST /passes/{passId}/freezes` with `{ startsOn, endsOn }` (studio dates, inclusive, at most 90 days, the start no
+earlier than today), answer 201 with the `Pass` carrying its `freezes`. `DELETE /passes/{passId}/freezes/{freezeId}`
+removes a freeze that has not started yet.
+
+- Migration 0011 adds `scheduling.pass_freezes (organization_id, id, pass_id, starts_on, ends_on, created_by,
+  created_at)` with RLS, and `passes.ends_on` is extended by the frozen days when the freeze is created (and
+  shortened back on delete). `endsOn` stays the single truth for validity, so `GET /me/passes` and section 5.3 keep
+  working without a new rule.
+- While frozen, pass selection (section 5.3) skips the membership; a member whose only pass is frozen gets 409
+  `booking.no_valid_pass` with the freeze dates in the Problem. Bookings already made inside the frozen period are
+  kept (C-11).
+- Punch cards are not frozen in this step (C-12). Overlapping freezes on one pass answer 409 `pass.freeze_overlap`.
+- Audit: `pass.frozen` and `pass.unfrozen` with `{ passId, startsOn, endsOn, days }`. The member gets an inbox item
+  `pass_frozen`.
+
+### 16.5 Open questions for Kris (added by this section)
+
+| Id | Question | Default if nobody objects |
+|---|---|---|
+| C-9 | May a member move their own booking from the app? | Not yet. Staff only; the member cancels and books again (the free window applies). |
+| C-10 | Does a class message reach the waitlist? | Yes, both `booked` and `waitlisted`. |
+| C-11 | A membership frozen over a period with bookings already made | The bookings stay; the freeze only blocks new ones. |
+| C-12 | Freezing a punch card | No. Its validity (`validDays`) is the lever; staff can grant a new card. |
+| C-13 | How many freezes per membership | No cap, 90 days each at most; the console shows the total frozen days. |
