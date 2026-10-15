@@ -210,6 +210,16 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         return await PageAsync(unitOfWork, tenant, personId, upcoming, before, limit, cancellationToken);
     }
 
+    /// <summary>Promotes from a session's waitlist after a seat was freed outside this service (a person merge).</summary>
+    internal static async Task PromoteSessionAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var session = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+        if (session.Status == "scheduled")
+        {
+            await PromoteAsync(unitOfWork, tenant, session, await PolicyAsync(unitOfWork, tenant.OrganizationId, cancellationToken), now, cancellationToken);
+        }
+    }
+
     /// <summary>
     /// Fills freed places from the waitlist in line order while the cutoff allows (docs/29 section 6.3). A
     /// waiter with no valid pass at that moment is skipped and told why.
