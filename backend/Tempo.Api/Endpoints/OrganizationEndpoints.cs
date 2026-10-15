@@ -146,7 +146,7 @@ public static class OrganizationEndpoints
     // Phase 2 has system roles only, and RoleAssignments keeps one per membership in step with its role.
     private static RoleSummaryResponse ToResponse(SystemRole r) => new(r.Id, r.Key, r.DisplayName, true);
 
-    private static MemberResponse ToResponse(MemberView m) =>
+    internal static MemberResponse ToResponse(MemberView m) =>
         new(
             m.Id,
             m.UserAccountId,
