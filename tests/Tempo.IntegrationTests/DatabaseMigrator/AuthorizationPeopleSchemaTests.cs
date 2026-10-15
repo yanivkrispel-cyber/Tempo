@@ -31,6 +31,7 @@ public sealed class AuthorizationPeopleSchemaTests(PostgresFixture postgres) : I
     private readonly Guid clientUser = Guid.CreateVersion7();
     private readonly Guid staffUser = Guid.CreateVersion7();
     private readonly Guid goneUser = Guid.CreateVersion7();
+    private readonly Guid clientUserForRepair = Guid.CreateVersion7();
     private readonly Guid tenantA = Guid.CreateVersion7();
     private readonly Guid tenantB = Guid.CreateVersion7();
     private readonly Guid ownerA = Guid.CreateVersion7();
@@ -227,6 +228,40 @@ public sealed class AuthorizationPeopleSchemaTests(PostgresFixture postgres) : I
         (await edit.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(InsufficientPrivilege);
     }
 
+    [Fact]
+    public async Task Repair0006_GivesAMembershipWithoutAssignmentItsSystemRole()
+    {
+        var name = await postgres.CreateDatabaseAsync();
+        var app = ("tempo_app", Guid.NewGuid().ToString("N"));
+        var platform = ("tempo_platform", Guid.NewGuid().ToString("N"));
+        var migrator = ("tempo_migrator", Guid.NewGuid().ToString("N"));
+        var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, name, SslMode.Disable);
+        await MigrationRunner.RunAsync(
+            endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None,
+            Before(6));
+
+        await using (var connection = postgres.ConnectAsMaster(name))
+        {
+            await connection.OpenAsync();
+            await ExecuteAsync(connection, "INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at) VALUES ($1, 'active', 'late@example.com', true, now(), now(), now())", ownerUser);
+            await ExecuteAsync(connection, "INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at) VALUES ($1, 'active', 'staff-late@example.com', true, now(), now(), now())", clientUserForRepair);
+            await ExecuteAsync(connection, "INSERT INTO organizations.organizations (id, slug, display_name, status, created_by_user_id, created_at, updated_at) VALUES ($1, 'late-studio', 'Late', 'active', $2, now(), now())", tenantA, ownerUser);
+            await ExecuteAsync(connection, "INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) VALUES ($1, $2, $3, 'owner', 'active', now(), now())", tenantA, ownerA, ownerUser);
+            await ExecuteAsync(connection, "INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) VALUES ($1, $2, $3, 'staff', 'active', now(), now())", tenantA, clientA, clientUserForRepair);
+            await ExecuteAsync(connection, "INSERT INTO authz.role_assignments (organization_id, id, membership_id, role_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4, 'active', now(), now())", tenantA, Guid.CreateVersion7(), ownerA, OwnerRole);
+        }
+
+        await MigrationRunner.RunAsync(endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None);
+
+        await using var check = postgres.ConnectAsMaster(name);
+        await check.OpenAsync();
+        var assignments = await RowsAsync(
+            check,
+            "SELECT membership_id, role_id FROM authz.role_assignments WHERE status = 'active'",
+            reader => (reader.GetGuid(0), reader.GetGuid(1)));
+        assignments.Should().BeEquivalentTo(new[] { (ownerA, OwnerRole), (clientA, StaffRole) }, "the owner keeps its one assignment and the staff member gets one");
+    }
+
     /// <summary>
     /// Migrates to 0004, seeds Phase 1 data the way the API wrote it, then runs
     /// 0005 so its backfill sees real rows. Tenant A: an owner, a client who
@@ -243,7 +278,7 @@ public sealed class AuthorizationPeopleSchemaTests(PostgresFixture postgres) : I
 
         await MigrationRunner.RunAsync(
             endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None,
-            script => !script.Contains("0005_", StringComparison.Ordinal));
+            Before(5));
 
         await using (var connection = postgres.ConnectAsMaster(name))
         {
@@ -296,6 +331,14 @@ public sealed class AuthorizationPeopleSchemaTests(PostgresFixture postgres) : I
 
         return new Database(name, app, platform);
     }
+
+    /// <summary>Keeps the scripts numbered below <paramref name="number"/>, e.g. Before(5) stops after 0004.</summary>
+    private static Func<string, bool> Before(int number) =>
+        script =>
+        {
+            var file = script.Split('.')[^2];
+            return int.Parse(file[..4], System.Globalization.CultureInfo.InvariantCulture) < number;
+        };
 
     /// <summary>One transaction as the given runtime role, with the two RLS settings, as the API runs.</summary>
     private async Task AsAsync(
