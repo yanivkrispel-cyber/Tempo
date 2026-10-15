@@ -26,6 +26,13 @@ public sealed record PassCandidate(
 /// </summary>
 public static class PassSelection
 {
+    /// <summary>The last frozen day covering <paramref name="sessionDate"/> on any of the person's memberships, or null.</summary>
+    public static DateOnly? FrozenUntil(IEnumerable<PassCandidate> passes, DateOnly sessionDate) =>
+        passes
+            .Where(p => p.StartsOn <= sessionDate && p.IsFrozenOn(sessionDate))
+            .SelectMany(p => p.Freezes!.Where(f => f.From <= sessionDate && sessionDate <= f.To).Select(f => (DateOnly?)f.To))
+            .Max();
+
     public static PassCandidate? Pick(IEnumerable<PassCandidate> passes, DateOnly sessionDate, string classCategory) =>
         passes
             .Where(p => p.StartsOn <= sessionDate && sessionDate <= p.EndsOn)

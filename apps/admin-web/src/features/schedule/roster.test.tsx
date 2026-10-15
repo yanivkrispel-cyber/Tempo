@@ -85,6 +85,9 @@ function renderAt(routesForApi: Record<string, unknown>, now: string, permission
 
 afterEach(() => vi.useRealTimers());
 
+const lastMove = (api: { requests: { url: string }[] }) =>
+  api.requests.map((request) => request.url.endsWith("/move")).lastIndexOf(true);
+
 const rosterOf = (booked: unknown[], waitlisted: unknown[] = []) => ({ session, booked, waitlisted });
 
 describe("the roster", () => {
@@ -138,6 +141,70 @@ describe("the roster", () => {
     );
     const post = api.requests.findIndex((request) => request.url.endsWith("/attendance"));
     expect(api.bodies[post]).toEqual({ state: "attended" });
+  });
+
+  it("moves a booked place to another class with a free place, and says when that class filled meanwhile", async () => {
+    const other = (n: number, overrides: Record<string, unknown> = {}) => ({
+      ...session,
+      id: id(n),
+      localDate: "2026-10-16",
+      // 09:00 in Israel on 16 October.
+      startsAt: "2026-10-16T06:00:00Z",
+      endsAt: "2026-10-16T06:50:00Z",
+      bookedCount: 1,
+      capacity: 4,
+      ...overrides,
+    });
+    let full = true;
+    const api = renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([entry(1, "שירה כהן")]),
+        [`GET ${base}/sessions`]: {
+          items: [
+            session,
+            other(4),
+            other(5, { bookedCount: 4 }),
+            other(6, { status: "cancelled" }),
+            // Already started: 11:00 in Israel today.
+            other(7, { localDate: "2026-10-14", startsAt: "2026-10-14T08:00:00Z", endsAt: "2026-10-14T08:50:00Z" }),
+          ],
+        },
+        [`POST ${base}/bookings/${id(11)}/move`]: () =>
+          full ? ((full = false), problem(409, "session.full")) : json(booking(2, "שירה כהן", { sessionId: id(4) })),
+      },
+      "2026-10-14T09:00:00Z",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "העברה של שירה כהן לשיעור אחר" }));
+    const dialog = screen.getByRole("dialog", { name: "העברה של שירה כהן לשיעור אחר" });
+    const select = await within(dialog).findByRole("combobox", { name: /לאיזה שיעור/ });
+    // Only the class that has not started, is not cancelled and has room.
+    expect(
+      within(select)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["בחרו שיעור", "פילאטיס מכשירים · 16.10 09:00 · 3 מקומות פנויים"]);
+    await userEvent.selectOptions(select, id(4));
+    await userEvent.click(within(dialog).getByRole("button", { name: "העברה" }));
+    expect(await within(dialog).findByText("השיעור מלא.")).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "העברה" }));
+    expect(await screen.findByText("שירה כהן הועבר.ה לשיעור פילאטיס מכשירים · 16.10 09:00")).toBeInTheDocument();
+    expect(api.bodies[lastMove(api)]).toEqual({ sessionId: id(4) });
+  });
+
+  it("does not offer a move for a waiting place or after the class started", async () => {
+    renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf(
+          [entry(1, "שירה כהן")],
+          [entry(3, "מאיה לוי", { status: "waitlisted", waitlistPosition: 1, passName: null })],
+        ),
+      },
+      // Ten minutes into the class.
+      "2026-10-14T14:40:00Z",
+    );
+    expect(await screen.findByRole("button", { name: "ביטול ההרשמה של שירה כהן" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^העברה של/ })).not.toBeInTheDocument();
   });
 
   it("cancels a late booking and returns the entry when staff choose to", async () => {

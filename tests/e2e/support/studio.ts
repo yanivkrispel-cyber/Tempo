@@ -65,8 +65,9 @@ export async function createSession(
  */
 export async function removeE2eSchedule(api: Api, ownPersonId?: string): Promise<void> {
   const today = studioDay(0);
-  const classTypes = (await api.call<{ items: { id: string; name: string; status: string }[] }>("GET", "/class-types")).items
-    .filter((item) => item.name.startsWith("e2e-"));
+  const classTypes = (
+    await api.call<{ items: { id: string; name: string; status: string }[] }>("GET", "/class-types")
+  ).items.filter((item) => item.name.startsWith("e2e-"));
   const typeIds = new Set(classTypes.map((item) => item.id));
 
   const sessions = (await sessionsBetween(api, studioDay(0), studioDay(60))).filter(
@@ -79,18 +80,24 @@ export async function removeE2eSchedule(api: Api, ownPersonId?: string): Promise
       "GET",
       `/people/${ownPersonId}/passes`,
     );
-    for (const pass of passes.items.filter((item) => item.status === "active" && item.product.name.startsWith("e2e-"))) {
+    for (const pass of passes.items.filter(
+      (item) => item.status === "active" && item.product.name.startsWith("e2e-"),
+    )) {
       await api.call("POST", `/passes/${pass.id}/void`, { accept: [409] });
     }
   }
 
-  const templates = (await api.call<{ items: { id: string; classTypeId: string; validUntil?: string | null }[] }>(
-    "GET",
-    "/schedule-templates",
-  )).items.filter((item) => typeIds.has(item.classTypeId) && !item.validUntil);
-  for (const template of templates) await api.call("PATCH", `/schedule-templates/${template.id}`, { data: { validUntil: today } });
+  const templates = (
+    await api.call<{ items: { id: string; classTypeId: string; validUntil?: string | null }[] }>(
+      "GET",
+      "/schedule-templates",
+    )
+  ).items.filter((item) => typeIds.has(item.classTypeId) && !item.validUntil);
+  for (const template of templates)
+    await api.call("PATCH", `/schedule-templates/${template.id}`, { data: { validUntil: today } });
 
-  const products = (await api.call<{ items: { id: string; name: string; status: string }[] }>("GET", "/pass-products")).items;
+  const products = (await api.call<{ items: { id: string; name: string; status: string }[] }>("GET", "/pass-products"))
+    .items;
   for (const product of products.filter((item) => item.name.startsWith("e2e-") && item.status === "active")) {
     await api.call("POST", `/pass-products/${product.id}/archive`, { accept: [409] });
   }

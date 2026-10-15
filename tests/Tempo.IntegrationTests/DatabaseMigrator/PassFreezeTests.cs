@@ -92,6 +92,46 @@ public sealed class PassFreezeTests(PostgresFixture postgres) : IClassFixture<Po
 
     private sealed record Studio(TenantContext Owner, PeopleService People, PassService Passes, BookingService Bookings, Guid ClassType);
 
+    [Fact]
+    public async Task TheMember_SeesFrozenUntilOnTheTimetable_AndInTheRefusal()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var (member, person) = await MemberWithLoginAsync(db, s);
+        var product = await s.Passes.CreateProductAsync(s.Owner, new NewPassProduct("membership", "מנוי חודשי", null, 30, null, null, null), CancellationToken.None);
+        var pass = await s.Passes.GrantAsync(s.Owner, person, new NewPass(product.Id, null, null), CancellationToken.None);
+        var today = Today();
+        await s.Passes.FreezeAsync(s.Owner, pass.Id, new NewFreeze(today.AddDays(3), today.AddDays(9)), CancellationToken.None);
+        var inside = await SessionAsync(db, s, TimeSpan.FromDays(5));
+        var after = await SessionAsync(db, s, TimeSpan.FromDays(12));
+
+        var timetable = await new TimetableService(db, TimeProvider.System).ListSessionsAsync(member, new SessionQuery(today, today.AddDays(20), null, null), CancellationToken.None);
+
+        timetable.Single(x => x.Id == inside).Should().BeEquivalentTo(new { PassPreview = (PassSummaryView?)null, FrozenUntil = today.AddDays(9) });
+        timetable.Single(x => x.Id == after).FrozenUntil.Should().BeNull();
+        timetable.Single(x => x.Id == after).PassPreview!.Name.Should().Be("מנוי חודשי");
+        var refused = () => s.Bookings.BookAsync(member, inside, null, CancellationToken.None);
+        var problem = (await refused.Should().ThrowAsync<DomainRuleViolationException>()).Which;
+        problem.Code.Should().Be("booking.no_valid_pass");
+        problem.Extensions!["frozenUntil"].Should().Be(today.AddDays(9));
+    }
+
+    /// <summary>A member with a login: an account, a client membership, and the people row linked to it.</summary>
+    private static async Task<(TenantContext Member, Guid PersonId)> MemberWithLoginAsync(MigratedDatabase db, Studio s)
+    {
+        var account = Guid.CreateVersion7();
+        await db.AsMasterAsync(
+            "INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at) VALUES ($1, 'active', 'member@example.com', true, now(), now(), now())",
+            account);
+        var membershipId = Guid.CreateVersion7();
+        await db.AsMasterAsync(
+            "INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) VALUES ($1, $2, $3, 'client', 'active', now(), now())",
+            s.Owner.OrganizationId, membershipId, account);
+        var person = (await s.People.CreateAsync(s.Owner, new NewPerson("Member", null, null, null, "member@example.com", null), CancellationToken.None)).Person.Id;
+        await db.AsMasterAsync("UPDATE people.people SET user_account_id = $1, membership_id = $2 WHERE id = $3", account, membershipId, person);
+        return (new TenantContext(s.Owner.OrganizationId, account, membershipId, MembershipRole.Client, OrganizationStatus.Active, "test"), person);
+    }
+
     private static DateOnly Today() => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, Israel).DateTime);
 
     private static async Task<Studio> StudioAsync(MigratedDatabase db)

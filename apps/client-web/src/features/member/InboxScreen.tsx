@@ -9,7 +9,7 @@ import { clockTime, momentText } from "./studioTime";
 
 const title = "התראות";
 
-/** What each kind of in-app notification says (docs/29 sections 4.2, 6.3, 11 and 16.2). Unknown kinds are not shown. */
+/** What each kind of in-app notification says (docs/29 sections 4.2, 6.3, 11, 16.1 and 16.2). Unknown kinds are not shown. */
 const kinds: Record<string, { title: string; body: string; icon: IconName; tone: ChipTone }> = {
   "booking.promoted": {
     title: "התפנה מקום ונרשמת",
@@ -22,6 +22,12 @@ const kinds: Record<string, { title: string; body: string; icon: IconName; tone:
     body: "לכן יצאת מרשימת ההמתנה. כדי להירשם, פנו לסטודיו.",
     icon: "credit-card",
     tone: "warning",
+  },
+  "booking.moved": {
+    title: "הסטודיו העביר אותך לשיעור אחר",
+    body: "המקום שלך עבר לשיעור הזה, עם אותה כניסה: לא נוצלה כניסה נוספת.",
+    icon: "calendar",
+    tone: "info",
   },
   "session.cancelled": {
     title: "הסטודיו ביטל שיעור",
