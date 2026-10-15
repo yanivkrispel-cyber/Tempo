@@ -19,6 +19,14 @@ How it moves:
 | Focus lost when a card or panel closes (focus should move to a stable heading) | standards-reviewer | #127 | `apps/admin-web/src/features/security/SecurityPage.tsx` (enroll card closing) |
 | Field error text is a fragment, not an instruction ("6 ספרות מהאפליקציה") | standards-reviewer | #127 | `apps/admin-web/src/features/security/SecurityPage.tsx` (code field error) |
 | Studio mutation without a `mutationKey` holding the studio id, so frame banners miss its 402/403 (issue #131) | standards-reviewer | #127 | `apps/admin-web/src/features/members/MemberDialogs.tsx` (`useUpdateMember`) |
+| A failed read shown as an empty state ("nothing here") instead of an error with a retry | standards-reviewer | #128 | `apps/client-web/src/features/member/HomeScreen.tsx:160` |
+| Focus drops to `<body>` when the pressed control unmounts after a mutation | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:147` |
+| A `shared/design-system` wrapper changed in one app but not the other | standards-reviewer | #128 | `apps/client-web/src/shared/design-system/Schedule.tsx:157` |
+| A server refusal closes its dialog and is told only in a toast | standards-reviewer | #128 | `apps/client-web/src/features/member/BookingSheet.tsx:38` |
+| Studio-entered text inside a Hebrew sentence without `<bdi>`, or after a Hebrew prefix letter ("מ{name}") | standards-reviewer | #128 | `apps/client-web/src/features/member/bookingState.ts` (`passUseText`) |
+| The same default or rule computed in two places instead of one helper | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:130` (`waitlistCutoffHours ?? 2`) |
+| Names that hide what a variable holds (`item` for a session, `booking` for a boolean) | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:70` |
+| An error state with no way to retry | standards-reviewer | #128 | `apps/client-web/src/features/member/Passes.tsx:61` |
 | Typographic dash or symbol in Hebrew UI text where the brand book writes words ("17:30–18:20" for "17:30 עד 18:20") | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/TemplatesPage.tsx:133` |
 | A failed request shown as an empty result ("לא נמצא אף אחד" on a search error) | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/RosterSection.tsx:413` |
 | A feature importing another feature's private module instead of `src/shared` | standards-reviewer | #129 | `apps/admin-web/src/features/passes/PassProductsPage.tsx:21` |

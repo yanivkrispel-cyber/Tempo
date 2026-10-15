@@ -7,7 +7,9 @@ import { InvitePage } from "../features/invitations/InvitePage";
 import { JoinPage } from "../features/join/JoinPage";
 import { BookingsScreen } from "../features/member/BookingsScreen";
 import { BookScreen } from "../features/member/BookScreen";
+import { ClassScreen } from "../features/member/ClassScreen";
 import { HomeScreen } from "../features/member/HomeScreen";
+import { InboxScreen } from "../features/member/InboxScreen";
 import { MemberLayout } from "../features/member/MemberLayout";
 import { ProfileScreen } from "../features/member/ProfileScreen";
 import { NotFoundPage } from "./NotFoundPage";
@@ -21,13 +23,15 @@ export const routes: RouteObject[] = [
         element: <RequireAccount />,
         children: [
           {
-            // The member screens run on sample data until the studio API exists (features/member/sample.ts);
-            // the profile's name, email and studio are real.
+            // The timetable, bookings and the waitlist are the studio API (docs/29); the home screen's goal and
+            // streak, and the profile's health declaration, are still sample data (features/member/sample.ts).
             element: <MemberLayout />,
             children: [
               { path: "/", element: <HomeScreen /> },
               { path: "/book", element: <BookScreen /> },
+              { path: "/classes/:sessionId", element: <ClassScreen /> },
               { path: "/bookings", element: <BookingsScreen /> },
+              { path: "/inbox", element: <InboxScreen /> },
               { path: "/profile", element: <ProfileScreen /> },
             ],
           },

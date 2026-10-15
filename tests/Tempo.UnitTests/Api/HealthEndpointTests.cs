@@ -43,6 +43,22 @@ public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory) 
         response.Headers.GetValues(CorrelationIdMiddleware.HeaderName).Should().Contain("test-correlation-id");
     }
 
+    [Theory]
+    [InlineData("has spaces and <tags>")]
+    [InlineData("a_b")]
+    [InlineData("0123456789012345678901234567890123456789012345678901234567890123456789")]
+    public async Task Health_ReplacesACorrelationId_ThatIsNotShortAndPlain(string sent)
+    {
+        var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/health");
+        request.Headers.TryAddWithoutValidation(CorrelationIdMiddleware.HeaderName, sent);
+
+        var response = await client.SendAsync(request);
+
+        var echoed = response.Headers.GetValues(CorrelationIdMiddleware.HeaderName).Single();
+        echoed.Should().NotBe(sent).And.MatchRegex("^[a-f0-9]{32}$", "a generated id takes its place (#124)");
+    }
+
     [Fact]
     public async Task Health_GeneratesCorrelationId_WhenNotProvided()
     {

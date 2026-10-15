@@ -88,7 +88,9 @@ export class TempoStage extends Stage {
       httpApi: api.httpApi,
       apiFunction: api.apiFunction.function,
       workerFunction: messaging.workerFunction.function,
-      migratorFunction: database.migratorFunction.function
+      migratorFunction: database.migratorFunction.function,
+      workQueue: messaging.workQueue.queue,
+      workDeadLetterQueue: messaging.workQueue.deadLetterQueue
     });
   }
 }
