@@ -119,11 +119,15 @@ export interface EventCardProps {
   /** The corner label, e.g. "3 מקומות" or "מלא · המתנה". */
   badge: string;
   to?: string;
+  /** Opens something in place (a dialog); the tile becomes a button. */
+  onClick?: () => void;
+  /** Struck through, on a sunken tile. */
+  cancelled?: boolean;
 }
 
 /** A class tile with its category stripe, a fill bar and a corner label. */
-export function EventCard({ title, meta, color, fill, badge, to }: EventCardProps) {
-  const className = cx("tp-event", `tp-event--${color}`);
+export function EventCard({ title, meta, color, fill, badge, to, onClick, cancelled = false }: EventCardProps) {
+  const className = cx("tp-event", cancelled ? "tp-event--cancelled" : `tp-event--${color}`);
   const style = { "--tp-fill": `${Math.round(Math.min(Math.max(fill, 0), 1) * 100)}%` } as CSSProperties;
   const content = (
     <>
@@ -135,6 +139,13 @@ export function EventCard({ title, meta, color, fill, badge, to }: EventCardProp
       </span>
     </>
   );
+  if (onClick) {
+    return (
+      <button type="button" className={className} style={style} onClick={onClick}>
+        {content}
+      </button>
+    );
+  }
   return to ? (
     <Link to={to} className={className} style={style}>
       {content}

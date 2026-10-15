@@ -1,6 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, endOfWeek, formatDate, fromIsoDate, monthWeeks, parseDate, startOfWeek } from "./dates";
-import { matchTimes, parseTime, timeOptions } from "./times";
+import {
+  addDays,
+  addMonths,
+  endOfWeek,
+  formatDate,
+  fromIsoDate,
+  monthWeeks,
+  parseDate,
+  startOfWeek,
+  todayIn,
+} from "./dates";
+import { clockTime, matchTimes, parseTime, timeOptions } from "./times";
+
+describe("the studio's time zone", () => {
+  it("reads today and clock times on the studio's clock, across the October DST change", () => {
+    // 22:30 UTC on 14 October is already 15 October in Israel (UTC+3).
+    expect(todayIn("Asia/Jerusalem", new Date("2026-10-14T22:30:00Z"))).toBe("2026-10-15");
+    expect(clockTime("2026-10-15T14:30:00Z", "Asia/Jerusalem")).toBe("17:30");
+    // After the change on 25 October Israel is UTC+2.
+    expect(clockTime("2026-10-27T15:30:00Z", "Asia/Jerusalem")).toBe("17:30");
+  });
+});
 
 describe("dates", () => {
   it("rejects dates that do not exist", () => {

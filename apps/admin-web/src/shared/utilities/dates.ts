@@ -29,6 +29,12 @@ export function todayIso(): IsoDate {
   return toIsoDate(new Date());
 }
 
+/** Today's date on the studio's wall calendar (an IANA zone such as "Asia/Jerusalem"), not the device's. */
+export function todayIn(timeZone: string, now: Date = new Date()): IsoDate {
+  // en-CA writes YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
 // Calendar arithmetic on local dates (setDate / setMonth), so a DST change never shifts a day.
 export function addDays(iso: IsoDate, days: number): IsoDate {
   const date = requireDate(iso);

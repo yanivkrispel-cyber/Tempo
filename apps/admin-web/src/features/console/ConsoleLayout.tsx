@@ -16,6 +16,10 @@ interface Section {
 
 const sections: Section[] = [
   { to: "", label: "חברי הסטודיו", icon: "users", permission: "members.view" },
+  { to: "schedule", label: "מערכת שבועית", icon: "calendar", permission: "schedule.view" },
+  { to: "weekly-classes", label: "שיעורים קבועים", icon: "clock", permission: "schedule.manage" },
+  { to: "class-types", label: "סוגי שיעורים", icon: "list", permission: "schedule.view" },
+  { to: "rooms", label: "חדרים", icon: "home", permission: "schedule.view" },
   { to: "people", label: "אנשים", icon: "user", permission: "people.view" },
   { to: "duplicates", label: "כפילויות", icon: "users", permission: "people.merge" },
   { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
@@ -77,7 +81,8 @@ export function ConsoleLayout() {
             {sections
               .filter((section) => studio.can(section.permission))
               .map((section) => (
-                <NavLink key={section.to} to={section.to} end className="tp-nav__item">
+                // The timetable stays current on a class's own page (schedule/sessions/...).
+                <NavLink key={section.to} to={section.to} end={section.to !== "schedule"} className="tp-nav__item">
                   <Icon name={section.icon} />
                   {section.label}
                 </NavLink>

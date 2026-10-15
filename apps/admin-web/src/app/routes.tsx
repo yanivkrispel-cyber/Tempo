@@ -12,6 +12,11 @@ import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
 import { RolesPage } from "../features/roles/RolesPage";
+import { ClassTypesPage } from "../features/schedule/ClassTypesPage";
+import { RoomsPage } from "../features/schedule/RoomsPage";
+import { SchedulePage } from "../features/schedule/SchedulePage";
+import { SessionPage } from "../features/schedule/SessionPage";
+import { TemplatesPage } from "../features/schedule/TemplatesPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
 import { SelectStudioPage } from "../features/studios/SelectStudioPage";
@@ -38,6 +43,11 @@ export const routes: RouteObject[] = [
               { path: "people", element: <PeoplePage /> },
               { path: "people/:personId", element: <PersonPage /> },
               { path: "duplicates", element: <DuplicatesPage /> },
+              { path: "schedule", element: <SchedulePage /> },
+              { path: "schedule/sessions/:sessionId", element: <SessionPage /> },
+              { path: "weekly-classes", element: <TemplatesPage /> },
+              { path: "class-types", element: <ClassTypesPage /> },
+              { path: "rooms", element: <RoomsPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "audit", element: <AuditPage /> },
             ],
