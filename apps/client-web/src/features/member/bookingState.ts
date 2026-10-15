@@ -104,6 +104,7 @@ export function pastStatus(
       return { label: "הוסרת מהשיעור", tone: "neutral", plain: true };
     case "cancelled":
       if (booking.cancelReason === "session_cancelled") return { label: "השיעור בוטל", tone: "neutral", plain: true };
+      if (booking.cancelReason === "moved") return { label: "הועבר לשיעור אחר", tone: "neutral", plain: true };
       if (booking.cancelReason === "no_valid_pass") return { label: "יצאת מההמתנה · אין כרטיסייה", tone: "warning" };
       // A place left on the waitlist reads the same as a cancel in time: the API does not say which it was.
       return booking.lateCancel

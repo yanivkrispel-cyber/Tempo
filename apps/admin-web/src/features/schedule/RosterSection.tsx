@@ -13,15 +13,17 @@ import {
   Chip,
   Dialog,
   EmptyState,
+  Field,
+  Select,
   Skeleton,
   Tabs,
   useToast,
 } from "../../shared/design-system";
 import { PersonPicker, type PickedPerson } from "../../shared/PersonPicker";
-import { dateIn, formatDayMonth } from "../../shared/utilities/dates";
+import { addDays, dateIn, formatDayMonth } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
-import { hoursLabel, scheduleKeys, useBookingPolicy, type Session } from "./queries";
+import { hoursLabel, scheduleKeys, useBookingPolicy, useSessions, type Session } from "./queries";
 
 type RosterEntry = Schemas["RosterEntry"];
 type Booking = Schemas["Booking"];
@@ -59,6 +61,7 @@ export function RosterSection({ session, timeZone }: { session: Session; timeZon
   const roster = useRoster(session.id);
   const [tab, setTab] = useState<"booked" | "waitlisted">("booked");
   const [cancelling, setCancelling] = useState<RosterEntry | null>(null);
+  const [moving, setMoving] = useState<RosterEntry | null>(null);
   const [adding, setAdding] = useState(false);
   // When the page opened; the API has the last word on every window.
   const [now] = useState(() => Date.now());
@@ -135,6 +138,7 @@ export function RosterSection({ session, timeZone }: { session: Session; timeZon
                   timeZone={timeZone}
                   markable={markable && tab === "booked"}
                   onCancel={manage && now < ends ? () => setCancelling(entry) : undefined}
+                  onMove={manage && now < starts && entry.status === "booked" ? () => setMoving(entry) : undefined}
                 />
               ))}
             </ul>
@@ -148,6 +152,15 @@ export function RosterSection({ session, timeZone }: { session: Session; timeZon
         <CancelBookingDialog entry={cancelling} session={session} now={now} onClose={() => setCancelling(null)} />
       )}
       {adding && <AddBookingDialog session={session} onClose={() => setAdding(false)} />}
+      {moving && (
+        <MoveBookingDialog
+          entry={moving}
+          session={session}
+          timeZone={timeZone}
+          now={now}
+          onClose={() => setMoving(null)}
+        />
+      )}
     </Card>
   );
 }
@@ -157,6 +170,8 @@ interface RosterRowProps {
   timeZone: string;
   markable: boolean;
   onCancel?: () => void;
+  /** Only for a booked place before the class starts (docs/29 section 16.1). */
+  onMove?: () => void;
 }
 
 /** What is left on the punch card after this place, so the desk can offer a new card before it runs out. */
@@ -165,7 +180,7 @@ function entriesLeftText(left: number): string {
   return left === 1 ? "נותרה כניסה אחת" : `נותרו ${left} כניסות`;
 }
 
-function RosterRow({ entry, timeZone, markable, onCancel }: RosterRowProps) {
+function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowProps) {
   const studio = useStudio();
   const name = entry.person.displayName;
   const bookedAt = new Date(entry.bookedAt);
@@ -205,6 +220,11 @@ function RosterRow({ entry, timeZone, markable, onCancel }: RosterRowProps) {
               {entry.status === "attended" ? "הגיע.ה" : "לא הגיע.ה"}
             </Chip>
           )
+        )}
+        {onMove && (
+          <Button variant="ghost" size="sm" onClick={onMove} aria-label={`העברה של ${name} לשיעור אחר`}>
+            העברה
+          </Button>
         )}
         {onCancel && (
           <Button
@@ -347,6 +367,128 @@ function CancelBookingDialog({ entry, session, now, onClose }: CancelBookingDial
           {errorMessage(cancel.error, "לא הצלחנו לבטל. נסו שוב.")}
         </Banner>
       )}
+    </Dialog>
+  );
+}
+
+/** How far ahead the move dialog lists classes: the member's own booking horizon is 14 days (C-4). */
+const moveDays = 14;
+
+interface MoveBookingDialogProps {
+  entry: RosterEntry;
+  session: Session;
+  timeZone: string;
+  now: number;
+  onClose: () => void;
+}
+
+/**
+ * Moves a booked place to another class (docs/29 section 16.1). The entry moves with it: nothing is spent or returned.
+ * Only classes that have not started and have a free place are offered; a move never joins a waitlist.
+ */
+function MoveBookingDialog({ entry, session, timeZone, now, onClose }: MoveBookingDialogProps) {
+  const api = useApi();
+  const toast = useToast();
+  const refresh = useRefreshSchedule();
+  const { organizationId } = useStudio();
+  const from = dateIn(new Date(now), timeZone);
+  const sessions = useSessions(from, addDays(from, moveDays));
+  const [target, setTarget] = useState("");
+  const name = entry.person.displayName;
+  const options = (sessions.data ?? [])
+    .filter(
+      (item) =>
+        item.id !== session.id &&
+        item.status === "scheduled" &&
+        new Date(item.startsAt).getTime() > now &&
+        item.bookedCount < item.capacity,
+    )
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const when = (item: Session) =>
+    `${item.classType.name} · ${formatDayMonth(item.localDate)} ${clockTime(item.startsAt, timeZone)}`;
+  const label = (item: Session) => {
+    const free = item.capacity - item.bookedCount;
+    return `${when(item)} · ${free === 1 ? "מקום אחד פנוי" : `${free} מקומות פנויים`}`;
+  };
+
+  const move = useMutation({
+    mutationKey: [organizationId, "schedule.move"],
+    mutationFn: (sessionId: string) =>
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/bookings/{bookingId}/move", {
+          params: { path: { organizationId, bookingId: entry.bookingId } },
+          body: { sessionId },
+        }),
+      ),
+    onSuccess: async (booking: Booking) => {
+      await refresh();
+      const moved = options.find((item) => item.id === booking.sessionId);
+      toast.show({
+        tone: "success",
+        icon: "check",
+        message: moved ? `${name} הועבר.ה לשיעור ${when(moved)}` : `${name} הועבר.ה לשיעור אחר`,
+      });
+      onClose();
+    },
+  });
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (target) move.mutate(target);
+  };
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={`העברה של ${name} לשיעור אחר`}
+      description="הכניסה עוברת עם המקום: לא נוצלת כניסה נוספת ולא חוזרת כניסה. אם יש כאן ממתינים, הראשון.ה בתור יקבל.ת את המקום."
+      actions={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            ביטול
+          </Button>
+          <Button type="submit" form="move-booking" loading={move.isPending} disabled={!target}>
+            העברה
+          </Button>
+        </>
+      }
+    >
+      <form id="move-booking" className="tp-stack" onSubmit={submit} noValidate>
+        {sessions.isError ? (
+          <Banner tone="danger" icon="info">
+            {errorMessage(sessions.error, "לא הצלחנו לטעון את השיעורים הקרובים. נסו שוב.")}
+            <Button variant="secondary" size="sm" onClick={() => void sessions.refetch()}>
+              ניסיון חוזר
+            </Button>
+          </Banner>
+        ) : sessions.isPending ? (
+          <div aria-busy="true">
+            <span className="tp-sr-only">טוענים את השיעורים הקרובים…</span>
+            <Skeleton height={44} />
+          </div>
+        ) : options.length === 0 ? (
+          <p className="tp-muted">אין בשבועיים הקרובים שיעור עם מקום פנוי.</p>
+        ) : (
+          <Field label="לאיזה שיעור" required help="רק שיעורים בשבועיים הקרובים שיש בהם מקום פנוי.">
+            <Select value={target} onChange={(event) => setTarget(event.target.value)}>
+              <option value="">בחרו שיעור</option>
+              {options.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {label(item)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+        {move.isError && (
+          <Banner tone="danger" icon="info">
+            {hasCode(move.error, "booking.not_cancellable")
+              ? "אפשר להעביר רק הרשמה פעילה. ייתכן שמישהו אחר כבר ביטל או העביר אותה."
+              : errorMessage(move.error, "לא הצלחנו להעביר. נסו שוב.")}
+          </Banner>
+        )}
+      </form>
     </Dialog>
   );
 }
