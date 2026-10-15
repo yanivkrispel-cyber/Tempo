@@ -1,5 +1,5 @@
+import { safeReturnTo } from "@tempo/api-client/auth";
 import { Navigate, useSearchParams } from "react-router";
-import { safeReturnTo } from "./authClient";
 import { useAuth } from "./AuthProvider";
 import { SignInButtons } from "./SignInButtons";
 

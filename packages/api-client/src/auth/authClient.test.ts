@@ -1,8 +1,45 @@
 import { describe, expect, it, vi } from "vitest";
-import { memoryStorage, sessionStorageWith, signedInAuth, signedOutAuth, testAuthConfig } from "../test/auth";
-import { AuthClient, safeReturnTo, SignInError } from "./authClient";
-import { readAppConfig } from "./config";
+import { AuthClient, safeReturnTo, SignInError, type AuthClientOptions, type AuthConfig, type Session } from "./authClient";
 import { codeChallenge } from "./pkce";
+
+const testAuthConfig: AuthConfig = {
+  cognitoDomain: "https://tempo-test.auth.eu-central-1.amazoncognito.com",
+  clientId: "test-client",
+  redirectUri: "http://localhost:5174/auth/callback",
+  logoutUri: "http://localhost:5174/"
+};
+
+/** An in-memory Web Storage. */
+function memoryStorage(entries: Record<string, string> = {}): Storage {
+  const map = new Map(Object.entries(entries));
+  return {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (key) => map.get(key) ?? null,
+    key: (index) => [...map.keys()][index] ?? null,
+    removeItem: (key) => void map.delete(key),
+    setItem: (key, value) => void map.set(key, String(value))
+  };
+}
+
+const sessionStorageWith = (session: Session) => memoryStorage({ "tempo.client-web.session": JSON.stringify(session) });
+
+function signedInAuth(overrides: Partial<AuthClientOptions> = {}): AuthClient {
+  return new AuthClient({
+    config: testAuthConfig,
+    app: "client-web",
+    storage: sessionStorageWith({ accessToken: "access-1", refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 }),
+    flowStorage: memoryStorage(),
+    redirect: () => {},
+    ...overrides
+  });
+}
+
+function signedOutAuth(overrides: Partial<AuthClientOptions> = {}): AuthClient {
+  return new AuthClient({ config: testAuthConfig, app: "client-web", storage: memoryStorage(), flowStorage: memoryStorage(), redirect: () => {}, ...overrides });
+}
 
 function tokenResponse(body: object, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -13,6 +50,16 @@ async function startSignIn(auth: AuthClient, redirect: ReturnType<typeof vi.fn>,
   await auth.signIn(returnTo);
   return new URL(redirect.mock.calls[0]![0] as string);
 }
+
+describe("storage keys", () => {
+  it("are named after the app, so two apps on one origin never share a session", async () => {
+    const storage = memoryStorage();
+    const flowStorage = memoryStorage();
+    await new AuthClient({ config: testAuthConfig, app: "admin-web", storage, flowStorage, redirect: () => {} }).signIn("/");
+    expect(flowStorage.getItem("tempo.admin-web.signin")).not.toBeNull();
+    expect(flowStorage.getItem("tempo.client-web.signin")).toBeNull();
+  });
+});
 
 describe("pkce", () => {
   it("matches the RFC 7636 appendix B example", async () => {
@@ -149,7 +196,7 @@ describe("AuthClient tokens", () => {
   });
 
   it("ignores a stored session it cannot read", () => {
-    const auth = new AuthClient({ config: testAuthConfig, storage: memoryStorage({ "tempo.client-web.session": "{not json" }), flowStorage: memoryStorage() });
+    const auth = new AuthClient({ config: testAuthConfig, app: "client-web", storage: memoryStorage({ "tempo.client-web.session": "{not json" }), flowStorage: memoryStorage() });
     expect(auth.isSignedIn).toBe(false);
   });
 });
@@ -164,19 +211,5 @@ describe("safeReturnTo", () => {
     ["bookings", "/"]
   ])("%s -> %s", (input, expected) => {
     expect(safeReturnTo(input)).toBe(expected);
-  });
-});
-
-describe("readAppConfig", () => {
-  it("builds the callback and logout URLs from the app origin", () => {
-    const env = { VITE_API_URL: "https://api.example/", VITE_COGNITO_DOMAIN: "https://auth.example/", VITE_COGNITO_CLIENT_ID: "abc" } as ImportMetaEnv;
-    expect(readAppConfig(env, "http://localhost:5174")).toEqual({
-      apiUrl: "https://api.example",
-      auth: { cognitoDomain: "https://auth.example", clientId: "abc", redirectUri: "http://localhost:5174/auth/callback", logoutUri: "http://localhost:5174/" }
-    });
-  });
-
-  it("has no auth when the Cognito variables are missing", () => {
-    expect(readAppConfig({} as ImportMetaEnv, "http://localhost:5174").auth).toBeNull();
   });
 });

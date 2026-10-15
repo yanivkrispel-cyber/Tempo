@@ -1,5 +1,5 @@
+import type { AuthClient } from "@tempo/api-client/auth";
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
-import type { AuthClient } from "./authClient";
 
 interface AuthState {
   /** Null when the app has no sign-in configuration (`.env.example`). */

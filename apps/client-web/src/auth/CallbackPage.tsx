@@ -1,7 +1,7 @@
+import { SignInError } from "@tempo/api-client/auth";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Banner, ButtonLink, Skeleton } from "../shared/design-system";
-import { SignInError } from "./authClient";
 import { useAuth } from "./AuthProvider";
 
 /** `/auth/callback`: the Hosted UI returns here with `?code&state`. */
