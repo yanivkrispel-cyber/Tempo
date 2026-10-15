@@ -19,6 +19,7 @@ public static class PlatformEndpoints
         platform.MapGet("/organizations/{organizationId:guid}", GetAsync).WithName("platformGetOrganization").Produces<PlatformOrganizationResponse>();
         platform.MapPost("/organizations/{organizationId:guid}/suspend", SuspendAsync).WithName("platformSuspendOrganization").Produces<PlatformOrganizationResponse>();
         platform.MapPost("/organizations/{organizationId:guid}/reactivate", ReactivateAsync).WithName("platformReactivateOrganization").Produces<PlatformOrganizationResponse>();
+        platform.MapPost("/organizations/{organizationId:guid}/force-owner-transfer", ForceOwnerTransferAsync).WithName("platformForceOwnerTransfer").Produces<PlatformOrganizationResponse>();
         platform.MapGet("/stats", StatsAsync).WithName("platformGetStats").Produces<PlatformStatsResponse>();
 
         endpoints.MapTenantGroup().MapGet("/audit-events", ListAuditEventsAsync).RequirePermission(Permissions.AuditView).WithName("listAuditEvents").Produces<AuditEventPageResponse>();
@@ -44,6 +45,18 @@ public static class PlatformEndpoints
     private static async Task<IResult> SetStatusAsync(HttpContext httpContext, Guid organizationId, OrganizationStatus status, ReasonRequest request, IPlatformService platform)
     {
         var updated = await platform.SetStatusAsync(OperatorRouteFilter.Current(httpContext), organizationId, status, request.Reason ?? string.Empty, httpContext.RequestAborted);
+        return Results.Ok(ToResponse(updated));
+    }
+
+    private static async Task<IResult> ForceOwnerTransferAsync(HttpContext httpContext, Guid organizationId, ForceOwnerTransferRequest request, IPlatformService platform)
+    {
+        var updated = await platform.ForceOwnerTransferAsync(
+            OperatorRouteFilter.Current(httpContext),
+            organizationId,
+            request.ToMembershipId,
+            request.Reason ?? string.Empty,
+            request.Ticket ?? string.Empty,
+            httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
     }
 

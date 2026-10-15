@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Organizations.Application;
 
 namespace Tempo.Platform.Modules.PlatformAdmin;
 
@@ -41,6 +42,12 @@ public interface IPlatformService
     Task<PlatformOrganizationView> SetStatusAsync(OperatorContext caller, Guid organizationId, OrganizationStatus status, string reason, CancellationToken cancellationToken);
 
     Task<PlatformStats> StatsAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Makes an active admin the owner when the owner is unreachable (docs/27 section 3.5), with a written
+    /// reason and a support ticket. The only way to change the owner without the owner. Audited.
+    /// </summary>
+    Task<PlatformOrganizationView> ForceOwnerTransferAsync(OperatorContext caller, Guid organizationId, Guid toMembershipId, string reason, string ticket, CancellationToken cancellationToken);
 }
 
 public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatformService, IOperatorDirectory
@@ -137,6 +144,71 @@ public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatform
 
         var action = status == OrganizationStatus.Suspended ? "organization.suspended" : "organization.reactivated";
         await AuditAsync(unitOfWork, caller, action, organizationId, new { reason }, cancellationToken);
+        var after = await FindAsync(unitOfWork, organizationId, cancellationToken);
+        await unitOfWork.CommitAsync(cancellationToken);
+        return after;
+    }
+
+    public async Task<PlatformOrganizationView> ForceOwnerTransferAsync(
+        OperatorContext caller,
+        Guid organizationId,
+        Guid toMembershipId,
+        string reason,
+        string ticket,
+        CancellationToken cancellationToken)
+    {
+        reason = reason.Trim();
+        ticket = ticket.Trim();
+        if (reason.Length is < 5 or > 500)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Validation, "reason.length", "Write a reason of 5 to 500 characters.", "reason");
+        }
+
+        if (ticket.Length is < 1 or > 100)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Validation, "ticket.required", "Name the support ticket.", "ticket");
+        }
+
+        await using var unitOfWork = await BeginAsync(cancellationToken);
+        await FindAsync(unitOfWork, organizationId, cancellationToken);
+
+        Guid? ownerId = null;
+        string? targetRole = null;
+        string? targetStatus = null;
+        await using (var members = unitOfWork.Command(
+            "SELECT id, role, status FROM organizations.memberships WHERE organization_id = $1 AND (id = $2 OR (role = 'owner' AND status <> 'removed')) FOR UPDATE",
+            organizationId,
+            toMembershipId))
+        await using (var reader = await members.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (reader.GetGuid(0) == toMembershipId)
+                {
+                    targetRole = reader.GetString(1);
+                    targetStatus = reader.GetString(2);
+                }
+                else
+                {
+                    ownerId = reader.GetGuid(0);
+                }
+            }
+        }
+
+        if (targetRole is null)
+        {
+            throw new DomainRuleViolationException(ViolationKind.NotFound, "membership.not_found", "Member not found.");
+        }
+
+        if (targetRole != "admin" || targetStatus != "active")
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "ownership.target_not_admin", "The studio can go only to an active admin.");
+        }
+
+        // A studio always has an owner (ux_memberships_one_owner and the owner cannot leave).
+        var fromId = ownerId ?? throw new InvalidOperationException($"Studio {organizationId} has no owner.");
+        await OwnershipService.HandOverAsync(unitOfWork, organizationId, fromId, toMembershipId, null, cancellationToken);
+        await AuditAsync(unitOfWork, caller, "ownership.transferred_by_operator", organizationId, new { from = fromId, to = toMembershipId, reason, ticket }, cancellationToken);
         var after = await FindAsync(unitOfWork, organizationId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return after;
