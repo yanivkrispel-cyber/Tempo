@@ -2,10 +2,10 @@ import { Stack } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
 import {
-  AUTH_PATH_PREFIX,
   AUTH_RATE_LIMIT,
   CANARY_INTERVAL_MINUTES,
   GENERAL_RATE_LIMIT,
+  GUESSABLE_INPUT_PATHS,
   HEALTH_PATH
 } from "../../lib/edge/edge-stack";
 import { dev, devWithEdge, prod } from "./helpers/synth";
@@ -45,7 +45,7 @@ describe.each([
     });
   });
 
-  it("rate-limits every client, and authentication paths more strictly", () => {
+  it("rate-limits every client, and the guessable-input paths more strictly (#124)", () => {
     const rules = Object.values(template.findResources("AWS::WAFv2::WebACL"))[0].Properties.Rules as Array<{
       Name: string;
       Statement: { RateBasedStatement?: { Limit: number; ScopeDownStatement?: unknown } };
@@ -54,7 +54,12 @@ describe.each([
     const auth = rules.find((r) => r.Name === "RateLimitAuth")?.Statement.RateBasedStatement;
     expect(all?.Limit).toBe(GENERAL_RATE_LIMIT);
     expect(auth?.Limit).toBe(AUTH_RATE_LIMIT);
-    expect(JSON.stringify(auth?.ScopeDownStatement)).toContain(AUTH_PATH_PREFIX);
+    const scope = JSON.stringify(auth?.ScopeDownStatement);
+    for (const path of GUESSABLE_INPUT_PATHS) {
+      expect(scope).toContain(`"SearchString":"${path}"`);
+    }
+    expect(scope).toContain('"PositionalConstraint":"EXACTLY"');
+    expect(scope).not.toContain("/api/v1/auth/");
   });
 
   it("subscribes the distribution and the web ACL to the FREE plan tier", () => {

@@ -67,6 +67,26 @@ describe("validateEnvironmentConfig", () => {
     ).toThrow(/wildcard/);
   });
 
+  it("rejects plain-http and localhost origins or callbacks outside development (#124)", () => {
+    const https = {
+      adminWeb: ["https://console.tempo.example/auth/callback"],
+      clientWeb: ["https://app.tempo.example/auth/callback"],
+      platformAdminWeb: ["https://ops.tempo.example/auth/callback"]
+    };
+    const logout = {
+      adminWeb: ["https://console.tempo.example/"],
+      clientWeb: ["https://app.tempo.example/"],
+      platformAdminWeb: ["https://ops.tempo.example/"]
+    };
+    const staging = (overrides: Partial<TempoEnvironmentConfig>) =>
+      baseConfig({ environmentName: "stg", corsAllowedOrigins: ["https://app.tempo.example"], cognitoCallbackUrls: https, cognitoLogoutUrls: logout, ...overrides });
+
+    expect(() => validateEnvironmentConfig(staging({}))).not.toThrow();
+    expect(() => validateEnvironmentConfig(staging({ corsAllowedOrigins: ["http://app.tempo.example"] }))).toThrow(/only https/);
+    expect(() => validateEnvironmentConfig(staging({ cognitoLogoutUrls: { ...logout, clientWeb: ["https://localhost:5174/"] } }))).toThrow(/never localhost/);
+    expect(() => validateEnvironmentConfig(baseConfig())).not.toThrow();
+  });
+
   it("rejects production without deletion protection", () => {
     expect(() =>
       validateEnvironmentConfig(

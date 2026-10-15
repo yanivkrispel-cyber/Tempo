@@ -225,6 +225,10 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     if (url.includes("*")) {
       errors.push(`wildcard URLs are prohibited, got "${url}"`);
     }
+    // Only a developer's machine talks to the API over plain HTTP; staging and production never do (#124).
+    if (config.environmentName !== "dev" && (!url.startsWith("https://") || /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url))) {
+      errors.push(`${config.environmentName} allows only https origins and callbacks, never localhost, got "${url}"`);
+    }
   }
 
   if (config.featureFlags.enableWaf !== config.featureFlags.enableFrontendHosting) {
