@@ -99,6 +99,7 @@ export function DateInput({ value, onChange, min, max, today = todayIso(), class
   }
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Escape bubbles up from the input and the calendar popover; the wrapper is not a control.
     <div
       ref={anchor}
       className="tp-field__control tp-field__control--adorned"

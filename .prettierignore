@@ -1,0 +1,7 @@
+# Prettier covers the frontend workspaces only (apps/, packages/, tests/); see the root "format" script.
+node_modules/
+dist/
+coverage/
+pnpm-lock.yaml
+# Generated from the OpenAPI contract.
+packages/api-client/src/generated/
