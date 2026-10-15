@@ -2,8 +2,7 @@
 // here is docs/29 section 11: the worker closes waitlists once a day, so a waitlist place in a session that has
 // started is shown as expired, never as "waiting".
 import type { ChipTone } from "../../shared/design-system";
-import { formatDate } from "../../shared/utilities/dates";
-import type { Booking, BookingPolicy, Pass, PassSummary, Session } from "./studio";
+import type { Booking, BookingPolicy, Pass, Session } from "./studio";
 import { hasStarted } from "./studioTime";
 
 export type MyState = "none" | "booked" | "waitlisted" | "expired" | "attended" | "no_show";
@@ -38,40 +37,6 @@ export function entriesText(left: number): string {
   return left === 1 ? "נשארה כניסה אחת" : `נשארו ${left} כניסות`;
 }
 
-/** "כרטיסיית 10 · נשארו 7 כניסות" or "מנוי חודשי · בתוקף עד 12.11.2026". */
-export function passLine(pass: PassSummary): string {
-  return pass.kind === "punch_card" && pass.entriesLeft != null
-    ? `${pass.name} · ${entriesText(pass.entriesLeft)}`
-    : `${pass.name} · בתוקף עד ${formatDate(pass.endsOn)}`;
-}
-
-/** What booking will take from the pass the server would pick. */
-export function passUseText(pass: PassSummary): string {
-  if (pass.kind === "punch_card" && pass.entriesLeft != null) {
-    const after = pass.entriesLeft - 1;
-    return `תנוצל כניסה אחת מ${pass.name}. ${after === 0 ? "זו הכניסה האחרונה בכרטיסייה." : `אחרי ההרשמה ${entriesText(after)}.`}`;
-  }
-  return `כלול ב${pass.name}, בתוקף עד ${formatDate(pass.endsOn)}.`;
-}
-
-/** What waiting will take: nothing now, one entry if a place frees up. */
-export function waitPassText(pass: PassSummary): string {
-  return pass.kind === "punch_card" && pass.entriesLeft != null
-    ? `בהמתנה לא נוצלת כניסה. אם יתפנה מקום, תנוצל כניסה אחת מ${pass.name}.`
-    : `בהמתנה לא נוצל דבר. אם יתפנה מקום, ההרשמה תהיה על ${pass.name}.`;
-}
-
-/** What a booking took, for the confirmation: "בכרטיסיית 10 נשארו 6 כניסות." */
-export function passTakenText(pass: PassSummary | null | undefined): string {
-  if (!pass) return "";
-  if (pass.kind === "punch_card" && pass.entriesLeft != null) {
-    return pass.entriesLeft === 0
-      ? `זו הייתה הכניסה האחרונה ב${pass.name}.`
-      : `ב${pass.name} ${entriesText(pass.entriesLeft)}.`;
-  }
-  return `נוצל ${pass.name}.`;
-}
-
 /** Passes the member can still use: not voided, not past their end date. */
 export function livePasses(passes: readonly Pass[]): Pass[] {
   return passes.filter((pass) => pass.status === "active");
@@ -86,11 +51,15 @@ export function freeCancelDeadline(session: Session, policy: BookingPolicy | und
   return new Date(new Date(session.startsAt).getTime() - policy.freeCancelHours * 3_600_000);
 }
 
+/** The last moment a place can still open from the waitlist: the start minus the cutoff (2 hours by default). */
+export function waitlistCutoff(session: Session, policy: BookingPolicy | undefined): Date {
+  return new Date(new Date(session.startsAt).getTime() - (policy?.waitlistCutoffHours ?? 2) * 3_600_000);
+}
+
 /** Whether a full session still takes waitlist places (docs/29 section 6.1: enabled, and before the cutoff). */
 export function waitlistOpen(session: Session, policy: BookingPolicy | undefined, now: Date): boolean {
   if (policy && !policy.waitlistEnabled) return false;
-  const cutoffHours = policy?.waitlistCutoffHours ?? 2;
-  return now.getTime() < new Date(session.startsAt).getTime() - cutoffHours * 3_600_000;
+  return now.getTime() < waitlistCutoff(session, policy).getTime();
 }
 
 // The category is a slug ("pilates"); the common ones have a Hebrew name, the rest borrow a class type's name.

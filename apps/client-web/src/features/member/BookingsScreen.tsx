@@ -14,6 +14,7 @@ import { nameOf, useAccount } from "../../account/account";
 import { pastStatus, waitText } from "./bookingState";
 import { relativeDay, shortDayName } from "./format";
 import styles from "./member.module.css";
+import { metaLine } from "./passText";
 import {
   useInbox,
   usePastBookings,
@@ -59,9 +60,7 @@ function StudioBookings({ studio }: { studio: Studio }) {
         to={`/classes/${session.id}`}
         slot={<TimeSlot time={clockTime(session.startsAt, timeZone)}>{day}</TimeSlot>}
         title={session.classType.name}
-        meta={[relativeDay(session.localDate, today), session.instructor?.displayName, session.room?.name]
-          .filter(Boolean)
-          .join(" · ")}
+        meta={metaLine([relativeDay(session.localDate, today), session.instructor?.displayName, session.room?.name])}
         actions={
           booking.status === "waitlisted" ? (
             <Chip tone="warning">{waitText(booking.waitlistPosition)}</Chip>

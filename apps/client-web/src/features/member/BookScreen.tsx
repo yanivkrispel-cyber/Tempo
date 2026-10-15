@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   Button,
@@ -17,6 +17,7 @@ import { categoryName, freeSpots, myState, spotsText, waitlistOpen, waitText } f
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import { PassStrip } from "./Passes";
+import { metaLine } from "./passText";
 import { useBookingPolicy, useSessions, useStudio, useStudioClock, type Session, type Studio } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, hasStarted, minutesBetween } from "./studioTime";
@@ -43,6 +44,16 @@ function StudioBook({ studio }: { studio: Studio }) {
   const [category, setCategory] = useState("all");
   const [pickedId, setPickedId] = useState<string | null>(null);
   const flow = useBookingFlow(studio.id);
+  // After booking, the pressed button turns into a chip: focus moves to that class's link in the list.
+  const list = useRef<HTMLUListElement>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusId) list.current?.querySelector<HTMLAnchorElement>(`a[href="/classes/${focusId}"]`)?.focus();
+  }, [focusId]);
+  const pick = (sessionId: string | null) => {
+    flow.reset();
+    setPickedId(sessionId);
+  };
 
   const week = Math.min(Math.max(Math.floor(daysBetween(today, day) / 7), 0), weeks - 1);
   const from = addDays(today, week * 7);
@@ -62,7 +73,7 @@ function StudioBook({ studio }: { studio: Studio }) {
 
   function action(session: Session) {
     const time = clockTime(session.startsAt, timeZone);
-    const name = `${session.classType.name} ב-${time}`;
+    const name = `לשיעור ${session.classType.name} ב-${time}`;
     if (session.status === "cancelled") return <Chip plain>השיעור בוטל</Chip>;
     switch (myState(session, now)) {
       case "booked":
@@ -82,9 +93,9 @@ function StudioBook({ studio }: { studio: Studio }) {
         <Button
           variant="secondary"
           size="sm"
-          aria-label={`הרשמה ל${name}`}
+          aria-label={`הרשמה ${name}`}
           loading={flow.pendingId === session.id}
-          onClick={() => setPickedId(session.id)}
+          onClick={() => pick(session.id)}
         >
           הרשמה
         </Button>
@@ -95,9 +106,9 @@ function StudioBook({ studio }: { studio: Studio }) {
         <Button
           variant="ghost"
           size="sm"
-          aria-label={`להמתנה ל${name}`}
+          aria-label={`להמתנה ${name}`}
           loading={flow.pendingId === session.id}
-          onClick={() => setPickedId(session.id)}
+          onClick={() => pick(session.id)}
         >
           להמתנה
         </Button>
@@ -151,7 +162,7 @@ function StudioBook({ studio }: { studio: Studio }) {
       ) : rows.length === 0 ? (
         <EmptyState icon="calendar" title={day === today ? "אין עוד שיעורים היום" : "אין שיעורים ביום הזה"} />
       ) : (
-        <ul className={styles.list} aria-label={`שיעורים, ${relativeDay(day, today)}`}>
+        <ul ref={list} className={styles.list} aria-label={`שיעורים, ${relativeDay(day, today)}`}>
           {rows.map((session) => (
             <ClassRow
               key={session.id}
@@ -163,9 +174,10 @@ function StudioBook({ studio }: { studio: Studio }) {
                 </TimeSlot>
               }
               title={session.classType.name}
-              meta={[session.instructor?.displayName, session.status === "cancelled" ? null : spotsText(session)]
-                .filter(Boolean)
-                .join(" · ")}
+              meta={metaLine([
+                session.instructor?.displayName,
+                session.status === "cancelled" ? null : spotsText(session),
+              ])}
               actions={action(session)}
             />
           ))}
@@ -179,8 +191,14 @@ function StudioBook({ studio }: { studio: Studio }) {
         policy={policy.data}
         now={now}
         pending={flow.pendingId !== undefined}
-        onConfirm={(session) => flow.run(session, () => setPickedId(null))}
-        onClose={() => setPickedId(null)}
+        error={flow.error}
+        onConfirm={(session) =>
+          flow.run(session, () => {
+            setPickedId(null);
+            setFocusId(session.id);
+          })
+        }
+        onClose={() => pick(null)}
       />
     </main>
   );

@@ -17,6 +17,7 @@ import { freeSpots, myState, waitText } from "./bookingState";
 import { useProfile } from "./data";
 import { dayName, relativeDay } from "./format";
 import styles from "./member.module.css";
+import { metaLine } from "./passText";
 import {
   useInbox,
   useSessions,
@@ -140,19 +141,26 @@ function StudioHome({ studio }: { studio: Studio }) {
             {next.session.classType.name}
           </h2>
           <span>
-            {[
+            {metaLine([
               `${relativeDay(next.session.localDate, today)} ${clockTime(next.session.startsAt, timeZone)}`,
               next.session.instructor?.displayName,
               next.session.room?.name,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            ])}
           </span>
           <div className={styles.nextActions}>
             <ButtonLink to={`/classes/${next.session.id}`} variant="rose">
               לפרטי השיעור
             </ButtonLink>
           </div>
+        </Card>
+      ) : upcoming.isError ? (
+        <Card as="section" tone="elevated" className={styles.next} aria-labelledby="next-class">
+          <h2 id="next-class" className={styles.nextTitle}>
+            השיעור הבא שלך
+          </h2>
+          <LoadError error={upcoming.error} onRetry={() => void upcoming.refetch()}>
+            לא הצלחנו לטעון את ההזמנות שלך
+          </LoadError>
         </Card>
       ) : (
         <Card as="section" tone="elevated" className={styles.next} aria-labelledby="next-class">
@@ -187,9 +195,7 @@ function StudioHome({ studio }: { studio: Studio }) {
                 <EventCard
                   to={`/classes/${session.id}`}
                   title={session.classType.name}
-                  meta={[clockTime(session.startsAt, timeZone), session.instructor?.displayName]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  meta={metaLine([clockTime(session.startsAt, timeZone), session.instructor?.displayName])}
                   color={session.classType.color}
                   fill={session.capacity > 0 ? session.bookedCount / session.capacity : 0}
                   badge={badge(session, now)}

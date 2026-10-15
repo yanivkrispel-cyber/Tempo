@@ -1,8 +1,10 @@
 import { Banner, Card, Icon, ProgressBar, Skeleton } from "../../shared/design-system";
 import { formatDate } from "../../shared/utilities/dates";
-import { entriesText, livePasses, passLine } from "./bookingState";
+import { entriesText, livePasses } from "./bookingState";
 import styles from "./member.module.css";
+import { passLine } from "./passText";
 import { useMyPasses, type Pass } from "./studio";
+import { LoadError } from "./StudioGate";
 
 const noPass = "אין לך כרטיסייה או מנוי בתוקף. כדי להירשם לשיעורים, פנו לסטודיו.";
 
@@ -59,7 +61,9 @@ export function PassesCard({ organizationId }: { organizationId: string }) {
         </span>
       </div>
       {passes.isError ? (
-        <span>לא הצלחנו לטעון את הכרטיסיות. נסו שוב מאוחר יותר.</span>
+        <LoadError error={passes.error} onRetry={() => void passes.refetch()}>
+          לא הצלחנו לטעון את הכרטיסיות
+        </LoadError>
       ) : live.length === 0 ? (
         <span>{noPass}</span>
       ) : (

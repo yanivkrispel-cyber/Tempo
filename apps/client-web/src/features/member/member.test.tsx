@@ -5,7 +5,7 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub } from "../../test/api";
+import { apiStub, problem } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 import {
   bookingIdOf,
@@ -29,6 +29,12 @@ function renderAt(url: string, { auth = signedInAuth(), ...options }: StudioOpti
   );
   return { router, studio, api };
 }
+
+/** A toast whose message has inline markup (a pass name in its own <bdi>). */
+const findToast = (text: string) =>
+  screen.findByText(
+    (_, element) => element?.parentElement?.classList.contains("tp-toast") === true && element.textContent === text,
+  );
 
 const titles = (list: HTMLElement) =>
   within(list)
@@ -68,6 +74,30 @@ describe("member home", () => {
     expect(screen.getByText("היום הזה כבר עבר")).toBeInTheDocument();
   });
 
+  it("says when my bookings could not be read, and retries", async () => {
+    const studio = createStudio();
+    const bookings = Object.keys(studio.routes).find((key) => key.endsWith("/me/bookings"))!;
+    const read = studio.routes[bookings] as (request: Request) => Response;
+    let fail = true;
+    studio.routes[bookings] = (request: Request) => (fail ? problem(400, "http.400") : read(request));
+    render(
+      <App
+        router={createMemoryRouter(routes, { initialEntries: ["/"] })}
+        auth={signedInAuth()}
+        apiUrl="https://api.test"
+        fetch={apiStub(studio.routes).fetch}
+        today={testToday}
+        now={testNow}
+      />,
+    );
+    const next = await screen.findByRole("region", { name: "השיעור הבא שלך" });
+    expect(await within(next).findByText("לא הצלחנו לטעון את ההזמנות שלך")).toBeInTheDocument();
+    expect(screen.queryByText("אין לך שיעור קרוב")).not.toBeInTheDocument();
+    fail = false;
+    await userEvent.click(within(next).getByRole("button", { name: "נסו שוב" }));
+    expect(await screen.findByRole("region", { name: "פילאטיס מכשירים" })).toHaveTextContent("היום 13:00");
+  });
+
   it("marks the current page in the tab bar", async () => {
     renderAt("/");
     const nav = await screen.findByRole("navigation", { name: "ניווט" });
@@ -83,16 +113,16 @@ describe("booking a class", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "מערכת שיעורים" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /13 באוקטובר, היום/ })).toHaveAttribute("aria-pressed", "true");
 
-    await userEvent.click(await screen.findByRole("button", { name: "הרשמה ליוגה בהריון ב-19:00" }));
-    const sheet = screen.getByRole("dialog", { name: "הרשמה ליוגה בהריון" });
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
+    const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
     expect(sheet).toHaveTextContent("היום · 19:00 · 60 דק׳");
     expect(sheet).toHaveTextContent("עם נועה");
     expect(sheet).toHaveTextContent("החדר הקטן");
-    expect(sheet).toHaveTextContent("תנוצל כניסה אחת מכרטיסיית 10. אחרי ההרשמה נשארו 6 כניסות.");
+    expect(sheet).toHaveTextContent("תנוצל כניסה אחת מהכרטיסייה כרטיסיית 10. אחרי ההרשמה נשארו 6 כניסות.");
     expect(sheet).toHaveTextContent("ביטול חינם עד היום 13:00.");
 
     await userEvent.click(within(sheet).getByRole("button", { name: "אישור ההרשמה" }));
-    expect(await screen.findByText("נרשמת לשיעור. בכרטיסיית 10 נשארו 6 כניסות.")).toBeInTheDocument();
+    expect(await findToast("נרשמת לשיעור. בכרטיסייה כרטיסיית 10 נשארו 6 כניסות.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const posted = api.requests.filter((request) => request.method === "POST" && request.url.endsWith("/bookings"));
     expect(posted.map((request) => new URL(request.url).pathname)).toEqual([
@@ -101,24 +131,24 @@ describe("booking a class", () => {
     expect(studio.passes[0]!.entriesLeft).toBe(6);
 
     const list = screen.getByRole("list", { name: "שיעורים, היום" });
-    const row = within(list)
-      .getByRole("link", { name: /יוגה בהריון/ })
-      .closest("li")!;
+    const link = within(list).getByRole("link", { name: /יוגה בהריון/ });
+    expect(link).toHaveFocus();
+    const row = link.closest("li")!;
     await waitFor(() => expect(within(row).getByText("נרשמת")).toHaveClass("tp-chip--success"));
   });
 
   it("warns in the sheet when booking now is already past the free-cancel time", async () => {
     renderAt("/book");
-    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לפילאטיס מזרן ב-17:30" }));
-    expect(screen.getByRole("dialog", { name: "הרשמה לפילאטיס מזרן" })).toHaveTextContent(
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור פילאטיס מזרן ב-17:30" }));
+    expect(screen.getByRole("dialog", { name: "הרשמה לשיעור פילאטיס מזרן" })).toHaveTextContent(
       "עבר זמן הביטול החינמי: אם תבטלו, הכניסה לא תחזור.",
     );
   });
 
   it("says clearly when there is no valid pass, and does not offer to book", async () => {
     const { api } = renderAt("/book", { passes: [{ ...card, entriesUsed: 10, entriesLeft: 0 }] });
-    await userEvent.click(await screen.findByRole("button", { name: "הרשמה ליוגה בהריון ב-19:00" }));
-    const sheet = screen.getByRole("dialog", { name: "הרשמה ליוגה בהריון" });
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
+    const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
     expect(within(sheet).getByRole("status")).toHaveTextContent("אין כרטיסייה בתוקף, פנו לסטודיו.");
     expect(within(sheet).queryByRole("button", { name: "אישור ההרשמה" })).not.toBeInTheDocument();
     await userEvent.click(within(sheet).getByRole("button", { name: "סגירה" }));
@@ -126,13 +156,19 @@ describe("booking a class", () => {
     expect(api.requests.some((request) => request.method === "POST" && request.url.endsWith("/bookings"))).toBe(false);
   });
 
-  it("explains the server's refusal in Hebrew", async () => {
+  it("keeps the sheet open and explains the server's refusal in Hebrew", async () => {
     const { studio } = renderAt("/book");
-    await userEvent.click(await screen.findByRole("button", { name: "הרשמה ליוגה בהריון ב-19:00" }));
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
     // The card ran out on another device after the timetable loaded.
     studio.passes[0]!.entriesLeft = 0;
     await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
-    expect(await screen.findByText("אין כרטיסייה בתוקף, פנו לסטודיו.")).toBeInTheDocument();
+    const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
+    expect(await within(sheet).findByRole("alert")).toHaveTextContent("אין כרטיסייה בתוקף, פנו לסטודיו.");
+
+    await userEvent.click(within(sheet).getByRole("button", { name: "סגירה" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
+    expect(within(screen.getByRole("dialog")).queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("moves a week ahead up to the booking horizon, filters by kind and opens on a linked day", async () => {
@@ -150,7 +186,7 @@ describe("booking a class", () => {
     expect(screen.getByRole("button", { name: /20 באוקטובר/ })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "השבוע הבא" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: /21 באוקטובר/ }));
-    expect(await screen.findByRole("button", { name: "הרשמה לפילאטיס מזרן ב-18:00" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "הרשמה לשיעור פילאטיס מזרן ב-18:00" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "השבוע הקודם" }));
     await userEvent.click(screen.getByRole("button", { name: /13 באוקטובר/ }));
@@ -178,6 +214,7 @@ describe("a class and cancelling", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "ביטול ההרשמה" }));
 
     expect(await screen.findByText("ההרשמה בוטלה בזמן, והכניסה חזרה אליך.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "ויניאסה יוגה" })).toHaveFocus();
     expect(studio.passes[0]!.entriesLeft).toBe(8);
     expect(await screen.findByRole("button", { name: "הרשמה לשיעור" })).toBeInTheDocument();
   });
@@ -208,10 +245,11 @@ describe("a class and cancelling", () => {
   it("books from the class screen", async () => {
     renderAt(`/classes/${sessionIds.prenatal}`);
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
-    const sheet = screen.getByRole("dialog", { name: "הרשמה ליוגה בהריון" });
+    const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
     await userEvent.click(within(sheet).getByRole("button", { name: "אישור ההרשמה" }));
-    expect(await screen.findByText("נרשמת לשיעור. בכרטיסיית 10 נשארו 6 כניסות.")).toBeInTheDocument();
+    expect(await findToast("נרשמת לשיעור. בכרטיסייה כרטיסיית 10 נשארו 6 כניסות.")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "ביטול הרשמה" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toHaveFocus();
   });
 
   it("says when a class does not exist", async () => {
@@ -278,9 +316,9 @@ const promoted = () => [
 describe("the waitlist", () => {
   it("joins the waitlist of a full class without using an entry, and shows the place in line", async () => {
     const { studio } = renderAt("/book");
-    await userEvent.click(await screen.findByRole("button", { name: "להמתנה ליין יוגה ונשימה ב-20:15" }));
-    const sheet = screen.getByRole("dialog", { name: "רשימת ההמתנה ליין יוגה ונשימה" });
-    expect(sheet).toHaveTextContent("בהמתנה לא נוצלת כניסה. אם יתפנה מקום, תנוצל כניסה אחת מכרטיסיית 10.");
+    await userEvent.click(await screen.findByRole("button", { name: "להמתנה לשיעור יין יוגה ונשימה ב-20:15" }));
+    const sheet = screen.getByRole("dialog", { name: "רשימת ההמתנה לשיעור יין יוגה ונשימה" });
+    expect(sheet).toHaveTextContent("בהמתנה לא נוצלת כניסה. אם יתפנה מקום, תנוצל כניסה אחת מהכרטיסייה כרטיסיית 10.");
     expect(sheet).toHaveTextContent("השיעור מלא. ממתין אחד לפניך.");
 
     await userEvent.click(within(sheet).getByRole("button", { name: "הצטרפות לרשימת ההמתנה" }));
@@ -382,7 +420,7 @@ describe("passes", () => {
     renderAt("/book");
     const strip = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
     expect(strip).toHaveTextContent("כרטיסיית 10 · נשארו 7 כניסות");
-    await userEvent.click(await screen.findByRole("button", { name: "הרשמה ליוגה בהריון ב-19:00" }));
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
     await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "הכרטיסייה שלך" })).toHaveTextContent("נשארו 6 כניסות"),
@@ -436,6 +474,29 @@ describe("profile", () => {
     expect(await screen.findByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
     expect(screen.getByRole("combobox", { name: "תזכורת לפני שיעור" })).toHaveValue("2h");
     expect(screen.getByText("נחתמה")).toHaveClass("tp-chip--success");
+  });
+
+  it("says when the passes could not be read, and retries", async () => {
+    const studio = createStudio();
+    const key = Object.keys(studio.routes).find((route) => route.endsWith("/me/passes"))!;
+    const read = studio.routes[key] as () => Response;
+    let fail = true;
+    studio.routes[key] = () => (fail ? problem(400, "http.400") : read());
+    render(
+      <App
+        router={createMemoryRouter(routes, { initialEntries: ["/profile"] })}
+        auth={signedInAuth()}
+        apiUrl="https://api.test"
+        fetch={apiStub(studio.routes).fetch}
+        today={testToday}
+        now={testNow}
+      />,
+    );
+    const passes = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
+    expect(await within(passes).findByText("לא הצלחנו לטעון את הכרטיסיות")).toBeInTheDocument();
+    fail = false;
+    await userEvent.click(within(passes).getByRole("button", { name: "נסו שוב" }));
+    expect(await within(passes).findByRole("listitem", { name: "כרטיסיית 10" })).toHaveTextContent("נשארו 7 כניסות");
   });
 
   it("says when an action is not built yet", async () => {

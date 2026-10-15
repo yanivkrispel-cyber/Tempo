@@ -2,46 +2,47 @@ import type { ReactNode } from "react";
 import { Banner, Button, Dialog, Icon, useToast } from "../../shared/design-system";
 import { errorMessage } from "../../api/errors";
 import type { IsoDate } from "../../shared/utilities/dates";
-import {
-  freeCancelDeadline,
-  freeSpots,
-  noPassText,
-  passTakenText,
-  passUseText,
-  waitPassText,
-  waitText,
-} from "./bookingState";
+import { freeCancelDeadline, freeSpots, noPassText, waitText } from "./bookingState";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
+import { passTakenText, passUseText, waitPassText } from "./passText";
 import { useBook, type Booking, type BookingPolicy, type Session } from "./studio";
 import { clockTime, minutesBetween, momentText } from "./studioTime";
 
-/** Booking, with the result told in a toast. The server decides between a place, the waitlist and a refusal. */
+/**
+ * Booking. The server decides between a place, the waitlist and a refusal: a place or a waitlist place closes the
+ * sheet with a toast; a refusal keeps the sheet open and `error` explains it there.
+ */
 export function useBookingFlow(organizationId: string) {
   const book = useBook(organizationId);
   const toast = useToast();
 
-  function run(session: Session, onDone?: () => void) {
+  function run(session: Session, onDone?: (booking: Booking) => void) {
     book.mutate(session.id, {
       onSuccess: (booking: Booking) => {
-        onDone?.();
+        onDone?.(booking);
         if (booking.status === "waitlisted") {
           toast.show({
             tone: "success",
             message: `נכנסת לרשימת ההמתנה, ${waitText(booking.waitlistPosition)}. אם יתפנה מקום נרשום אותך ונודיע לך.`,
           });
         } else {
-          toast.show({ tone: "success", message: `נרשמת לשיעור. ${passTakenText(booking.pass)}`.trim() });
+          toast.show({
+            tone: "success",
+            message: <>נרשמת לשיעור. {passTakenText(booking.pass)}</>,
+          });
         }
-      },
-      onError: (error) => {
-        onDone?.();
-        toast.show({ tone: "danger", message: errorMessage(error, "ההרשמה לא הצליחה. נסו שוב.") });
       },
     });
   }
 
-  return { run, pendingId: book.isPending ? book.variables : undefined };
+  return {
+    run,
+    pendingId: book.isPending ? book.variables : undefined,
+    /** The last refusal, for the sheet; cleared by `reset` when the sheet opens or closes. */
+    error: book.isError ? book.error : null,
+    reset: book.reset,
+  };
 }
 
 export interface BookingSheetProps {
@@ -51,6 +52,8 @@ export interface BookingSheetProps {
   policy: BookingPolicy | undefined;
   now: Date;
   pending: boolean;
+  /** Why the server refused the last try; the sheet stays open to say so. */
+  error?: unknown;
   onConfirm: (session: Session) => void;
   onClose: () => void;
 }
@@ -66,6 +69,7 @@ export function BookingSheet({
   policy,
   now,
   pending,
+  error = null,
   onConfirm,
   onClose,
 }: BookingSheetProps) {
@@ -73,7 +77,13 @@ export function BookingSheet({
   const waitlist = session !== null && freeSpots(session) === 0;
   const deadline = session ? freeCancelDeadline(session, policy) : null;
   const deadlinePassed = deadline !== null && deadline.getTime() <= now.getTime();
-  const title = session ? `${waitlist ? "רשימת ההמתנה ל" : "הרשמה ל"}${session.classType.name}` : "";
+  const title = session ? (
+    <>
+      {waitlist ? "רשימת ההמתנה לשיעור" : "הרשמה לשיעור"} <bdi>{session.classType.name}</bdi>
+    </>
+  ) : (
+    ""
+  );
 
   return (
     <Dialog open={session !== null} onClose={onClose} title={title}>
@@ -89,6 +99,14 @@ export function BookingSheet({
               </div>
             )}
           </SessionDetails>
+          {error !== null && (
+            <Banner tone="danger" icon="info" className={styles.sheetNote}>
+              {errorMessage(
+                error,
+                waitlist ? "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב." : "ההרשמה לא הצליחה. נסו שוב.",
+              )}
+            </Banner>
+          )}
           {!pass && (
             <Banner tone="warning" icon="info" className={styles.sheetNote}>
               {noPassText}
@@ -151,7 +169,9 @@ export function SessionDetails({ session, timeZone, today, children }: SessionDe
           <span className="tp-icon-tile tp-icon-tile--sm">
             <Icon name="user" />
           </span>
-          <span>עם {session.instructor.displayName}</span>
+          <span>
+            עם <bdi>{session.instructor.displayName}</bdi>
+          </span>
         </div>
       )}
       {session.room && (

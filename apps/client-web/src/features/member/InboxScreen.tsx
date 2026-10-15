@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router";
 import { Chip, EmptyState, Icon, IconButton, type ChipTone, type IconName } from "../../shared/design-system";
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
+import { metaLine } from "./passText";
 import { useInbox, useMarkRead, useSession, useStudio, useStudioClock, type InboxItem, type Studio } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, momentText } from "./studioTime";
@@ -88,7 +89,10 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
   const kind = kinds[item.kind]!;
   const unread = !item.readAt;
   const when = session.data
-    ? `${session.data.classType.name} · ${relativeDay(session.data.localDate, today)} ${clockTime(session.data.startsAt, timeZone)}`
+    ? metaLine([
+        session.data.classType.name,
+        `${relativeDay(session.data.localDate, today)} ${clockTime(session.data.startsAt, timeZone)}`,
+      ])
     : null;
 
   const content = (

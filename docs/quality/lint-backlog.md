@@ -16,6 +16,14 @@ How it moves:
 
 | Kind | Agent | PR | Example (file:line) |
 |---|---|---|---|
+| A failed read shown as an empty state ("nothing here") instead of an error with a retry | standards-reviewer | #128 | `apps/client-web/src/features/member/HomeScreen.tsx:160` |
+| Focus drops to `<body>` when the pressed control unmounts after a mutation | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:147` |
+| A `shared/design-system` wrapper changed in one app but not the other | standards-reviewer | #128 | `apps/client-web/src/shared/design-system/Schedule.tsx:157` |
+| A server refusal closes its dialog and is told only in a toast | standards-reviewer | #128 | `apps/client-web/src/features/member/BookingSheet.tsx:38` |
+| Studio-entered text inside a Hebrew sentence without `<bdi>`, or after a Hebrew prefix letter ("מ{name}") | standards-reviewer | #128 | `apps/client-web/src/features/member/bookingState.ts` (`passUseText`) |
+| The same default or rule computed in two places instead of one helper | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:130` (`waitlistCutoffHours ?? 2`) |
+| Names that hide what a variable holds (`item` for a session, `booking` for a boolean) | standards-reviewer | #128 | `apps/client-web/src/features/member/ClassScreen.tsx:70` |
+| An error state with no way to retry | standards-reviewer | #128 | `apps/client-web/src/features/member/Passes.tsx:61` |
 
 ## To gate
 
