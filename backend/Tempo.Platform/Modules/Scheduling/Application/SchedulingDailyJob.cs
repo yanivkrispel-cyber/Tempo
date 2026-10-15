@@ -9,8 +9,12 @@ namespace Tempo.Platform.Modules.Scheduling.Application;
 /// </summary>
 public sealed class SchedulingDailyJob(IDataSourceProvider dataSources, TimeProvider clock)
 {
+    /// <summary>Time zones the last run could not resolve; the worker logs them.</summary>
+    public HashSet<string> SkippedTimeZones { get; } = new(StringComparer.Ordinal);
+
     public async Task<(int Sessions, int ExpiredWaitlist)> RunAsync(CancellationToken cancellationToken)
     {
+        SkippedTimeZones.Clear();
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Platform, null, null, cancellationToken);
         var templates = new List<(Guid OrganizationId, string TimeZone, TemplateView Template)>();
         await using (var command = unitOfWork.Command(
@@ -47,7 +51,13 @@ public sealed class SchedulingDailyJob(IDataSourceProvider dataSources, TimeProv
         var sessions = 0;
         foreach (var (organizationId, timeZone, template) in templates)
         {
-            var zone = TimeZoneInfo.FindSystemTimeZoneById(timeZone);
+            // One studio with a time zone this host does not know must not stop every other studio (#108).
+            if (!TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out var zone))
+            {
+                SkippedTimeZones.Add(timeZone);
+                continue;
+            }
+
             var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), zone).DateTime);
             sessions += await TimetableService.MaterializeAsync(unitOfWork, organizationId, template, zone, today, cancellationToken);
         }

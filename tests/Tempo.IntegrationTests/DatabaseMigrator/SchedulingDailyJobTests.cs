@@ -45,6 +45,37 @@ public sealed class SchedulingDailyJobTests(PostgresFixture postgres) : IClassFi
         (await db.AsMasterAsync("SELECT kind FROM notifications.inbox_items WHERE person_id = $1", person)).Should().Be("waitlist.expired");
     }
 
+    [Fact]
+    public async Task AStudioWithAnUnknownTimeZone_IsSkipped_AndTheOthersStillRun()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var timetable = new TimetableService(db, TimeProvider.System);
+        var classType = await timetable.CreateClassTypeAsync(owner, new NewClassType("Yoga", "yoga", "sage", 60, null), CancellationToken.None);
+        var template = await timetable.CreateTemplateAsync(owner, new NewTemplate(classType.Id, 3, new TimeOnly(9, 0), null, null, null, 10, null, null), CancellationToken.None);
+        await db.AsMasterAsync("DELETE FROM scheduling.sessions WHERE template_id = $1 AND local_date > current_date + 49", template.Template.Id);
+
+        // A second studio whose time zone this host cannot resolve, with its own weekly class.
+        var broken = Guid.CreateVersion7();
+        await db.AsMasterAsync(
+            "INSERT INTO organizations.organizations (id, slug, display_name, status, time_zone, created_by_user_id, created_at, updated_at) VALUES ($1, 'studio-broken', 'Broken', 'active', 'Mars/Olympus', $2, now(), now())",
+            broken, owner.UserAccountId);
+        var brokenType = Guid.CreateVersion7();
+        await db.AsMasterAsync(
+            "INSERT INTO scheduling.class_types (organization_id, id, name, category, color, default_minutes, status, created_at, updated_at) VALUES ($1, $2, 'Yoga', 'yoga', 'sage', 60, 'active', now(), now())",
+            broken, brokenType);
+        await db.AsMasterAsync(
+            "INSERT INTO scheduling.templates (organization_id, id, class_type_id, weekday, local_start, minutes, capacity, valid_from, created_at, updated_at) VALUES ($1, $2, $3, 2, '10:00', 60, 8, current_date, now(), now())",
+            broken, Guid.CreateVersion7(), brokenType);
+
+        var job = new SchedulingDailyJob(db, TimeProvider.System);
+        var result = await job.RunAsync(CancellationToken.None);
+
+        result.Sessions.Should().BeGreaterThan(0, "the healthy studio still gets its sessions");
+        job.SkippedTimeZones.Should().Equal("Mars/Olympus");
+        (await db.AsMasterAsync("SELECT count(*) FROM scheduling.sessions WHERE organization_id = $1", broken)).Should().Be(0L);
+    }
+
     private static async Task<TenantContext> StudioAsync(MigratedDatabase db)
     {
         var id = Guid.CreateVersion7();
