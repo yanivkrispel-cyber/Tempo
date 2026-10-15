@@ -63,6 +63,23 @@ describe.each([
     ]);
   });
 
+  it("admin-web may manage its own MFA, write only email and read only email and its verification", () => {
+    template.hasResourceProperties("AWS::Cognito::UserPoolClient", {
+      ClientName: `tempo-${env}-admin-web`,
+      AllowedOAuthScopes: Match.arrayWith(["aws.cognito.signin.user.admin"]),
+      WriteAttributes: ["email"],
+      ReadAttributes: Match.arrayEquals(["email", "email_verified"])
+    });
+  });
+
+  it("client-web does not get the user-admin scope", () => {
+    const clients = template.findResources("AWS::Cognito::UserPoolClient", {
+      Properties: { ClientName: `tempo-${env}-client-web` }
+    });
+    const scopes = Object.values(clients)[0].Properties.AllowedOAuthScopes as string[];
+    expect(scopes).not.toContain("aws.cognito.signin.user.admin");
+  });
+
   it("the operator pool has only the platform-admin-web client, with short sessions", () => {
     const pool = poolLogicalId(template, `tempo-${env}-operators`);
     expect(clientNamesOf(template, pool)).toEqual([`tempo-${env}-operators-platform-admin-web`]);

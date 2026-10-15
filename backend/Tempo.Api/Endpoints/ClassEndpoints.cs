@@ -27,6 +27,7 @@ public static class ClassEndpoints
         tenant.MapGet("/booking-policy", GetPolicyAsync).RequirePermission(Permissions.ScheduleView).WithName("getBookingPolicy").Produces<BookingPolicyResponse>();
         tenant.MapPut("/booking-policy", UpdatePolicyAsync).RequirePermission(Permissions.ScheduleManage).WithName("updateBookingPolicy").Produces<BookingPolicyResponse>();
         tenant.MapGet("/me/notifications", ListInboxAsync).RequirePermission(Permissions.OrganizationView).WithName("listMyNotifications").Produces<InboxPageResponse>();
+        tenant.MapPost("/me/notifications/read-all", MarkAllReadAsync).RequirePermission(Permissions.OrganizationView).WithName("markAllNotificationsRead").Produces(StatusCodes.Status204NoContent);
         tenant.MapPost("/me/notifications/{itemId:guid}/read", MarkReadAsync).RequirePermission(Permissions.OrganizationView).WithName("markNotificationRead").Produces(StatusCodes.Status204NoContent);
 
         return endpoints;
@@ -87,7 +88,13 @@ public static class ClassEndpoints
     {
         var page = await settings.ListInboxAsync(TenantRouteFilter.Current(httpContext), before, limit ?? 50, httpContext.RequestAborted);
         return Results.Ok(new InboxPageResponse(
-            [.. page.Items.Select(i => new InboxItemResponse(i.Id, i.Kind, new InboxItemDataResponse(i.SessionId, i.BookingId), i.CreatedAt, i.ReadAt))],
+            [.. page.Items.Select(i => new InboxItemResponse(
+                i.Id,
+                i.Kind,
+                new InboxItemDataResponse(i.SessionId, i.BookingId),
+                i.CreatedAt,
+                i.ReadAt,
+                i.SessionId is { } id && i.SessionStartsAt is { } at ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "") : null))],
             page.UnreadCount,
             page.NextBefore));
     }
@@ -95,6 +102,12 @@ public static class ClassEndpoints
     private static async Task<IResult> MarkReadAsync(HttpContext httpContext, Guid itemId, IStudioSettingsService settings)
     {
         await settings.MarkReadAsync(TenantRouteFilter.Current(httpContext), itemId, httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> MarkAllReadAsync(HttpContext httpContext, IStudioSettingsService settings)
+    {
+        await settings.MarkAllReadAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted);
         return Results.NoContent();
     }
 

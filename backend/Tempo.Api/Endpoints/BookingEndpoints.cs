@@ -69,7 +69,7 @@ public static class BookingEndpoints
             [.. page.Items.Select(i =>
             {
                 var b = ToResponse(i.Booking);
-                return new MyBookingResponse(b.Id, b.SessionId, b.Person, b.Status, b.WaitlistPosition, b.LateCancel, b.CancelReason, b.Pass, b.CreatedAt, b.Version, ScheduleEndpoints.ToResponse(i.Session));
+                return new MyBookingResponse(b.Id, b.SessionId, b.Person, b.Status, b.WaitlistPosition, b.LateCancel, b.CancelReason, b.Pass, b.CreatedAt, b.Version, ScheduleEndpoints.ToResponse(i.Session), b.CancelledFrom);
             })],
             page.NextBefore);
 
@@ -84,5 +84,6 @@ public static class BookingEndpoints
             b.CancelReason,
             b.Pass is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
             b.CreatedAt,
-            b.Version.ToString(CultureInfo.InvariantCulture));
+            b.Version.ToString(CultureInfo.InvariantCulture),
+            b.CancelledFrom);
 }

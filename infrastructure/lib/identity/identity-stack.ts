@@ -1,5 +1,5 @@
 import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
-import { AccountRecovery, Mfa, OAuthScope, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
+import { AccountRecovery, ClientAttributes, Mfa, OAuthScope, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
@@ -73,7 +73,14 @@ export class IdentityStack extends Stack {
     this.adminWebClient = this.addBrowserClient(this.userPool, "AdminWebClient", {
       clientName: resourceName(config, "admin-web"),
       callbackUrls: config.cognitoCallbackUrls.adminWeb,
-      logoutUrls: config.cognitoLogoutUrls.adminWeb
+      logoutUrls: config.cognitoLogoutUrls.adminWeb,
+      // Two-step sign-in enrollment (O8) calls AssociateSoftwareToken, VerifySoftwareToken and
+      // SetUserMFAPreference with the user's access token, which needs this scope. The same token could also
+      // change the user's attributes, so this client may write only email (required by Hosted UI sign-up, and a
+      // change needs re-verification) and read only email and its verification.
+      extraScopes: [OAuthScope.COGNITO_ADMIN],
+      readAttributes: new ClientAttributes().withStandardAttributes({ email: true, emailVerified: true }),
+      writeAttributes: new ClientAttributes().withStandardAttributes({ email: true })
     });
 
     this.clientWebClient = this.addBrowserClient(this.userPool, "ClientWebClient", {
@@ -139,6 +146,9 @@ export class IdentityStack extends Stack {
       accessTokenValidity?: Duration;
       refreshTokenValidity?: Duration;
       adminUserPassword?: boolean;
+      extraScopes?: readonly OAuthScope[];
+      readAttributes?: ClientAttributes;
+      writeAttributes?: ClientAttributes;
     }
   ): UserPoolClient {
     return new UserPoolClient(this, id, {
@@ -150,10 +160,12 @@ export class IdentityStack extends Stack {
       preventUserExistenceErrors: true,
       oAuth: {
         flows: { authorizationCodeGrant: true },
-        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
+        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE, ...(props.extraScopes ?? [])],
         callbackUrls: [...props.callbackUrls],
         logoutUrls: [...props.logoutUrls]
       },
+      readAttributes: props.readAttributes,
+      writeAttributes: props.writeAttributes,
       accessTokenValidity: props.accessTokenValidity ?? Duration.hours(1),
       idTokenValidity: props.accessTokenValidity ?? Duration.hours(1),
       refreshTokenValidity: props.refreshTokenValidity ?? Duration.days(30)
