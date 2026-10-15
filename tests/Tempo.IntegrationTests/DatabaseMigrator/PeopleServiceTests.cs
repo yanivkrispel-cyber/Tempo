@@ -134,6 +134,23 @@ public sealed class PeopleServiceTests(PostgresFixture postgres) : IClassFixture
         listA.Items.Should().NotContain(p => p.Id == inB.Person.Id);
     }
 
+    [Theory]
+    [InlineData("050-234 5678")]
+    [InlineData("0502345678")]
+    [InlineData("+972502345678")]
+    [InlineData("2345678")]
+    public async Task Search_FindsAPhoneTypedTheWayFrontDesksTypeIt(string typed)
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db, "studio-a");
+        var people = new PeopleService(db);
+        var noa = await people.CreateAsync(owner, new NewPerson("Noa", null, null, null, null, "050-2345678"), CancellationToken.None);
+
+        var found = await people.ListAsync(owner, new PeopleQuery(typed, null, null, 10), CancellationToken.None);
+
+        found.Items.Should().ContainSingle().Which.Id.Should().Be(noa.Person.Id);
+    }
+
     private static async Task<TenantContext> StudioAsync(MigratedDatabase db, string slug)
     {
         var id = Guid.CreateVersion7();

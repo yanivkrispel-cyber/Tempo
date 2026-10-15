@@ -104,7 +104,7 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
     public async Task<PersonPage> ListAsync(TenantContext tenant, PeopleQuery query, CancellationToken cancellationToken)
     {
         var limit = Math.Clamp(query.Limit, 1, MaxLimit);
-        var text = query.Text?.Trim();
+        var text = PhoneLike(query.Text?.Trim());
         if (text is { Length: < 2 or > 100 })
         {
             throw new DomainRuleViolationException(ViolationKind.Validation, "query.length", "Search with 2 to 100 characters.", "query");
@@ -570,6 +570,27 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
             > 100 => throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.length", "Names are up to 100 characters.", field),
             _ => trimmed
         };
+    }
+
+    /// <summary>
+    /// A query typed like a phone number (`050-234 5678`) is searched in its stored E.164 form; anything else,
+    /// or a partial number that does not parse, is searched as typed (review on #71).
+    /// </summary>
+    private static string? PhoneLike(string? text)
+    {
+        if (text is null || text.Length < 6 || !text.All(c => char.IsDigit(c) || c is '+' or '-' or ' ' or '(' or ')'))
+        {
+            return text;
+        }
+
+        try
+        {
+            return ContactValues.Phone(text);
+        }
+        catch (DomainRuleViolationException)
+        {
+            return new string([.. text.Where(char.IsDigit)]);
+        }
     }
 
     private static string EscapeLike(string text) => text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");

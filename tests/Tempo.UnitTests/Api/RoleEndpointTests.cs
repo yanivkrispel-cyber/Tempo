@@ -92,6 +92,18 @@ public sealed class RoleEndpointTests : IDisposable
         await api.Members.Received(1).UpdateAsync(Arg.Any<TenantContext>(), Target, MembershipRole.Admin, null, null, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task SetRoles_ToAdmin_ByAnAdmin_IsRefusedBeforeAnySignInIsAsked()
+    {
+        GivenMember(MembershipRole.Admin);
+
+        var response = await PutRolesAsync([SystemRoles.Admin.Id], authTime: DateTimeOffset.UtcNow.AddHours(-1));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await CodeOf(response)).Should().Be("membership.forbidden_role_change");
+        await api.Members.DidNotReceive().UpdateAsync(Arg.Any<TenantContext>(), Arg.Any<Guid>(), Arg.Any<MembershipRole?>(), Arg.Any<MembershipStatus?>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData(0, "role_ids.required")]
     [InlineData(2, "role_ids.single")]

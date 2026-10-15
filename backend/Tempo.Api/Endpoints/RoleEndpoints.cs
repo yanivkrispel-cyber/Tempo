@@ -59,6 +59,13 @@ public static class RoleEndpoints
         var role = SingleSystemRole(request.RoleIds);
         if (role == MembershipRole.Admin)
         {
+            // Rank first, so nobody is sent through sign-in for a change they may not make anyway
+            // (review on #68): only the owner grants admin (RolePolicy.CanChangeMember).
+            if (TenantRouteFilter.Current(httpContext).Role != MembershipRole.Owner)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Forbidden, "membership.forbidden_role_change", "You cannot change this member.");
+            }
+
             StepUp.Require(httpContext, clock);
         }
 
