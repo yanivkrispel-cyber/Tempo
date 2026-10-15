@@ -150,6 +150,7 @@ function ArchiveDialog({ product, onClose }: { product: PassProduct; onClose: ()
   const toast = useToast();
   const { organizationId } = useStudio();
   const archive = useMutation({
+    mutationKey: [organizationId, "passes.archive"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/pass-products/{productId}/archive", {
@@ -217,6 +218,7 @@ function ProductDialog({ onClose }: { onClose: () => void }) {
   };
 
   const create = useMutation({
+    mutationKey: [organizationId, "passes.create"],
     mutationFn: () => {
       const body: Schemas["CreatePassProductRequest"] = {
         kind,

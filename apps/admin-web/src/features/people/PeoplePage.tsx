@@ -168,6 +168,7 @@ function NewPersonDialog({ onClose }: { onClose: () => void }) {
     setForm({ ...form, [field]: event.target.value });
 
   const create = useMutation({
+    mutationKey: [organizationId, "people.create"],
     mutationFn: (body: Schemas["CreatePersonRequest"]) =>
       unwrap(api.POST("/api/v1/organizations/{organizationId}/people", { params: { path: { organizationId } }, body })),
     onSuccess: async (person) => {

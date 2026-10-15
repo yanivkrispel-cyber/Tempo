@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -70,6 +70,8 @@ describe("console notices", () => {
     const row = within(table).getByRole("row", { name: /נגה רוזן/ });
     await userEvent.click(within(row).getByRole("button", { name: "פעולות עבור נגה רוזן" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "השעיה" }));
-    expect(await screen.findByText(/המנוי של הסטודיו מושהה/)).toBeInTheDocument();
+    // The frame banner, not only the toast: the mutation key holds the studio id (#131).
+    await waitFor(() => expect(warnings()).toHaveLength(1));
+    expect(warnings()[0]).toHaveTextContent("המנוי של הסטודיו מושהה");
   });
 });

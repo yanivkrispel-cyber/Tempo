@@ -36,6 +36,7 @@ export function TransferDialog({ member, name, onClose }: { member: Member; name
   const { pathname } = useLocation();
   const { organizationId, displayName } = useStudio();
   const start = useMutation({
+    mutationKey: [organizationId, "ownership.start"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/ownership-transfer", {
@@ -93,6 +94,7 @@ export function OutgoingTransferBanner() {
   const { organizationId, membership } = useStudio();
   const pending = membership.pendingOwnershipTransfer;
   const cancel = useMutation({
+    mutationKey: [organizationId, "ownership.cancel"],
     mutationFn: () =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/ownership-transfer", {
@@ -125,6 +127,7 @@ export function IncomingTransferBanner() {
   const { organizationId, displayName, membership } = useStudio();
   const pending = membership.pendingOwnershipTransfer;
   const answer = useMutation({
+    mutationKey: [organizationId, "ownership.answer"],
     mutationFn: (accept: boolean) =>
       accept
         ? unwrap(
