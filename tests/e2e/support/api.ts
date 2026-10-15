@@ -79,6 +79,45 @@ export class Api {
     return found;
   }
 
+  /**
+   * A studio call for the seeding the dedicated helpers do not cover: `path` is relative to the studio
+   * (`/sessions`). Answers the parsed body (undefined on 204) and fails on any status not in `accept`.
+   */
+  async call<T = unknown>(
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    path: string,
+    options: { data?: unknown; params?: Record<string, string | number>; accept?: number[] } = {},
+  ): Promise<T> {
+    const response = await this.context.fetch(`${this.studioPath}${path}`, {
+      method,
+      data: options.data,
+      params: options.params,
+    });
+    if (options.accept?.includes(response.status())) {
+      return (response.status() === 204 ? undefined : await response.json().catch(() => undefined)) as T;
+    }
+    return json<T>(response);
+  }
+
+  /** The Person record of the signed-in smoke user (the member in client-web), found by its membership. */
+  async ownPerson(): Promise<{ id: string; displayName: string } | undefined> {
+    const me = await json<{ memberships: { membershipId: string; organization: { id: string } }[] }>(
+      await this.context.get("/api/v1/me"),
+    );
+    const membershipId = me.memberships.find((item) => item.organization.id === this.organizationId)?.membershipId;
+    let before: string | undefined;
+    do {
+      const page = await this.call<{
+        items: { id: string; displayName: string; membershipId?: string | null }[];
+        nextBefore?: string | null;
+      }>("GET", "/people", { params: { limit: 100, ...(before ? { before } : {}) } });
+      const own = page.items.find((person) => person.membershipId === membershipId);
+      if (own) return own;
+      before = page.nextBefore ?? undefined;
+    } while (before);
+    return undefined;
+  }
+
   dispose(): Promise<void> {
     return this.context.dispose();
   }
