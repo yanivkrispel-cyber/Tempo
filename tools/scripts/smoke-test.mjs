@@ -14,10 +14,20 @@
  *      deployment role has exactly these). Any failure,
  *      including missing permissions, fails the smoke test; pass
  *      --skip-queue-check to leave this check out deliberately.
+ *   4. With --sign-in: signs in as the dev test user (day board #60, decision 5)
+ *      and checks that POST /api/v1/session and GET /api/v1/me return 200 for
+ *      it. Reads the pool and client ids from cdk-outputs.json (--outputs,
+ *      default infrastructure/cdk-outputs.json) and the user from SSM
+ *      (<path>/email, <path>/password, path from the Identity stack output
+ *      SmokeTestParameterPath). Needs cognito-idp:AdminInitiateAuth and
+ *      ssm:GetParameter; CI does not pass --sign-in until the deployment role
+ *      has them (a decision for Kris), so today it runs from a developer's
+ *      machine with `--profile tempo`.
  *
  * Usage:
  *   node tools/scripts/smoke-test.mjs --api-url https://xxxx.execute-api.eu-central-1.amazonaws.com \
  *     [--environment dev] [--region eu-central-1] [--skip-queue-check]
+ *     [--sign-in [--outputs infrastructure/cdk-outputs.json] [--profile tempo]]
  *
  * The API URL may also be supplied via the API_BASE_URL environment
  * variable. Never prints secret values - only status codes, timings and
@@ -26,16 +36,26 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 
 function parseArgs(argv) {
-  const args = { environment: "dev", region: "eu-central-1", skipQueueCheck: false };
+  const args = {
+    environment: "dev",
+    region: "eu-central-1",
+    skipQueueCheck: false,
+    signIn: false,
+    outputs: "infrastructure/cdk-outputs.json"
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--api-url") args.apiUrl = argv[++i];
     else if (arg === "--environment") args.environment = argv[++i];
     else if (arg === "--region") args.region = argv[++i];
     else if (arg === "--skip-queue-check") args.skipQueueCheck = true;
+    else if (arg === "--sign-in") args.signIn = true;
+    else if (arg === "--outputs") args.outputs = argv[++i];
+    else if (arg === "--profile") args.profile = argv[++i];
   }
   args.apiUrl ??= process.env.API_BASE_URL;
   return args;
@@ -111,8 +131,11 @@ async function checkUnauthenticatedMeIsRejected(apiUrl) {
   return true;
 }
 
+let awsProfile;
+
 function awsCli(args) {
-  return execFileSync("aws", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const withProfile = awsProfile ? [...args, "--profile", awsProfile] : args;
+  return execFileSync("aws", withProfile, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
 /** Messages visible plus in flight. */
@@ -196,8 +219,85 @@ async function checkQueueIsDrained(environment, region) {
   return false;
 }
 
+function ssmValue(name, region) {
+  return JSON.parse(
+    awsCli(["ssm", "get-parameter", "--name", name, "--with-decryption", "--region", region])
+  ).Parameter.Value;
+}
+
+async function callApi(apiUrl, method, path, token) {
+  const url = `${apiUrl.replace(/\/$/, "")}${path}`;
+  console.log(`→ ${method} ${url} (test user)`);
+  const response = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000)
+  });
+  console.log(`  status=${response.status}`);
+  return response;
+}
+
+async function checkSignedInSession(apiUrl, environment, region, outputsPath) {
+  let token;
+  try {
+    const outputs = JSON.parse(readFileSync(outputsPath, "utf8"));
+    const identity = outputs[`Tempo${environment[0].toUpperCase()}${environment.slice(1)}-Identity`] ?? {};
+    const { UserPoolId: userPoolId, ClientWebClientId: clientId, SmokeTestParameterPath: path } = identity;
+    if (!userPoolId || !clientId || !path) {
+      fail(`${outputsPath} has no UserPoolId, ClientWebClientId and SmokeTestParameterPath for the Identity stack`);
+      return false;
+    }
+    const email = ssmValue(`${path}/email`, region);
+    const password = ssmValue(`${path}/password`, region);
+    const auth = JSON.parse(
+      awsCli([
+        "cognito-idp",
+        "admin-initiate-auth",
+        "--user-pool-id",
+        userPoolId,
+        "--client-id",
+        clientId,
+        "--auth-flow",
+        "ADMIN_USER_PASSWORD_AUTH",
+        "--auth-parameters",
+        `USERNAME=${email},PASSWORD=${password}`,
+        "--region",
+        region
+      ])
+    );
+    token = auth.AuthenticationResult?.AccessToken;
+    if (!token) {
+      fail(`the test user got a challenge instead of tokens (${auth.ChallengeName ?? "unknown"})`);
+      return false;
+    }
+  } catch (error) {
+    // The message never contains the password: the AWS CLI does not echo auth parameters.
+    fail(`could not sign in the test user (${error.message.trim().split("\n")[0]})`);
+    return false;
+  }
+
+  const session = await callApi(apiUrl, "POST", "/api/v1/session", token);
+  if (session.status !== 200) {
+    fail(`expected HTTP 200 from POST /api/v1/session, got ${session.status}`);
+    return false;
+  }
+  const me = await callApi(apiUrl, "GET", "/api/v1/me", token);
+  if (me.status !== 200) {
+    fail(`expected HTTP 200 from GET /api/v1/me, got ${me.status}`);
+    return false;
+  }
+  const body = await me.json();
+  if (!body.id || !Array.isArray(body.memberships)) {
+    fail("GET /api/v1/me did not return an account with memberships");
+    return false;
+  }
+  console.log(`✓ signed-in session: account ${body.id}, ${body.memberships.length} studio(s)`);
+  return true;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  awsProfile = args.profile;
 
   if (!args.apiUrl) {
     fail("no API URL provided - pass --api-url or set API_BASE_URL");
@@ -218,7 +318,12 @@ async function main() {
     queueOk = await checkQueueIsDrained(args.environment, args.region);
   }
 
-  if (healthOk && authOk && queueOk) {
+  let signInOk = true;
+  if (args.signIn) {
+    signInOk = await checkSignedInSession(args.apiUrl, args.environment, args.region, args.outputs);
+  }
+
+  if (healthOk && authOk && queueOk && signInOk) {
     console.log("\n✓ SMOKE TEST PASSED\n");
   }
 }

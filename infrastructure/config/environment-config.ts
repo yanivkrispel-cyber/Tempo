@@ -100,6 +100,11 @@ export interface FeatureFlags {
   readonly enableFrontendHosting: boolean;
   /** The WAF web ACL on the distribution. The edge stack always attaches it, so it must match enableFrontendHosting. */
   readonly enableWaf: boolean;
+  /**
+   * The smoke test can sign in as one test user (day board #60, decision 5): the client-web app client also
+   * allows ADMIN_USER_PASSWORD_AUTH, which only callers with IAM credentials can use. Never in production.
+   */
+  readonly enableSmokeTestSignIn?: boolean;
 }
 
 export interface TempoEnvironmentConfig {
@@ -237,6 +242,9 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     }
     if (!config.github.githubEnvironment) {
       errors.push("production requires github.githubEnvironment for protected-environment approval");
+    }
+    if (config.featureFlags.enableSmokeTestSignIn) {
+      errors.push("production must not enable featureFlags.enableSmokeTestSignIn");
     }
   }
 
