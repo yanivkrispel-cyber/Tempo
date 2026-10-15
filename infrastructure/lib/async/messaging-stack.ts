@@ -139,6 +139,26 @@ export class MessagingStack extends Stack {
         retryPolicy: { maximumRetryAttempts: 1 }
       }
     });
+
+    // The daily retention job (night board #136, B4): old finished invitations and inbox items go. Third schedule,
+    // still inside the free tier.
+    new CfnSchedule(this, "RetentionDailySchedule", {
+      name: resourceName(config, "retention-daily"),
+      description: "Daily retention: old finished invitations and inbox items are deleted (docs/20 section 9)",
+      scheduleExpression: "cron(45 3 * * ? *)",
+      scheduleExpressionTimezone: "Asia/Jerusalem",
+      flexibleTimeWindow: { mode: "OFF" },
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:sqs:sendMessage",
+        roleArn: role.roleArn,
+        input: Stack.of(this).toJsonString({
+          QueueUrl: this.workQueue.queue.queueUrl,
+          MessageBody: "{}",
+          MessageAttributes: { MessageType: { DataType: "String", StringValue: "retention.daily" } }
+        }),
+        retryPolicy: { maximumRetryAttempts: 1 }
+      }
+    });
   }
 
   private alarmTopicArn(config: TempoEnvironmentConfig): string {
