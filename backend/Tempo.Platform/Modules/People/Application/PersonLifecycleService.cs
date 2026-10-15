@@ -344,8 +344,52 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             cancellationToken,
             org, merged, tenant.MembershipId);
 
+        await MoveSchedulingAsync(unitOfWork, org, survivor, merged, cancellationToken);
         await PeopleService.FlagDuplicatesAsync(unitOfWork, tenant.OrganizationId, survivor, cancellationToken);
         await AuditAsync(unitOfWork, tenant, "person.merged", "person", survivor, new { survivor, merged }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Bookings, passes and inbox items move to the survivor (docs/29 section 7). Where both records hold a live
+    /// place in one class, the survivor's stays and the merged record's is cancelled with its entry returned.
+    /// </summary>
+    private static async Task MoveSchedulingAsync(UnitOfWork unitOfWork, Guid org, Guid survivor, Guid merged, CancellationToken cancellationToken)
+    {
+        await ExecuteAsync(
+            unitOfWork,
+            """
+            WITH target AS (
+                SELECT b.id, b.session_id, b.status AS was
+                FROM scheduling.bookings b
+                WHERE b.organization_id = $1 AND b.person_id = $3 AND b.status IN ('booked', 'waitlisted')
+                  AND EXISTS (SELECT 1 FROM scheduling.bookings s
+                              WHERE s.organization_id = b.organization_id AND s.session_id = b.session_id AND s.person_id = $2
+                                AND s.status IN ('booked', 'waitlisted', 'attended', 'no_show'))
+                FOR UPDATE OF b
+            ),
+            clash AS (
+                UPDATE scheduling.bookings b SET status = 'cancelled', cancel_reason = 'staff', updated_at = now(), version = b.version + 1
+                FROM target t WHERE b.organization_id = $1 AND b.id = t.id
+                RETURNING t.id, t.session_id, t.was
+            ),
+            freed AS (
+                UPDATE scheduling.sessions s SET booked_count = s.booked_count - 1, version = s.version + 1
+                FROM clash WHERE s.organization_id = $1 AND s.id = clash.session_id AND clash.was = 'booked'
+                RETURNING s.id
+            ),
+            returned AS (
+                UPDATE scheduling.pass_uses u SET status = 'returned', updated_at = now(), version = u.version + 1
+                FROM clash WHERE u.organization_id = $1 AND u.booking_id = clash.id AND u.status = 'held'
+                RETURNING u.pass_id
+            )
+            UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
+            FROM returned WHERE p.organization_id = $1 AND p.id = returned.pass_id AND p.entries IS NOT NULL
+            """,
+            cancellationToken,
+            org, survivor, merged);
+        await ExecuteAsync(unitOfWork, "UPDATE scheduling.bookings SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
     }
 
     private static async Task ExecuteAsync(UnitOfWork unitOfWork, string sql, CancellationToken cancellationToken, params object?[] parameters)
