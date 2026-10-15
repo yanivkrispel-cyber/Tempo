@@ -64,6 +64,10 @@ const template = (overrides: Record<string, unknown> = {}) => ({
   minutes: 50,
   instructorMembershipId: dana.id,
   roomId: room.id,
+  // The weekly grid reads these, not the class type, people and room lists (A1).
+  classType: { id: reformer.id, name: reformer.name, category: "pilates", color: "rose" },
+  instructor: { membershipId: dana.id, displayName: "דנה אלון" },
+  room: { id: room.id, name: room.name },
   capacity: 8,
   validFrom: "2026-10-01",
   validUntil: null,
