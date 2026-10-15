@@ -152,6 +152,7 @@ function GrantDialog({ person, today, onClose }: { person: PersonDetail; today: 
   const product = active.find((item) => item.id === productId) ?? active[0];
 
   const grant = useMutation({
+    mutationKey: [organizationId, "passes.grant"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/passes", {
@@ -244,6 +245,7 @@ function VoidDialog({ pass, personId, onClose }: { pass: Pass; personId: string;
   const { organizationId } = useStudio();
   const refresh = useRefreshPasses(personId);
   const voidPass = useMutation({
+    mutationKey: [organizationId, "passes.voidPass"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/passes/{passId}/void", {

@@ -23,6 +23,7 @@ export function EraseDialog({ personId, name, onClose }: { personId: string; nam
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const erase = useMutation({
+    mutationKey: [organizationId, "people.erase"],
     mutationFn: () =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/erase", {

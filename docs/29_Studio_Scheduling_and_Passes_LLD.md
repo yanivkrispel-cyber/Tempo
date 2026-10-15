@@ -530,7 +530,8 @@ Staff with `bookings.manage` move a `booked` place to another session of the sam
 
 - The target must be `scheduled`, not started, and have a free place. A full target answers 409 `session.full`:
   a move never joins a waitlist (staff can cancel and let the member join the line themselves).
-- The entry moves with the place: the held `pass_uses` row is re-pointed at the new booking, so nothing is
+- The entry moves with the place: inside one transaction the held entry is returned and held again for the new
+  class (the ledger shows one `returned` and one `held` use), so once it commits nothing is
   returned or spent. The pass must still cover the target (category, validity, weekly cap in the target's week);
   otherwise 409 `booking.no_valid_pass` and nothing changes.
 - The old row becomes `cancelled` with the new `cancelReason` value `moved` (never a late cancel), the old session's
@@ -547,7 +548,7 @@ Staff with `bookings.manage`, or the session's instructor (section 6.4), send on
 `{ recipients }`.
 
 - Recipients are everyone with a live place: `booked` and `waitlisted` (a room change matters to the line too).
-  Each gets an inbox item of kind `session_message` that carries the text and the session summary. No push, SMS or
+  Each gets an inbox item of kind `session.message` that carries the text (`InboxItem.text`) and the session summary. No push, SMS or
   email in this step: delivery channels are docs/30.
 - Audit: `session.message_sent` with `{ sessionId, recipients }` only. The text is never in the audit log; the
   inbox item is its only copy, and erasing a person deletes their inbox items of this kind.

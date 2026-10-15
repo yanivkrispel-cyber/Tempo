@@ -155,6 +155,7 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
   const { organizationId } = useStudio();
   const key = useInvitationsKey();
   const revoke = useMutation({
+    mutationKey: [organizationId, "invitations.revoke"],
     mutationFn: () =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/invitations/{invitationId}", {
@@ -207,6 +208,7 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
   const [role, setRole] = useState<InvitableRole>("staff");
   const [submitted, setSubmitted] = useState(false);
   const create = useMutation({
+    mutationKey: [studio.organizationId, "invitations.createInvitation"],
     mutationFn: (body: Schemas["CreateInvitationRequest"]) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/invitations", {
@@ -300,12 +302,14 @@ function JoinLinkCard() {
   const [link, setLink] = useState<string | null>(null);
 
   const rotate = useMutation({
+    mutationKey: [organizationId, "invitations.rotate"],
     mutationFn: () =>
       unwrap(api.PUT("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
     onSuccess: (joinLink) => setLink(joinLink.link),
     onSettled: () => queryClient.invalidateQueries({ queryKey: organizationKey }),
   });
   const disable = useMutation({
+    mutationKey: [organizationId, "invitations.disable"],
     mutationFn: () =>
       unwrap(api.DELETE("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
     onSuccess: () => {

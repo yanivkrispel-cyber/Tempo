@@ -39,6 +39,9 @@ public interface IBookingService
 
     Task<BookingView> CancelAsync(TenantContext tenant, Guid bookingId, bool returnEntry, CancellationToken cancellationToken);
 
+    /// <summary>Moves a booked place to another class (docs/29 section 16.1); staff only. Returns the new booking.</summary>
+    Task<BookingView> MoveAsync(TenantContext tenant, Guid bookingId, Guid sessionId, CancellationToken cancellationToken);
+
     Task<MyBookingPage> ListMineAsync(TenantContext tenant, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
 
     Task<MyBookingPage> ListForPersonAsync(TenantContext tenant, Guid personId, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
@@ -194,6 +197,104 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         var cancelled = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, bookingId)).Single();
         await unitOfWork.CommitAsync(cancellationToken);
         return cancelled;
+    }
+
+    public async Task<BookingView> MoveAsync(TenantContext tenant, Guid bookingId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (!tenant.Has(Permissions.BookingsManage))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "permission.denied", "Only staff can move a booking.");
+        }
+
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        Guid fromSessionId;
+        Guid personId;
+        string status;
+        await using (var read = unitOfWork.Command(
+            "SELECT session_id, person_id, status FROM scheduling.bookings WHERE organization_id = $1 AND id = $2 FOR UPDATE",
+            tenant.OrganizationId, bookingId))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw BookingNotFound();
+            }
+
+            fromSessionId = reader.GetGuid(0);
+            personId = reader.GetGuid(1);
+            status = reader.GetString(2);
+        }
+
+        if (fromSessionId == sessionId)
+        {
+            throw Conflict("booking.duplicate", "The booking is already in this class.");
+        }
+
+        if (status != "booked")
+        {
+            throw Conflict("booking.not_cancellable", "Only a booked place can be moved.");
+        }
+
+        // Both classes are locked in id order, so two staff moving across each other cannot deadlock.
+        SessionFacts from;
+        SessionFacts to;
+        if (fromSessionId.CompareTo(sessionId) < 0)
+        {
+            from = await SessionAsync(unitOfWork, tenant.OrganizationId, fromSessionId, cancellationToken, forUpdate: true);
+            to = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+        }
+        else
+        {
+            to = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+            from = await SessionAsync(unitOfWork, tenant.OrganizationId, fromSessionId, cancellationToken, forUpdate: true);
+        }
+
+        var now = clock.GetUtcNow();
+        if (from.StartsAt <= now || to.StartsAt <= now)
+        {
+            throw Conflict("booking.closed", "This class has started.");
+        }
+
+        if (to.Status == "cancelled")
+        {
+            throw Conflict("session.cancelled", "This class was cancelled.");
+        }
+
+        // The entry comes back and is held again for the new class inside this transaction: once it commits
+        // nothing was spent or returned, and a pass that does not cover the new class rolls the whole move back.
+        await ReturnEntryAsync(unitOfWork, tenant.OrganizationId, bookingId, cancellationToken);
+        var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, personId, to, lockRows: true, cancellationToken)
+            ?? throw Conflict("booking.no_valid_pass", "No punch card or membership is valid for the new class.");
+        if (!await TakePlaceAsync(unitOfWork, tenant.OrganizationId, to.Id, cancellationToken))
+        {
+            throw Conflict("session.full", "This class is full.");
+        }
+
+        var movedId = Guid.CreateVersion7();
+        try
+        {
+            await InsertBookingAsync(unitOfWork, tenant, movedId, to.Id, personId, "booked", null, cancellationToken);
+        }
+        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation && e.ConstraintName == "ux_bookings_one_live")
+        {
+            throw Conflict("booking.duplicate", "Already booked or waiting for this class.");
+        }
+
+        await HoldEntryAsync(unitOfWork, tenant.OrganizationId, pass, movedId, cancellationToken);
+        await SetStatusAsync(unitOfWork, tenant.OrganizationId, bookingId, "cancelled", "moved", cancellationToken);
+        await using (var free = unitOfWork.Command(
+            "UPDATE scheduling.sessions SET booked_count = booked_count - 1, version = version + 1 WHERE organization_id = $1 AND id = $2",
+            tenant.OrganizationId, from.Id))
+        {
+            await free.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await PromoteAsync(unitOfWork, tenant, from, await PolicyAsync(unitOfWork, tenant.OrganizationId, cancellationToken), now, cancellationToken);
+        await InboxAsync(unitOfWork, tenant.OrganizationId, personId, "booking.moved", to.Id, movedId, cancellationToken);
+        await AuditAsync(unitOfWork, tenant, "booking.moved", movedId, new { fromSessionId = from.Id, toSessionId = to.Id, previousBookingId = bookingId, personId, passId = pass.Id }, cancellationToken);
+        var moved = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, movedId)).Single();
+        await unitOfWork.CommitAsync(cancellationToken);
+        return moved;
     }
 
     public async Task<MyBookingPage> ListMineAsync(TenantContext tenant, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken)

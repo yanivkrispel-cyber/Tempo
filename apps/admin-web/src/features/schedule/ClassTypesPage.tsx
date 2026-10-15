@@ -165,6 +165,7 @@ function usePatchClassType(classType: ClassType) {
   const queryClient = useQueryClient();
   const { organizationId } = useStudio();
   return useMutation({
+    mutationKey: [organizationId, "schedule.patchClassType"],
     mutationFn: (body: Schemas["UpdateClassTypeRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/class-types/{classTypeId}", {
@@ -265,6 +266,7 @@ function ClassTypeDialog({
   const [submitted, setSubmitted] = useState(false);
 
   const save = useMutation({
+    mutationKey: [organizationId, "schedule.save"],
     mutationFn: () => {
       const fields = { name: name.trim(), category, color, defaultMinutes: wholeNumber(minutes) ?? 0 };
       return classType
