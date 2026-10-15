@@ -283,6 +283,15 @@ describe("my bookings", () => {
     expect(within(table).getByRole("row", { name: /08.10/ })).toHaveTextContent("השיעור בוטל");
   });
 
+  it("says when the studio moved a booking to another class", async () => {
+    const past = pastBookings();
+    past[2] = { ...past[2]!, cancelReason: "moved" };
+    renderAt("/bookings", { past });
+    await userEvent.click(await screen.findByRole("tab", { name: "היסטוריה" }));
+    const table = await screen.findByRole("table", { name: "שיעורים קודמים" });
+    expect(within(table).getByRole("row", { name: /08.10/ })).toHaveTextContent("הועבר לשיעור אחר");
+  });
+
   it("says when there is no history yet", async () => {
     renderAt("/bookings");
     await userEvent.click(await screen.findByRole("tab", { name: "היסטוריה" }));
@@ -385,6 +394,25 @@ describe("promotion and the inbox", () => {
     renderAt("/", { inbox: promoted() });
     expect(await screen.findByRole("link", { name: "התראות, אחת חדשה" })).toHaveAttribute("href", "/inbox");
     expect(screen.getByText(/התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית/)).toBeInTheDocument();
+  });
+
+  it("tells a member the studio moved the place, linking the new class", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a04",
+          kind: "booking.moved",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          createdAt: "2026-10-13T08:40:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [item] = within(list).getAllByRole("listitem");
+    expect(item).toHaveTextContent("הסטודיו העביר אותך לשיעור אחר");
+    expect(item).toHaveTextContent("לא נוצלה כניסה נוספת");
+    expect(within(item!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
   });
 
   it("lists the notifications it knows, and opening one marks it read and shows the class", async () => {

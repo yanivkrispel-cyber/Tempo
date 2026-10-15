@@ -1586,7 +1586,7 @@ paths:
       tags: [Bookings]
       operationId: createBooking
       summary: "Book a place, or join the waitlist when full (self, or `bookings.manage` with `personId`)"
-      description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass`, `session.full` (waitlist off or past its cutoff), `session.cancelled`."
+      description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass` (with `frozenUntil` when the membership is frozen that day), `session.full` (waitlist off or past its cutoff), `session.cancelled`."
       requestBody:
         required: false
         content:
@@ -1889,8 +1889,10 @@ paths:
       description: |
         Studio dates, inclusive, 1 to 90 days, starting today or later and before the membership ends. `endsOn` of
         the pass moves out by the frozen days; no booking inside them (the member sees 409 `booking.no_valid_pass`);
-        bookings already made inside the period stay (C-11). A punch card answers 409 `pass.not_freezable` (C-12);
-        overlapping another freeze answers 409 `pass.freeze_overlap`. The member gets an inbox item `pass.frozen`.
+        bookings already made inside the period stay (C-11). The member gets an inbox item `pass.frozen`.
+        400 codes (`errors`): `startsOn.invalid` (missing, or before today), `endsOn.invalid` (missing, before
+        `startsOn`, or more than 90 days). 404: `pass.not_found`. 409 codes: `pass.not_freezable` (a punch card,
+        C-12), `pass.voided`, `pass.freeze_outside` (starts after the membership ends), `pass.freeze_overlap`.
       requestBody:
         required: true
         content:
@@ -1921,7 +1923,7 @@ paths:
       tags: [Passes]
       operationId: unfreezePass
       summary: "Remove a freeze that has not started; validity shrinks back (`passes.manage`)"
-      description: A freeze that already started stays (409 `pass.freeze_started`).
+      description: "404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.voided`, `pass.not_freezable`."
       responses:
         "200":
           description: OK.
@@ -2360,6 +2362,10 @@ components:
               field: { type: string }
               code: { type: string }
               message: { type: string }
+        frozenUntil:
+          type: string
+          format: date
+          description: On `booking.no_valid_pass` only, when the person's membership is frozen on that day (docs/29 section 16.4).
 
     Health:
       type: object
@@ -3342,6 +3348,12 @@ components:
           oneOf:
             - $ref: "#/components/schemas/PassSummary"
             - type: "null"
+        frozenUntil:
+          type: [string, "null"]
+          format: date
+          description: |
+            When no pass is valid because the caller's membership is frozen on this class's day (docs/29 section
+            16.4): the last frozen day, so the booking sheet can say so before the 409. Null otherwise.
         version: { type: string }
 
     SessionList:

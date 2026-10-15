@@ -49,7 +49,8 @@ public sealed record SessionView(
     string Status,
     MyBookingStateView? MyBooking,
     long Version,
-    PassSummaryView? PassPreview = null);
+    PassSummaryView? PassPreview = null,
+    DateOnly? FrozenUntil = null);
 
 public sealed record TemplateChange(TemplateView Template, IReadOnlyList<SessionView> UntouchedSessions);
 
@@ -592,7 +593,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         await reader.CloseAsync();
         var bookable = sessions.Where(s => s.Status == "scheduled" && s.MyBooking is null).Select(s => (s.Id, s.LocalDate, s.ClassType.Category)).ToList();
         var previews = await BookingService.PreviewAsync(unitOfWork, tenant.OrganizationId, tenant.MembershipId, bookable, cancellationToken);
-        return [.. sessions.Select(s => previews.TryGetValue(s.Id, out var preview) ? s with { PassPreview = preview } : s)];
+        return [.. sessions.Select(s => previews.TryGetValue(s.Id, out var p) ? s with { PassPreview = p.Preview, FrozenUntil = p.FrozenUntil } : s)];
     }
 
     private static async Task<TemplateView?> TemplateAsync(UnitOfWork unitOfWork, Guid organizationId, Guid templateId, CancellationToken cancellationToken, bool forUpdate = false)
