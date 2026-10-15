@@ -124,7 +124,8 @@ function usePeople(query: string | undefined, status: "current" | "archived") {
         api.GET("/api/v1/organizations/{organizationId}/people", {
           params: {
             path: { organizationId },
-            query: { query, status: status === "archived" ? "archived" : undefined, limit: 50, before: pageParam ?? undefined }
+            // Without a status the API returns active and archived together; each tab asks for its own.
+            query: { query, status: status === "archived" ? "archived" : "active", limit: 50, before: pageParam ?? undefined }
           }
         })
       ),

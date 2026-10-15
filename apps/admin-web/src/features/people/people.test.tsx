@@ -58,6 +58,7 @@ describe("people list", () => {
     expect(row).toHaveTextContent("הוספה בסטודיו");
     expect(within(row).getByRole("link", { name: "נועה לוי" })).toHaveAttribute("href", `/o/neshima/people/${personId}`);
 
+    expect(new URL(api.requests.find((request) => request.url.includes("/people"))!.url).searchParams.get("status")).toBe("active");
     await userEvent.type(screen.getByRole("searchbox", { name: "חיפוש לפי שם, טלפון או מייל" }), "050-123");
     await waitFor(() => expect(api.requests.some((request) => new URL(request.url).searchParams.get("query") === "+97250123")).toBe(true));
 

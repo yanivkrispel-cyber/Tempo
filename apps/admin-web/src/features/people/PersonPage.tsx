@@ -8,6 +8,8 @@ import { Banner, Button, ButtonLink, Card, Chip, DateInput, Dialog, Field, Icon,
 import { formatDate, todayIso, toIsoDate, type IsoDate } from "../../shared/utilities/dates";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
+import { EraseDialog } from "./EraseDialog";
+import { ExportButton } from "./ExportButton";
 import { personStatus, sourceLabel } from "./labels";
 
 type PersonDetail = Schemas["PersonDetail"];
@@ -58,6 +60,7 @@ export function PersonPage() {
 function PersonCard({ person }: { person: PersonDetail }) {
   const studio = useStudio();
   const [editing, setEditing] = useState(false);
+  const [erasing, setErasing] = useState(false);
   const status = personStatus[person.status];
   const writable = studio.can("people.manage") && (person.status === "active" || person.status === "archived");
   const archive = usePatchPerson(person);
@@ -88,14 +91,19 @@ function PersonCard({ person }: { person: PersonDetail }) {
       <Card as="section" aria-labelledby="details" className="tp-stack">
         <div className="tp-row" style={{ justifyContent: "space-between" }}>
           <h2 id="details">פרטים</h2>
-          {writable && (
+          {(writable || studio.can("people.export")) && (
             <div className="tp-row">
+              {studio.can("people.export") && <ExportButton personId={person.id} name={person.displayName} />}
+              {writable && (
+                <>
               <Button variant="secondary" size="sm" icon="edit" onClick={() => setEditing(true)}>
                 עריכה
               </Button>
               <Button variant={person.status === "archived" ? "secondary" : "ghost-danger"} size="sm" loading={archive.isPending} onClick={() => setArchived(person.status !== "archived")}>
                 {person.status === "archived" ? "החזרה מהארכיון" : "העברה לארכיון"}
               </Button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -114,6 +122,16 @@ function PersonCard({ person }: { person: PersonDetail }) {
       </Card>
 
       <ContactPoints person={person} writable={writable} />
+
+      {/* Owner only (people.erase); never one's own record. */}
+      {studio.can("people.erase") && writable && person.membershipId !== studio.membership.membershipId && (
+        <div>
+          <Button variant="ghost-danger" size="sm" onClick={() => setErasing(true)}>
+            מחיקת הנתונים
+          </Button>
+        </div>
+      )}
+      {erasing && <EraseDialog personId={person.id} name={person.displayName} onClose={() => setErasing(false)} />}
 
       {editing && <EditPersonDialog person={person} onClose={() => setEditing(false)} />}
     </>
