@@ -85,8 +85,36 @@ change against that convention, not against your own taste.
 
 ## What to check: backend (`backend/`)
 
-[K] adds this section (naming, layering between modules, error handling and Problem codes, async and cancellation,
-SQL style) in review.
+- **Layering.** Endpoints in `backend/Tempo.Api/Endpoints/` translate HTTP only: parse, call one service, map to a
+  `Tempo.Contracts` record. Rules live in `Tempo.Platform/Modules/<Module>/Application` services; pure rules with no
+  I/O in `Domain` (e.g. `StudioTime`, `PassSelection`). A module reads another module's tables only through that
+  module's static helpers (`PeopleService.DetailAsync`, `TimetableService.SessionsAsync`), never by copying its SQL.
+- **Every tenant route** is in `MapTenantGroup()`, declares exactly one `RequirePermission(<catalog key>)`, has
+  `WithName(<operationId>)` equal to the contract, and is in `contracts/openapi/tempo-api.v1.yaml` (the conformance
+  test checks names; you check that the permission and the self/instructor rules in the service match the LLD).
+  A write that must work for a restricted studio carries `AllowWhenSubscriptionRestricted`; anything else that does
+  is a finding.
+- **Transactions.** One `UnitOfWork` per request, opened with the tenant (`DatabaseRole.Application`, account and
+  organization set); the platform role only in `/platform/*` and the worker. Read, check, write and audit in the
+  same unit of work; `CommitAsync` last. Concurrency-sensitive counters use a guarded `UPDATE ... WHERE <rule>`
+  (capacity, entries) or a lock taken before counting (`pg_advisory_xact_lock`, `FOR UPDATE`), never
+  read-then-write.
+- **Errors.** Throw `DomainRuleViolationException(kind, code, message, field?)` with a stable lowercase dotted code
+  that the contract lists; 404 for anything outside the caller's tenant or reach, so ids cannot be probed.
+  `If-Match` maps to `version`; a stale one is 409 `concurrency.conflict`.
+- **Audit.** Every state change writes one audit event in the same transaction. `data` holds ids, states, numbers
+  and changed field names only: never names, emails, phones, notes or free text (docs/27 section 7).
+- **SQL.** Positional parameters only, never interpolated values (interpolating a constant column list is fine);
+  `organization_id` first in every WHERE on a tenant table; timestamps `timestamptz` and compared in SQL with
+  `now()` or a passed instant; dates the studio sees are computed in its time zone (`StudioZoneAsync`).
+- **Async.** Every I/O call is awaited with the request's `CancellationToken`; `await using` for commands, readers
+  and the unit of work; `GetFieldValueAsync`/`IsDBNullAsync` on readers (the analyzers enforce some of this).
+- **Migrations** are numbered SQL in `backend/Tempo.DatabaseMigrator/Migrations/Scripts/`, never edited after merge;
+  every new tenant table has RLS enabled with the tenant clause and explicit grants for `$app_role$` and
+  `$platform_role$`; a new permission key is seeded into the system roles and added to `Permissions.cs` together.
+- **Tests.** Integration tests on PostgreSQL 18 (`MigratedDatabase`) for anything with SQL, a concurrency test for
+  any guarded counter, and the flow test of the phase updated when a demo step changes. A test that only asserts a
+  status code for a rule with data effects (entries, counts, audit) is a finding.
 
 ## Output
 
