@@ -2,6 +2,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Organizations.Domain;
 using Tempo.Platform.Modules.People.Application;
 
 namespace Tempo.Platform.Modules.Organizations.Infrastructure;
@@ -92,6 +93,67 @@ internal static class MembershipQueries
             reader.GetString(4),
             reader.GetString(5),
             StoredValue.Parse<OrganizationStatus>(reader.GetString(6)));
+    }
+
+    /// <summary>
+    /// Revokes the pending invitations a member sent that they could not send now (#121): all of them when the
+    /// member is removed or suspended (<paramref name="inviterRole"/> null), otherwise those whose role the new
+    /// role may not invite. Each gets its own `invitation.revoked` with the reason.
+    /// </summary>
+    public static async Task RevokeInvitationsSentByAsync(
+        UnitOfWork unitOfWork,
+        Guid organizationId,
+        Guid inviterMembershipId,
+        MembershipRole? inviterRole,
+        Guid actorId,
+        string correlationId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        string[] stillAllowed = inviterRole is { } role
+            ? [.. Enum.GetValues<MembershipRole>().Where(invited => RolePolicy.CanInvite(role, invited)).Select(invited => StoredValue.Of(invited))]
+            : [];
+        var revoked = new List<Guid>();
+        await using (var command = unitOfWork.Command(
+            """
+            UPDATE organizations.invitations
+            SET status = 'revoked', updated_at = now(), version = version + 1
+            WHERE organization_id = $1 AND invited_by_membership_id = $2 AND status = 'pending' AND NOT (role = ANY($3))
+            RETURNING id
+            """,
+            organizationId,
+            inviterMembershipId,
+            stillAllowed))
+        {
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                revoked.Add(reader.GetGuid(0));
+            }
+        }
+
+        foreach (var id in revoked)
+        {
+            await AuditAsync(unitOfWork, organizationId, actorId, "invitation.revoked", "invitation", id, correlationId, new { reason }, cancellationToken);
+        }
+    }
+
+    /// <summary>True when the member who sent the invitation is still active and may still invite its role (#121).</summary>
+    public static async Task<bool> InviterStillMayInviteAsync(UnitOfWork unitOfWork, Guid organizationId, Guid invitationId, CancellationToken cancellationToken)
+    {
+        await using var command = unitOfWork.Command(
+            """
+            SELECT i.role, m.role, m.status
+            FROM organizations.invitations i
+            JOIN organizations.memberships m ON m.organization_id = i.organization_id AND m.id = i.invited_by_membership_id
+            WHERE i.organization_id = $1 AND i.id = $2
+            """,
+            organizationId,
+            invitationId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken)
+            && reader.GetString(2) == StoredValue.Of(MembershipStatus.Active)
+            && RolePolicy.CanInvite(StoredValue.Parse<MembershipRole>(reader.GetString(1)), StoredValue.Parse<MembershipRole>(reader.GetString(0)));
     }
 
     public static Task AuditAsync(

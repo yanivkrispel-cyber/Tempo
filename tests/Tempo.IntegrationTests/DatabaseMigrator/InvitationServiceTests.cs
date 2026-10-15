@@ -173,7 +173,86 @@ public sealed class InvitationServiceTests(PostgresFixture postgres) : IClassFix
         limited.RetryAfter.Should().BeGreaterThan(TimeSpan.Zero).And.BeLessThanOrEqualTo(TimeSpan.FromHours(1));
     }
 
+    [Fact]
+    public async Task Invitation_OfARemovedInviter_IsRevokedAndCannotBeAccepted()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, studioId) = await StudioAsync(db);
+        var admin = await MemberAsync(db, studioId, "admin@example.com", MembershipRole.Admin);
+        var service = Invitations(db);
+        var second = await AccountAsync(db, "admin-second@example.com");
+        var created = await service.CreateAsync(admin, "admin-second@example.com", MembershipRole.Staff, CancellationToken.None);
+
+        await Members(db).RemoveAsync(owner, admin.MembershipId, CancellationToken.None);
+
+        var accept = () => service.AcceptAsync(second, created.Token, "c", CancellationToken.None);
+        (await accept.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
+        (await db.AsMasterAsync("SELECT status FROM organizations.invitations WHERE id = $1", created.Invitation.Id)).Should().Be("revoked");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'invitation.revoked' AND target_id = $1 AND data->>'reason' = 'inviter_removed'", created.Invitation.Id))
+            .Should().Be(1L);
+        (await db.AsMasterAsync("SELECT count(*) FROM organizations.memberships WHERE organization_id = $1 AND user_account_id = $2", studioId, second.UserAccountId))
+            .Should().Be(0L);
+    }
+
+    [Fact]
+    public async Task Invitation_OfADemotedInviter_IsRevoked_OnlyForRolesTheNewRoleCannotInvite()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, studioId) = await StudioAsync(db);
+        var admin = await MemberAsync(db, studioId, "admin@example.com", MembershipRole.Admin);
+        var service = Invitations(db);
+        var staffInvite = await service.CreateAsync(admin, "new-staff@example.com", MembershipRole.Staff, CancellationToken.None);
+        var ownersAdminInvite = await service.CreateAsync(owner, "new-admin@example.com", MembershipRole.Admin, CancellationToken.None);
+
+        await Members(db).UpdateAsync(owner, admin.MembershipId, MembershipRole.Client, null, null, CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT status FROM organizations.invitations WHERE id = $1", staffInvite.Invitation.Id)).Should().Be("revoked");
+        (await db.AsMasterAsync("SELECT status FROM organizations.invitations WHERE id = $1", ownersAdminInvite.Invitation.Id))
+            .Should().Be("pending", "the owner's own invitations are untouched");
+        var stranger = await AccountAsync(db, "new-staff@example.com");
+        var preview = () => service.PreviewAsync(stranger, staffInvite.Token, CancellationToken.None);
+        (await preview.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
+    }
+
+    [Fact]
+    public async Task Invitation_OfASuspendedInviter_IsRevoked_AndStaysRevokedAfterReactivation()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, studioId) = await StudioAsync(db);
+        var admin = await MemberAsync(db, studioId, "admin@example.com", MembershipRole.Admin);
+        var service = Invitations(db);
+        var invitee = await AccountAsync(db, "client@example.com");
+        var created = await service.CreateAsync(admin, "client@example.com", MembershipRole.Client, CancellationToken.None);
+
+        await Members(db).UpdateAsync(owner, admin.MembershipId, null, MembershipStatus.Suspended, null, CancellationToken.None);
+        await Members(db).UpdateAsync(owner, admin.MembershipId, null, MembershipStatus.Active, null, CancellationToken.None);
+
+        var accept = () => service.AcceptAsync(invitee, created.Token, "c", CancellationToken.None);
+        (await accept.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'invitation.revoked' AND target_id = $1 AND data->>'reason' = 'inviter_suspended'", created.Invitation.Id))
+            .Should().Be(1L);
+    }
+
+    [Fact]
+    public async Task Invitation_WhoseInviterLostTheRightWithoutRevocation_IsRefusedOnAccept()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (_, studioId) = await StudioAsync(db);
+        var admin = await MemberAsync(db, studioId, "admin@example.com", MembershipRole.Admin);
+        var service = Invitations(db);
+        var invitee = await AccountAsync(db, "staff@example.com");
+        var created = await service.CreateAsync(admin, "staff@example.com", MembershipRole.Staff, CancellationToken.None);
+
+        // A path that changes the role without going through MemberService (an older row, a future code path).
+        await db.AsMasterAsync("UPDATE organizations.memberships SET role = 'staff' WHERE id = $1", admin.MembershipId);
+
+        var accept = () => service.AcceptAsync(invitee, created.Token, "c", CancellationToken.None);
+        (await accept.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
+    }
+
     private static InvitationService Invitations(MigratedDatabase db) => new(db, new AccountProfiles(db), new AttemptLimiter(db));
+
+    private static MemberService Members(MigratedDatabase db) => new(db, new AccountProfiles(db));
 
     private static JoinLinkService JoinLinks(MigratedDatabase db) => new(db, new AttemptLimiter(db));
 
