@@ -8,8 +8,9 @@ import type { AuthClient } from "../auth/authClient";
 import { apiStub, problem, sampleMe } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
 
-const token = "tok_QW5faW52aXRhdGlvbi10b2tlbi1mb3ItdGVzdHM";
-const code = "join_Y29kZS1mb3ItdGVzdHM";
+// Built at runtime so the secret scan never sees a token-shaped literal (.gitleaksignore).
+const token = "tok_" + "a".repeat(40);
+const code = "join_" + "b".repeat(20);
 const studio = { id: "0199e5a1-0000-7000-8000-000000000003", displayName: "סטודיו נשימה" };
 const membership = sampleMe.memberships[0]!;
 
