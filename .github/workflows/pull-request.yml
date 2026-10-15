@@ -4,9 +4,13 @@ on:
   pull_request:
     # main is the only long-lived branch; every change reaches it through a PR.
     branches: [main]
+    # Draft PRs do not run CI; marking a draft ready for review runs it.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
+  # dorny/paths-filter lists the PR's changed files through the GitHub API.
+  pull-requests: read
 
 concurrency:
   group: pull-request-${{ github.event.pull_request.number }}
@@ -16,81 +20,146 @@ env:
   DOTNET_VERSION: "10.0.x"
   NODE_VERSION: "22"
 
+# The five job names are the required checks on main: never rename them. Each job
+# always runs and reports success; a paths filter inside the job skips the heavy
+# steps when the PR touches nothing they check (a docs-only PR runs only checkout,
+# the filters and the secret scan). A job skipped on a draft also counts as success.
 jobs:
   backend:
     name: Backend (.NET)
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            relevant:
+              - 'backend/**'
+              - 'tests/**'
+              - 'contracts/openapi/**'
+              - 'Tempo.sln'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+              - 'global.json'
+              - '.github/workflows/pull-request.yml'
+
       - uses: actions/setup-dotnet@v4
+        if: steps.changes.outputs.relevant == 'true'
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: dotnet restore
+        if: steps.changes.outputs.relevant == 'true'
         run: dotnet restore Tempo.sln
 
       - name: dotnet build
+        if: steps.changes.outputs.relevant == 'true'
         run: dotnet build Tempo.sln --configuration Release --no-restore
 
       - name: dotnet test
+        if: steps.changes.outputs.relevant == 'true'
         run: dotnet test Tempo.sln --configuration Release --no-build --logger "trx" --results-directory TestResults
 
       - name: Check for vulnerable NuGet packages
+        if: steps.changes.outputs.relevant == 'true'
         run: dotnet list Tempo.sln package --vulnerable --include-transitive
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.relevant == 'true'
         with:
           name: dotnet-test-results
           path: TestResults
 
   infrastructure:
     name: Infrastructure (CDK)
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            relevant:
+              - 'infrastructure/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/pull-request.yml'
+
       - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.relevant == 'true'
+
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.relevant == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
       - name: pnpm install
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Type-check infrastructure
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm --filter @tempo/infrastructure run build
 
       - name: CDK unit tests
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm --filter @tempo/infrastructure test
 
       - name: cdk synth (dev, staging, production configuration)
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm --filter @tempo/infrastructure run synth
 
       - name: cdk diff (informational - no AWS credentials on pull_request)
+        if: steps.changes.outputs.relevant == 'true'
         run: echo "cdk diff requires AWS credentials; it runs against the real account only in deploy-development.yml."
 
   frontend:
     name: Frontend workspaces
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            relevant:
+              - 'apps/**'
+              - 'packages/**'
+              - 'contracts/openapi/**'
+              - 'infrastructure/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/pull-request.yml'
+
       - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.relevant == 'true'
+
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.relevant == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
       - name: pnpm install
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: API client matches the OpenAPI contract
+        if: steps.changes.outputs.relevant == 'true'
         run: pnpm --filter @tempo/api-client run check:generated
 
       - name: Build and test frontend workspaces
+        if: steps.changes.outputs.relevant == 'true'
         # apps/* (Vite build + Vitest), packages/* (design-system token check,
         # api-client type check + Vitest)
         # and infrastructure. pnpm --recursive skips packages without the script.
@@ -98,13 +167,29 @@ jobs:
           pnpm --recursive run build
           pnpm --recursive run test
 
+      - name: Lint frontend workspaces
+        if: steps.changes.outputs.relevant == 'true'
+        # Each workspace owns its "lint" script (type check, eslint, token check),
+        # so adding a linter to a workspace never needs a workflow change.
+        run: pnpm --recursive run lint --if-present
+
   contracts:
     name: Contract validation
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            relevant:
+              - 'contracts/**'
+              - '.github/workflows/pull-request.yml'
+
       - name: Validate OpenAPI specs (if any exist yet)
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           shopt -s nullglob
           files=(contracts/openapi/*.yaml contracts/openapi/*.yml contracts/openapi/*.json)
@@ -115,6 +200,7 @@ jobs:
           npx --yes @redocly/cli@latest lint "${files[@]}"
 
       - name: Validate event schemas (if any exist yet)
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           shopt -s nullglob
           files=(contracts/schemas/*.json contracts/events/*.json)
@@ -129,6 +215,8 @@ jobs:
 
   security:
     name: Security scans
+    # No paths filter: a secret can land in any file, docs included.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
