@@ -121,3 +121,38 @@ public sealed record PassResponse(
 public sealed record PassListResponse(IReadOnlyList<PassResponse> Items);
 
 public sealed record GrantPassRequest(Guid? ProductId, DateOnly? StartsOn, string? Note);
+
+public sealed record PersonRefResponse(Guid Id, string DisplayName);
+
+/// <summary>`Booking`: a place in a session, or a place in its waitlist.</summary>
+public sealed record BookingResponse(
+    Guid Id,
+    Guid SessionId,
+    PersonRefResponse Person,
+    string Status,
+    int? WaitlistPosition,
+    bool LateCancel,
+    string? CancelReason,
+    PassSummaryResponse? Pass,
+    DateTimeOffset CreatedAt,
+    string Version);
+
+/// <summary>`MyBooking`: a booking with its session.</summary>
+public sealed record MyBookingResponse(
+    Guid Id,
+    Guid SessionId,
+    PersonRefResponse Person,
+    string Status,
+    int? WaitlistPosition,
+    bool LateCancel,
+    string? CancelReason,
+    PassSummaryResponse? Pass,
+    DateTimeOffset CreatedAt,
+    string Version,
+    SessionResponse Session);
+
+public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Items, Guid? NextBefore);
+
+public sealed record CreateBookingRequest(Guid? PersonId);
+
+public sealed record CancelBookingRequest(bool? ReturnEntry);

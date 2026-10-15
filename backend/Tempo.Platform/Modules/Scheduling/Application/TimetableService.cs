@@ -42,7 +42,8 @@ public sealed record SessionView(
     int WaitlistCount,
     string Status,
     MyBookingStateView? MyBooking,
-    long Version);
+    long Version,
+    PassSummaryView? PassPreview = null);
 
 public sealed record TemplateChange(TemplateView Template, IReadOnlyList<SessionView> UntouchedSessions);
 
@@ -505,7 +506,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         return (int)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 
-    private static async Task<IReadOnlyList<SessionView>> SessionsAsync(UnitOfWork unitOfWork, TenantContext tenant, string where, CancellationToken cancellationToken, params object?[] more)
+    internal static async Task<IReadOnlyList<SessionView>> SessionsAsync(UnitOfWork unitOfWork, TenantContext tenant, string where, CancellationToken cancellationToken, params object?[] more)
     {
         await using var policy = unitOfWork.Command(
             "SELECT coalesce((SELECT free_cancel_hours FROM scheduling.booking_policies WHERE organization_id = $1), 6)",
@@ -559,7 +560,10 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 reader.GetInt64(24)));
         }
 
-        return sessions;
+        await reader.CloseAsync();
+        var bookable = sessions.Where(s => s.Status == "scheduled" && s.MyBooking is null).Select(s => (s.Id, s.LocalDate, s.ClassType.Category)).ToList();
+        var previews = await BookingService.PreviewAsync(unitOfWork, tenant.OrganizationId, tenant.MembershipId, bookable, cancellationToken);
+        return [.. sessions.Select(s => previews.TryGetValue(s.Id, out var preview) ? s with { PassPreview = preview } : s)];
     }
 
     private static async Task<TemplateView?> TemplateAsync(UnitOfWork unitOfWork, Guid organizationId, Guid templateId, CancellationToken cancellationToken, bool forUpdate = false)

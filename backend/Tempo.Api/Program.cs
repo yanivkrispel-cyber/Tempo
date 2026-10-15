@@ -53,6 +53,7 @@ try
     app.MapPersonLifecycleEndpoints();
     app.MapScheduleEndpoints();
     app.MapPassEndpoints();
+    app.MapBookingEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();

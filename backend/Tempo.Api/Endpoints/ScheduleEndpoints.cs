@@ -198,7 +198,7 @@ public static class ScheduleEndpoints
             s.WaitlistCount,
             s.Status,
             s.MyBooking is { } m ? new MyBookingStateResponse(m.BookingId, m.Status, m.WaitlistPosition, m.FreeCancelUntil) : null,
-            null,
+            s.PassPreview is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
             s.Version.ToString(CultureInfo.InvariantCulture));
 
     private static TimeOnly ParseTime(string value, string field) =>

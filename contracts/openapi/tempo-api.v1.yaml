@@ -1551,7 +1551,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: createBooking
-      x-tempo-planned: true
       summary: "Book a place, or join the waitlist when full (self, or `bookings.manage` with `personId`)"
       description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass`, `session.full` (waitlist off or past its cutoff), `session.cancelled`."
       requestBody:
@@ -1579,7 +1578,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: cancelBooking
-      x-tempo-planned: true
       summary: "Cancel a booking or leave the waitlist (self, or `bookings.manage`)"
       description: "Inside the free-cancellation window the entry returns; later it stays used and `lateCancel` is true. `returnEntry` (staff only) returns it anyway. Allowed in restricted mode."
       requestBody:
@@ -1632,7 +1630,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: listMyBookings
-      x-tempo-planned: true
       summary: "The caller's bookings in this studio (self)"
       parameters:
         - name: scope
@@ -1659,7 +1656,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: listPersonBookings
-      x-tempo-planned: true
       summary: "One person's bookings (`bookings.manage`)"
       parameters:
         - name: scope

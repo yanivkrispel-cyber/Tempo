@@ -41,6 +41,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPeopleService, PeopleService>();
         services.AddSingleton<ITimetableService, TimetableService>();
         services.AddSingleton<IPassService, PassService>();
+        services.AddSingleton<IBookingService, BookingService>();
         services.AddSingleton<IConsentService, ConsentService>();
         services.AddSingleton<IPersonLifecycleService, PersonLifecycleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
