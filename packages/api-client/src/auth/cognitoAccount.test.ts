@@ -94,7 +94,7 @@ describe("CognitoAccount", () => {
     const { fetch, calls } = stub({
       AssociateSoftwareToken: { body: { SecretCode: "SECRET" } },
       VerifySoftwareToken: { body: { Status: "SUCCESS" } },
-      SetUserMFASettings: { body: {} },
+      SetUserMFAPreference: { body: {} },
     });
     const cognito = account(fetch);
     expect(await cognito.startTotp()).toBe("SECRET");
@@ -102,7 +102,7 @@ describe("CognitoAccount", () => {
     expect(calls.map((call) => call.target)).toEqual([
       "AssociateSoftwareToken",
       "VerifySoftwareToken",
-      "SetUserMFASettings",
+      "SetUserMFAPreference",
     ]);
     expect(calls[1]!.body).toEqual({ AccessToken: "access-1", UserCode: "123456", FriendlyDeviceName: "Tempo" });
     expect(calls[2]!.body).toEqual({

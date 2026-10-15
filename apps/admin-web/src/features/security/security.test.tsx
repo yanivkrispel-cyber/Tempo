@@ -81,7 +81,7 @@ describe("two-step sign-in setup", () => {
         { status: 400, body: { __type: "CodeMismatchException" } },
         { body: { Status: "SUCCESS" } },
       ],
-      SetUserMFASettings: [{ body: {} }],
+      SetUserMFAPreference: [{ body: {} }],
     });
     const { api, queryClient } = renderAt("/account/security");
 
@@ -112,7 +112,7 @@ describe("two-step sign-in setup", () => {
     expect(cacheHoldsSecret(queryClient)).toBe(false);
     const verify = cognito.calls.filter((call) => call.target === "VerifySoftwareToken").at(-1)!;
     expect(verify.body).toMatchObject({ UserCode: "123456", FriendlyDeviceName: "Tempo" });
-    expect(cognito.calls.at(-2)!.target).toBe("SetUserMFASettings");
+    expect(cognito.calls.at(-2)!.target).toBe("SetUserMFAPreference");
     // The account is loaded again, so the API reads the new MFA setting (auth.mfa_required goes away).
     await waitFor(() =>
       expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session")).length).toBe(2),
