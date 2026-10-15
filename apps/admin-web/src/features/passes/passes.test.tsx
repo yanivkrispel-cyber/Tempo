@@ -300,7 +300,7 @@ describe("passes on the person card", () => {
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
       const freezes = await within(section).findByRole("list", { name: "הקפאות של פעמיים בשבוע" });
       expect(freezes).toHaveTextContent("מוקפא עד 12.11");
-      expect(freezes).toHaveTextContent("הקפאה מתוכננת 20.11–30.11");
+      expect(freezes).toHaveTextContent("הקפאה מתוכננת 20.11 עד 30.11");
       expect(freezes).toHaveTextContent("התוקף מוארך עד 10.12.2026");
       // Only the upcoming one can be removed; a started freeze stays.
       expect(within(freezes).getAllByRole("button", { name: /הסרת ההקפאה/ })).toHaveLength(1);
@@ -340,7 +340,7 @@ describe("passes on the person card", () => {
 
       await userEvent.click(within(dialog).getByRole("button", { name: "הקפאה" }));
       expect(await screen.findByText("המנוי הוקפא")).toBeInTheDocument();
-      expect(await within(section).findByText("הקפאה מתוכננת 01.11–14.11")).toBeInTheDocument();
+      expect(await within(section).findByText("הקפאה מתוכננת 01.11 עד 14.11")).toBeInTheDocument();
     });
 
     it("removes an upcoming freeze after a confirmation", async () => {
@@ -349,7 +349,7 @@ describe("passes on the person card", () => {
         [`DELETE ${base}/passes/${id(30)}/freezes/${id(41)}`]: () => json(membership()),
       });
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
-      await userEvent.click(await within(section).findByRole("button", { name: "הסרת ההקפאה 20.11–30.11" }));
+      await userEvent.click(await within(section).findByRole("button", { name: "הסרת ההקפאה 20.11 עד 30.11" }));
       const dialog = screen.getByRole("dialog", { name: "להסיר את ההקפאה?" });
       await userEvent.click(within(dialog).getByRole("button", { name: "הסרת ההקפאה" }));
       expect(await screen.findByText("ההקפאה הוסרה")).toBeInTheDocument();

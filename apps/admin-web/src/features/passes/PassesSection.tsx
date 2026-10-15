@@ -182,7 +182,7 @@ function PassItem({
             const current = today !== undefined && freeze.startsOn <= today && freeze.endsOn >= today;
             const past = today !== undefined && freeze.endsOn < today;
             const upcoming = today !== undefined && freeze.startsOn > today;
-            const range = `${formatDayMonth(freeze.startsOn)}–${formatDayMonth(freeze.endsOn)}`;
+            const range = `${formatDayMonth(freeze.startsOn)} עד ${formatDayMonth(freeze.endsOn)}`;
             return (
               <li key={freeze.id} className="tp-row tp-caption tp-num" style={{ gap: 8 }}>
                 <span>
