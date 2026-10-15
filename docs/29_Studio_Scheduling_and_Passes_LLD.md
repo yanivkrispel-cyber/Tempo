@@ -335,6 +335,7 @@ CREATE TABLE scheduling.passes (
     ends_on          date NOT NULL,
     entries          int,                       -- copied from the product for a card
     entries_used     int NOT NULL DEFAULT 0,
+    note             text CHECK (length(note) <= 200),   -- "שולם במזומן"; erased with the person
     status           text NOT NULL CHECK (status IN ('active', 'voided')),
     granted_by       uuid NOT NULL,             -- membership
     created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL, version bigint NOT NULL DEFAULT 0,
@@ -398,8 +399,7 @@ CREATE INDEX ix_inbox_person ON notifications.inbox_items (organization_id, pers
 - Data migration: every existing studio gets a `booking_policies` row with the defaults; new studios get one in
   `OrganizationService.CreateAsync`.
 - Erasure (docs/27 section 4.7): bookings, passes and inbox items keep their ids and point at the anonymized person;
-  nothing in this schema holds a name or a contact value, so erase changes nothing here. Export adds the person's
-  bookings and passes.
+  the only free text is `passes.note`, which erase clears. Export adds the person's bookings and passes.
 - Merge (docs/27 section 4.6): bookings, passes and inbox items move to the survivor; a session where both records
   hold a live booking keeps the survivor's and cancels the other with its entry returned.
 
