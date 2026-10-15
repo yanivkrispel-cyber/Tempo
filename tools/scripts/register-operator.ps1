@@ -19,34 +19,35 @@
 param(
   [Parameter(Mandatory = $true)][string]$Email,
   [string]$Environment = "dev",
-  [string]$Profile = "tempo",
+  [string]$AwsProfile = "tempo",
   [string]$Region = "eu-central-1"
 )
 
 $ErrorActionPreference = "Stop"
 $poolName = "tempo-$Environment-operators"
 
-$pool = aws cognito-idp list-user-pools --max-results 20 --profile $Profile --region $Region `
+$pool = aws cognito-idp list-user-pools --max-results 20 --profile $AwsProfile --region $Region `
   --query "UserPools[?Name=='$poolName'].Id" --output text
 if (-not $pool -or $pool -eq "None") { throw "User pool $poolName not found. Is the Identity stack deployed?" }
 
-$existing = aws cognito-idp list-users --user-pool-id $pool --filter "email = `"$Email`"" --profile $Profile `
+$existing = aws cognito-idp list-users --user-pool-id $pool --filter "email = `"$Email`"" --profile $AwsProfile `
   --region $Region --query "Users[0].Username" --output text
 if (-not $existing -or $existing -eq "None") {
   aws cognito-idp admin-create-user --user-pool-id $pool --username $Email `
     --user-attributes Name=email,Value=$Email Name=email_verified,Value=true `
-    --profile $Profile --region $Region --query "User.UserStatus" --output text | Out-Null
+    --profile $AwsProfile --region $Region --query "User.UserStatus" --output text | Out-Null
   Write-Host "Created $Email in $poolName. Cognito emailed a temporary password."
 } else {
   Write-Host "$Email already exists in $poolName; reusing it."
 }
 
-$sub = aws cognito-idp admin-get-user --user-pool-id $pool --username $Email --profile $Profile --region $Region `
+$sub = aws cognito-idp admin-get-user --user-pool-id $pool --username $Email --profile $AwsProfile --region $Region `
   --query "UserAttributes[?Name=='sub'].Value" --output text
 $issuer = "https://cognito-idp.$Region.amazonaws.com/$pool"
+$sqlEmail = $Email -replace "'", "''"
 
 Write-Host ""
 Write-Host "Paste this into the Neon SQL editor ($Environment database), as the owner:"
 Write-Host ""
 Write-Host "INSERT INTO platform_admin.operators (id, email, issuer, subject, status, created_at, updated_at)"
-Write-Host "VALUES (uuidv7(), '$Email', '$issuer', '$sub', 'active', now(), now());"
+Write-Host "VALUES (uuidv7(), '$sqlEmail', '$issuer', '$sub', 'active', now(), now());"

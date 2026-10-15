@@ -36,7 +36,9 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 function parseArgs(argv) {
@@ -249,30 +251,37 @@ async function checkSignedInSession(apiUrl, environment, region, outputsPath) {
     }
     const email = ssmValue(`${path}/email`, region);
     const password = ssmValue(`${path}/password`, region);
-    const auth = JSON.parse(
-      awsCli([
-        "cognito-idp",
-        "admin-initiate-auth",
-        "--user-pool-id",
-        userPoolId,
-        "--client-id",
-        clientId,
-        "--auth-flow",
-        "ADMIN_USER_PASSWORD_AUTH",
-        "--auth-parameters",
-        `USERNAME=${email},PASSWORD=${password}`,
-        "--region",
-        region
-      ])
-    );
+    // The password goes through a private temp file, never the command line: a failed call's error message and
+    // the process list both show the command line.
+    const dir = mkdtempSync(join(tmpdir(), "tempo-smoke-"));
+    const input = join(dir, "auth.json");
+    let auth;
+    try {
+      writeFileSync(
+        input,
+        JSON.stringify({
+          UserPoolId: userPoolId,
+          ClientId: clientId,
+          AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+          AuthParameters: { USERNAME: email, PASSWORD: password }
+        }),
+        { mode: 0o600 }
+      );
+      auth = JSON.parse(
+        awsCli(["cognito-idp", "admin-initiate-auth", "--cli-input-json", `file://${input}`, "--region", region])
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
     token = auth.AuthenticationResult?.AccessToken;
     if (!token) {
       fail(`the test user got a challenge instead of tokens (${auth.ChallengeName ?? "unknown"})`);
       return false;
     }
   } catch (error) {
-    // The message never contains the password: the AWS CLI does not echo auth parameters.
-    fail(`could not sign in the test user (${error.message.trim().split("\n")[0]})`);
+    // Only the CLI's stderr: execFileSync's error.message starts with the full command line.
+    const reason = error.stderr?.toString().trim().split("\n")[0] || error.code || "unknown error";
+    fail(`could not sign in the test user (${reason})`);
     return false;
   }
 

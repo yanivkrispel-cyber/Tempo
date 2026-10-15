@@ -4,6 +4,11 @@ import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
 
+/** SSM path of the smoke-test user's `email` (String) and `password` (SecureString), created by hand. */
+export function smokeTestParameterPath(config: TempoEnvironmentConfig): string {
+  return `/tempo/${config.environmentName}/smoke-test`;
+}
+
 export interface IdentityStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
 }
@@ -26,11 +31,6 @@ export interface IdentityStackProps extends StackProps {
  * holds the Tempo team: no self sign-up, MFA required (TOTP only) and short
  * sessions. The API accepts each pool's tokens only on its own routes.
  */
-/** SSM path of the smoke-test user's `email` (String) and `password` (SecureString), created by hand. */
-export function smokeTestParameterPath(config: TempoEnvironmentConfig): string {
-  return `/tempo/${config.environmentName}/smoke-test`;
-}
-
 export class IdentityStack extends Stack {
   public readonly userPool: UserPool;
   public readonly adminWebClient: UserPoolClient;
