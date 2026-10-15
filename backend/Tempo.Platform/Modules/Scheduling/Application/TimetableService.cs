@@ -127,7 +127,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
     private const string TemplateColumns =
         "id, class_type_id, weekday, local_start, minutes, instructor_membership_id, room_id, capacity, valid_from, valid_until, version";
 
-    // $1 organization, $2 caller's account. The caller's own place counts only people still waiting ahead of them.
+    // $1 organization, $2 caller's membership. The caller's own place counts only people still waiting ahead of them.
     private const string SessionSelect =
         """
         SELECT s.id, s.template_id, s.local_date, s.starts_at, s.ends_at,
@@ -150,7 +150,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
             SELECT b.id, b.status, b.waitlist_position
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
-            WHERE b.organization_id = s.organization_id AND b.session_id = s.id AND p.user_account_id = $2
+            WHERE b.organization_id = s.organization_id AND b.session_id = s.id AND p.membership_id = $2
               AND b.status IN ('booked', 'waitlisted', 'attended', 'no_show')
             LIMIT 1
         ) mine ON true
@@ -512,7 +512,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
             tenant.OrganizationId);
         var freeCancelHours = (int)(await policy.ExecuteScalarAsync(cancellationToken))!;
 
-        await using var command = unitOfWork.Command($"{SessionSelect} {where}", [tenant.OrganizationId, tenant.UserAccountId, .. more]);
+        await using var command = unitOfWork.Command($"{SessionSelect} {where}", [tenant.OrganizationId, tenant.MembershipId, .. more]);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var sessions = new List<SessionView>();
         while (await reader.ReadAsync(cancellationToken))

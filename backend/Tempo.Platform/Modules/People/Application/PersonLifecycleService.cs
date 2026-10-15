@@ -219,6 +219,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             cancellationToken,
             org, personId);
 
+        // A pass note is the only free text in scheduling (docs/29 section 7).
+        await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET note = NULL WHERE organization_id = $1 AND person_id = $2 AND note IS NOT NULL", cancellationToken, org, personId);
+
         // Consent rows stay as proof: they hold states, timestamps and text versions, never names or contacts.
         // The reason is required but not kept: free text can name the person, and person.* audit data never
         // holds names (section 7; review on #77).

@@ -1685,7 +1685,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listPassProducts
-      x-tempo-planned: true
       summary: "Punch cards and memberships the studio sells (`passes.view`)"
       responses:
         "200":
@@ -1699,7 +1698,6 @@ paths:
     post:
       tags: [Passes]
       operationId: createPassProduct
-      x-tempo-planned: true
       summary: "Add a punch card or membership product (`passes.manage`)"
       requestBody:
         required: true
@@ -1725,7 +1723,6 @@ paths:
     post:
       tags: [Passes]
       operationId: archivePassProduct
-      x-tempo-planned: true
       summary: "Stop selling a product; granted passes keep working (`passes.manage`)"
       responses:
         "200":
@@ -1745,7 +1742,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listPersonPasses
-      x-tempo-planned: true
       summary: "One person's passes, newest first (`passes.view`)"
       responses:
         "200":
@@ -1759,7 +1755,6 @@ paths:
     post:
       tags: [Passes]
       operationId: grantPass
-      x-tempo-planned: true
       summary: "Grant a pass, e.g. paid at the desk (`passes.manage`)"
       requestBody:
         required: true
@@ -1786,7 +1781,6 @@ paths:
     post:
       tags: [Passes]
       operationId: voidPass
-      x-tempo-planned: true
       summary: "Void a pass; sessions already booked keep their entry (`passes.manage`)"
       responses:
         "200":
@@ -1806,7 +1800,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listMyPasses
-      x-tempo-planned: true
       summary: "The caller's passes in this studio (self)"
       responses:
         "200":

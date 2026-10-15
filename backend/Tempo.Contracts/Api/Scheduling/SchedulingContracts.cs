@@ -83,3 +83,41 @@ public sealed record CreateSessionRequest(
     Guid? InstructorMembershipId,
     Guid? RoomId,
     int? Capacity);
+
+/// <summary>`PassProduct`: a punch card or membership the studio sells.</summary>
+public sealed record PassProductResponse(
+    Guid Id,
+    string Kind,
+    string Name,
+    int? Entries,
+    int ValidDays,
+    int? WeeklyCap,
+    string? ClassCategory,
+    int? PriceAgorot,
+    string Status,
+    string Version);
+
+public sealed record PassProductListResponse(IReadOnlyList<PassProductResponse> Items);
+
+public sealed record CreatePassProductRequest(string? Kind, string? Name, int? Entries, int? ValidDays, int? WeeklyCap, string? ClassCategory, int? PriceAgorot);
+
+public sealed record PassProductRefResponse(Guid Id, string Name, string Kind, int? WeeklyCap, string? ClassCategory);
+
+/// <summary>`Pass`: a product granted to one person.</summary>
+public sealed record PassResponse(
+    Guid Id,
+    Guid PersonId,
+    PassProductRefResponse Product,
+    DateOnly StartsOn,
+    DateOnly EndsOn,
+    int? Entries,
+    int EntriesUsed,
+    int? EntriesLeft,
+    string? Note,
+    string Status,
+    DateTimeOffset CreatedAt,
+    string Version);
+
+public sealed record PassListResponse(IReadOnlyList<PassResponse> Items);
+
+public sealed record GrantPassRequest(Guid? ProductId, DateOnly? StartsOn, string? Note);

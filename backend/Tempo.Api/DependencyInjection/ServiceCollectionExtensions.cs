@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();
         services.AddSingleton<ITimetableService, TimetableService>();
+        services.AddSingleton<IPassService, PassService>();
         services.AddSingleton<IConsentService, ConsentService>();
         services.AddSingleton<IPersonLifecycleService, PersonLifecycleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
