@@ -8,6 +8,7 @@ import { ConsoleLayout } from "../features/console/ConsoleLayout";
 import { InvitationsPage } from "../features/invitations/InvitationsPage";
 import { InvitePage } from "../features/invitations/InvitePage";
 import { MembersPage } from "../features/members/MembersPage";
+import { PassProductsPage } from "../features/passes/PassProductsPage";
 import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
@@ -48,6 +49,7 @@ export const routes: RouteObject[] = [
               { path: "weekly-classes", element: <TemplatesPage /> },
               { path: "class-types", element: <ClassTypesPage /> },
               { path: "rooms", element: <RoomsPage /> },
+              { path: "passes", element: <PassProductsPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "audit", element: <AuditPage /> },
             ],

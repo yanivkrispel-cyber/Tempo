@@ -22,6 +22,7 @@ import {
 import { formatDate, todayIso, toIsoDate, type IsoDate } from "../../shared/utilities/dates";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
+import { PassesSection } from "../passes/PassesSection";
 import { ConsentSection } from "./ConsentSection";
 import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
@@ -162,6 +163,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
       </Card>
 
       <ContactPoints person={person} writable={writable} />
+      {studio.can("passes.view") && <PassesSection person={person} />}
       <ConsentSection person={person} />
       <RelationshipsSection person={person} writable={writable} />
 

@@ -20,6 +20,7 @@ const sections: Section[] = [
   { to: "weekly-classes", label: "שיעורים קבועים", icon: "clock", permission: "schedule.manage" },
   { to: "class-types", label: "סוגי שיעורים", icon: "list", permission: "schedule.view" },
   { to: "rooms", label: "חדרים", icon: "home", permission: "schedule.view" },
+  { to: "passes", label: "כרטיסיות ומנויים", icon: "credit-card", permission: "passes.view" },
   { to: "people", label: "אנשים", icon: "user", permission: "people.view" },
   { to: "duplicates", label: "כפילויות", icon: "users", permission: "people.merge" },
   { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
