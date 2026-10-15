@@ -282,6 +282,24 @@ export function createStudio(options: StudioOptions = {}) {
     routes[`GET ${base}/sessions/${target.id}`] = () => json(view(target));
     routes[`POST ${base}/sessions/${target.id}/bookings`] = () => book(target);
     routes[`POST ${base}/bookings/${bookingIdOf(target.id)}/cancel`] = () => cancel(bookingIdOf(target.id));
+    // Only the member's own booked or attended place has a calendar file; anything else is a 404 (contract).
+    routes[`GET ${base}/me/bookings/${bookingIdOf(target.id)}/calendar.ics`] = () => {
+      const booking = bookings.get(bookingIdOf(target.id));
+      return booking && (booking.status === "booked" || booking.status === "attended")
+        ? new Response(
+            `BEGIN:VCALENDAR
+
+UID:${booking.id}@tempo
+
+END:VCALENDAR
+
+`,
+            {
+              headers: { "Content-Type": "text/calendar" },
+            },
+          )
+        : problem(404, "booking.not_found");
+    };
   }
   for (const item of inbox) {
     routes[`POST ${base}/me/notifications/${item.id}/read`] = () => {

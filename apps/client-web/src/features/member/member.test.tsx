@@ -234,6 +234,25 @@ describe("a class and cancelling", () => {
     expect(studio.passes[0]!.entriesLeft).toBe(7);
   });
 
+  it("adds a booked class to the calendar as an .ics file", async () => {
+    const created = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:tempo-test");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const saved: HTMLAnchorElement[] = [];
+    const clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push(this);
+    });
+    const { api } = renderAt(`/classes/${sessionIds.reformer}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הוספה ליומן" }));
+    await waitFor(() => expect(clicked).toHaveBeenCalledTimes(1));
+    expect(saved[0]!.download).toBe("tempo-2026-10-13.ics");
+    expect(saved[0]!.href).toBe("blob:tempo-test");
+    expect(await (created.mock.calls[0]![0] as Blob).text()).toContain(`UID:${bookingIdOf(sessionIds.reformer)}@tempo`);
+    expect(api.requests.some((request) => request.url.endsWith("/calendar.ics"))).toBe(true);
+    vi.restoreAllMocks();
+  });
+
   it("keeps the booking when the member changes their mind", async () => {
     const { api } = renderAt(`/classes/${sessionIds.reformer}`);
     await userEvent.click(await screen.findByRole("button", { name: "ביטול הרשמה" }));

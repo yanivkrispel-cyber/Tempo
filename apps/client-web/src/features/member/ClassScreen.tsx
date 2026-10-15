@@ -18,6 +18,7 @@ import {
   type ChipTone,
 } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
+import { saveFile } from "../../shared/utilities/saveFile";
 import { BookingSheet, useBookingFlow } from "./BookingSheet";
 import {
   categoryName,
@@ -34,6 +35,7 @@ import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import {
   useBookingPolicy,
+  useCalendarFile,
   useCancelBooking,
   useInbox,
   useSession,
@@ -68,6 +70,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const flow = useBookingFlow(studio.id);
   const paused = useBookingPaused();
   const cancel = useCancelBooking(studio.id);
+  const calendar = useCalendarFile(studio.id);
   const navigate = useNavigate();
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -183,6 +186,13 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
           {cancelled.waited ? "יצאת מרשימת ההמתנה." : cancelledText(cancelled.booking)}
         </Banner>
       )}
+      {calendar.isError && (
+        <Banner tone="danger" icon="info">
+          {calendar.error instanceof TempoApiError && calendar.error.status === 404
+            ? "ההרשמה הזו כבר לא פעילה, ולכן אין מה להוסיף ליומן."
+            : errorMessage(calendar.error, "לא הצלחנו להכין את קובץ היומן. נסו שוב.")}
+        </Banner>
+      )}
       {cancel.isError && (
         <Banner tone="danger" icon="info">
           {errorMessage(cancel.error, "הביטול לא הצליח. נסו שוב.")}
@@ -244,9 +254,26 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
 
       <div className={styles.sheetActions}>
         {state === "booked" && !started && session.status === "scheduled" && (
-          <Button variant="ghost-danger" size="lg" block onClick={() => setConfirming(true)}>
-            ביטול הרשמה
-          </Button>
+          <>
+            {/* A file, not a subscription: cancelling later does not remove the calendar entry (docs/29 16.3). */}
+            <Button
+              variant="secondary"
+              size="lg"
+              block
+              icon="calendar"
+              loading={calendar.isPending}
+              onClick={() => {
+                const bookingId = session.myBooking?.bookingId;
+                if (bookingId)
+                  calendar.mutate(bookingId, { onSuccess: (file) => saveFile(file, `tempo-${session.localDate}.ics`) });
+              }}
+            >
+              הוספה ליומן
+            </Button>
+            <Button variant="ghost-danger" size="lg" block onClick={() => setConfirming(true)}>
+              ביטול הרשמה
+            </Button>
+          </>
         )}
         {state === "waitlisted" && (
           <Button variant="ghost-danger" size="lg" block onClick={() => setConfirming(true)}>

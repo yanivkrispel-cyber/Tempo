@@ -212,6 +212,21 @@ export function useCancelBooking(organizationId: string) {
   );
 }
 
+/** "Add to calendar": the iCalendar file of the caller's own booked place (docs/29 section 16.3). */
+export function useCalendarFile(organizationId: string) {
+  const api = useApi();
+  return useMutation({
+    mutationKey: [organizationId, "booking.calendar"],
+    mutationFn: (bookingId: string) =>
+      unwrap(
+        api.GET("/api/v1/organizations/{organizationId}/me/bookings/{bookingId}/calendar.ics", {
+          params: { path: { organizationId, bookingId } },
+          parseAs: "blob",
+        }),
+      ),
+  });
+}
+
 export function useInbox(organizationId: string) {
   const api = useApi();
   return useQuery({
