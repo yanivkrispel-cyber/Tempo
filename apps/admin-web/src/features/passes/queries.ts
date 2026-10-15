@@ -3,7 +3,7 @@ import { unwrap, type Schemas } from "@tempo/api-client";
 import { useApi } from "../../api/ApiProvider";
 import type { ChipTone } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
-import { categoryLabel } from "../schedule/queries";
+import { categoryLabel } from "../../shared/studio/classTypes";
 
 export type PassProduct = Schemas["PassProduct"];
 export type PassKind = Schemas["PassKind"];

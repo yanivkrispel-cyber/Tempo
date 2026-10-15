@@ -4,8 +4,9 @@ import { createMemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, sampleMe } from "../../test/api";
+import { apiStub, json, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
+import { permissionsFor } from "../../test/permissions";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}`;
@@ -54,10 +55,10 @@ const booking = (n: number, name: string, overrides: Record<string, unknown> = {
   ...overrides,
 });
 
-function renderAt(routesForApi: Record<string, unknown>, now: string) {
+function renderAt(routesForApi: Record<string, unknown>, now: string, permissions: string[] = permissionsFor.staff) {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(now));
-  const me = { ...sampleMe, memberships: [{ ...studio, role: "staff", roles: [], permissions: [] }] };
+  const me = { ...sampleMe, memberships: [{ ...studio, role: "staff", roles: [], permissions }] };
   const api = apiStub({
     "POST /api/v1/session": me,
     [`GET ${base}`]: { ...studio.organization, timeZone: "Asia/Jerusalem", version: "1" },
@@ -183,10 +184,102 @@ describe("the roster", () => {
     await userEvent.click(await screen.findByRole("button", { name: "רישום מתאמן.ת" }));
     const dialog = screen.getByRole("dialog", { name: "רישום מתאמן.ת לשיעור" });
     await userEvent.type(within(dialog).getByRole("searchbox", { name: /חיפוש אדם/ }), "רונ");
-    await userEvent.click(await within(dialog).findByRole("button", { name: "רוני אברהם" }));
+    await userEvent.click(await within(dialog).findByRole("option", { name: "רוני אברהם" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "רישום" }));
     expect(await screen.findByText("השיעור מלא: רוני אברהם ברשימת ההמתנה, במקום 2")).toBeInTheDocument();
     const post = api.requests.findIndex((request) => request.method === "POST" && request.url.endsWith("/bookings"));
     expect(api.bodies[post]).toEqual({ personId: id(30) });
+  });
+
+  it("says when the walk-in search fails, instead of no one found", async () => {
+    renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([]),
+        [`GET ${base}/people`]: problem(500, "http.500"),
+      },
+      "2026-10-14T09:00:00Z",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "רישום מתאמן.ת" }));
+    const dialog = screen.getByRole("dialog", { name: "רישום מתאמן.ת לשיעור" });
+    await userEvent.type(within(dialog).getByRole("searchbox", { name: /חיפוש אדם/ }), "רונ");
+    expect(await within(dialog).findByText("החיפוש נכשל. נסו שוב.", {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(within(dialog).queryByText("לא נמצא אף אחד")).not.toBeInTheDocument();
+  });
+
+  it("does not offer walk-ins without people.view", async () => {
+    renderAt(
+      { [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([entry(1, "שירה כהן")]) },
+      "2026-10-14T09:00:00Z",
+      permissionsFor.staff.filter((key) => key !== "people.view"),
+    );
+    expect(await screen.findByText("שירה כהן")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "רישום מתאמן.ת" })).not.toBeInTheDocument();
+  });
+
+  it("writes a one-hour window in words, and still lets staff cancel when the policy fails", async () => {
+    const api = renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([entry(1, "שירה כהן")]),
+        [`GET ${base}/booking-policy`]: {
+          freeCancelHours: 1,
+          waitlistCutoffHours: 2,
+          bookingHorizonDays: 14,
+          waitlistEnabled: true,
+          version: "1",
+        },
+      },
+      // 10 minutes before the class.
+      "2026-10-14T14:20:00Z",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "ביטול ההרשמה של שירה כהן" }));
+    const dialog = screen.getByRole("dialog", { name: "לבטל את ההרשמה של שירה כהן?" });
+    expect(await within(dialog).findByText(/\(שעה אחת לפני השיעור\)/)).toBeInTheDocument();
+    expect(api.requests.some((request) => request.url.endsWith("/booking-policy"))).toBe(true);
+  });
+
+  it("explains a policy that cannot load", async () => {
+    renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([entry(1, "שירה כהן")]),
+        [`GET ${base}/booking-policy`]: problem(500, "http.500"),
+      },
+      "2026-10-14T09:00:00Z",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "ביטול ההרשמה של שירה כהן" }));
+    const dialog = screen.getByRole("dialog", { name: "לבטל את ההרשמה של שירה כהן?" });
+    expect(
+      await within(dialog).findByText(/לא הצלחנו לבדוק את חלון הביטול החינמי/, {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("checkbox", { name: "להחזיר את הכניסה בכל זאת" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "ביטול ההרשמה" })).toBeEnabled();
+  });
+});
+
+describe("the instructor rule", () => {
+  // Neither bookings.manage nor attendance.mark: only being the class's instructor opens the roster.
+  const viewer = ["organization.view", "members.view", "schedule.view"];
+
+  it("lets the class's own instructor see the roster and mark attendance", async () => {
+    renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}`]: {
+          ...session,
+          instructor: { membershipId: studio.membershipId, displayName: "דנה כהן" },
+        },
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([entry(1, "שירה כהן")]),
+      },
+      "2026-10-14T14:20:00Z",
+      viewer,
+    );
+    expect(await screen.findByRole("group", { name: "נוכחות של שירה כהן" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /ביטול ההרשמה/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "רישום מתאמן.ת" })).not.toBeInTheDocument();
+  });
+
+  it("hides the roster of someone else's class", async () => {
+    const api = renderAt({}, "2026-10-14T14:20:00Z", viewer);
+    expect(await screen.findByRole("heading", { name: "פילאטיס מכשירים", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "משתתפים" })).not.toBeInTheDocument();
+    expect(api.requests.some((request) => request.url.endsWith("/roster"))).toBe(false);
   });
 });

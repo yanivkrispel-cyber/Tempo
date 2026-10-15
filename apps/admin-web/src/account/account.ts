@@ -66,12 +66,6 @@ export function membershipRoleName(membership: MyMembership): string {
   return (membership.roles ?? [])[0]?.displayName ?? roleName(membership.role);
 }
 
-/** docs/29 section 8, seeded into the system roles by migration 0010. */
-const scheduling = {
-  staff: ["schedule.view", "bookings.manage", "attendance.mark", "passes.view"],
-  manage: ["schedule.view", "schedule.manage", "bookings.manage", "attendance.mark", "passes.view", "passes.manage"],
-} as const;
-
 /** The Phase 1 matrix as permissions (docs/27 section 3.1), for a membership the API sent without them. */
 const rolePermissions: Record<Schemas["Role"], readonly string[]> = {
   owner: [
@@ -90,7 +84,6 @@ const rolePermissions: Record<Schemas["Role"], readonly string[]> = {
     "people.erase",
     "consent.manage",
     "ownership.transfer",
-    ...scheduling.manage,
   ],
   admin: [
     "organization.view",
@@ -104,10 +97,9 @@ const rolePermissions: Record<Schemas["Role"], readonly string[]> = {
     "people.merge",
     "people.export",
     "consent.manage",
-    ...scheduling.manage,
   ],
-  staff: ["organization.view", "members.view", "people.view", "people.manage", ...scheduling.staff],
-  client: ["organization.view", "schedule.view"],
+  staff: ["organization.view", "members.view", "people.view", "people.manage"],
+  client: ["organization.view"],
 };
 
 /**

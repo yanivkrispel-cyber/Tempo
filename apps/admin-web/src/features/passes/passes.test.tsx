@@ -6,6 +6,7 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, json, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
+import { permissionsFor } from "../../test/permissions";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}`;
@@ -72,7 +73,7 @@ const pass = (overrides: Record<string, unknown> = {}) => ({
 });
 
 function renderAt(url: string, routesForApi: Record<string, unknown>, role: "owner" | "staff" = "owner") {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
+  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: permissionsFor[role] }] };
   const api = apiStub({
     "POST /api/v1/session": me,
     [`GET ${base}`]: { ...studio.organization, timeZone: "Asia/Jerusalem", version: "1" },

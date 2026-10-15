@@ -1,9 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useApi } from "../../api/ApiProvider";
+import { classTypesKey } from "../../shared/studio/classTypes";
 import { useStudio } from "../console/studio";
 
-export type ClassType = Schemas["ClassType"];
+// Shared with passes and other features; re-exported for the schedule's own screens.
+export { categoryLabel, categoryOptions, useClassTypes, type ClassType } from "../../shared/studio/classTypes";
+export { useStudioTimeZone } from "../../shared/studio/timeZone";
+export { wholeNumber } from "../../shared/utilities/numbers";
+
 export type ClassColor = Schemas["ClassColor"];
 export type Room = Schemas["Room"];
 export type ScheduleTemplate = Schemas["ScheduleTemplate"];
@@ -14,7 +19,7 @@ export type Member = Schemas["Member"];
 /** Every scheduling query key starts with the studio, so switching studios never shows another studio's data. */
 export const scheduleKeys = {
   all: (organizationId: string) => ["studio", organizationId, "schedule"] as const,
-  classTypes: (organizationId: string) => ["studio", organizationId, "schedule", "class-types"] as const,
+  classTypes: classTypesKey,
   rooms: (organizationId: string) => ["studio", organizationId, "schedule", "rooms"] as const,
   templates: (organizationId: string) => ["studio", organizationId, "schedule", "templates"] as const,
   session: (organizationId: string, sessionId: string) =>
@@ -26,33 +31,6 @@ export const scheduleKeys = {
   policy: (organizationId: string) => ["studio", organizationId, "schedule", "policy"] as const,
   instructors: (organizationId: string) => ["studio", organizationId, "schedule", "instructors"] as const,
 };
-
-/** Studios in Israel only for now (settings offer one zone); the real value comes from the studio record. */
-const fallbackTimeZone = "Asia/Jerusalem";
-
-/** The studio's IANA time zone: sessions are shown and created on its clock, never the device's. */
-export function useStudioTimeZone(): string {
-  const api = useApi();
-  const { organizationId } = useStudio();
-  // Same key as the settings page, so they share one request.
-  const organization = useQuery({
-    queryKey: ["studio", organizationId, "organization"],
-    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } })),
-  });
-  return organization.data?.timeZone ?? fallbackTimeZone;
-}
-
-export function useClassTypes() {
-  const api = useApi();
-  const { organizationId } = useStudio();
-  return useQuery({
-    queryKey: scheduleKeys.classTypes(organizationId),
-    queryFn: () =>
-      unwrap(
-        api.GET("/api/v1/organizations/{organizationId}/class-types", { params: { path: { organizationId } } }),
-      ).then((list) => list.items),
-  });
-}
 
 export function useRooms() {
   const api = useApi();
@@ -160,25 +138,6 @@ export const colorLabels: Record<ClassColor, string> = {
 
 export const colors = Object.keys(colorLabels) as ClassColor[];
 
-/** Categories studios use; the API takes lowercase English keys (`^[a-z][a-z0-9_]{1,29}$`). */
-export const categoryLabels: Record<string, string> = {
-  pilates: "פילאטיס",
-  yoga: "יוגה",
-  fitness: "כושר",
-  dance: "מחול",
-  other: "אחר",
-};
-
-export function categoryLabel(category: string): string {
-  return categoryLabels[category] ?? category;
-}
-
-/** The known categories plus any the studio already uses. */
-export function categoryOptions(inUse: readonly string[] = []): { value: string; label: string }[] {
-  const keys = [...Object.keys(categoryLabels), ...inUse.filter((category) => !(category in categoryLabels))];
-  return [...new Set(keys)].map((value) => ({ value, label: categoryLabel(value) }));
-}
-
 export const weekdayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"] as const;
 
 /** "50 דקות", "שעה", "שעה ורבע"… kept simple: minutes, as the mockup writes them. */
@@ -192,12 +151,6 @@ export function endTime(start: string, minutes: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
-/** A whole number from a text field, or null. */
-export function wholeNumber(text: string): number | null {
-  const trimmed = text.trim();
-  return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
-}
-
 /** The tile's corner label, as the mockup writes it: "בוטל", "מלא · 2 בהמתנה", "מקום אחד", "3 פנויים". */
 export function sessionBadge(session: Session): string {
   if (session.status === "cancelled") return "בוטל";
@@ -209,4 +162,11 @@ export function sessionBadge(session: Session): string {
 /** "6 מתוך 8 רשומים". */
 export function occupancy(session: Session): string {
   return `${session.bookedCount} מתוך ${session.capacity} רשומים`;
+}
+
+/** "שעה אחת", "שעתיים", "6 שעות". */
+export function hoursLabel(hours: number): string {
+  if (hours === 1) return "שעה אחת";
+  if (hours === 2) return "שעתיים";
+  return `${hours} שעות`;
 }

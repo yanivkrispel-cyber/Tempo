@@ -15,7 +15,7 @@ import {
   TimeInput,
   useToast,
 } from "../../shared/design-system";
-import { dayOfWeek, todayIn, type IsoDate } from "../../shared/utilities/dates";
+import { dayOfWeek, type IsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import {
   memberName,
@@ -23,7 +23,6 @@ import {
   useClassTypes,
   useInstructors,
   useRooms,
-  useStudioTimeZone,
   weekdayNames,
   wholeNumber,
 } from "./queries";
@@ -32,12 +31,11 @@ import {
  * "שיעור חדש": a weekly class (a template, whose sessions appear for eight weeks) or a one-off session
  * (docs/29 section 4.1). Times are the studio's wall clock; the API turns them into instants.
  */
-export function NewClassDialog({ day, onClose }: { day: IsoDate; onClose: () => void }) {
+export function NewClassDialog({ day, today, onClose }: { day: IsoDate; today: IsoDate; onClose: () => void }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const toast = useToast();
   const { organizationId } = useStudio();
-  const today = todayIn(useStudioTimeZone());
   const classTypes = useClassTypes();
   const rooms = useRooms();
   const instructors = useInstructors();

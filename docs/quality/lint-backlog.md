@@ -16,6 +16,10 @@ How it moves:
 
 | Kind | Agent | PR | Example (file:line) |
 |---|---|---|---|
+| Typographic dash or symbol in Hebrew UI text where the brand book writes words ("17:30–18:20" for "17:30 עד 18:20") | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/TemplatesPage.tsx:133` |
+| A failed request shown as an empty result ("לא נמצא אף אחד" on a search error) | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/RosterSection.tsx:413` |
+| A feature importing another feature's private module instead of `src/shared` | standards-reviewer | #129 | `apps/admin-web/src/features/passes/PassProductsPage.tsx:21` |
+| Hebrew count without its singular or dual form ("1 שעות" for "שעה אחת") | standards-reviewer | #129 | `apps/admin-web/src/features/schedule/RosterSection.tsx:307` |
 
 ## To gate
 

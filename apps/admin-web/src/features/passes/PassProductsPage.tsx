@@ -18,7 +18,8 @@ import {
   useToast,
 } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
-import { categoryOptions, useClassTypes, wholeNumber } from "../schedule/queries";
+import { categoryOptions, useClassTypes } from "../../shared/studio/classTypes";
+import { wholeNumber } from "../../shared/utilities/numbers";
 import {
   allowance,
   categoryScope,

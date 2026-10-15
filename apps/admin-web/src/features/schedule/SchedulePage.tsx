@@ -10,19 +10,31 @@ import {
   Skeleton,
   cx,
 } from "../../shared/design-system";
-import { addDays, formatDate, fromIsoDate, startOfWeek, todayIn, type IsoDate } from "../../shared/utilities/dates";
+import { StudioClock } from "../../shared/studio/StudioClock";
+import {
+  addDays,
+  formatDate,
+  formatDayMonth,
+  fromIsoDate,
+  startOfWeek,
+  todayIn,
+  type IsoDate,
+} from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { errorMessage } from "../../api/errors";
 import { useStudio } from "../console/studio";
 import { NewClassDialog } from "./NewClassDialog";
-import { occupancy, sessionBadge, useSessions, useStudioTimeZone, weekdayNames, type Session } from "./queries";
+import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "./queries";
 
 const allInstructors = "all";
 
 /** `/o/:slug/schedule`: the week's classes, Sunday to Saturday on the studio's clock (Schedule mockup). */
 export function SchedulePage() {
+  return <StudioClock>{(timeZone) => <WeekView timeZone={timeZone} />}</StudioClock>;
+}
+
+function WeekView({ timeZone }: { timeZone: string }) {
   const studio = useStudio();
-  const timeZone = useStudioTimeZone();
   const today = todayIn(timeZone);
   const [params, setParams] = useSearchParams();
   const asked = params.get("week");
@@ -51,7 +63,7 @@ export function SchedulePage() {
       <header className="tp-row" style={{ justifyContent: "space-between" }}>
         <div>
           <span className="tp-eyebrow tp-num">
-            {formatDate(week).slice(0, 5)} עד {formatDate(days[6]!)}
+            {formatDayMonth(week)} עד {formatDate(days[6]!)}
           </span>
           <h1>מערכת שבועית</h1>
         </div>
@@ -133,7 +145,11 @@ export function SchedulePage() {
       )}
 
       {creating && (
-        <NewClassDialog day={week <= today && today <= days[6]! ? today : week} onClose={() => setCreating(false)} />
+        <NewClassDialog
+          day={week <= today && today <= days[6]! ? today : week}
+          today={today}
+          onClose={() => setCreating(false)}
+        />
       )}
     </>
   );

@@ -19,6 +19,7 @@ import {
   TimeInput,
   useToast,
 } from "../../shared/design-system";
+import { StudioClock } from "../../shared/studio/StudioClock";
 import { addDays, formatDate, todayIn, type IsoDate } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
@@ -29,7 +30,6 @@ import {
   useClassTypes,
   useInstructors,
   useRooms,
-  useStudioTimeZone,
   useTemplates,
   weekdayNames,
   wholeNumber,
@@ -41,7 +41,11 @@ type TemplateChange = Schemas["ScheduleTemplateChange"];
 
 /** `/o/:slug/weekly-classes`: the weekly rules behind the timetable (docs/29 section 4.1), `schedule.manage` only. */
 export function TemplatesPage() {
-  const today = todayIn(useStudioTimeZone());
+  return <StudioClock>{(timeZone) => <Templates timeZone={timeZone} />}</StudioClock>;
+}
+
+function Templates({ timeZone }: { timeZone: string }) {
+  const today = todayIn(timeZone);
   const templates = useTemplates();
   const classTypes = useClassTypes();
   const rooms = useRooms();
@@ -74,7 +78,9 @@ export function TemplatesPage() {
         </p>
       </header>
 
-      {untouched.length > 0 && <UntouchedSessions sessions={untouched} onDismiss={() => setUntouched([])} />}
+      {untouched.length > 0 && (
+        <UntouchedSessions sessions={untouched} timeZone={timeZone} onDismiss={() => setUntouched([])} />
+      )}
 
       <Segmented
         label="אילו שיעורים קבועים"
@@ -130,7 +136,7 @@ export function TemplatesPage() {
                     <td>
                       {weekdayNames[template.weekday]}{" "}
                       <span className="tp-num">
-                        {template.localStart}–{endTime(template.localStart, template.minutes)}
+                        {template.localStart} עד {endTime(template.localStart, template.minutes)}
                       </span>
                     </td>
                     <td>{typeName(template.classTypeId)}</td>
@@ -198,8 +204,13 @@ export function TemplatesPage() {
 }
 
 /** The sessions a change could not touch because people are booked; each is edited on its own page. */
-function UntouchedSessions({ sessions, onDismiss }: { sessions: Session[]; onDismiss: () => void }) {
-  const timeZone = useStudioTimeZone();
+interface UntouchedSessionsProps {
+  sessions: Session[];
+  timeZone: string;
+  onDismiss: () => void;
+}
+
+function UntouchedSessions({ sessions, timeZone, onDismiss }: UntouchedSessionsProps) {
   return (
     <Banner tone="warning" icon="info">
       <div className="tp-stack" style={{ gap: 6 }}>

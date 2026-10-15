@@ -6,6 +6,7 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, json, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
+import { permissionsFor } from "../../test/permissions";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}`;
@@ -79,7 +80,7 @@ const scheduleRoutes = {
 };
 
 function renderAt(url: string, routesForApi: Record<string, unknown>, role: "owner" | "staff" = "owner") {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
+  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: permissionsFor[role] }] };
   const api = apiStub({ "POST /api/v1/session": me, ...scheduleRoutes, ...routesForApi });
   render(
     <App
@@ -241,6 +242,12 @@ describe("one class", () => {
     expect(await screen.findByText("5 מתוך 10 רשומים")).toBeInTheDocument();
   });
 
+  it("says a class is not found on any 404", async () => {
+    renderAt(`/o/neshima/schedule/sessions/${id(10)}`, {});
+    // One retry first (App's QueryClient), hence the longer wait.
+    expect(await screen.findByText("השיעור לא נמצא.", {}, { timeout: 4000 })).toBeInTheDocument();
+  });
+
   it("cancels the class after saying who will be told", async () => {
     let current = session();
     const api = renderAt(`/o/neshima/schedule/sessions/${id(10)}`, {
@@ -266,7 +273,7 @@ describe("weekly classes", () => {
         json({ template: template({ localStart: "18:00", version: "3" }), untouchedSessions: [session()] }),
     });
     const row = await screen.findByRole("row", { name: /פילאטיס מכשירים/ });
-    expect(row).toHaveTextContent("רביעי 17:30–18:20");
+    expect(row).toHaveTextContent("רביעי 17:30 עד 18:20");
     expect(row).toHaveTextContent("דנה אלון");
     await userEvent.click(within(row).getByRole("button", { name: "עריכת פילאטיס מכשירים ביום רביעי 17:30" }));
     const dialog = screen.getByRole("dialog", { name: "עריכת פילאטיס מכשירים" });

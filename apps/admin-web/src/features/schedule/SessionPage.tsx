@@ -3,7 +3,7 @@ import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
 import { useParams } from "react-router";
 import { useApi } from "../../api/ApiProvider";
-import { errorMessage, hasCode } from "../../api/errors";
+import { errorMessage, isNotFound } from "../../api/errors";
 import {
   Banner,
   Button,
@@ -17,6 +17,7 @@ import {
   Skeleton,
   useToast,
 } from "../../shared/design-system";
+import { StudioClock } from "../../shared/studio/StudioClock";
 import { dayOfWeek, formatDate, startOfWeek } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
@@ -30,7 +31,6 @@ import {
   useInstructors,
   useRooms,
   useSession,
-  useStudioTimeZone,
   weekdayNames,
   wholeNumber,
   type Session,
@@ -46,7 +46,7 @@ export function SessionPage() {
     return (
       <div className="tp-stack">
         <Banner tone="danger" icon="info">
-          {hasCode(session.error, "session.not_found")
+          {isNotFound(session.error)
             ? "השיעור לא נמצא."
             : errorMessage(session.error, "לא הצלחנו לטעון את השיעור. נסו שוב.")}
         </Banner>
@@ -67,12 +67,12 @@ export function SessionPage() {
     );
   }
 
-  return <SessionDetail session={session.data} />;
+  const data = session.data;
+  return <StudioClock>{(timeZone) => <SessionDetail session={data} timeZone={timeZone} />}</StudioClock>;
 }
 
-function SessionDetail({ session }: { session: Session }) {
+function SessionDetail({ session, timeZone }: { session: Session; timeZone: string }) {
   const studio = useStudio();
-  const timeZone = useStudioTimeZone();
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const cancelled = session.status === "cancelled";
@@ -141,7 +141,7 @@ function SessionDetail({ session }: { session: Session }) {
 
       {/* The roster is for the desk (bookings.manage) and for the class's own instructor (docs/29 section 8). */}
       {(studio.can("bookings.manage") || session.instructor?.membershipId === studio.membership.membershipId) && (
-        <RosterSection session={session} />
+        <RosterSection session={session} timeZone={timeZone} />
       )}
 
       {editing && <EditSessionDialog session={session} onClose={() => setEditing(false)} />}

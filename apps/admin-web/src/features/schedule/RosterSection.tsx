@@ -13,17 +13,15 @@ import {
   Chip,
   Dialog,
   EmptyState,
-  Field,
-  Input,
   Skeleton,
   Tabs,
   useToast,
 } from "../../shared/design-system";
-import { formatDate, todayIn } from "../../shared/utilities/dates";
-import { phoneSearchText } from "../../shared/utilities/phones";
+import { PersonPicker, type PickedPerson } from "../../shared/PersonPicker";
+import { dateIn, formatDayMonth } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
-import { scheduleKeys, useBookingPolicy, useStudioTimeZone, type Session } from "./queries";
+import { hoursLabel, scheduleKeys, useBookingPolicy, type Session } from "./queries";
 
 type RosterEntry = Schemas["RosterEntry"];
 type Booking = Schemas["Booking"];
@@ -56,9 +54,8 @@ function useRefreshSchedule() {
  * Booked and waiting people, attendance and cancellations (ClassDetail mockup, docs/29 section 6.4). A list, not a
  * table, so the instructor can mark attendance from a phone at the door.
  */
-export function RosterSection({ session }: { session: Session }) {
+export function RosterSection({ session, timeZone }: { session: Session; timeZone: string }) {
   const studio = useStudio();
-  const timeZone = useStudioTimeZone();
   const roster = useRoster(session.id);
   const [tab, setTab] = useState<"booked" | "waitlisted">("booked");
   const [cancelling, setCancelling] = useState<RosterEntry | null>(null);
@@ -70,6 +67,8 @@ export function RosterSection({ session }: { session: Session }) {
   const scheduled = session.status === "scheduled";
   const instructor = session.instructor?.membershipId === studio.membership.membershipId;
   const manage = studio.can("bookings.manage") && scheduled;
+  // Finding a walk-in searches the studio's people.
+  const canBook = manage && studio.can("people.view") && now < ends;
   const markable =
     (studio.can("attendance.mark") || instructor) &&
     scheduled &&
@@ -97,7 +96,7 @@ export function RosterSection({ session }: { session: Session }) {
     <Card as="section" aria-labelledby="roster" className="tp-stack">
       <div className="tp-row" style={{ justifyContent: "space-between" }}>
         <h2 id="roster">משתתפים</h2>
-        {manage && now < ends && (
+        {canBook && (
           <Button variant="secondary" size="sm" icon="plus" onClick={() => setAdding(true)}>
             רישום מתאמן.ת
           </Button>
@@ -164,7 +163,7 @@ function RosterRow({ entry, timeZone, markable, onCancel }: RosterRowProps) {
   const studio = useStudio();
   const name = entry.person.displayName;
   const bookedAt = new Date(entry.bookedAt);
-  const when = `${formatDate(todayIn(timeZone, bookedAt)).slice(0, 5)} · ${clockTime(bookedAt, timeZone)}`;
+  const when = `${formatDayMonth(dateIn(bookedAt, timeZone))} · ${clockTime(bookedAt, timeZone)}`;
   return (
     <li className="tp-row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
       <span className="tp-row" style={{ gap: 10, minWidth: 0 }}>
@@ -271,10 +270,13 @@ function CancelBookingDialog({ entry, session, now, onClose }: CancelBookingDial
   const [returnEntry, setReturnEntry] = useState(false);
   const waiting = entry.status === "waitlisted";
   const name = entry.person.displayName;
-  const freeUntil = policy.data
-    ? new Date(session.startsAt).getTime() - policy.data.freeCancelHours * hour
-    : Number.POSITIVE_INFINITY;
-  const late = !waiting && entry.passName != null && now > freeUntil;
+  const holdsEntry = !waiting && entry.passName != null;
+  const freeHours = policy.data?.freeCancelHours;
+  // Unknown while the policy loads; if it cannot load, staff may still return the entry.
+  const late =
+    holdsEntry &&
+    (policy.isError || (freeHours !== undefined && now > new Date(session.startsAt).getTime() - freeHours * hour));
+  const checking = holdsEntry && policy.isPending;
 
   const cancel = useMutation({
     mutationFn: () =>
@@ -303,16 +305,20 @@ function CancelBookingDialog({ entry, session, now, onClose }: CancelBookingDial
       description={
         waiting
           ? undefined
-          : late
-            ? `עבר חלון הביטול החינמי (${policy.data?.freeCancelHours} שעות לפני השיעור), ולכן הכניסה נחשבת מנוצלת.`
-            : "הכניסה תחזור לכרטיסייה. אם יש ממתינים, הראשון.ה בתור יקבל.ת את המקום."
+          : checking
+            ? "בודקים את חלון הביטול החינמי…"
+            : policy.isError && holdsEntry
+              ? "לא הצלחנו לבדוק את חלון הביטול החינמי. בביטול מאוחר הכניסה נחשבת מנוצלת."
+              : late
+                ? `עבר חלון הביטול החינמי (${freeWindow(freeHours ?? 0)}), ולכן הכניסה נחשבת מנוצלת.`
+                : "הכניסה תחזור לכרטיסייה. אם יש ממתינים, הראשון.ה בתור יקבל.ת את המקום."
       }
       actions={
         <>
           <Button variant="secondary" onClick={onClose}>
             השארה
           </Button>
-          <Button variant="danger" loading={cancel.isPending} onClick={() => cancel.mutate()}>
+          <Button variant="danger" loading={cancel.isPending} disabled={checking} onClick={() => cancel.mutate()}>
             {waiting ? "הסרה מההמתנה" : "ביטול ההרשמה"}
           </Button>
         </>
@@ -334,24 +340,17 @@ function CancelBookingDialog({ entry, session, now, onClose }: CancelBookingDial
   );
 }
 
+/** "6 שעות לפני השיעור", or "עד תחילת השיעור" when the window is zero. */
+function freeWindow(hours: number): string {
+  return hours === 0 ? "עד תחילת השיעור" : `${hoursLabel(hours)} לפני השיעור`;
+}
+
 function AddBookingDialog({ session, onClose }: { session: Session; onClose: () => void }) {
   const api = useApi();
   const toast = useToast();
   const refresh = useRefreshSchedule();
   const { organizationId } = useStudio();
-  const [text, setText] = useState("");
-  const [picked, setPicked] = useState<{ id: string; displayName: string } | null>(null);
-  const query = text.trim();
-  const found = useQuery({
-    queryKey: ["studio", organizationId, "people", { query, status: "active", picker: true }],
-    queryFn: () =>
-      unwrap(
-        api.GET("/api/v1/organizations/{organizationId}/people", {
-          params: { path: { organizationId }, query: { query: phoneSearchText(query), status: "active", limit: 8 } },
-        }),
-      ),
-    enabled: query.length >= 2 && !picked,
-  });
+  const [picked, setPicked] = useState<PickedPerson | null>(null);
 
   const book = useMutation({
     mutationFn: (personId: string) =>
@@ -398,42 +397,7 @@ function AddBookingDialog({ session, onClose }: { session: Session; onClose: () 
       }
     >
       <form id="add-booking" className="tp-stack" onSubmit={submit} noValidate>
-        {picked ? (
-          <div className="tp-row" style={{ justifyContent: "space-between" }}>
-            <strong>{picked.displayName}</strong>
-            <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
-              החלפה
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Field label="חיפוש אדם" help="לפי שם, טלפון או מייל">
-              <Input type="search" value={text} onChange={(event) => setText(event.target.value)} />
-            </Field>
-            {query.length >= 2 &&
-              (found.data && found.data.items.length > 0 ? (
-                <ul
-                  aria-label="תוצאות"
-                  className="tp-stack"
-                  style={{ listStyle: "none", padding: 0, margin: 0, gap: 4 }}
-                >
-                  {found.data.items.map((candidate) => (
-                    <li key={candidate.id}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPicked({ id: candidate.id, displayName: candidate.displayName })}
-                      >
-                        {candidate.displayName}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="tp-muted">{found.isFetching ? "מחפשים…" : "לא נמצא אף אחד"}</p>
-              ))}
-          </>
-        )}
+        <PersonPicker value={picked} onChange={setPicked} />
         {book.isError && (
           <Banner tone="danger" icon="info">
             {errorMessage(book.error, "לא הצלחנו לרשום. נסו שוב.")}

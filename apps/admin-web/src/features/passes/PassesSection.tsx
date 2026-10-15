@@ -19,7 +19,7 @@ import {
 } from "../../shared/design-system";
 import { formatDate, todayIn, type IsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
-import { useStudioTimeZone } from "../schedule/queries";
+import { useStudioTimeZone } from "../../shared/studio/timeZone";
 import {
   allowance,
   categoryScope,
@@ -41,13 +41,15 @@ export function PassesSection({ person }: { person: PersonDetail }) {
   const [granting, setGranting] = useState(false);
   const [voiding, setVoiding] = useState<Pass | null>(null);
   const manage = studio.can("passes.manage") && person.status === "active";
+  // A pass starts on the studio's today, so granting waits for its time zone.
+  const { timeZone } = useStudioTimeZone();
 
   return (
     <Card as="section" aria-labelledby="passes" className="tp-stack">
       <div className="tp-row" style={{ justifyContent: "space-between" }}>
         <h2 id="passes">כרטיסיות ומנויים</h2>
         {manage && (
-          <Button variant="secondary" size="sm" icon="plus" onClick={() => setGranting(true)}>
+          <Button variant="secondary" size="sm" icon="plus" disabled={!timeZone} onClick={() => setGranting(true)}>
             מתן כרטיסייה או מנוי
           </Button>
         )}
@@ -78,7 +80,9 @@ export function PassesSection({ person }: { person: PersonDetail }) {
           ))}
         </ul>
       )}
-      {granting && <GrantDialog person={person} onClose={() => setGranting(false)} />}
+      {granting && timeZone && (
+        <GrantDialog person={person} today={todayIn(timeZone)} onClose={() => setGranting(false)} />
+      )}
       {voiding && <VoidDialog pass={voiding} personId={person.id} onClose={() => setVoiding(null)} />}
     </Card>
   );
@@ -135,12 +139,11 @@ function useRefreshPasses(personId: string) {
   return () => queryClient.invalidateQueries({ queryKey: passKeys.person(organizationId, personId) });
 }
 
-function GrantDialog({ person, onClose }: { person: PersonDetail; onClose: () => void }) {
+function GrantDialog({ person, today, onClose }: { person: PersonDetail; today: IsoDate; onClose: () => void }) {
   const api = useApi();
   const toast = useToast();
   const { organizationId } = useStudio();
   const refresh = useRefreshPasses(person.id);
-  const today = todayIn(useStudioTimeZone());
   const products = usePassProducts();
   const active = (products.data ?? []).filter((product) => product.status === "active");
   const [productId, setProductId] = useState("");

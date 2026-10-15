@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   addMonths,
+  dateIn,
   endOfWeek,
   formatDate,
+  formatDayMonth,
   fromIsoDate,
   monthWeeks,
   parseDate,
@@ -19,6 +21,9 @@ describe("the studio's time zone", () => {
     expect(clockTime("2026-10-15T14:30:00Z", "Asia/Jerusalem")).toBe("17:30");
     // After the change on 25 October Israel is UTC+2.
     expect(clockTime("2026-10-27T15:30:00Z", "Asia/Jerusalem")).toBe("17:30");
+    // An instant's own date, and the short day and month for lists.
+    expect(dateIn("2026-10-10T21:30:00Z", "Asia/Jerusalem")).toBe("2026-10-11");
+    expect(formatDayMonth("2026-10-11")).toBe("11.10");
   });
 });
 

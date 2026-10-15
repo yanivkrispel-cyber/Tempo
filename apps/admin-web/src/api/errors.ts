@@ -80,3 +80,8 @@ export function errorMessage(error: unknown, fallback = "משהו השתבש. נ
 export function hasCode(error: unknown, ...codes: string[]): boolean {
   return error instanceof TempoApiError && codes.includes(error.code);
 }
+
+/** A 404 of any kind: the resource's own code (`session.not_found`) or the gateway's plain one. */
+export function isNotFound(error: unknown): boolean {
+  return error instanceof TempoApiError && error.status === 404;
+}

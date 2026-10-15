@@ -29,10 +29,17 @@ export function todayIso(): IsoDate {
   return toIsoDate(new Date());
 }
 
-/** Today's date on the studio's wall calendar (an IANA zone such as "Asia/Jerusalem"), not the device's. */
-export function todayIn(timeZone: string, now: Date = new Date()): IsoDate {
+/** The calendar date of an instant on a wall clock in `timeZone` (an IANA zone such as "Asia/Jerusalem"). */
+export function dateIn(instant: string | Date, timeZone: string): IsoDate {
   // en-CA writes YYYY-MM-DD.
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
+    new Date(instant),
+  );
+}
+
+/** Today's date on the studio's wall calendar, not the device's. */
+export function todayIn(timeZone: string, now: Date = new Date()): IsoDate {
+  return dateIn(now, timeZone);
 }
 
 // Calendar arithmetic on local dates (setDate / setMonth), so a DST change never shifts a day.
@@ -97,6 +104,11 @@ export function monthWeeks(iso: IsoDate): IsoDate[][] {
     sunday = addDays(sunday, 7);
   } while (sameMonth(sunday, first));
   return weeks;
+}
+
+/** "15.10", the day and month, for lists within the year. */
+export function formatDayMonth(iso: IsoDate): string {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 }
 
 /** "15.10.2026", the way dates are written in Israel. */
