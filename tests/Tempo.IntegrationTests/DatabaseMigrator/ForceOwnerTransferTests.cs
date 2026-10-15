@@ -28,10 +28,13 @@ public sealed class ForceOwnerTransferTests(PostgresFixture postgres) : IClassFi
         after.OwnerEmail.Should().Be("admin@example.com");
         (await RolesAsync(db, owner)).Should().Be(("admin", "admin"));
         (await RolesAsync(db, admin)).Should().Be(("owner", "owner"));
+        // The ticket and the reason live in the operators' notes, not in the studio's audit log (#124).
         var audit = await db.AsMasterAsync(
-            "SELECT actor_type || ' ' || (data->>'ticket') FROM audit.audit_events WHERE organization_id = $1 AND action = 'ownership.transferred_by_operator'",
+            "SELECT actor_type || ' ' || coalesce(data->>'ticket', '-') || ' ' || (data->>'noteId' IS NOT NULL)::text FROM audit.audit_events WHERE organization_id = $1 AND action = 'ownership.transferred_by_operator'",
             studio);
-        audit.Should().Be("operator SUP-1042");
+        audit.Should().Be("operator - true");
+        (await db.AsMasterAsync("SELECT reason || ' / ' || ticket FROM platform_admin.operator_notes WHERE organization_id = $1", studio))
+            .Should().Be("Owner unreachable for 30 days / SUP-1042");
     }
 
     [Fact]
