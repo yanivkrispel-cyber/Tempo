@@ -857,6 +857,590 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The studio's rooms (`schedule.view`) */
+        get: operations["listRooms"];
+        put?: never;
+        /** Add a room (`schedule.manage`, limit `rooms.max`) */
+        post: operations["createRoom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/rooms/{roomId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename, resize or archive a room (`schedule.manage`) */
+        patch: operations["updateRoom"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/class-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The studio's class types (`schedule.view`) */
+        get: operations["listClassTypes"];
+        put?: never;
+        /** Add a class type (`schedule.manage`, limit `class_types.max`) */
+        post: operations["createClassType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/class-types/{classTypeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                classTypeId: components["parameters"]["ClassTypeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit or archive a class type (`schedule.manage`) */
+        patch: operations["updateClassType"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/schedule-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Weekly classes (`schedule.manage`) */
+        get: operations["listScheduleTemplates"];
+        put?: never;
+        /** Add a weekly class; sessions appear for the next eight weeks (`schedule.manage`) */
+        post: operations["createScheduleTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/schedule-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                templateId: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change or end a weekly class (`schedule.manage`)
+         * @description Applies to future sessions without live bookings. Sessions that have bookings keep their values and are listed in `untouchedSessions`.
+         */
+        patch: operations["updateScheduleTemplate"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Sessions in a date range (`schedule.view`) */
+        get: operations["listSessions"];
+        put?: never;
+        /** Add a one-off session (`schedule.manage`) */
+        post: operations["createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        /** One session with the caller's booking state (`schedule.view`) */
+        get: operations["getSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change one session's instructor, room or capacity (`schedule.manage`)
+         * @description Capacity cannot go below the number booked (409 `session.capacity_below_booked`). Raising it promotes from the waitlist.
+         */
+        patch: operations["updateSession"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a session: every booking is cancelled and its entry returned (`schedule.manage`) */
+        post: operations["cancelSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        /** Booked and waiting people (`bookings.manage`, or the session's instructor) */
+        get: operations["getSessionRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Book a place, or join the waitlist when full (self, or `bookings.manage` with `personId`)
+         * @description Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass`, `session.full` (waitlist off or past its cutoff), `session.cancelled`.
+         */
+        post: operations["createBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/bookings/{bookingId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a booking or leave the waitlist (self, or `bookings.manage`)
+         * @description Inside the free-cancellation window the entry returns; later it stays used and `lateCancel` is true. `returnEntry` (staff only) returns it anyway. Allowed in restricted mode.
+         */
+        post: operations["cancelBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/bookings/{bookingId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark attended or no-show (`attendance.mark`, or the session's instructor) */
+        post: operations["markAttendance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The caller's bookings in this studio (self) */
+        get: operations["listMyBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        /** One person's bookings (`bookings.manage`) */
+        get: operations["listPersonBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/pass-products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Punch cards and memberships the studio sells (`passes.view`) */
+        get: operations["listPassProducts"];
+        put?: never;
+        /** Add a punch card or membership product (`passes.manage`) */
+        post: operations["createPassProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/pass-products/{productId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop selling a product; granted passes keep working (`passes.manage`) */
+        post: operations["archivePassProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        /** One person's passes, newest first (`passes.view`) */
+        get: operations["listPersonPasses"];
+        put?: never;
+        /** Grant a pass, e.g. paid at the desk (`passes.manage`) */
+        post: operations["grantPass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/passes/{passId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a pass; sessions already booked keep their entry (`passes.manage`) */
+        post: operations["voidPass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The caller's passes in this studio (self) */
+        get: operations["listMyPasses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/booking-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Cancellation window, waitlist cutoff, booking horizon (`schedule.view`) */
+        get: operations["getBookingPolicy"];
+        /** Change the booking policy (`schedule.manage`) */
+        put: operations["updateBookingPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The caller's in-app notifications in this studio, newest first (self) */
+        get: operations["listMyNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/notifications/{itemId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark one notification read (self) */
+        post: operations["markNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The studio's plan, subscription state and billing details (`billing.view`) */
+        get: operations["getBilling"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Billing email, legal name, business id (`billing.manage`) */
+        patch: operations["updateBillingAccount"];
+        trace?: never;
+    };
+    "/api/v1/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public plans and their entitlements (any signed-in account) */
+        get: operations["listPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{organizationId}/billing/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Move a studio to a plan version (audited) */
+        put: operations["platformSetPlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{organizationId}/billing/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a manual payment (audited) */
+        post: operations["platformRecordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{organizationId}/billing/overrides/{entitlementKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                entitlementKey: components["parameters"]["EntitlementKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Override one entitlement for one studio (audited) */
+        put: operations["platformSetEntitlementOverride"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -924,6 +1508,10 @@ export interface components {
             permissions: components["schemas"]["PermissionKey"][];
             pendingOwnershipTransfer?: components["schemas"]["PendingOwnershipTransfer"] | null;
             status: components["schemas"]["MembershipStatus"];
+            /** @description Planned (docs/28). The studio's subscription state, for banners and restricted mode. */
+            subscriptionState?: components["schemas"]["SubscriptionState"] | null;
+            /** @description Planned (docs/28). The studio's entitlements, to hide or upsell features. */
+            entitlements?: components["schemas"]["Entitlements"] | null;
             organization: {
                 /** Format: uuid */
                 id: string;
@@ -1410,6 +1998,484 @@ export interface components {
              */
             survivorPersonId?: string;
         };
+        /**
+         * @description A class color from the design system.
+         * @enum {string}
+         */
+        ClassColor: "sage" | "rose" | "taupe" | "amber" | "mauve" | "blue";
+        /**
+         * @description A wall-clock time in the studio's time zone, `HH:MM`.
+         * @example 17:30
+         */
+        LocalTime: string;
+        Room: {
+            /** Format: uuid */
+            id: string;
+            /** @example חדר המכשירים */
+            name: string;
+            defaultCapacity: number;
+            /** @enum {string} */
+            status: "active" | "archived";
+            version: string;
+        };
+        RoomList: {
+            items: components["schemas"]["Room"][];
+        };
+        CreateRoomRequest: {
+            name: string;
+            defaultCapacity: number;
+        };
+        UpdateRoomRequest: {
+            name?: string;
+            defaultCapacity?: number;
+            /** @enum {string} */
+            status?: "active" | "archived";
+        };
+        ClassType: {
+            /** Format: uuid */
+            id: string;
+            /** @example פילאטיס מכשירים */
+            name: string;
+            /**
+             * @description Groups class types for filters and for passes limited to one category.
+             * @example pilates
+             */
+            category: string;
+            color: components["schemas"]["ClassColor"];
+            defaultMinutes: number;
+            description?: string | null;
+            /** @enum {string} */
+            status: "active" | "archived";
+            version: string;
+        };
+        ClassTypeList: {
+            items: components["schemas"]["ClassType"][];
+        };
+        CreateClassTypeRequest: {
+            name: string;
+            category: string;
+            color: components["schemas"]["ClassColor"];
+            defaultMinutes: number;
+            description?: string;
+        };
+        UpdateClassTypeRequest: {
+            name?: string;
+            category?: string;
+            color?: components["schemas"]["ClassColor"];
+            defaultMinutes?: number;
+            description?: string | null;
+            /** @enum {string} */
+            status?: "active" | "archived";
+        };
+        /** @description A weekly class. `weekday` 0 is Sunday; times are in the studio's time zone. */
+        ScheduleTemplate: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            classTypeId: string;
+            weekday: number;
+            localStart: components["schemas"]["LocalTime"];
+            minutes: number;
+            /** Format: uuid */
+            instructorMembershipId?: string | null;
+            /** Format: uuid */
+            roomId?: string | null;
+            capacity: number;
+            /** Format: date */
+            validFrom: string;
+            /** Format: date */
+            validUntil?: string | null;
+            version: string;
+        };
+        ScheduleTemplateList: {
+            items: components["schemas"]["ScheduleTemplate"][];
+        };
+        CreateScheduleTemplateRequest: {
+            /** Format: uuid */
+            classTypeId: string;
+            weekday: number;
+            localStart: components["schemas"]["LocalTime"];
+            /** @description Defaults to the class type's `defaultMinutes`. */
+            minutes?: number;
+            /** Format: uuid */
+            instructorMembershipId?: string;
+            /** Format: uuid */
+            roomId?: string;
+            capacity: number;
+            /**
+             * Format: date
+             * @description Defaults to today.
+             */
+            validFrom?: string;
+            /** Format: date */
+            validUntil?: string;
+        };
+        UpdateScheduleTemplateRequest: {
+            weekday?: number;
+            localStart?: components["schemas"]["LocalTime"];
+            minutes?: number;
+            /** Format: uuid */
+            instructorMembershipId?: string | null;
+            /** Format: uuid */
+            roomId?: string | null;
+            capacity?: number;
+            /**
+             * Format: date
+             * @description Ending a weekly class removes its future sessions that have no live bookings.
+             */
+            validUntil?: string | null;
+        };
+        ScheduleTemplateChange: {
+            template: components["schemas"]["ScheduleTemplate"];
+            /** @description Future sessions that kept their old values because they have bookings; edit them one by one. */
+            untouchedSessions: components["schemas"]["Session"][];
+        };
+        /** @enum {string} */
+        SessionStatus: "scheduled" | "cancelled";
+        InstructorRef: {
+            /** Format: uuid */
+            membershipId: string;
+            /** @example דנה אלון */
+            displayName: string;
+        };
+        /** @description The caller's own place in a session. */
+        MyBookingState: {
+            /** Format: uuid */
+            bookingId: string;
+            status: components["schemas"]["BookingStatus"];
+            /** @description The caller's place in line (1 = next), counting only people still waiting. */
+            waitlistPosition?: number | null;
+            /** Format: date-time */
+            freeCancelUntil?: string | null;
+        };
+        Session: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            templateId?: string | null;
+            /** Format: date */
+            localDate: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            classType: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                category: string;
+                color: components["schemas"]["ClassColor"];
+            };
+            instructor?: components["schemas"]["InstructorRef"] | null;
+            room?: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
+            capacity: number;
+            bookedCount: number;
+            waitlistCount: number;
+            status: components["schemas"]["SessionStatus"];
+            /** @description The caller's booking or waitlist place; null when none. */
+            myBooking?: components["schemas"]["MyBookingState"] | null;
+            /** @description The pass a booking by the caller would use now (docs/29 section 5.3); null when none is valid. */
+            passPreview?: components["schemas"]["PassSummary"] | null;
+            version: string;
+        };
+        SessionList: {
+            items: components["schemas"]["Session"][];
+        };
+        CreateSessionRequest: {
+            /** Format: uuid */
+            classTypeId: string;
+            /** Format: date */
+            localDate: string;
+            localStart: components["schemas"]["LocalTime"];
+            minutes?: number;
+            /** Format: uuid */
+            instructorMembershipId?: string;
+            /** Format: uuid */
+            roomId?: string;
+            capacity: number;
+        };
+        UpdateSessionRequest: {
+            /** Format: uuid */
+            instructorMembershipId?: string | null;
+            /** Format: uuid */
+            roomId?: string | null;
+            capacity?: number;
+        };
+        /** @enum {string} */
+        BookingStatus: "booked" | "waitlisted" | "cancelled" | "attended" | "no_show" | "removed" | "expired";
+        PersonRef: {
+            /** Format: uuid */
+            id: string;
+            displayName: string;
+        };
+        Booking: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sessionId: string;
+            person: components["schemas"]["PersonRef"];
+            status: components["schemas"]["BookingStatus"];
+            waitlistPosition?: number | null;
+            lateCancel: boolean;
+            /** @enum {string|null} */
+            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | null;
+            /** @description The pass whose entry this booking holds; null while waiting or after the entry returned. */
+            pass?: components["schemas"]["PassSummary"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: string;
+        };
+        CreateBookingRequest: {
+            /**
+             * Format: uuid
+             * @description Book someone else (`bookings.manage`). Omit to book yourself.
+             */
+            personId?: string;
+        };
+        CancelBookingRequest: {
+            /** @description Staff only (`bookings.manage`), return the entry on a late cancellation. */
+            returnEntry?: boolean;
+        };
+        AttendanceRequest: {
+            /** @enum {string} */
+            state: "attended" | "no_show";
+        };
+        RosterEntry: {
+            /** Format: uuid */
+            bookingId: string;
+            person: components["schemas"]["PersonRef"];
+            status: components["schemas"]["BookingStatus"];
+            waitlistPosition?: number | null;
+            /** @example כרטיסיית 10 */
+            passName?: string | null;
+            /** Format: date-time */
+            bookedAt: string;
+        };
+        Roster: {
+            session: components["schemas"]["Session"];
+            /** @description Booked, attended and no-show places, in booking order. */
+            booked: components["schemas"]["RosterEntry"][];
+            /** @description In line order. */
+            waitlisted: components["schemas"]["RosterEntry"][];
+        };
+        MyBooking: components["schemas"]["Booking"] & {
+            session: components["schemas"]["Session"];
+        };
+        MyBookingPage: {
+            items: components["schemas"]["MyBooking"][];
+            /** Format: uuid */
+            nextBefore?: string | null;
+        };
+        /** @enum {string} */
+        PassKind: "punch_card" | "membership";
+        PassProduct: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["PassKind"];
+            /** @example כרטיסיית 10 כניסות */
+            name: string;
+            /** @description Punch cards only. */
+            entries?: number | null;
+            validDays: number;
+            /** @description Memberships only; null means unlimited. */
+            weeklyCap?: number | null;
+            /** @description Only class types of this category; null means all. */
+            classCategory?: string | null;
+            /** @description Shown to staff only; nothing charges it yet. */
+            priceAgorot?: number | null;
+            /** @enum {string} */
+            status: "active" | "archived";
+            version: string;
+        };
+        PassProductList: {
+            items: components["schemas"]["PassProduct"][];
+        };
+        CreatePassProductRequest: {
+            kind: components["schemas"]["PassKind"];
+            name: string;
+            /** @description Required for a punch card. */
+            entries?: number;
+            validDays: number;
+            /** @description Memberships only. */
+            weeklyCap?: number;
+            classCategory?: string;
+            priceAgorot?: number;
+        };
+        PassSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: components["schemas"]["PassKind"];
+            /** Format: date */
+            endsOn: string;
+            /** @description Punch cards only. */
+            entriesLeft?: number | null;
+        };
+        Pass: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            personId: string;
+            product: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                kind: components["schemas"]["PassKind"];
+                weeklyCap?: number | null;
+                classCategory?: string | null;
+            };
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            entries?: number | null;
+            entriesUsed: number;
+            entriesLeft?: number | null;
+            note?: string | null;
+            /**
+             * @description `expired` is computed from `endsOn`.
+             * @enum {string}
+             */
+            status: "active" | "voided" | "expired";
+            /** Format: date-time */
+            createdAt: string;
+            version: string;
+        };
+        PassList: {
+            items: components["schemas"]["Pass"][];
+        };
+        GrantPassRequest: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * Format: date
+             * @description Defaults to today in the studio's time zone.
+             */
+            startsOn?: string;
+            /** @example שולם במזומן */
+            note?: string;
+        };
+        BookingPolicy: {
+            freeCancelHours: number;
+            waitlistCutoffHours: number;
+            bookingHorizonDays: number;
+            waitlistEnabled: boolean;
+            version: string;
+        };
+        BookingPolicyInput: {
+            freeCancelHours: number;
+            waitlistCutoffHours: number;
+            bookingHorizonDays: number;
+            waitlistEnabled: boolean;
+        };
+        InboxItem: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description Clients must ignore kinds they do not know.
+             * @example booking.promoted
+             * @example booking.promotion_failed
+             * @example session.cancelled
+             * @example waitlist.expired
+             */
+            kind: string;
+            /** @description Ids only. */
+            data: {
+                /** Format: uuid */
+                sessionId?: string;
+                /** Format: uuid */
+                bookingId?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            readAt?: string | null;
+        };
+        InboxPage: {
+            items: components["schemas"]["InboxItem"][];
+            unreadCount: number;
+            /** Format: uuid */
+            nextBefore?: string | null;
+        };
+        /** @enum {string} */
+        SubscriptionState: "trialing" | "active" | "past_due" | "grace" | "restricted" | "canceled";
+        /**
+         * @description Entitlement keys and values from the plan and overrides, e.g. `rooms.max`. Ignore unknown keys.
+         * @example {
+         *       "rooms.max": 20,
+         *       "class_types.max": 50,
+         *       "staff.max": 10
+         *     }
+         */
+        Entitlements: {
+            [key: string]: unknown;
+        };
+        PlanVersion: {
+            /** Format: uuid */
+            id: string;
+            /** @example pilot */
+            planKey: string;
+            displayName: string;
+            /** @description Agorot, VAT included (B-7). */
+            priceMinor: number;
+            /** @example ILS */
+            currency: string;
+            /** @enum {string} */
+            interval: "month" | "year";
+            entitlements: components["schemas"]["Entitlements"];
+        };
+        PlanList: {
+            items: components["schemas"]["PlanVersion"][];
+        };
+        BillingOverview: {
+            plan: components["schemas"]["PlanVersion"];
+            state: components["schemas"]["SubscriptionState"];
+            /** @example manual */
+            provider: string;
+            /** Format: date-time */
+            trialEndsAt?: string | null;
+            /** Format: date-time */
+            currentPeriodEnd?: string | null;
+            /** Format: date-time */
+            graceEndsAt?: string | null;
+            /** Format: email */
+            billingEmail?: string | null;
+            legalName?: string | null;
+            businessId?: string | null;
+            cardLast4?: string | null;
+            entitlements: components["schemas"]["Entitlements"];
+            version: string;
+        };
+        UpdateBillingAccountRequest: {
+            /** Format: email */
+            billingEmail?: string;
+            legalName?: string;
+            /** @description Israeli company or licensed-dealer number. */
+            businessId?: string;
+        };
+        SetPlanRequest: {
+            /** Format: uuid */
+            planVersionId: string;
+            reason: string;
+        };
+        RecordPaymentRequest: {
+            amountMinor: number;
+            /** @enum {string} */
+            method: "transfer" | "cash" | "check" | "other";
+            reference?: string;
+            reason: string;
+        };
+        SetEntitlementOverrideRequest: {
+            /** @description A number, boolean or string, as the key defines. */
+            value: unknown;
+            reason: string;
+            /** Format: date-time */
+            endsAt?: string | null;
+        };
     };
     responses: {
         /** @description Unexpected error. */
@@ -1506,6 +2572,15 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description The studio's subscription is restricted (`billing.restricted`); reads and cancellations still work. */
+        Restricted: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
     };
     parameters: {
         OrganizationId: string;
@@ -1516,6 +2591,15 @@ export interface components {
         PersonId: string;
         /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
         IfMatch: string;
+        RoomId: string;
+        ClassTypeId: string;
+        TemplateId: string;
+        SessionId: string;
+        BookingId: string;
+        ProductId: string;
+        PassId: string;
+        ItemId: string;
+        EntitlementKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -3046,6 +4130,1104 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listRooms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Room"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateRoom: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Room"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listClassTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassTypeList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createClassType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClassTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassType"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateClassType: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                classTypeId: components["parameters"]["ClassTypeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClassTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassType"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listScheduleTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleTemplateList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createScheduleTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleTemplateChange"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateScheduleTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                templateId: components["parameters"]["TemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduleTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleTemplateChange"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listSessions: {
+        parameters: {
+            query: {
+                /** @description First local date, in the studio's time zone. */
+                from: string;
+                /** @description Last local date, inclusive. At most 62 days after `from`; members see up to the booking horizon. */
+                to: string;
+                classTypeId?: string;
+                instructorMembershipId?: string;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cancelSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSessionRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roster"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cancelBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    markAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listMyBookings: {
+        parameters: {
+            query?: {
+                scope?: "upcoming" | "past";
+                /** @description The `id` of the last item on the previous page. */
+                before?: components["parameters"]["Before"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBookingPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPersonBookings: {
+        parameters: {
+            query?: {
+                scope?: "upcoming" | "past";
+                /** @description The `id` of the last item on the previous page. */
+                before?: components["parameters"]["Before"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBookingPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPassProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassProductList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createPassProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePassProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassProduct"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    archivePassProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassProduct"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPersonPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    grantPass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantPassRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    voidPass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                passId: components["parameters"]["PassId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listMyPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getBookingPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingPolicy"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateBookingPolicy: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingPolicyInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingPolicy"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listMyNotifications: {
+        parameters: {
+            query?: {
+                /** @description The `id` of the last item on the previous page. */
+                before?: components["parameters"]["Before"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getBilling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateBillingAccount: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBillingAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingOverview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    platformSetPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingOverview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    platformRecordPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingOverview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    platformSetEntitlementOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                entitlementKey: components["parameters"]["EntitlementKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEntitlementOverrideRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingOverview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
 }
