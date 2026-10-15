@@ -63,3 +63,12 @@ public sealed record CreateContactPointRequest(string? Type, string? Value, bool
 
 /// <summary>`UpdateContactPointRequest`.</summary>
 public sealed record UpdateContactPointRequest(string? Value, bool? IsPrimary);
+
+/// <summary>`RecordConsentRequest`: purpose marketing or reminders, channel email, push or whatsapp.</summary>
+public sealed record RecordConsentRequest(string? Purpose, string? Channel, string? State, string? TextVersion);
+
+/// <summary>`ConsentList`: the full history, newest first.</summary>
+public sealed record ConsentListResponse(IReadOnlyList<ConsentResponse> Items);
+
+/// <summary>`CreateRelationshipRequest`: the person in the path is the `from` side.</summary>
+public sealed record CreateRelationshipRequest(string? Type, Guid ToPersonId);
