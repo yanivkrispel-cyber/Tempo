@@ -105,6 +105,21 @@ describe("AuthClient sign-in", () => {
     expect(url.searchParams.get("code_challenge")).toMatch(/^[\w-]{43}$/);
   });
 
+  it("asks for the configured scopes", async () => {
+    const redirect = vi.fn();
+    const config = { ...testAuthConfig, scopes: ["openid", "aws.cognito.signin.user.admin"] };
+    await new AuthClient({
+      config,
+      app: "admin-web",
+      storage: memoryStorage(),
+      flowStorage: memoryStorage(),
+      redirect,
+    }).signIn("/");
+    expect(new URL(redirect.mock.calls[0]![0] as string).searchParams.get("scope")).toBe(
+      "openid aws.cognito.signin.user.admin",
+    );
+  });
+
   it("asks for the password again through /logout for step-up, keeping PKCE and state", async () => {
     const redirect = vi.fn();
     const flowStorage = memoryStorage();

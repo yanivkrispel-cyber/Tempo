@@ -20,7 +20,14 @@ export interface AuthConfig {
   redirectUri: string;
   /** Must be one of the client's exact logout URLs. */
   logoutUri: string;
+  /**
+   * The OAuth scopes to ask for; `openid email profile` when left out. Every scope must be allowed on the app client,
+   * or the Hosted UI refuses the sign-in (`invalid_scope`). Two-step sign-in setup needs `aws.cognito.signin.user.admin`.
+   */
+  scopes?: readonly string[];
 }
+
+export const defaultScopes: readonly string[] = ["openid", "email", "profile"];
 
 export interface Session {
   accessToken: string;
@@ -67,7 +74,8 @@ interface TokenResponse {
 }
 
 export class AuthClient {
-  private readonly config: AuthConfig;
+  /** Where the app signs in; read by the two-step sign-in setup (Cognito's region and the scopes asked for). */
+  readonly config: AuthConfig;
   private readonly sessionKey: string;
   private readonly flowKey: string;
   private readonly storage: Storage;
@@ -117,7 +125,7 @@ export class AuthClient {
       response_type: "code",
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
-      scope: "openid email profile",
+      scope: (this.config.scopes ?? defaultScopes).join(" "),
       state: flow.state,
       code_challenge_method: "S256",
       code_challenge: await codeChallenge(flow.verifier),
