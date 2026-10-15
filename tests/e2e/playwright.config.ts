@@ -37,6 +37,13 @@ export default defineConfig({
       // The member app is a phone PWA.
       use: { ...devices["Pixel 7"], baseURL: clientUrl, storageState: sessionStatePath },
     },
+    {
+      // The SYNC 2 demo flow crosses both apps, so it takes absolute URLs; both at phone width.
+      name: "sync2",
+      testDir: "./specs/sync2",
+      dependencies: ["sign-in"],
+      use: { ...devices["Pixel 7"], storageState: sessionStatePath },
+    },
   ],
   webServer: [
     {
