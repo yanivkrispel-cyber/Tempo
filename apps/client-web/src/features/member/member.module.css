@@ -57,6 +57,10 @@
 .list > li {
   min-width: 0;
 }
+.weekButtons {
+  display: flex;
+  gap: 8px;
+}
 
 .next {
   display: flex;
@@ -87,6 +91,17 @@
   align-items: flex-start;
 }
 
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.classCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 .sheetDetails {
   display: flex;
   flex-direction: column;
