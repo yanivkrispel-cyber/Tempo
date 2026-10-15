@@ -2,6 +2,7 @@
 export { AuthClient, defaultScopes, safeReturnTo, SignInError } from "./authClient";
 export type { AuthClientOptions, AuthConfig, Session } from "./authClient";
 export {
+  accessTokenAuthTime,
   accessTokenScopes,
   accountAdminScope,
   CognitoAccount,

@@ -1,4 +1,4 @@
-import { accountAdminScope, defaultScopes, type AuthConfig } from "@tempo/api-client/auth";
+import { accountAdminScope, type AuthConfig } from "@tempo/api-client/auth";
 
 /**
  * Where the app signs in and which API it calls. Values come from Vite env variables (`.env.example`); none of
@@ -15,6 +15,7 @@ export function readAppConfig(env: ImportMetaEnv = import.meta.env, origin = win
   const cognitoDomain = (env.VITE_COGNITO_DOMAIN ?? "").replace(/\/+$/, "");
   const clientId = env.VITE_COGNITO_CLIENT_ID ?? "";
   // Two-step sign-in setup calls Cognito with the user's token, which needs this scope; the app client must allow it.
+  // It is optional: only the sign-in that /account/security starts asks for it, never a normal one.
   const mfaSetup = env.VITE_COGNITO_MFA_SETUP === "true";
   return {
     apiUrl: (env.VITE_API_URL ?? "").replace(/\/+$/, ""),
@@ -25,7 +26,7 @@ export function readAppConfig(env: ImportMetaEnv = import.meta.env, origin = win
             clientId,
             redirectUri: `${origin}/auth/callback`,
             logoutUri: `${origin}/`,
-            ...(mfaSetup ? { scopes: [...defaultScopes, accountAdminScope] } : {}),
+            ...(mfaSetup ? { optionalScopes: [accountAdminScope] } : {}),
           }
         : null,
   };

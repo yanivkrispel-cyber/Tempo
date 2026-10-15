@@ -1,21 +1,27 @@
+import { QueryClient } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { accountAdminScope, defaultScopes } from "@tempo/api-client/auth";
+import { accountAdminScope } from "@tempo/api-client/auth";
 import { createMemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, signedInRoutes } from "../../test/api";
-import { memoryStorage, sessionStorageWith, signedInAuth, testAuthConfig } from "../../test/auth";
+import { memoryStorage, sessionStorageWith, signedInAuth, signedOutAuth, testAuthConfig } from "../../test/auth";
 
 const jwt = (payload: Record<string, unknown>) =>
   `e30.${btoa(JSON.stringify(payload)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_")}.sig`;
 
-const setupConfig = { ...testAuthConfig, scopes: [...defaultScopes, accountAdminScope] };
+/** The app client offers the account scope (VITE_COGNITO_MFA_SETUP on); only the setup page's sign-in asks for it. */
+const setupConfig = { ...testAuthConfig, optionalScopes: [accountAdminScope] };
 
-/** An account whose sign-in asked for the account scope; `scope` is what its access token carries. */
-function authWith(scope: string, redirect = vi.fn()) {
-  const session = { accessToken: jwt({ scope }), refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 };
+const secret = "JBSWY3DPEHPK3PXPJBSWY3DP";
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+/** A session whose token carries `scope`, signed in `ageMinutes` ago. */
+function authWith(scope: string, { redirect = vi.fn(), ageMinutes = 1 } = {}) {
+  const accessToken = jwt({ scope, auth_time: nowSeconds() - ageMinutes * 60 });
+  const session = { accessToken, refreshToken: "refresh-1", expiresAt: Date.now() + 3_600_000 };
   return signedInAuth({
     config: setupConfig,
     storage: sessionStorageWith(session),
@@ -42,16 +48,25 @@ function stubCognito(answers: Record<string, Answer[]>) {
 
 function renderAt(url: string, auth = authWith(`openid ${accountAdminScope}`)) {
   const api = apiStub(signedInRoutes);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
   render(
     <App
       router={createMemoryRouter(routes, { initialEntries: [url] })}
       auth={auth}
       apiUrl="https://api.test"
       fetch={api.fetch}
+      queryClient={queryClient}
     />,
   );
-  return api;
+  return { api, queryClient };
 }
+
+/** Whether the TOTP secret is still held anywhere in the query client (it must live in component state only). */
+const cacheHoldsSecret = (queryClient: QueryClient) =>
+  queryClient
+    .getMutationCache()
+    .getAll()
+    .some((mutation) => JSON.stringify(mutation.state.data ?? null).includes(secret));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -61,24 +76,26 @@ describe("two-step sign-in setup", () => {
   it("adds the account to an authenticator app and turns TOTP on", async () => {
     const cognito = stubCognito({
       GetUser: [{ body: {} }, { body: { UserMFASettingList: ["SOFTWARE_TOKEN_MFA"] } }],
-      AssociateSoftwareToken: [{ body: { SecretCode: "JBSWY3DPEHPK3PXPJBSWY3DP" } }],
+      AssociateSoftwareToken: [{ body: { SecretCode: secret } }],
       VerifySoftwareToken: [
         { status: 400, body: { __type: "CodeMismatchException" } },
         { body: { Status: "SUCCESS" } },
       ],
       SetUserMFASettings: [{ body: {} }],
     });
-    const api = renderAt("/account/security");
+    const { api, queryClient } = renderAt("/account/security");
 
     expect(await screen.findByRole("heading", { name: "אימות דו־שלבי כבוי" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "הפעלת אימות דו־שלבי" }));
 
     expect(await screen.findByRole("img", { name: "קוד QR להוספת החשבון לאפליקציית האימות" })).toBeInTheDocument();
     expect(screen.getByText("JBSW Y3DP EHPK 3PXP JBSW Y3DP")).toBeInTheDocument();
+    // On screen, but not left in the mutation cache.
+    await waitFor(() => expect(cacheHoldsSecret(queryClient)).toBe(false));
 
     const code = screen.getByRole("textbox", { name: /הקוד מהאפליקציה/ });
     await userEvent.click(screen.getByRole("button", { name: "הפעלה" }));
-    expect(code).toHaveAccessibleDescription("6 ספרות מהאפליקציה");
+    expect(code).toHaveAccessibleDescription("הקלידו את 6 הספרות שמוצגות באפליקציה.");
     expect(cognito.calls.map((call) => call.target)).not.toContain("VerifySoftwareToken");
 
     await userEvent.type(code, "111111");
@@ -90,7 +107,9 @@ describe("two-step sign-in setup", () => {
     await userEvent.click(screen.getByRole("button", { name: "הפעלה" }));
 
     expect(await screen.findByText("אימות דו־שלבי הופעל")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "אימות דו־שלבי פעיל" })).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", { name: "אימות דו־שלבי פעיל" });
+    expect(heading).toHaveFocus();
+    expect(cacheHoldsSecret(queryClient)).toBe(false);
     const verify = cognito.calls.filter((call) => call.target === "VerifySoftwareToken").at(-1)!;
     expect(verify.body).toMatchObject({ UserCode: "123456", FriendlyDeviceName: "Tempo" });
     expect(cognito.calls.at(-2)!.target).toBe("SetUserMFASettings");
@@ -100,23 +119,65 @@ describe("two-step sign-in setup", () => {
     );
   });
 
-  it("offers to move an active setup to another app", async () => {
-    stubCognito({ GetUser: [{ body: { UserMFASettingList: ["SOFTWARE_TOKEN_MFA"] } }] });
-    renderAt("/account/security");
-    expect(await screen.findByRole("heading", { name: "אימות דו־שלבי פעיל" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "העברה לאפליקציה אחרת" })).toBeEnabled();
+  it("returns focus to the status heading and forgets the secret on cancel", async () => {
+    stubCognito({ GetUser: [{ body: {} }], AssociateSoftwareToken: [{ body: { SecretCode: secret } }] });
+    const { queryClient } = renderAt("/account/security");
+    await userEvent.click(await screen.findByRole("button", { name: "הפעלת אימות דו־שלבי" }));
+    await userEvent.click(await screen.findByRole("button", { name: "ביטול" }));
+    expect(screen.getByRole("heading", { name: "אימות דו־שלבי כבוי" })).toHaveFocus();
+    expect(screen.queryByText(/JBSW/)).not.toBeInTheDocument();
+    expect(cacheHoldsSecret(queryClient)).toBe(false);
   });
 
-  it("asks to sign in again when the token was issued without the account scope", async () => {
+  it("moves an active setup to another app after a recent sign-in", async () => {
+    const cognito = stubCognito({
+      GetUser: [{ body: { UserMFASettingList: ["SOFTWARE_TOKEN_MFA"] } }],
+      AssociateSoftwareToken: [{ body: { SecretCode: secret } }],
+    });
+    renderAt("/account/security", authWith(`openid ${accountAdminScope}`, { ageMinutes: 5 }));
+    await userEvent.click(await screen.findByRole("button", { name: "העברה לאפליקציה אחרת" }));
+    expect(await screen.findByRole("img", { name: /קוד QR/ })).toBeInTheDocument();
+    expect(cognito.calls.map((call) => call.target)).toContain("AssociateSoftwareToken");
+  });
+
+  it("asks for the password again before moving an active setup when the sign-in is over 10 minutes old", async () => {
+    const cognito = stubCognito({ GetUser: [{ body: { UserMFASettingList: ["SOFTWARE_TOKEN_MFA"] } }] });
+    const redirect = vi.fn();
+    renderAt("/account/security", authWith(`openid ${accountAdminScope}`, { redirect, ageMinutes: 11 }));
+    await userEvent.click(await screen.findByRole("button", { name: "העברה לאפליקציה אחרת" }));
+    await waitFor(() => expect(redirect).toHaveBeenCalledTimes(1));
+    const url = new URL(redirect.mock.calls[0]![0] as string);
+    expect(url.pathname).toBe("/logout");
+    expect(url.searchParams.get("scope")).toContain(accountAdminScope);
+    expect(cognito.calls.map((call) => call.target)).not.toContain("AssociateSoftwareToken");
+  });
+
+  it("starts the sign-in that asks for the account scope when the token lacks it", async () => {
     const cognito = stubCognito({});
     const redirect = vi.fn();
-    renderAt("/account/security", authWith("openid email profile", redirect));
+    renderAt("/account/security", authWith("openid email profile", { redirect }));
 
     expect(await screen.findByText("כדי לשנות את הגדרות האבטחה צריך להתחבר מחדש.")).toBeInTheDocument();
     expect(cognito.fetch).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "התחברות מחדש" }));
     const url = new URL(redirect.mock.calls[0]![0] as string);
-    expect(url.searchParams.get("scope")).toContain(accountAdminScope);
+    expect(url.searchParams.get("scope")).toBe(`openid email profile ${accountAdminScope}`);
+  });
+
+  it("never asks for the account scope on a normal sign-in", async () => {
+    stubCognito({});
+    const redirect = vi.fn();
+    render(
+      <App
+        router={createMemoryRouter(routes, { initialEntries: ["/login"] })}
+        auth={signedOutAuth({ config: setupConfig, redirect })}
+        apiUrl="https://api.test"
+        fetch={apiStub({}).fetch}
+      />,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "התחברות" }));
+    await waitFor(() => expect(redirect).toHaveBeenCalledTimes(1));
+    expect(new URL(redirect.mock.calls[0]![0] as string).searchParams.get("scope")).toBe("openid email profile");
   });
 
   it("says when Cognito cannot be reached, and tries again", async () => {
@@ -130,7 +191,7 @@ describe("two-step sign-in setup", () => {
     expect(cognito.calls.length).toBe(3);
   });
 
-  it("is not offered while sign-in does not ask for the account scope", async () => {
+  it("is not offered while the app client does not offer the account scope", async () => {
     const cognito = stubCognito({});
     renderAt("/account/security", signedInAuth());
     expect(await screen.findByRole("heading", { name: "ההגדרה עוד לא זמינה כאן" })).toBeInTheDocument();

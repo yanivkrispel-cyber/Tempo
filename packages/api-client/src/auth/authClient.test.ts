@@ -105,19 +105,35 @@ describe("AuthClient sign-in", () => {
     expect(url.searchParams.get("code_challenge")).toMatch(/^[\w-]{43}$/);
   });
 
-  it("asks for the configured scopes", async () => {
+  it("asks for an optional scope only on the sign-in that names it", async () => {
     const redirect = vi.fn();
-    const config = { ...testAuthConfig, scopes: ["openid", "aws.cognito.signin.user.admin"] };
+    const config = { ...testAuthConfig, optionalScopes: ["aws.cognito.signin.user.admin"] };
+    const client = new AuthClient({
+      config,
+      app: "admin-web",
+      storage: memoryStorage(),
+      flowStorage: memoryStorage(),
+      redirect,
+    });
+    await client.signIn("/");
+    await client.signIn("/account/security", "login", { scopes: ["aws.cognito.signin.user.admin", "phone"] });
+    const scopeOf = (call: number) => new URL(redirect.mock.calls[call]![0] as string).searchParams.get("scope");
+    expect(scopeOf(0)).toBe("openid email profile");
+    // "phone" is not declared optional, so it is left out rather than failing the sign-in.
+    expect(scopeOf(1)).toBe("openid email profile aws.cognito.signin.user.admin");
+  });
+
+  it("never asks for a scope the config does not declare", async () => {
+    const redirect = vi.fn();
+    const config = { ...testAuthConfig };
     await new AuthClient({
       config,
       app: "admin-web",
       storage: memoryStorage(),
       flowStorage: memoryStorage(),
       redirect,
-    }).signIn("/");
-    expect(new URL(redirect.mock.calls[0]![0] as string).searchParams.get("scope")).toBe(
-      "openid aws.cognito.signin.user.admin",
-    );
+    }).signIn("/", "login", { scopes: ["aws.cognito.signin.user.admin"] });
+    expect(new URL(redirect.mock.calls[0]![0] as string).searchParams.get("scope")).toBe("openid email profile");
   });
 
   it("asks for the password again through /logout for step-up, keeping PKCE and state", async () => {

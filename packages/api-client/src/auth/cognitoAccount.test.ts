@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { accessTokenScopes, CognitoAccount, CognitoAccountError, cognitoRegion, otpauthUri } from "./cognitoAccount";
+import {
+  accessTokenAuthTime,
+  accessTokenScopes,
+  CognitoAccount,
+  CognitoAccountError,
+  cognitoRegion,
+  otpauthUri,
+} from "./cognitoAccount";
 
 const jwt = (payload: Record<string, unknown>) =>
   `e30.${btoa(JSON.stringify(payload)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_")}.sig`;
@@ -25,6 +32,17 @@ describe("cognitoRegion", () => {
 
   it("has none for a custom domain", () => {
     expect(cognitoRegion("https://auth.example.com")).toBeNull();
+  });
+});
+
+describe("accessTokenAuthTime", () => {
+  it("reads auth_time in milliseconds", () => {
+    expect(accessTokenAuthTime(jwt({ auth_time: 1_760_000_000 }))).toBe(1_760_000_000_000);
+  });
+
+  it("is null without the claim or for a token it cannot read", () => {
+    expect(accessTokenAuthTime(jwt({ scope: "openid" }))).toBeNull();
+    expect(accessTokenAuthTime("not-a-jwt")).toBeNull();
   });
 });
 

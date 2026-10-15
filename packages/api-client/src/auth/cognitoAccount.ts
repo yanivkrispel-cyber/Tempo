@@ -47,11 +47,8 @@ export function cognitoRegion(cognitoDomain: string): string | null {
   return /\.auth\.([a-z]{2}(?:-[a-z]+)+-\d)\.amazoncognito\.com\/?$/.exec(cognitoDomain)?.[1] ?? null;
 }
 
-/**
- * The scopes an access token was issued with, from its `scope` claim. For the screen only (to tell "sign in again"
- * from "not available"); Cognito checks the token itself.
- */
-export function accessTokenScopes(accessToken: string): string[] {
+/** A JWT's claims, unverified; empty when it cannot be read. */
+function claimsOf(accessToken: string): Record<string, unknown> {
   try {
     const payload = accessToken.split(".")[1] ?? "";
     const json = atob(
@@ -60,11 +57,29 @@ export function accessTokenScopes(accessToken: string): string[] {
         .replace(/_/g, "/")
         .padEnd(Math.ceil(payload.length / 4) * 4, "="),
     );
-    const scope: unknown = (JSON.parse(json) as Record<string, unknown>).scope;
-    return typeof scope === "string" ? scope.split(" ").filter(Boolean) : [];
+    const claims: unknown = JSON.parse(json);
+    return typeof claims === "object" && claims !== null ? (claims as Record<string, unknown>) : {};
   } catch {
-    return [];
+    return {};
   }
+}
+
+/**
+ * The scopes an access token was issued with, from its `scope` claim. For the screen only (to tell "sign in again"
+ * from "not available"); Cognito checks the token itself.
+ */
+export function accessTokenScopes(accessToken: string): string[] {
+  const scope = claimsOf(accessToken).scope;
+  return typeof scope === "string" ? scope.split(" ").filter(Boolean) : [];
+}
+
+/**
+ * When the user last typed their password (and MFA code, if on), in epoch milliseconds, from the token's `auth_time`
+ * claim; null when it cannot be read. A refresh keeps it, so it tells how recent the sign-in is (docs/27 section 3.6).
+ */
+export function accessTokenAuthTime(accessToken: string): number | null {
+  const authTime = claimsOf(accessToken).auth_time;
+  return typeof authTime === "number" && Number.isFinite(authTime) ? authTime * 1000 : null;
 }
 
 /** The `otpauth://` URI an authenticator app reads from the QR code (Google Authenticator key URI format). */

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  accessTokenAuthTime,
   accessTokenScopes,
   accountAdminScope,
   CognitoAccount,
@@ -8,7 +9,7 @@ import {
   otpauthUri,
   type AuthClient,
 } from "@tempo/api-client/auth";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import {
@@ -34,15 +35,27 @@ const statusKey = ["account", "totp"] as const;
 /** The name Cognito keeps for the authenticator, and the issuer the app shows next to the codes. */
 const issuer = "Tempo";
 
+/** Moving an active TOTP to another phone is a privileged action: a sign-in at most 10 minutes old (docs/27 3.6). */
+const stepUpWindowMs = 10 * 60 * 1000;
+
 /**
- * Cognito's user API for the signed-in user, or null when setup cannot run in this app: sign-in does not ask for
+ * The only sign-in that asks for `aws.cognito.signin.user.admin`. That scope lets the token change the account in
+ * Cognito, so a normal admin-web sign-in never carries it; this page asks for it when it needs it.
+ */
+function signInForSetup(client: AuthClient | null, screen: "login" | "reauthenticate" = "login") {
+  return client?.signIn(securityPath, screen, { scopes: [accountAdminScope] });
+}
+
+/**
+ * Cognito's user API for the signed-in user, or null when setup cannot run in this app: the app client does not offer
  * `aws.cognito.signin.user.admin` (VITE_COGNITO_MFA_SETUP is off), or the Hosted UI is on a custom domain, which does
- * not name the region. A token issued before the scope was asked for is refused here, before any call to Cognito.
+ * not name the region. A token without the scope (any sign-in other than this page's) is refused here, before any call
+ * to Cognito, and the page offers the sign-in that asks for it.
  */
 function useCognitoAccount(client: AuthClient | null): CognitoAccount | null {
   return useMemo(() => {
     const region = client ? cognitoRegion(client.config.cognitoDomain) : null;
-    if (!client || !region || !(client.config.scopes ?? []).includes(accountAdminScope)) return null;
+    if (!client || !region || !(client.config.optionalScopes ?? []).includes(accountAdminScope)) return null;
     return new CognitoAccount({
       region,
       getAccessToken: async () => {
@@ -109,14 +122,45 @@ export function SecurityPage() {
 
 function TotpSetup({ cognito }: { cognito: CognitoAccount }) {
   const me = useAccount();
+  const { client } = useAuth();
   const [secret, setSecret] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusHeading = useRef(false);
   const status = useQuery({
     queryKey: statusKey,
     queryFn: () => cognito.totpStatus(),
     // Only a dropped connection may pass on a retry; a refused token or too many calls will not.
     retry: (failures, error) => failures < 1 && error instanceof CognitoAccountError && error.code === "failed",
   });
-  const start = useMutation({ mutationFn: () => cognito.startTotp(), onSuccess: setSecret });
+  // The secret lives in this component's state only: the mutation forgets it at once (gcTime 0, reset on success).
+  const start = useMutation({ mutationFn: () => cognito.startTotp(), gcTime: 0, onSuccess: setSecret });
+
+  // Back on the status card after the setup closes (done or cancelled), focus goes to its heading, not the page top.
+  useEffect(() => {
+    if (secret === null && focusHeading.current) {
+      focusHeading.current = false;
+      heading.current?.focus();
+    }
+  }, [secret]);
+
+  const close = () => {
+    focusHeading.current = true;
+    start.reset();
+    setSecret(null);
+  };
+
+  const begin = async (enabled: boolean) => {
+    if (enabled) {
+      // Moving an active TOTP needs a recent sign-in; an older one goes through the password (and code) again.
+      const token = await client?.getAccessToken();
+      const authTime = token ? accessTokenAuthTime(token) : null;
+      if (authTime === null || Date.now() - authTime > stepUpWindowMs) {
+        await signInForSetup(client, "reauthenticate");
+        return;
+      }
+    }
+    start.mutate(undefined, { onSuccess: () => start.reset() });
+  };
 
   if (status.isPending) {
     return (
@@ -138,7 +182,7 @@ function TotpSetup({ cognito }: { cognito: CognitoAccount }) {
   }
 
   if (secret) {
-    return <Enroll cognito={cognito} secret={secret} account={me.email} onClose={() => setSecret(null)} />;
+    return <Enroll cognito={cognito} secret={secret} account={me.email} onClose={close} />;
   }
 
   const enabled = status.data.enabled;
@@ -146,7 +190,9 @@ function TotpSetup({ cognito }: { cognito: CognitoAccount }) {
     <Card as="section" aria-labelledby="totp-state" className="tp-stack">
       <div className="tp-row">
         <Icon name={enabled ? "check" : "shield"} />
-        <h2 id="totp-state">{enabled ? "אימות דו־שלבי פעיל" : "אימות דו־שלבי כבוי"}</h2>
+        <h2 id="totp-state" ref={heading} tabIndex={-1}>
+          {enabled ? "אימות דו־שלבי פעיל" : "אימות דו־שלבי כבוי"}
+        </h2>
       </div>
       <p className="tp-muted">
         {enabled
@@ -159,7 +205,7 @@ function TotpSetup({ cognito }: { cognito: CognitoAccount }) {
           variant={enabled ? "secondary" : "primary"}
           icon={enabled ? "phone" : "shield"}
           loading={start.isPending}
-          onClick={() => start.mutate()}
+          onClick={() => void begin(enabled)}
         >
           {enabled ? "העברה לאפליקציה אחרת" : "הפעלת אימות דו־שלבי"}
         </Button>
@@ -196,7 +242,7 @@ function Enroll({
   });
 
   const digits = code.replace(/\s/g, "");
-  const formatError = /^\d{6}$/.test(digits) ? null : "6 ספרות מהאפליקציה";
+  const formatError = /^\d{6}$/.test(digits) ? null : "הקלידו את 6 הספרות שמוצגות באפליקציה.";
   const mismatch = confirm.error instanceof CognitoAccountError && confirm.error.code === "code_mismatch";
   const fieldError = submitted && formatError ? formatError : mismatch ? cognitoMessage(confirm.error, "") : undefined;
 
@@ -267,7 +313,7 @@ function ProblemBanner({ error, fallback, onRetry }: { error: unknown; fallback:
       </Banner>
       {signIn ? (
         <div>
-          <Button variant="secondary" icon="user" onClick={() => void client?.signIn(securityPath)}>
+          <Button variant="secondary" icon="user" onClick={() => void signInForSetup(client)}>
             התחברות מחדש
           </Button>
         </div>
