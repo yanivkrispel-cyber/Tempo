@@ -42,6 +42,15 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
 2. **admin-web** (`specs/admin/`): the people list and search, the new-person dialog, the person card, the invite
    dialog (validation and the one-time link), and the members screen with the owner and the ownership handover.
 3. **client-web** (`specs/client/`): the home screen greets the member by first name, on a phone viewport.
+4. **SYNC 2 demo flow** (`specs/sync2/demo-flow.spec.ts`, project `sync2`, Pixel 7 for both apps): one serial file
+   that walks issue #89 end to end. The owner creates a weekly class and a punch-card product in the console and
+   grants the card on the person card; the member (the smoke user) books on client-web; a second, fictional e2e
+   member fills a one-place class through the staff API and the smoke user joins its waitlist; staff cancel inside
+   the free window on the console roster, the entry returns to the card and the smoke user is promoted, with the
+   booking, the banner and the inbox notice on client-web; the roster and attendance (on a class that starts in
+   twenty minutes, since marking opens thirty minutes before); the audit log; and the studio's `pilot` plan, read
+   from `GET /billing` because the console has no screen that shows it yet. Rooms, class types, weekly classes,
+   sessions, products and passes it creates are all `e2e-` and are removed afterwards.
 
 **axe on every screen.** `support/axe.ts` audits each screen against WCAG 2.2 A and AA. A serious or critical
 violation fails the test; minor and moderate ones are attached to the report as annotations. The audit runs with the
