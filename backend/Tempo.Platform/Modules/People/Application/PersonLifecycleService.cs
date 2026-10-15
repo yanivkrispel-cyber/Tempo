@@ -416,6 +416,33 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
 
+        // Invitations follow the survivor, so erasing it later scrubs their emails too (#101). A pending one was
+        // meant to link a login to the merged record, which is gone: it is revoked, and staff invite the survivor.
+        var revokedInvitations = new List<Guid>();
+        await using (var revoke = unitOfWork.Command(
+            """
+            UPDATE organizations.invitations
+            SET status = 'revoked', updated_at = now(), version = version + 1
+            WHERE organization_id = $1 AND person_id = $2 AND status = 'pending'
+            RETURNING id
+            """,
+            org,
+            merged))
+        {
+            await using var reader = await revoke.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                revokedInvitations.Add(reader.GetGuid(0));
+            }
+        }
+
+        foreach (var id in revokedInvitations)
+        {
+            await AuditAsync(unitOfWork, tenant, "invitation.revoked", "invitation", id, new { reason = "person_merged" }, cancellationToken);
+        }
+
+        await ExecuteAsync(unitOfWork, "UPDATE organizations.invitations SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+
         foreach (var session in freedSessions.Distinct())
         {
             await BookingService.PromoteSessionAsync(unitOfWork, tenant, session, now, cancellationToken);
