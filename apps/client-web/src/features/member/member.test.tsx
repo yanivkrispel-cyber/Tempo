@@ -1,18 +1,20 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
+import type { AuthClient } from "../../auth/authClient";
+import { signedInAuth } from "../../test/auth";
 
 // Tuesday 13 October 2026, the mockup's day.
 const today = "2026-10-13";
 
-function renderAt(url: string) {
+function renderAt(url: string, auth: AuthClient = signedInAuth()) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(
     <div dir="rtl">
-      <App router={router} today={today} />
+      <App router={router} auth={auth} today={today} />
     </div>
   );
   return router;
@@ -134,7 +136,15 @@ describe("profile", () => {
 
   it("says when an action is not built yet", async () => {
     renderAt("/profile");
-    await userEvent.click(await screen.findByRole("button", { name: "התנתקות" }));
+    await userEvent.click(await screen.findByRole("button", { name: "עריכת פרטים" }));
     expect(await screen.findByText("האפשרות הזו תגיע בקרוב")).toBeInTheDocument();
+  });
+
+  it("signs out through the Hosted UI and lands on the sign-in page", async () => {
+    const redirect = vi.fn();
+    const router = renderAt("/profile", signedInAuth({ redirect }));
+    await userEvent.click(await screen.findByRole("button", { name: "התנתקות" }));
+    expect(redirect).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/tempo-test\.auth\..+\/logout\?client_id=test-client&logout_uri=/));
+    expect(router.state.location.pathname).toBe("/login");
   });
 });

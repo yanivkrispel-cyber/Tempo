@@ -3,10 +3,11 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "./App";
 import { routes } from "./routes";
+import { signedInAuth } from "../test/auth";
 
 function renderAt(url: string) {
   const router = createMemoryRouter(routes, { initialEntries: [url] });
-  render(<App router={router} />);
+  render(<App router={router} auth={signedInAuth()} />);
   return router;
 }
 

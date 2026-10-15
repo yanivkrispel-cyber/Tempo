@@ -1,10 +1,12 @@
 import { Avatar, Button, Card, Chip, Icon, IconButton, ProgressBar, Select, Skeleton, Toggle, shortDate, useToast } from "../../shared/design-system";
+import { useAuth } from "../../auth/AuthProvider";
 import { useProfile } from "./data";
 import styles from "./member.module.css";
 
 export function ProfileScreen() {
   const profile = useProfile();
   const toast = useToast();
+  const auth = useAuth();
   const soon = () => toast.show({ message: "האפשרות הזו תגיע בקרוב" });
 
   if (!profile.data) {
@@ -107,7 +109,7 @@ export function ProfileScreen() {
         </div>
       </Card>
 
-      <Button variant="ghost-danger" block onClick={soon}>
+      <Button variant="ghost-danger" block onClick={() => auth.client?.signOut()}>
         התנתקות
       </Button>
     </main>
