@@ -192,6 +192,70 @@ public sealed class BookingServiceTests(PostgresFixture postgres) : IClassFixtur
         (await twice.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("booking.duplicate");
     }
 
+    [Fact]
+    public async Task UpcomingBookings_ArePagedInStartOrder()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var dana = await PersonWithCardAsync(s, "Dana", entries: 10);
+        // Booked latest-first, so booking ids run opposite to start times (review from O13).
+        var sessions = new List<Guid>();
+        for (var i = 5; i >= 1; i--)
+        {
+            var session = await SessionAsync(db, s, capacity: 8, startsIn: TimeSpan.FromDays(i));
+            sessions.Add(session);
+            await s.Bookings.BookAsync(s.Owner, session, dana, CancellationToken.None);
+        }
+
+        var first = await s.Bookings.ListForPersonAsync(s.Owner, dana, true, null, 2, CancellationToken.None);
+        var second = await s.Bookings.ListForPersonAsync(s.Owner, dana, true, first.NextBefore, 2, CancellationToken.None);
+
+        first.Items.Select(i => i.Session.Id).Should().Equal(sessions[4], sessions[3]);
+        second.Items.Select(i => i.Session.Id).Should().Equal(sessions[2], sessions[1]);
+    }
+
+    [Fact]
+    public async Task ACancellation_SaysWhereItCameFrom_AndShowsThePassAfterTheEntryReturned()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var session = await SessionAsync(db, s, capacity: 1, startsIn: TimeSpan.FromDays(1));
+        var first = await PersonWithCardAsync(s, "First", entries: 5);
+        var second = await PersonWithCardAsync(s, "Second", entries: 5);
+        var booked = await s.Bookings.BookAsync(s.Owner, session, first, CancellationToken.None);
+        var waiting = await s.Bookings.BookAsync(s.Owner, session, second, CancellationToken.None);
+
+        var leftLine = await s.Bookings.CancelAsync(s.Owner, waiting.Id, false, CancellationToken.None);
+        var freed = await s.Bookings.CancelAsync(s.Owner, booked.Id, false, CancellationToken.None);
+
+        leftLine.CancelledFrom.Should().Be("waitlisted");
+        leftLine.Pass.Should().BeNull();
+        freed.CancelledFrom.Should().Be("booked");
+        freed.Pass!.EntriesLeft.Should().Be(5, "the entry returned and the pass still shows");
+    }
+
+    [Fact]
+    public async Task TheInbox_NamesTheClass_AndMarksAllRead()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var session = await SessionAsync(db, s, capacity: 1, startsIn: TimeSpan.FromDays(1));
+        var mine = (Guid)(await db.AsMasterAsync("SELECT id FROM people.people WHERE organization_id = $1 AND membership_id = $2", s.Owner.OrganizationId, s.Owner.MembershipId))!;
+        var other = await PersonWithCardAsync(s, "Other", entries: 5);
+        var membership = await s.Passes.CreateProductAsync(s.Owner, new NewPassProduct("membership", "מנוי", null, 30, null, null, null), CancellationToken.None);
+        await s.Passes.GrantAsync(s.Owner, mine, new NewPass(membership.Id, null, null), CancellationToken.None);
+        var taken = await s.Bookings.BookAsync(s.Owner, session, other, CancellationToken.None);
+        await s.Bookings.BookAsync(s.Owner, session, null, CancellationToken.None);
+        await s.Bookings.CancelAsync(s.Owner, taken.Id, false, CancellationToken.None);
+        var settings = new StudioSettingsService(db);
+
+        var inbox = await settings.ListInboxAsync(s.Owner, null, 10, CancellationToken.None);
+        inbox.Items.Should().ContainSingle().Which.ClassTypeName.Should().Be("פילאטיס מכשירים");
+        inbox.UnreadCount.Should().Be(1);
+        await settings.MarkAllReadAsync(s.Owner, CancellationToken.None);
+        (await settings.ListInboxAsync(s.Owner, null, 10, CancellationToken.None)).UnreadCount.Should().Be(0);
+    }
+
     private sealed record Studio(TenantContext Owner, PeopleService People, PassService Passes, BookingService Bookings, TimetableService Timetable, Guid ClassType, Guid Card);
 
     private static async Task<Studio> StudioAsync(MigratedDatabase db)
