@@ -20,6 +20,7 @@ import {
 import { dayOfWeek, formatDate, startOfWeek } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
+import { RosterSection } from "./RosterSection";
 import {
   categoryLabel,
   memberName,
@@ -137,6 +138,11 @@ function SessionDetail({ session }: { session: Session }) {
           <dd>{session.templateId ? "שיעור קבוע" : "שיעור חד־פעמי"}</dd>
         </dl>
       </Card>
+
+      {/* The roster is for the desk (bookings.manage) and for the class's own instructor (docs/29 section 8). */}
+      {(studio.can("bookings.manage") || session.instructor?.membershipId === studio.membership.membershipId) && (
+        <RosterSection session={session} />
+      )}
 
       {editing && <EditSessionDialog session={session} onClose={() => setEditing(false)} />}
       {cancelling && <CancelSessionDialog session={session} onClose={() => setCancelling(false)} />}
