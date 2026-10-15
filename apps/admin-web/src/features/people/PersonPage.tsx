@@ -8,9 +8,11 @@ import { Banner, Button, ButtonLink, Card, Chip, DateInput, Dialog, Field, Icon,
 import { formatDate, todayIso, toIsoDate, type IsoDate } from "../../shared/utilities/dates";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
+import { ConsentSection } from "./ConsentSection";
 import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
 import { personStatus, sourceLabel } from "./labels";
+import { RelationshipsSection } from "./RelationshipsSection";
 
 type PersonDetail = Schemas["PersonDetail"];
 type ContactPoint = Schemas["ContactPoint"];
@@ -122,6 +124,8 @@ function PersonCard({ person }: { person: PersonDetail }) {
       </Card>
 
       <ContactPoints person={person} writable={writable} />
+      <ConsentSection person={person} />
+      <RelationshipsSection person={person} writable={writable} />
 
       {/* Owner only (people.erase); never one's own record. */}
       {studio.can("people.erase") && writable && person.membershipId !== studio.membership.membershipId && (
