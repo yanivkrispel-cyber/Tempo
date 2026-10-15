@@ -83,7 +83,7 @@ export function metaLine(parts: ReadonlyArray<string | null | undefined>): React
 export function freezeNote(freezes: Pass["freezes"], today: IsoDate): ReactNode {
   const ongoing = freezes?.find((freeze) => freeze.startsOn <= today && freeze.endsOn >= today);
   if (ongoing) {
-    return <span role="status">המנוי מוקפא. הוא חוזר להיות בתוקף ב-{formatDate(addDays(ongoing.endsOn, 1))}.</span>;
+    return <span role="status">המנוי מוקפא. הוא חוזר להיות בתוקף ב־{formatDate(addDays(ongoing.endsOn, 1))}.</span>;
   }
   const next = freezes?.find((freeze) => freeze.startsOn > today);
   if (!next) return null;

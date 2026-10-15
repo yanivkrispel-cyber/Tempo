@@ -145,6 +145,16 @@ describe("booking a class", () => {
     );
   });
 
+  it("says the membership is frozen, and until when, instead of offering to book", async () => {
+    renderAt("/book", { frozenUntil: "2026-10-20" });
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
+    const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
+    expect(within(sheet).getByRole("status")).toHaveTextContent(
+      "המנוי שלך מוקפא עד 20.10.2026, ולכן אי אפשר להירשם לשיעור הזה.",
+    );
+    expect(within(sheet).queryByRole("button", { name: "אישור ההרשמה" })).not.toBeInTheDocument();
+  });
+
   it("says clearly when there is no valid pass, and does not offer to book", async () => {
     const { api } = renderAt("/book", { passes: [{ ...card, entriesUsed: 10, entriesLeft: 0 }] });
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור יוגה בהריון ב-19:00" }));
@@ -489,7 +499,7 @@ describe("passes", () => {
     });
     const passes = await screen.findByRole("region", { name: "הכרטיסייה שלך" });
     const frozen = within(passes).getByRole("listitem", { name: "מנוי חודשי" });
-    expect(frozen).toHaveTextContent("המנוי מוקפא. הוא חוזר להיות בתוקף ב-21.10.2026.");
+    expect(frozen).toHaveTextContent("המנוי מוקפא. הוא חוזר להיות בתוקף ב־21.10.2026.");
     expect(frozen).toHaveTextContent("בתוקף עד 12.12.2026");
     const upcoming = within(passes).getByRole("listitem", { name: "מנוי בוקר" });
     expect(upcoming).toHaveTextContent("הקפאה מתוכננת: 01.11.2026 עד 14.11.2026");
