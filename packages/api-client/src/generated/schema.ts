@@ -1989,6 +1989,43 @@ export interface components {
             };
             person: components["schemas"]["PersonDetail"];
             consentHistory: components["schemas"]["Consent"][];
+            /** @description Every booking of this person, in class order (docs/29 section 7). */
+            bookings: components["schemas"]["ExportBooking"][];
+            /** @description Every pass granted to this person, in start order. No staff note. */
+            passes: components["schemas"]["ExportPass"][];
+        };
+        ExportBooking: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sessionId: string;
+            /** @example פילאטיס מכשירים */
+            className: string;
+            /** Format: date-time */
+            startsAt: string;
+            status: components["schemas"]["BookingStatus"];
+            lateCancel: boolean;
+            /** @enum {string|null} */
+            cancelReason?: "self" | "staff" | "session_cancelled" | "no_valid_pass" | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ExportPass: {
+            /** Format: uuid */
+            id: string;
+            /** @example כרטיסיית 10 */
+            productName: string;
+            kind: components["schemas"]["PassKind"];
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            entries?: number | null;
+            entriesUsed: number;
+            /** @enum {string} */
+            status: "active" | "voided";
+            /** Format: date-time */
+            createdAt: string;
         };
         DuplicateCandidate: {
             /** Format: uuid */
