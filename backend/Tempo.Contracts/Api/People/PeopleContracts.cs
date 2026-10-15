@@ -72,3 +72,20 @@ public sealed record ConsentListResponse(IReadOnlyList<ConsentResponse> Items);
 
 /// <summary>`CreateRelationshipRequest`: the person in the path is the `from` side.</summary>
 public sealed record CreateRelationshipRequest(string? Type, Guid ToPersonId);
+
+/// <summary>`DuplicateCandidate`.</summary>
+public sealed record DuplicateCandidateResponse(Guid Id, string Reason, string Status, PersonResponse PersonA, PersonResponse PersonB, DateTimeOffset CreatedAt, string Version);
+
+/// <summary>`DuplicateCandidatePage`.</summary>
+public sealed record DuplicateCandidatePageResponse(IReadOnlyList<DuplicateCandidateResponse> Items, Guid? NextBefore);
+
+/// <summary>`ResolveDuplicateRequest`: survivorPersonId is required to merge.</summary>
+public sealed record ResolveDuplicateRequest(string? Resolution, Guid? SurvivorPersonId);
+
+public sealed record ExportOrganizationResponse(Guid Id, string DisplayName);
+
+/// <summary>`PersonExport`: everything the studio holds about one person.</summary>
+public sealed record PersonExportResponse(DateTimeOffset ExportedAt, ExportOrganizationResponse Organization, PersonDetailResponse Person, IReadOnlyList<ConsentResponse> ConsentHistory);
+
+/// <summary>The body of erase (`ReasonRequest`).</summary>
+public sealed record ErasePersonRequest(string? Reason);

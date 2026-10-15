@@ -589,7 +589,9 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
         }
         catch (DomainRuleViolationException)
         {
-            return new string([.. text.Where(char.IsDigit)]);
+            // A partial local number keeps its digits without the trunk 0, so 050-234 finds +97250234...
+            var digits = new string([.. text.Where(char.IsDigit)]);
+            return digits.StartsWith('0') ? digits.TrimStart('0') : digits;
         }
     }
 

@@ -139,6 +139,7 @@ public sealed class PeopleServiceTests(PostgresFixture postgres) : IClassFixture
     [InlineData("0502345678")]
     [InlineData("+972502345678")]
     [InlineData("2345678")]
+    [InlineData("050-234")]
     public async Task Search_FindsAPhoneTypedTheWayFrontDesksTypeIt(string typed)
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);
