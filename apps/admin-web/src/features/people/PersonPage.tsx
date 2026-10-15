@@ -11,6 +11,7 @@ import { useStudio } from "../console/studio";
 import { ConsentSection } from "./ConsentSection";
 import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
+import { InvitePersonDialog } from "./InvitePersonDialog";
 import { personStatus, sourceLabel } from "./labels";
 import { RelationshipsSection } from "./RelationshipsSection";
 
@@ -63,6 +64,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
   const studio = useStudio();
   const [editing, setEditing] = useState(false);
   const [erasing, setErasing] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const status = personStatus[person.status];
   const writable = studio.can("people.manage") && (person.status === "active" || person.status === "archived");
   const archive = usePatchPerson(person);
@@ -87,6 +89,12 @@ function PersonCard({ person }: { person: PersonDetail }) {
           <h1>{person.displayName}</h1>
           <Chip tone={status.tone}>{status.text}</Chip>
           {person.hasLogin && <Chip tone="info">יש חשבון</Chip>}
+          {/* An archived record would stay hidden from the active list after the person joins, so restore it first. */}
+          {!person.hasLogin && person.status === "active" && studio.can("members.invite.staff") && (
+            <Button variant="secondary" size="sm" icon="mail" onClick={() => setInviting(true)}>
+              הזמנה לאפליקציה
+            </Button>
+          )}
         </div>
       </header>
 
@@ -136,6 +144,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
         </div>
       )}
       {erasing && <EraseDialog personId={person.id} name={person.displayName} onClose={() => setErasing(false)} />}
+      {inviting && <InvitePersonDialog person={person} onClose={() => setInviting(false)} />}
 
       {editing && <EditPersonDialog person={person} onClose={() => setEditing(false)} />}
     </>

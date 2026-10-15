@@ -25,6 +25,7 @@ const messages: Record<string, string> = {
   "auth.mfa_required": "כדי לנהל את הסטודיו צריך להפעיל בחשבון אימות דו־שלבי.",
   "person.read_only": "הרשומה הזו כבר לא ניתנת לשינוי (נמחקה או אוחדה).",
   "person.erase_self": "אי אפשר למחוק את הנתונים שלך מכאן.",
+  "person.has_login": "לאדם הזה כבר יש חשבון באפליקציה.",
   "person.merge_both_have_login": "לשתי הרשומות יש חשבון, ולכן אלה שני אנשים שונים.",
   "relationship.exists": "הקשר הזה כבר רשום.",
   "relationship.self": "אי אפשר לקשר אדם לעצמו.",
