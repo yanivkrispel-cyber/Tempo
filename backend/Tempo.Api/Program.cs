@@ -50,6 +50,7 @@ try
     app.MapOwnershipEndpoints();
     app.MapPeopleEndpoints();
     app.MapConsentEndpoints();
+    app.MapPersonLifecycleEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();
