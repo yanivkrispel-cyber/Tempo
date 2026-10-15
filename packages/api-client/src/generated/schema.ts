@@ -1215,8 +1215,11 @@ export interface components {
         };
         /** @enum {string} */
         PersonStatus: "active" | "archived" | "anonymized" | "merged";
-        /** @enum {string} */
-        PersonSource: "join_link" | "invitation" | "staff_created" | "import";
+        /**
+         * @description `organization_created` is the owner who opened the studio.
+         * @enum {string}
+         */
+        PersonSource: "organization_created" | "join_link" | "invitation" | "staff_created" | "import";
         Person: {
             /** Format: uuid */
             id: string;

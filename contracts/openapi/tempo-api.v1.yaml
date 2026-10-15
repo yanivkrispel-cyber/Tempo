@@ -1760,7 +1760,8 @@ components:
 
     PersonSource:
       type: string
-      enum: [join_link, invitation, staff_created, import]
+      description: "`organization_created` is the owner who opened the studio."
+      enum: [organization_created, join_link, invitation, staff_created, import]
 
     Person:
       type: object
