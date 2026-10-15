@@ -56,4 +56,38 @@ export function apiStub(routes: Record<string, unknown>) {
   return { fetch, requests, bodies };
 }
 
-export const signedInRoutes = { "POST /api/v1/session": sampleMe };
+const consent = (purpose: string, channel: string, state: string) => ({
+  id: `0199e5a1-0000-7000-8000-0000000009${purpose.length}${channel.length}`,
+  purpose,
+  channel,
+  state,
+  method: "self",
+  textVersion: "draft-2026-10-15",
+  occurredAt: "2026-10-14T08:00:00Z"
+});
+
+/** The member's own record in the sample studio: reminders by push and email on, marketing never chosen. */
+export const sampleProfile = {
+  id: "0199e5a1-0000-7000-8000-000000000801",
+  displayName: "נגה רוזן",
+  givenName: "נגה",
+  familyName: "רוזן",
+  birthDate: null,
+  status: "active",
+  source: "join_link",
+  hasLogin: true,
+  membershipId: sampleMe.memberships[0]!.membershipId,
+  primaryEmail: "noga@example.com",
+  primaryPhone: null,
+  mergedIntoId: null,
+  createdAt: "2026-10-14T08:00:00Z",
+  version: "2",
+  contactPoints: [],
+  consents: [consent("reminders", "push", "granted"), consent("reminders", "email", "granted")],
+  relationships: []
+};
+
+export const signedInRoutes = {
+  "POST /api/v1/session": sampleMe,
+  [`GET /api/v1/organizations/${sampleMe.memberships[0]!.organization.id}/me/profile`]: sampleProfile
+};

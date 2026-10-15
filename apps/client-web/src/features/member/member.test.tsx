@@ -130,7 +130,7 @@ describe("profile", () => {
     expect(plan).toHaveTextContent("מתחדש אוטומטית ב-18.10");
     expect(within(plan).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
 
-    expect(screen.getByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
+    expect(await screen.findByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
     expect(screen.getByRole("combobox", { name: "תזכורת לפני שיעור" })).toHaveValue("2h");
     expect(screen.getByText("נחתמה")).toHaveClass("tp-chip--success");
   });
