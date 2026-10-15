@@ -6,10 +6,24 @@
     "dev": "pnpm --recursive --parallel run dev",
     "build": "pnpm --recursive run build",
     "lint": "pnpm --recursive run lint",
-    "test": "pnpm --recursive run test"
+    "test": "pnpm --recursive run test",
+    "lint:eslint": "eslint apps packages",
+    "format": "prettier --write apps packages eslint.config.mjs",
+    "format:check": "prettier --check apps packages eslint.config.mjs"
   },
   "engines": {
     "node": ">=22.0.0",
     "pnpm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2"
   }
 }

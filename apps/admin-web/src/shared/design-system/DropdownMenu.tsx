@@ -126,6 +126,7 @@ export function DropdownMenu({ label, items, icon, iconOnly = false, variant = "
         {children}
       </button>
       {open && (
+        // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- focus moves to the menu items (roving focus, WAI-ARIA menu pattern); the container is not a tab stop.
         <div id={menuId} role="menu" aria-labelledby={triggerId} className="tp-menu tp-menu--popover" onKeyDown={onMenuKeyDown}>
           {items.map((item, position) => {
             if (item === "separator") return <div key={`sep-${position}`} role="separator" className="tp-menu__sep" />;

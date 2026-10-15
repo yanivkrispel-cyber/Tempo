@@ -18,7 +18,7 @@
   "scripts": {
     "build": "node scripts/build-tokens.mjs",
     "dev": "node scripts/build-tokens.mjs",
-    "lint": "node scripts/check-tokens.mjs",
+    "lint": "node scripts/check-tokens.mjs && eslint .",
     "test": "node scripts/check-tokens.mjs"
   },
   "engines": {
