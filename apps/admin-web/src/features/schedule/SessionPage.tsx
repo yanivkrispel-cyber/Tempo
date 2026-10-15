@@ -22,6 +22,7 @@ import { dayOfWeek, formatDate, startOfWeek } from "../../shared/utilities/dates
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
 import { RosterSection } from "./RosterSection";
+import { SessionMessageDialog } from "./SessionMessageDialog";
 import {
   categoryLabel,
   memberName,
@@ -75,12 +76,19 @@ function SessionDetail({ session, timeZone }: { session: Session; timeZone: stri
   const studio = useStudio();
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [messaging, setMessaging] = useState(false);
   const cancelled = session.status === "cancelled";
   // When the page opened: a class that started meanwhile still shows its actions until a reload; the API decides.
   const [openedAt] = useState(() => Date.now());
   const started = new Date(session.startsAt).getTime() <= openedAt;
   const manage = studio.can("schedule.manage") && !cancelled;
   const full = session.bookedCount >= session.capacity;
+  const instructor = session.instructor?.membershipId === studio.membership.membershipId;
+  // Up to a day after the class ends, for the desk and the class's own instructor (docs/29 section 16.2).
+  const canMessage =
+    (studio.can("bookings.manage") || instructor) &&
+    !cancelled &&
+    openedAt < new Date(session.endsAt).getTime() + 24 * 60 * 60 * 1000;
 
   return (
     <>
@@ -106,14 +114,23 @@ function SessionDetail({ session, timeZone }: { session: Session; timeZone: stri
               <Chip tone={full ? "warning" : "success"}>{sessionBadge(session)}</Chip>
             )}
           </div>
-          {manage && !started && (
+          {(canMessage || (manage && !started)) && (
             <div className="tp-row" style={{ gap: 8 }}>
-              <Button variant="secondary" size="sm" icon="edit" onClick={() => setEditing(true)}>
-                עריכה
-              </Button>
-              <Button variant="ghost-danger" size="sm" onClick={() => setCancelling(true)}>
-                ביטול השיעור
-              </Button>
+              {canMessage && (
+                <Button variant="secondary" size="sm" icon="mail" onClick={() => setMessaging(true)}>
+                  הודעה לרשומים
+                </Button>
+              )}
+              {manage && !started && (
+                <>
+                  <Button variant="secondary" size="sm" icon="edit" onClick={() => setEditing(true)}>
+                    עריכה
+                  </Button>
+                  <Button variant="ghost-danger" size="sm" onClick={() => setCancelling(true)}>
+                    ביטול השיעור
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -140,12 +157,11 @@ function SessionDetail({ session, timeZone }: { session: Session; timeZone: stri
       </Card>
 
       {/* The roster is for the desk (bookings.manage) and for the class's own instructor (docs/29 section 8). */}
-      {(studio.can("bookings.manage") || session.instructor?.membershipId === studio.membership.membershipId) && (
-        <RosterSection session={session} timeZone={timeZone} />
-      )}
+      {(studio.can("bookings.manage") || instructor) && <RosterSection session={session} timeZone={timeZone} />}
 
       {editing && <EditSessionDialog session={session} onClose={() => setEditing(false)} />}
       {cancelling && <CancelSessionDialog session={session} onClose={() => setCancelling(false)} />}
+      {messaging && <SessionMessageDialog session={session} onClose={() => setMessaging(false)} />}
     </>
   );
 }

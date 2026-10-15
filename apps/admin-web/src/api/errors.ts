@@ -56,6 +56,7 @@ const messages: Record<string, string> = {
   "booking.not_open": "ההרשמה לשיעור הזה עוד לא נפתחה.",
   "booking.no_valid_pass": "אין כרטיסייה או מנוי בתוקף לשיעור הזה.",
   "booking.not_cancellable": "אי אפשר לבטל את ההרשמה הזו.",
+  "session.message_limit": "אפשר לשלוח עד 5 הודעות לשיעור בשעה. נסו שוב מאוחר יותר.",
   "attendance.out_of_window": "אפשר לסמן נוכחות מחצי שעה לפני השיעור ועד שבוע אחריו.",
   "pass_product.not_found": "המוצר לא נמצא.",
   "pass_product.invalid": "בחרו אחד מהמוצרים של הסטודיו.",

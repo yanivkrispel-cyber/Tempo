@@ -246,6 +246,41 @@ describe("one class", () => {
     expect(await screen.findByText("5 מתוך 10 רשומים")).toBeInTheDocument();
   });
 
+  it("sends a message to the registered, and explains the hourly limit", async () => {
+    let sent = 0;
+    const api = renderAt(`/o/neshima/schedule/sessions/${id(10)}`, {
+      [`GET ${base}/sessions/${id(10)}`]: session(),
+      [`POST ${base}/sessions/${id(10)}/messages`]: () =>
+        ++sent === 1
+          ? problem(409, "session.message_limit")
+          : json({ id: id(40), sessionId: id(10), recipients: 5, createdAt: "2026-10-14T09:00:00Z" }, 202),
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "הודעה לרשומים" }));
+    const dialog = screen.getByRole("dialog", { name: "הודעה לרשומים" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "שליחה" }));
+    expect(within(dialog).getByText("כתבו מה תרצו לספר לרשומים.")).toBeInTheDocument();
+    expect(api.requests.some((request) => request.url.endsWith("/messages"))).toBe(false);
+
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /ההודעה/ }), "  השיעור עובר לאולם הגדול ");
+    expect(dialog).toHaveTextContent("26 מתוך 500 תווים");
+    await userEvent.click(within(dialog).getByRole("button", { name: "שליחה" }));
+    expect(
+      await within(dialog).findByText("אפשר לשלוח עד 5 הודעות לשיעור בשעה. נסו שוב מאוחר יותר."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "שליחה" }));
+    expect(await screen.findByText("ההודעה נשלחה ל־5 אנשים.")).toBeInTheDocument();
+    expect(api.bodies[lastIndex(api, "POST", "/messages")]).toEqual({ text: "השיעור עובר לאולם הגדול" });
+  });
+
+  it("offers no message on a cancelled class", async () => {
+    renderAt(`/o/neshima/schedule/sessions/${id(10)}`, {
+      [`GET ${base}/sessions/${id(10)}`]: session({ status: "cancelled" }),
+    });
+    expect(await screen.findByRole("heading", { name: "פילאטיס מכשירים", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "הודעה לרשומים" })).not.toBeInTheDocument();
+  });
+
   it("says a class is not found on any 404", async () => {
     renderAt(`/o/neshima/schedule/sessions/${id(10)}`, {});
     // One retry first (App's QueryClient), hence the longer wait.

@@ -9,7 +9,7 @@ import { clockTime, momentText } from "./studioTime";
 
 const title = "התראות";
 
-/** What each kind of in-app notification says (docs/29 sections 4.2, 6.3, 11 and 16.1). Unknown kinds are not shown. */
+/** What each kind of in-app notification says (docs/29 sections 4.2, 6.3, 11, 16.1 and 16.2). Unknown kinds are not shown. */
 const kinds: Record<string, { title: string; body: string; icon: IconName; tone: ChipTone }> = {
   "booking.promoted": {
     title: "התפנה מקום ונרשמת",
@@ -34,6 +34,13 @@ const kinds: Record<string, { title: string; body: string; icon: IconName; tone:
     body: "אם נרשמת, הכניסה חזרה אליך.",
     icon: "calendar",
     tone: "warning",
+  },
+  // The studio's own words (docs/29 section 16.2): the body is the item's text, shown as written.
+  "session.message": {
+    title: "הודעה מהסטודיו על השיעור",
+    body: "",
+    icon: "info",
+    tone: "info",
   },
   "waitlist.expired": {
     title: "לא התפנה מקום",
@@ -109,7 +116,13 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
       <span className={styles.noticeBody}>
         <span className={styles.noticeTitle}>{kind.title}</span>
         {when && <span>{when}</span>}
-        <span className="tp-caption">{kind.body}</span>
+        {item.kind === "session.message" ? (
+          <span dir="auto" className={styles.noticeText}>
+            {item.text}
+          </span>
+        ) : (
+          <span className="tp-caption">{kind.body}</span>
+        )}
         <span className="tp-caption">{momentText(item.createdAt, timeZone, today)}</span>
       </span>
       {unread && <Chip tone="brand">חדש</Chip>}

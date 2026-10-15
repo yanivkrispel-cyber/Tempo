@@ -413,6 +413,26 @@ describe("promotion and the inbox", () => {
     expect(screen.getByText(/התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית/)).toBeInTheDocument();
   });
 
+  it("shows a studio's message about a class in its own words", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a05",
+          kind: "session.message",
+          data: { sessionId: sessionIds.vinyasa },
+          text: "השיעור עובר לאולם הגדול",
+          createdAt: "2026-10-13T08:45:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [item] = within(list).getAllByRole("listitem");
+    expect(item).toHaveTextContent("הודעה מהסטודיו על השיעור");
+    expect(within(item!).getByText("השיעור עובר לאולם הגדול")).toHaveAttribute("dir", "auto");
+    expect(within(item!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
+  });
+
   it("tells a member the studio moved the place, linking the new class", async () => {
     renderAt("/inbox", {
       inbox: [
