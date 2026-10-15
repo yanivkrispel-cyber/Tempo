@@ -291,7 +291,9 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         await using (var accept = unitOfWork.Command(
             """
             UPDATE organizations.invitations
-            SET status = 'accepted', accepted_membership_id = $3, updated_at = now(), version = version + 1
+            SET status = 'accepted', accepted_membership_id = $3, updated_at = now(), version = version + 1,
+                -- An invitation sent by email alone points at the person it created or found, so erase reaches it (#101).
+                person_id = coalesce(person_id, (SELECT p.id FROM people.people p WHERE p.organization_id = $1 AND p.membership_id = $3))
             WHERE organization_id = $1 AND id = $2
             """,
             organizationId,
