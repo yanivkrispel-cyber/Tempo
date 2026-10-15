@@ -16,7 +16,7 @@ function renderAt(url: string, auth: AuthClient = signedInAuth()) {
   render(
     <div dir="rtl">
       <App router={router} auth={auth} apiUrl="https://api.test" fetch={apiStub(signedInRoutes).fetch} today={today} />
-    </div>
+    </div>,
   );
   return router;
 }
@@ -105,7 +105,11 @@ describe("my bookings", () => {
     expect(await screen.findByRole("tab", { name: "קרובים · 3" })).toHaveAttribute("aria-selected", "true");
 
     const items = within(screen.getByRole("list", { name: "הזמנות קרובות" })).getAllByRole("listitem");
-    expect(items.map((item) => item.querySelector(".tp-class__title")?.textContent)).toEqual(["פילאטיס מכשירים", "פילאטיס כוח", "ויניאסה יוגה"]);
+    expect(items.map((item) => item.querySelector(".tp-class__title")?.textContent)).toEqual([
+      "פילאטיס מכשירים",
+      "פילאטיס כוח",
+      "ויניאסה יוגה",
+    ]);
     expect(items[1]).toHaveTextContent("במקום 2 בהמתנה");
     expect(screen.getByRole("note")).toHaveTextContent("נרשום אותך אוטומטית");
   });
@@ -145,7 +149,9 @@ describe("profile", () => {
     const redirect = vi.fn();
     const router = renderAt("/profile", signedInAuth({ redirect }));
     await userEvent.click(await screen.findByRole("button", { name: "התנתקות" }));
-    expect(redirect).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/tempo-test\.auth\..+\/logout\?client_id=test-client&logout_uri=/));
+    expect(redirect).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/tempo-test\.auth\..+\/logout\?client_id=test-client&logout_uri=/),
+    );
     expect(router.state.location.pathname).toBe("/login");
   });
 });

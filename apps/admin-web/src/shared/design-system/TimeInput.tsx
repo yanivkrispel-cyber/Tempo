@@ -3,8 +3,10 @@ import { matchTimes, parseTime, timeOptions, type Time } from "../utilities/time
 import { cx } from "./cx";
 import { useFieldControl } from "./Field";
 
-export interface TimeInputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue" | "onChange" | "type" | "step" | "min" | "max"> {
+export interface TimeInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "defaultValue" | "onChange" | "type" | "step" | "min" | "max"
+> {
   value: Time | null;
   onChange: (value: Time | null) => void;
   /** Minutes between the suggested times. */
@@ -19,7 +21,17 @@ export interface TimeInputProps
  * WAI-ARIA combobox with a list that filters as you type. Text that is not a time marks the input
  * invalid and reports null.
  */
-export function TimeInput({ value, onChange, step = 15, from = "05:00", to = "23:00", className, onBlur, onKeyDown, ...rest }: TimeInputProps) {
+export function TimeInput({
+  value,
+  onChange,
+  step = 15,
+  from = "05:00",
+  to = "23:00",
+  className,
+  onBlur,
+  onKeyDown,
+  ...rest
+}: TimeInputProps) {
   const control = useFieldControl(rest);
   const listId = useId();
   const [text, setText] = useState(value ?? "");
@@ -126,7 +138,13 @@ export function TimeInput({ value, onChange, step = 15, from = "05:00", to = "23
           onKeyDown?.(event);
         }}
       />
-      <ul id={listId} role="listbox" aria-label="שעות" className="tp-menu tp-listbox tp-popover" hidden={!open || options.length === 0}>
+      <ul
+        id={listId}
+        role="listbox"
+        aria-label="שעות"
+        className="tp-menu tp-listbox tp-popover"
+        hidden={!open || options.length === 0}
+      >
         {options.map((time, index) => (
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- the input owns the keyboard (combobox with aria-activedescendant); the option click is for pointer users.
           <li

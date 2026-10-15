@@ -3,10 +3,19 @@ import { readAppConfig } from "./config";
 
 describe("readAppConfig", () => {
   it("builds the callback and logout URLs from the app origin", () => {
-    const env = { VITE_API_URL: "https://api.example/", VITE_COGNITO_DOMAIN: "https://auth.example/", VITE_COGNITO_CLIENT_ID: "abc" } as ImportMetaEnv;
+    const env = {
+      VITE_API_URL: "https://api.example/",
+      VITE_COGNITO_DOMAIN: "https://auth.example/",
+      VITE_COGNITO_CLIENT_ID: "abc",
+    } as ImportMetaEnv;
     expect(readAppConfig(env, "http://localhost:5173")).toEqual({
       apiUrl: "https://api.example",
-      auth: { cognitoDomain: "https://auth.example", clientId: "abc", redirectUri: "http://localhost:5173/auth/callback", logoutUri: "http://localhost:5173/" }
+      auth: {
+        cognitoDomain: "https://auth.example",
+        clientId: "abc",
+        redirectUri: "http://localhost:5173/auth/callback",
+        logoutUri: "http://localhost:5173/",
+      },
     });
   });
 

@@ -25,7 +25,14 @@ export function CopyLink({ link, label }: { link: string; label: string }) {
         {label}
       </label>
       <div className="tp-row" style={{ flexWrap: "nowrap" }}>
-        <Input id={id} readOnly value={link} dir="ltr" className="tp-ltr" onFocus={(event) => event.currentTarget.select()} />
+        <Input
+          id={id}
+          readOnly
+          value={link}
+          dir="ltr"
+          className="tp-ltr"
+          onFocus={(event) => event.currentTarget.select()}
+        />
         <Button variant="secondary" icon={copied ? "check" : "share"} onClick={() => void copy()}>
           {copied ? "הועתק" : "העתקה"}
         </Button>

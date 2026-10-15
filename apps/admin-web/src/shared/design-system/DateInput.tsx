@@ -13,7 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
   todayIso,
-  type IsoDate
+  type IsoDate,
 } from "../utilities/dates";
 import { cx } from "./cx";
 import { isRtl } from "./direction";
@@ -27,8 +27,10 @@ const weekdayLong = new Intl.DateTimeFormat("he-IL", { weekday: "long" });
 
 const asDate = (iso: IsoDate) => fromIsoDate(iso) ?? new Date(Number.NaN);
 
-export interface DateInputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue" | "onChange" | "min" | "max" | "type"> {
+export interface DateInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "defaultValue" | "onChange" | "min" | "max" | "type"
+> {
   value: IsoDate | null;
   onChange: (value: IsoDate | null) => void;
   min?: IsoDate;
@@ -42,7 +44,17 @@ export interface DateInputProps
  * The value is an ISO date or null; text that is not a date (or is outside min/max) marks the
  * input invalid and reports null. The calendar follows the WAI-ARIA date picker grid.
  */
-export function DateInput({ value, onChange, min, max, today = todayIso(), className, onBlur, onKeyDown, ...rest }: DateInputProps) {
+export function DateInput({
+  value,
+  onChange,
+  min,
+  max,
+  today = todayIso(),
+  className,
+  onBlur,
+  onKeyDown,
+  ...rest
+}: DateInputProps) {
   const control = useFieldControl(rest);
   const [text, setText] = useState(value ? formatDate(value) : "");
   const [invalid, setInvalid] = useState(false);
@@ -187,15 +199,23 @@ function Calendar({ value, min, max, today, onSelect }: CalendarProps) {
     const forward = isRtl(event.currentTarget) ? "ArrowLeft" : "ArrowRight";
     const back = forward === "ArrowLeft" ? "ArrowRight" : "ArrowLeft";
     const next =
-      event.key === forward ? addDays(focused, 1)
-      : event.key === back ? addDays(focused, -1)
-      : event.key === "ArrowDown" ? addDays(focused, 7)
-      : event.key === "ArrowUp" ? addDays(focused, -7)
-      : event.key === "Home" ? startOfWeek(focused)
-      : event.key === "End" ? endOfWeek(focused)
-      : event.key === "PageDown" ? addMonths(focused, event.shiftKey ? 12 : 1)
-      : event.key === "PageUp" ? addMonths(focused, event.shiftKey ? -12 : -1)
-      : undefined;
+      event.key === forward
+        ? addDays(focused, 1)
+        : event.key === back
+          ? addDays(focused, -1)
+          : event.key === "ArrowDown"
+            ? addDays(focused, 7)
+            : event.key === "ArrowUp"
+              ? addDays(focused, -7)
+              : event.key === "Home"
+                ? startOfWeek(focused)
+                : event.key === "End"
+                  ? endOfWeek(focused)
+                  : event.key === "PageDown"
+                    ? addMonths(focused, event.shiftKey ? 12 : 1)
+                    : event.key === "PageUp"
+                      ? addMonths(focused, event.shiftKey ? -12 : -1)
+                      : undefined;
 
     if (next !== undefined) {
       event.preventDefault();

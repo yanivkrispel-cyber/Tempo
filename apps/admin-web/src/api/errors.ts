@@ -29,7 +29,7 @@ const messages: Record<string, string> = {
   "person.merge_both_have_login": "לשתי הרשומות יש חשבון, ולכן אלה שני אנשים שונים.",
   "relationship.exists": "הקשר הזה כבר רשום.",
   "relationship.self": "אי אפשר לקשר אדם לעצמו.",
-  "consent.invalid": "הבחירה לא תקינה. בדקו את המטרה, הערוץ והגרסה."
+  "consent.invalid": "הבחירה לא תקינה. בדקו את המטרה, הערוץ והגרסה.",
 };
 
 /** A sentence for the person in front of the screen; never the server's English text. */

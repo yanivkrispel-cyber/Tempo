@@ -27,7 +27,13 @@ export interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
 export function Chip({ tone = "neutral", plain = false, sunken = false, className, ...rest }: ChipProps) {
   return (
     <span
-      className={cx("tp-chip", tone !== "neutral" && `tp-chip--${tone}`, plain && "tp-chip--plain", sunken && "tp-chip--sunken", className)}
+      className={cx(
+        "tp-chip",
+        tone !== "neutral" && `tp-chip--${tone}`,
+        plain && "tp-chip--plain",
+        sunken && "tp-chip--sunken",
+        className,
+      )}
       {...rest}
     />
   );

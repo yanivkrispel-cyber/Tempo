@@ -78,7 +78,10 @@ const check = (list, soft) => {
       for (const theme of themes) {
         const a = color[fg]?.[theme] ?? color[fg]?.light;
         const b = color[bg]?.[theme] ?? color[bg]?.light;
-        if (!a || !b) { failures.push(`${fg} on ${bg}: unknown token`); continue; }
+        if (!a || !b) {
+          failures.push(`${fg} on ${bg}: unknown token`);
+          continue;
+        }
         if (a.length > 7 || b.length > 7) continue; // skip alpha values
         const r = ratio(a, b);
         rows.push(`${r.toFixed(2).padStart(6)}  ${theme.padEnd(5)}  ${fg} on ${bg}${soft ? "  (source-exact)" : ""}`);
@@ -91,7 +94,10 @@ check(pairs, false);
 check(SOURCE_EXACT, true);
 
 console.log(rows.join("\n"));
-if (warnings.length) console.log("\nSOURCE-EXACT (kept as in the reference image, not AA):\n" + warnings.map((f) => "  - " + f).join("\n"));
+if (warnings.length)
+  console.log(
+    "\nSOURCE-EXACT (kept as in the reference image, not AA):\n" + warnings.map((f) => "  - " + f).join("\n"),
+  );
 if (failures.length) {
   console.error("\nFAILED:\n" + failures.map((f) => "  - " + f).join("\n"));
   process.exit(1);

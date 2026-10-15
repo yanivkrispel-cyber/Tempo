@@ -102,7 +102,11 @@ describe("Toast", () => {
     return (
       <Button
         onClick={() =>
-          toast.show({ message: "נרשמת לפילאטיס", tone: "success", action: withUndo ? { label: "ביטול", onClick: () => {} } : undefined })
+          toast.show({
+            message: "נרשמת לפילאטיס",
+            tone: "success",
+            action: withUndo ? { label: "ביטול", onClick: () => {} } : undefined,
+          })
         }
       >
         הרשמה
@@ -115,7 +119,7 @@ describe("Toast", () => {
     render(
       <ToastProvider duration={4000}>
         <Book />
-      </ToastProvider>
+      </ToastProvider>,
     );
     const region = screen.getByRole("region", { name: "הודעות" });
     expect(region).toHaveAttribute("aria-live", "polite");
@@ -134,7 +138,7 @@ describe("Toast", () => {
     render(
       <ToastProvider duration={10}>
         <Book withUndo />
-      </ToastProvider>
+      </ToastProvider>,
     );
     await userEvent.click(screen.getByRole("button", { name: "הרשמה" }));
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -157,7 +161,7 @@ describe("DropdownMenu", () => {
       { label: "שיתוף", icon: "share", onSelect: () => {}, disabled: true },
       { label: "העברה", onSelect: () => {} },
       "separator",
-      { label: "מחיקה", onSelect: onDelete, danger: true }
+      { label: "מחיקה", onSelect: onDelete, danger: true },
     ];
     return (
       <div dir="rtl">

@@ -40,7 +40,12 @@ export class TempoApiError extends Error {
 }
 
 export function isProblem(body: unknown): body is Problem {
-  return typeof body === "object" && body !== null && typeof (body as Problem).code === "string" && typeof (body as Problem).status === "number";
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    typeof (body as Problem).code === "string" &&
+    typeof (body as Problem).status === "number"
+  );
 }
 
 export function createTempoClient(options: TempoClientOptions) {
@@ -53,7 +58,7 @@ export function createTempoClient(options: TempoClientOptions) {
       if (token) request.headers.set(authHeader, `Bearer ${token}`);
       if (!request.headers.has("X-Correlation-Id")) request.headers.set("X-Correlation-Id", crypto.randomUUID());
       return request;
-    }
+    },
   };
   client.use(headers);
   return client;

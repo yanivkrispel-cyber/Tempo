@@ -28,12 +28,12 @@ export const routes: RouteObject[] = [
               { path: "/", element: <HomeScreen /> },
               { path: "/book", element: <BookScreen /> },
               { path: "/bookings", element: <BookingsScreen /> },
-              { path: "/profile", element: <ProfileScreen /> }
-            ]
-          }
-        ]
-      }
-    ]
+              { path: "/profile", element: <ProfileScreen /> },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { path: "/login", element: <LoginPage /> },
   // Cognito's exact callback URL (infrastructure/config/<env>.ts, cognitoCallbackUrls.clientWeb).
@@ -42,5 +42,5 @@ export const routes: RouteObject[] = [
   // signed in is asked to sign in or sign up first, and the link's secret waits in sessionStorage.
   { path: "/invite", element: <InvitePage /> },
   { path: "/join", element: <JoinPage /> },
-  { path: "*", element: <NotFoundPage /> }
+  { path: "*", element: <NotFoundPage /> },
 ];

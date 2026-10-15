@@ -33,7 +33,16 @@ export interface DropdownMenuProps {
  * last; arrows, Home, End and a first letter move; Escape closes and returns to the trigger; Tab
  * and a click outside close it.
  */
-export function DropdownMenu({ label, items, icon, iconOnly = false, variant = "secondary", size = "md", className, children }: DropdownMenuProps) {
+export function DropdownMenu({
+  label,
+  items,
+  icon,
+  iconOnly = false,
+  variant = "secondary",
+  size = "md",
+  className,
+  children,
+}: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const anchor = useRef<HTMLDivElement>(null);
@@ -112,7 +121,7 @@ export function DropdownMenu({ label, items, icon, iconOnly = false, variant = "
           "tp-btn",
           iconOnly && "tp-btn--icon",
           variant !== "primary" && !iconOnly && `tp-btn--${variant}`,
-          size !== "md" && `tp-btn--${size}`
+          size !== "md" && `tp-btn--${size}`,
         )}
         aria-label={iconOnly ? label : undefined}
         aria-haspopup="menu"
@@ -127,7 +136,13 @@ export function DropdownMenu({ label, items, icon, iconOnly = false, variant = "
       </button>
       {open && (
         // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- focus moves to the menu items (roving focus, WAI-ARIA menu pattern); the container is not a tab stop.
-        <div id={menuId} role="menu" aria-labelledby={triggerId} className="tp-menu tp-menu--popover" onKeyDown={onMenuKeyDown}>
+        <div
+          id={menuId}
+          role="menu"
+          aria-labelledby={triggerId}
+          className="tp-menu tp-menu--popover"
+          onKeyDown={onMenuKeyDown}
+        >
           {items.map((item, position) => {
             if (item === "separator") return <div key={`sep-${position}`} role="separator" className="tp-menu__sep" />;
             const index = ++actionIndex;

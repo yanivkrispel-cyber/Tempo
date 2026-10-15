@@ -49,7 +49,7 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
     queryKey: ["join-preview", code],
     queryFn: () => unwrap(api.POST("/api/v1/join/preview", { body: { code } })),
     enabled: Boolean(me.data),
-    retry: false
+    retry: false,
   });
 
   const join = useMutation({
@@ -59,7 +59,7 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
       await queryClient.invalidateQueries({ queryKey: meKey });
       toast.show({ tone: "success", icon: "check", message: `הצטרפת ל${membership.organization.displayName}` });
       void navigate("/", { replace: true });
-    }
+    },
   });
 
   // A replaced or unknown code will not come back: forget it.

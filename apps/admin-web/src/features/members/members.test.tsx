@@ -21,7 +21,7 @@ const member = (id: string, role: string, overrides: Record<string, unknown> = {
   status: "active",
   joinedAt: "2026-10-14T08:00:00Z",
   version: "7",
-  ...overrides
+  ...overrides,
 });
 
 const owner = member(studio.membershipId, "owner", { displayName: "דנה כהן" });
@@ -29,9 +29,17 @@ const admin = member("0199e5a1-0000-7000-8000-000000000101", "admin");
 const staff = member("0199e5a1-0000-7000-8000-000000000102", "staff");
 const client = member("0199e5a1-0000-7000-8000-000000000103", "client", { displayName: "נגה רוזן" });
 
-function renderAs(role: "owner" | "admin" | "staff", routesForApi: Record<string, unknown> = {}, auth = signedInAuth()) {
+function renderAs(
+  role: "owner" | "admin" | "staff",
+  routesForApi: Record<string, unknown> = {},
+  auth = signedInAuth(),
+) {
   const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
-  const api = apiStub({ "POST /api/v1/session": me, [`GET ${base}`]: { items: [owner, admin, staff, client], nextBefore: null }, ...routesForApi });
+  const api = apiStub({
+    "POST /api/v1/session": me,
+    [`GET ${base}`]: { items: [owner, admin, staff, client], nextBefore: null },
+    ...routesForApi,
+  });
   const router = createMemoryRouter(routes, { initialEntries: ["/o/neshima"] });
   render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} />);
   return api;
@@ -52,7 +60,11 @@ describe("member actions", () => {
     renderAs("owner");
     expect(within(await rowOf("דנה כהן")).queryByRole("button", { name: /פעולות/ })).not.toBeInTheDocument();
     const menu = await openActions("נגה רוזן");
-    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["שינוי תפקיד", "השעיה", "הסרה מהסטודיו"]);
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["שינוי תפקיד", "השעיה", "הסרה מהסטודיו"]);
   });
 
   it("lets an admin act only on staff and clients", async () => {
@@ -61,7 +73,11 @@ describe("member actions", () => {
     await openActions("staff person");
     await userEvent.click(screen.getByRole("menuitem", { name: "שינוי תפקיד" }));
     const dialog = screen.getByRole("dialog", { name: "שינוי תפקיד" });
-    expect(within(dialog).getAllByRole("option").map((option) => option.textContent)).toEqual(["מתאמן"]);
+    expect(
+      within(dialog)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["מתאמן"]);
   });
 
   it("shows no actions to staff, who cannot manage members", async () => {
@@ -71,7 +87,9 @@ describe("member actions", () => {
   });
 
   it("changes a role with PUT /roles and the row's version in If-Match", async () => {
-    const api = renderAs("owner", { [`PUT ${base}/${client.id}/roles`]: () => json({ ...client, role: "staff", version: "8" }) });
+    const api = renderAs("owner", {
+      [`PUT ${base}/${client.id}/roles`]: () => json({ ...client, role: "staff", version: "8" }),
+    });
     await openActions("נגה רוזן");
     await userEvent.click(screen.getByRole("menuitem", { name: "שינוי תפקיד" }));
     const dialog = screen.getByRole("dialog", { name: "שינוי תפקיד" });
@@ -82,7 +100,11 @@ describe("member actions", () => {
     const put = api.requests.findIndex((request) => request.method === "PUT");
     expect(api.requests[put]!.headers.get("If-Match")).toBe("7");
     expect(api.bodies[put]).toEqual({ roleIds: ["00000000-0000-7000-8000-000000000003"] });
-    await waitFor(() => expect(api.requests.filter((request) => request.method === "GET" && request.url.includes("/members")).length).toBe(2));
+    await waitFor(() =>
+      expect(
+        api.requests.filter((request) => request.method === "GET" && request.url.includes("/members")).length,
+      ).toBe(2),
+    );
   });
 
   it("explains a stale row instead of overwriting someone else's change", async () => {
@@ -90,7 +112,9 @@ describe("member actions", () => {
     await openActions("נגה רוזן");
     await userEvent.click(screen.getByRole("menuitem", { name: "שינוי תפקיד" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "שמירה" }));
-    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent("מישהו אחר שינה את הנתונים בינתיים");
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(
+      "מישהו אחר שינה את הנתונים בינתיים",
+    );
   });
 
   it("asks the owner to sign in again before granting admin, and keeps the session", async () => {
@@ -115,7 +139,9 @@ describe("member actions", () => {
     await openActions("staff person");
     await userEvent.click(screen.getByRole("menuitem", { name: "השעיה" }));
     expect(await screen.findByText("השעינו את staff person")).toBeInTheDocument();
-    expect(api.bodies[api.requests.findIndex((request) => request.method === "PATCH")]).toEqual({ status: "suspended" });
+    expect(api.bodies[api.requests.findIndex((request) => request.method === "PATCH")]).toEqual({
+      status: "suspended",
+    });
   });
 
   it("removes a member after confirming", async () => {

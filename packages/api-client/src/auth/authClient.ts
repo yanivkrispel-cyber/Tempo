@@ -42,7 +42,10 @@ export interface AuthClientOptions {
 }
 
 export class SignInError extends Error {
-  constructor(readonly code: "state_mismatch" | "missing_code" | "denied" | "token_exchange_failed", message: string) {
+  constructor(
+    readonly code: "state_mismatch" | "missing_code" | "denied" | "token_exchange_failed",
+    message: string,
+  ) {
     super(message);
     this.name = "SignInError";
   }
@@ -117,7 +120,7 @@ export class AuthClient {
       scope: "openid email profile",
       state: flow.state,
       code_challenge_method: "S256",
-      code_challenge: await codeChallenge(flow.verifier)
+      code_challenge: await codeChallenge(flow.verifier),
     }).toString();
     this.redirect(url.toString());
   }
@@ -135,8 +138,10 @@ export class AuthClient {
   private async exchange(search: string): Promise<string> {
     const params = new URLSearchParams(search);
     const flow = this.takeFlow();
-    if (params.get("error")) throw new SignInError("denied", params.get("error_description") ?? params.get("error") ?? "");
-    if (!flow || params.get("state") !== flow.state) throw new SignInError("state_mismatch", "The sign-in state does not match.");
+    if (params.get("error"))
+      throw new SignInError("denied", params.get("error_description") ?? params.get("error") ?? "");
+    if (!flow || params.get("state") !== flow.state)
+      throw new SignInError("state_mismatch", "The sign-in state does not match.");
     const code = params.get("code");
     if (!code) throw new SignInError("missing_code", "The callback has no authorization code.");
 
@@ -145,7 +150,7 @@ export class AuthClient {
       client_id: this.config.clientId,
       code,
       redirect_uri: this.config.redirectUri,
-      code_verifier: flow.verifier
+      code_verifier: flow.verifier,
     });
     if (!response.ok) throw new SignInError("token_exchange_failed", `Cognito answered ${response.status}.`);
     const tokens = (await response.json()) as TokenResponse;
@@ -189,7 +194,11 @@ export class AuthClient {
   private async refresh(session: Session): Promise<string | null> {
     let response: Response;
     try {
-      response = await this.postToken({ grant_type: "refresh_token", client_id: this.config.clientId, refresh_token: session.refreshToken });
+      response = await this.postToken({
+        grant_type: "refresh_token",
+        client_id: this.config.clientId,
+        refresh_token: session.refreshToken,
+      });
     } catch {
       // Offline or a dropped connection: keep the session and send this request without a token.
       return null;
@@ -214,7 +223,7 @@ export class AuthClient {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ token: refreshToken, client_id: this.config.clientId }).toString(),
-        keepalive: true
+        keepalive: true,
       }).catch(() => undefined);
     } catch {
       // A fetch that throws synchronously must not stop the sign-out.
@@ -225,7 +234,7 @@ export class AuthClient {
     return this.fetchFn(`${this.config.cognitoDomain}/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(body).toString()
+      body: new URLSearchParams(body).toString(),
     });
   }
 
@@ -242,7 +251,10 @@ export class AuthClient {
   private readSession(): Session | null {
     return parse<Session>(
       this.storage.getItem(this.sessionKey),
-      (value) => typeof value.accessToken === "string" && typeof value.refreshToken === "string" && typeof value.expiresAt === "number"
+      (value) =>
+        typeof value.accessToken === "string" &&
+        typeof value.refreshToken === "string" &&
+        typeof value.expiresAt === "number",
     );
   }
 
@@ -259,7 +271,9 @@ function parse<T>(raw: string | null, isValid: (value: Record<string, unknown>) 
   if (!raw) return null;
   try {
     const value: unknown = JSON.parse(raw);
-    return typeof value === "object" && value !== null && isValid(value as Record<string, unknown>) ? (value as T) : null;
+    return typeof value === "object" && value !== null && isValid(value as Record<string, unknown>)
+      ? (value as T)
+      : null;
   } catch {
     return null;
   }
@@ -267,5 +281,7 @@ function parse<T>(raw: string | null, isValid: (value: Record<string, unknown>) 
 
 /** Only same-app paths: an open redirect through `returnTo` would let a link send a signed-in user anywhere. */
 export function safeReturnTo(path: string): string {
-  return path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") && !path.startsWith("/auth/") ? path : "/";
+  return path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") && !path.startsWith("/auth/")
+    ? path
+    : "/";
 }

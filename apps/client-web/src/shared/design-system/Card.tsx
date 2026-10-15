@@ -14,10 +14,23 @@ export interface CardProps extends HTMLAttributes<HTMLElement> {
   as?: "div" | "section" | "article" | "li";
 }
 
-export function Card({ tone = "sand", small = false, selected = false, as: Tag = "div", className, ...rest }: CardProps) {
+export function Card({
+  tone = "sand",
+  small = false,
+  selected = false,
+  as: Tag = "div",
+  className,
+  ...rest
+}: CardProps) {
   return (
     <Tag
-      className={cx("tp-card", tone !== "sand" && `tp-card--${tone}`, small && "tp-card--sm", selected && "tp-card--selected", className)}
+      className={cx(
+        "tp-card",
+        tone !== "sand" && `tp-card--${tone}`,
+        small && "tp-card--sm",
+        selected && "tp-card--selected",
+        className,
+      )}
       {...rest}
     />
   );
