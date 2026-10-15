@@ -89,3 +89,6 @@ public sealed record PersonExportResponse(DateTimeOffset ExportedAt, ExportOrgan
 
 /// <summary>The body of erase (`ReasonRequest`).</summary>
 public sealed record ErasePersonRequest(string? Reason);
+
+/// <summary>`InvitePersonRequest`: where the person will sign in; added as a contact if new.</summary>
+public sealed record InvitePersonRequest(string? Email);

@@ -40,7 +40,8 @@ public sealed record InvitationPage(IReadOnlyList<InvitationView> Items, Guid? N
 /// <summary>Email-bound invitations (docs/26 sections 5.1 and 5.3).</summary>
 public interface IInvitationService
 {
-    Task<CreatedInvitation> CreateAsync(TenantContext tenant, string email, MembershipRole role, CancellationToken cancellationToken);
+    /// <summary><paramref name="personId"/>: the person record the invitation is for (POST /people/{id}/invite).</summary>
+    Task<CreatedInvitation> CreateAsync(TenantContext tenant, string email, MembershipRole role, CancellationToken cancellationToken, Guid? personId = null);
 
     Task<InvitationPage> ListAsync(TenantContext tenant, InvitationQuery query, CancellationToken cancellationToken);
 
@@ -65,7 +66,7 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
 
     private sealed record Row(Guid Id, string Email, MembershipRole Role, InvitationStatus Status, DateTimeOffset ExpiresAt, DateTimeOffset CreatedAt, Guid InvitedBy, Guid InviterAccountId);
 
-    public async Task<CreatedInvitation> CreateAsync(TenantContext tenant, string email, MembershipRole role, CancellationToken cancellationToken)
+    public async Task<CreatedInvitation> CreateAsync(TenantContext tenant, string email, MembershipRole role, CancellationToken cancellationToken, Guid? personId = null)
     {
         if (!RolePolicy.CanInvite(tenant.Role, role))
         {
@@ -108,8 +109,8 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
 
         await using (var insert = unitOfWork.Command(
             """
-            INSERT INTO organizations.invitations (organization_id, id, email, role, token_hash, status, expires_at, invited_by_membership_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, 'pending', now() + $6, $7, now(), now())
+            INSERT INTO organizations.invitations (organization_id, id, email, role, token_hash, status, expires_at, invited_by_membership_id, person_id, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, 'pending', now() + $6, $7, $8::uuid, now(), now())
             """,
             tenant.OrganizationId,
             invitationId,
@@ -117,7 +118,8 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             StoredValue.Of(role),
             hash,
             Lifetime,
-            tenant.MembershipId))
+            tenant.MembershipId,
+            personId))
         {
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -262,7 +264,13 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             throw new DomainRuleViolationException(ViolationKind.Gone, "invitation.expired", "This invitation has expired. Ask for a new one.");
         }
 
-        var (membership, created) = await MembershipQueries.JoinAsync(unitOfWork, organizationId, caller.UserAccountId, StoredValue.Parse<MembershipRole>(role), cancellationToken, "invitation");
+        Guid? personId;
+        await using (var person = unitOfWork.Command("SELECT person_id FROM organizations.invitations WHERE organization_id = $1 AND id = $2", organizationId, invitationId))
+        {
+            personId = await person.ExecuteScalarAsync(cancellationToken) as Guid?;
+        }
+
+        var (membership, created) = await MembershipQueries.JoinAsync(unitOfWork, organizationId, caller.UserAccountId, StoredValue.Parse<MembershipRole>(role), cancellationToken, "invitation", personId);
         await using (var accept = unitOfWork.Command(
             """
             UPDATE organizations.invitations

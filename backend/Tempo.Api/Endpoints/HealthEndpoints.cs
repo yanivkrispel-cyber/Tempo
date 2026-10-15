@@ -21,7 +21,7 @@ public static class HealthEndpoints
 
                 return Results.Ok(response);
             })
-            .WithName("GetHealth")
+            .WithName("getHealth")
             .Produces<HealthResponse>();
 
         return endpoints;

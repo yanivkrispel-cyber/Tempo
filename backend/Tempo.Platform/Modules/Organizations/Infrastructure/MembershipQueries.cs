@@ -23,7 +23,8 @@ internal static class MembershipQueries
         Guid userAccountId,
         MembershipRole role,
         CancellationToken cancellationToken,
-        string source = "join_link")
+        string source = "join_link",
+        Guid? personId = null)
     {
         await using (var studio = unitOfWork.Command("SELECT status FROM organizations.organizations WHERE id = $1", organizationId))
         {
@@ -61,7 +62,7 @@ internal static class MembershipQueries
         }
 
         await RoleAssignments.SetSystemRoleAsync(unitOfWork, organizationId, membershipId, role, null, cancellationToken);
-        await PersonLinks.EnsureForMembershipAsync(unitOfWork, organizationId, membershipId, userAccountId, source, cancellationToken);
+        await PersonLinks.EnsureForMembershipAsync(unitOfWork, organizationId, membershipId, userAccountId, source, cancellationToken, personId);
 
         return ((await FindLiveAsync(unitOfWork, organizationId, userAccountId, cancellationToken))!, true);
     }

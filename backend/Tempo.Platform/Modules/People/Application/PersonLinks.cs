@@ -22,7 +22,8 @@ public static class PersonLinks
         Guid membershipId,
         Guid userAccountId,
         string source,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? invitedPersonId = null)
     {
         string email;
         string displayName;
@@ -48,6 +49,16 @@ public static class PersonLinks
             organizationId,
             userAccountId,
             cancellationToken);
+
+        // An invitation for a recorded person links that record, if it is still live and has no login.
+        existing ??= invitedPersonId is { } invited
+            ? await FindAsync(
+                unitOfWork,
+                "SELECT id FROM people.people WHERE organization_id = $1 AND id = $2 AND user_account_id IS NULL AND status IN ('active', 'archived')",
+                organizationId,
+                invited,
+                cancellationToken)
+            : null;
 
         // Only a verified email may claim a walk-in's record, or anyone could sign up with someone else's address.
         existing ??= emailVerified
