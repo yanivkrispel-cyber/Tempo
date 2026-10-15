@@ -105,3 +105,20 @@ describe("API configuration for two pools (ADR-0023)", () => {
     expect(JSON.stringify(cognitoStatements[0].Resource)).not.toContain("OperatorPool");
   });
 });
+
+describe("Smoke-test sign-in (day board #60, decision 5)", () => {
+  function clientWebAuthFlows(stage: TempoStage): string[] {
+    const clients = stackTemplate(stage, "Identity").findResources("AWS::Cognito::UserPoolClient");
+    const clientWeb = Object.values(clients).find((c) => (c.Properties.ClientName as string).endsWith("-client-web"));
+    return [...(clientWeb?.Properties.ExplicitAuthFlows ?? [])].sort();
+  }
+
+  it("dev's client-web also allows the admin-only password flow", () => {
+    expect(clientWebAuthFlows(dev)).toContain("ALLOW_ADMIN_USER_PASSWORD_AUTH");
+    expect(clientWebAuthFlows(dev)).not.toContain("ALLOW_USER_PASSWORD_AUTH");
+  });
+
+  it("prod's client-web does not", () => {
+    expect(clientWebAuthFlows(prod)).not.toContain("ALLOW_ADMIN_USER_PASSWORD_AUTH");
+  });
+});

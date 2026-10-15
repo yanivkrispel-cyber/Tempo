@@ -45,7 +45,8 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   needs an active row in `platform_admin.operators` matching the token's issuer and `sub`, otherwise 403
   `operator.not_registered`. Every call on one studio is audited with `actor_type = 'operator'`, reads included.
 - The API never reads operator emails from Cognito (its `AdminGetUser` right covers the customer pool only), so a
-  person registers an operator with the `sub` already filled in. After the operator pool exists in the environment:
+  person registers an operator with the `sub` already filled in. One command does steps 1 and 2 and prints the SQL:
+  `.\tools\scripts\register-operator.ps1 -Email <email>` (PowerShell, `--profile tempo`). By hand:
 
   ```powershell
   $pool = aws cognito-idp list-user-pools --max-results 20 --profile tempo --region eu-central-1 --query "UserPools[?Name=='tempo-dev-operators'].Id" --output text
@@ -108,3 +109,14 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
 - Database tests (`tests/Tempo.IntegrationTests/DatabaseMigrator/`) call `MigratedDatabase.CreateAsync(postgres)`:
   a fresh migrated database per test on one PostgreSQL 18 container per class. They seed as the superuser (which
   bypasses RLS) and connect as the real runtime roles.
+
+## Dev smoke-test user (day board #60, decision 5)
+
+- One user in `tempo-dev-users`: `yaniv.krispel+tempo-smoke@gmail.com`, email verified, password in SSM
+  `/tempo/dev/smoke-test/password` (SecureString), email in `/tempo/dev/smoke-test/email`. Created 2026-10-15.
+- Dev's `client-web` app client also allows `ADMIN_USER_PASSWORD_AUTH` (flag `enableSmokeTestSignIn`, never prod),
+  which needs IAM credentials, so browsers cannot use it.
+- Signed-in smoke check from a developer machine, after a deploy wrote `infrastructure/cdk-outputs.json`:
+  `node tools/scripts/smoke-test.mjs --api-url <url> --skip-queue-check --sign-in --profile tempo`.
+- CI does not pass `--sign-in` yet: the GitHub deployment role would need `cognito-idp:AdminInitiateAuth` and
+  `ssm:GetParameter` on `/tempo/dev/smoke-test/*`, an IAM change that waits for Kris.
