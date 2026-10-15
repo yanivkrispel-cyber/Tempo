@@ -7,9 +7,10 @@
     "build": "pnpm --recursive run build",
     "lint": "pnpm --recursive run lint",
     "test": "pnpm --recursive run test",
-    "lint:eslint": "eslint apps packages",
-    "format": "prettier --write apps packages eslint.config.mjs",
-    "format:check": "prettier --check apps packages eslint.config.mjs"
+    "lint:eslint": "eslint apps packages tests/e2e",
+    "format": "prettier --write apps packages tests/e2e eslint.config.mjs",
+    "format:check": "prettier --check apps packages tests/e2e eslint.config.mjs",
+    "e2e": "pnpm --filter @tempo/e2e run e2e"
   },
   "engines": {
     "node": ">=22.0.0",
