@@ -45,6 +45,48 @@ public sealed class MergeSchedulingTests(PostgresFixture postgres) : IClassFixtu
         (await db.AsMasterAsync("SELECT count(*) FROM scheduling.bookings WHERE person_id = $1", drop)).Should().Be(0L);
     }
 
+    [Fact]
+    public async Task AMerge_KeepsBothAttendances_AndTheFreedSeatGoesToTheWaitlist()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var people = new PeopleService(db);
+        var passes = new PassService(db, TimeProvider.System);
+        var bookings = new BookingService(db, TimeProvider.System);
+        var timetable = new TimetableService(db, TimeProvider.System);
+        var classType = await timetable.CreateClassTypeAsync(owner, new NewClassType("Reformer", "pilates", "rose", 50, null), CancellationToken.None);
+        var card = await passes.CreateProductAsync(owner, new NewPassProduct("punch_card", "Card", 10, 90, null, null, null), CancellationToken.None);
+        var keep = (await people.CreateAsync(owner, new NewPerson("Noa Levi", null, null, null, null, "050-2345678"), CancellationToken.None)).Person.Id;
+        var drop = (await people.CreateAsync(owner, new NewPerson("Noa L", null, null, null, null, "0502345678"), CancellationToken.None)).Person.Id;
+        var waiter = (await people.CreateAsync(owner, new NewPerson("Dana", null, null, null, "dana@example.com", null), CancellationToken.None)).Person.Id;
+        foreach (var person in new[] { keep, drop, waiter })
+        {
+            await passes.GrantAsync(owner, person, new NewPass(card.Id, null, null), CancellationToken.None);
+        }
+
+        // A past class both records attended: merging must not hit the one-live-booking index.
+        var past = await SessionAsync(db, owner, classType.Id, TimeSpan.FromDays(1));
+        var keptPast = await bookings.BookAsync(owner, past, keep, CancellationToken.None);
+        var droppedPast = await bookings.BookAsync(owner, past, drop, CancellationToken.None);
+        await db.AsMasterAsync("UPDATE scheduling.bookings SET status = 'attended' WHERE id IN ($1, $2)", keptPast.Id, droppedPast.Id);
+
+        // A full future class: both records booked, Dana waits.
+        var full = await SessionAsync(db, owner, classType.Id, TimeSpan.FromDays(2));
+        await db.AsMasterAsync("UPDATE scheduling.sessions SET capacity = 2 WHERE id = $1", full);
+        await bookings.BookAsync(owner, full, keep, CancellationToken.None);
+        await bookings.BookAsync(owner, full, drop, CancellationToken.None);
+        var waiting = await bookings.BookAsync(owner, full, waiter, CancellationToken.None);
+        waiting.Status.Should().Be("waitlisted");
+
+        var pair = (Guid)(await db.AsMasterAsync("SELECT id FROM people.duplicate_candidates WHERE organization_id = $1", owner.OrganizationId))!;
+        await new PersonLifecycleService(db, TimeProvider.System).ResolveAsync(owner, pair, "merge", keep, CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", droppedPast.Id)).Should().Be("removed");
+        (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", keptPast.Id)).Should().Be("attended");
+        (await db.AsMasterAsync("SELECT status FROM scheduling.bookings WHERE id = $1", waiting.Id)).Should().Be("booked", "the seat the merge freed goes to the waitlist");
+        (await db.AsMasterAsync("SELECT booked_count FROM scheduling.sessions WHERE id = $1", full)).Should().Be(2);
+    }
+
     private static async Task<Guid> SessionAsync(MigratedDatabase db, TenantContext owner, Guid classType, TimeSpan startsIn)
     {
         var id = Guid.CreateVersion7();
