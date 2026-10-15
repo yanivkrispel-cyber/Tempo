@@ -33,6 +33,8 @@
 
     <!-- Database / migrator (ADR-0022) -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <!-- Israeli phone normalization, docs/27 section 4.2; approved by Kris 2026-10-15 -->
+    <PackageVersion Include="libphonenumber-csharp" Version="9.0.38" />
     <PackageVersion Include="dbup-postgresql" Version="7.0.1" />
 
     <!-- Tests -->

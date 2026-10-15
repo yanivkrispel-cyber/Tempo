@@ -262,7 +262,7 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             throw new DomainRuleViolationException(ViolationKind.Gone, "invitation.expired", "This invitation has expired. Ask for a new one.");
         }
 
-        var (membership, created) = await MembershipQueries.JoinAsync(unitOfWork, organizationId, caller.UserAccountId, StoredValue.Parse<MembershipRole>(role), cancellationToken);
+        var (membership, created) = await MembershipQueries.JoinAsync(unitOfWork, organizationId, caller.UserAccountId, StoredValue.Parse<MembershipRole>(role), cancellationToken, "invitation");
         await using (var accept = unitOfWork.Command(
             """
             UPDATE organizations.invitations

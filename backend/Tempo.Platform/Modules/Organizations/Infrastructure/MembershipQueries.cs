@@ -2,6 +2,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.People.Application;
 
 namespace Tempo.Platform.Modules.Organizations.Infrastructure;
 
@@ -21,7 +22,8 @@ internal static class MembershipQueries
         Guid organizationId,
         Guid userAccountId,
         MembershipRole role,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string source = "join_link")
     {
         await using (var studio = unitOfWork.Command("SELECT status FROM organizations.organizations WHERE id = $1", organizationId))
         {
@@ -59,6 +61,7 @@ internal static class MembershipQueries
         }
 
         await RoleAssignments.SetSystemRoleAsync(unitOfWork, organizationId, membershipId, role, null, cancellationToken);
+        await PersonLinks.EnsureForMembershipAsync(unitOfWork, organizationId, membershipId, userAccountId, source, cancellationToken);
 
         return ((await FindLiveAsync(unitOfWork, organizationId, userAccountId, cancellationToken))!, true);
     }

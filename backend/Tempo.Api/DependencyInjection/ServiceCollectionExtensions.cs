@@ -8,6 +8,7 @@ using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
+using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 using Tempo.Platform.Modules.PlatformAdmin;
 
@@ -36,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<IMemberService, MemberService>();
         services.AddSingleton<IOwnershipService, OwnershipService>();
+        services.AddSingleton<IPeopleService, PeopleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
         services.AddSingleton<IInvitationService, InvitationService>();
         services.AddSingleton<IJoinLinkService, JoinLinkService>();
