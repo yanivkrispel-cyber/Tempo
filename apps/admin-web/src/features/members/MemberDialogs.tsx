@@ -1,11 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState } from "react";
+import { useLocation } from "react-router";
 import { roleName } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
-import { errorMessage } from "../../api/errors";
+import { errorMessage, hasCode } from "../../api/errors";
+import { useAuth } from "../../auth/AuthProvider";
 import { Banner, Button, Dialog, Field, Select, useToast } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
+import { systemRoleIds } from "../roles/catalog";
 
 type Member = Schemas["Member"];
 type InvitableRole = Schemas["InvitableRole"];
@@ -35,14 +38,38 @@ export function useUpdateMember() {
   });
 }
 
+/**
+ * PUT /members/{id}/roles with the one system role (docs/27 section 6). Granting admin needs a recent sign-in:
+ * the API answers 401 auth.step_up_required, and the dialog offers to sign in again.
+ */
+export function useSetMemberRole() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { organizationId } = useStudio();
+  const key = useMembersKey();
+  return useMutation({
+    mutationFn: ({ member, role }: { member: Member; role: InvitableRole }) =>
+      unwrap(
+        api.PUT("/api/v1/organizations/{organizationId}/members/{membershipId}/roles", {
+          params: { path: { organizationId, membershipId: member.id }, header: { "If-Match": member.version } },
+          body: { roleIds: [systemRoleIds[role]] }
+        })
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+  });
+}
+
 export function RoleDialog({ member, roles, onClose }: { member: Member; roles: InvitableRole[]; onClose: () => void }) {
   const [role, setRole] = useState<InvitableRole>(roles[0]!);
-  const update = useUpdateMember();
+  const update = useSetMemberRole();
   const toast = useToast();
+  const { client } = useAuth();
+  const { pathname } = useLocation();
+  const stepUp = hasCode(update.error, "auth.step_up_required");
 
   const save = () =>
     update.mutate(
-      { member, body: { role } },
+      { member, role },
       {
         onSuccess: () => {
           toast.show({ tone: "success", icon: "check", message: `${nameOfMember(member)}: ${roleName(role)}` });
@@ -79,9 +106,14 @@ export function RoleDialog({ member, roles, onClose }: { member: Member; roles: 
           </Select>
         </Field>
         {update.isError && (
-          <Banner tone="danger" icon="info">
+          <Banner tone={stepUp ? "warning" : "danger"} icon="info">
             {errorMessage(update.error, "לא הצלחנו לשנות את התפקיד. נסו שוב.")}
           </Banner>
+        )}
+        {stepUp && (
+          <Button variant="secondary" icon="log-out" onClick={() => void client?.signIn(pathname, "reauthenticate")}>
+            התחברות מחדש
+          </Button>
         )}
       </div>
     </Dialog>

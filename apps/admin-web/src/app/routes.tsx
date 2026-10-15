@@ -1,12 +1,17 @@
 import type { RouteObject } from "react-router";
 import { RequireAccount } from "../account/RequireAccount";
 import { CallbackPage } from "../auth/CallbackPage";
+import { AuditPage } from "../features/audit/AuditPage";
 import { LoginPage } from "../auth/LoginPage";
 import { RequireAuth } from "../auth/RequireAuth";
 import { ConsoleLayout } from "../features/console/ConsoleLayout";
 import { InvitationsPage } from "../features/invitations/InvitationsPage";
 import { InvitePage } from "../features/invitations/InvitePage";
 import { MembersPage } from "../features/members/MembersPage";
+import { PeoplePage } from "../features/people/PeoplePage";
+import { PersonPage } from "../features/people/PersonPage";
+import { RolesPage } from "../features/roles/RolesPage";
+import { SettingsPage } from "../features/settings/SettingsPage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
 import { SelectStudioPage } from "../features/studios/SelectStudioPage";
 import { NotFoundPage } from "./NotFoundPage";
@@ -27,7 +32,12 @@ export const routes: RouteObject[] = [
             element: <ConsoleLayout />,
             children: [
               { index: true, element: <MembersPage /> },
-              { path: "invitations", element: <InvitationsPage /> }
+              { path: "invitations", element: <InvitationsPage /> },
+              { path: "roles", element: <RolesPage /> },
+              { path: "people", element: <PeoplePage /> },
+              { path: "people/:personId", element: <PersonPage /> },
+              { path: "settings", element: <SettingsPage /> },
+              { path: "audit", element: <AuditPage /> }
             ]
           }
         ]
