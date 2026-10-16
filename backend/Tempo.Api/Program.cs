@@ -4,6 +4,9 @@ using Serilog.Formatting.Compact;
 using Tempo.Api.DependencyInjection;
 using Tempo.Api.Endpoints;
 using Tempo.Api.Middleware;
+using Amazon.SQS;
+using Tempo.Api.Notifications;
+using Tempo.Platform.Modules.Notifications.Application;
 
 // Covers startup only. The host builds its own logger below and leaves this
 // one alone, because a reloadable bootstrap logger can be frozen once per
@@ -35,6 +38,14 @@ try
 
     var app = builder.Build();
 
+    // Deployed, the work queue's URL is set and requests reach the worker at once; locally and in tests nothing
+    // is sent (docs/30 section 8).
+    if (app.Configuration["WORK_QUEUE_URL"] is { Length: > 0 } workQueueUrl)
+    {
+        var signal = new SqsNotificationSignal(new AmazonSQSClient(), workQueueUrl, app.Services.GetRequiredService<ILogger<SqsNotificationSignal>>());
+        NotificationSignal.Send = signal.SendAsync;
+    }
+
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseExceptionHandler();
     // Without an explicit logger, request events go to the static startup logger.
@@ -56,6 +67,7 @@ try
     app.MapPassEndpoints();
     app.MapBookingEndpoints();
     app.MapClassEndpoints();
+    app.MapNotificationEndpoints();
     app.MapBillingEndpoints();
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();

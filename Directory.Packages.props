@@ -25,11 +25,13 @@
     <PackageVersion Include="Amazon.Lambda.SQSEvents" Version="3.0.0" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="3.0.0" />
 
-    <!-- AWS SDK clients (least-privilege, ADR-0015). AWSSDK.EventBridge/SQS
-         are added when the outbox worker starts publishing for real. -->
+    <!-- AWS SDK clients (least-privilege, ADR-0015). AWSSDK.EventBridge is
+         added when the outbox worker starts publishing for real; the API sends
+         `notifications.deliver` to the work queue with AWSSDK.SQS (docs/30). -->
     <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.2" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.12" />
     <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.1" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.14" />
 
     <!-- Database / migrator (ADR-0022) -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />

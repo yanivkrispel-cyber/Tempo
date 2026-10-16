@@ -47,6 +47,8 @@ export class IdentityStack extends Stack {
       selfSignUpEnabled: true,
       signInAliases: { email: true, username: false },
       autoVerify: { email: true },
+      // A changed email takes effect only after the user verifies it (#124); until then they sign in with the old one.
+      keepOriginal: { email: true },
       standardAttributes: {
         email: { required: true, mutable: true }
       },
@@ -103,6 +105,8 @@ export class IdentityStack extends Stack {
       selfSignUpEnabled: false,
       signInAliases: { email: true, username: false },
       autoVerify: { email: true },
+      // A changed email takes effect only after the user verifies it (#124); until then they sign in with the old one.
+      keepOriginal: { email: true },
       standardAttributes: {
         email: { required: true, mutable: true }
       },
@@ -156,7 +160,9 @@ export class IdentityStack extends Stack {
       userPoolClientName: props.clientName,
       // Browser-based public clients never receive a client secret.
       generateSecret: false,
-      authFlows: { userSrp: true, adminUserPassword: props.adminUserPassword ?? false },
+      // The apps sign in only through the Hosted UI (authorization code), so no direct password or SRP flow is
+      // open to the browser (#124). Refresh stays; the admin-only password flow is for the dev smoke test.
+      authFlows: { userSrp: false, adminUserPassword: props.adminUserPassword ?? false },
       preventUserExistenceErrors: true,
       oAuth: {
         flows: { authorizationCodeGrant: true },

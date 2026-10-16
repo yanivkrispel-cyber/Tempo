@@ -98,7 +98,7 @@ public static class ClassEndpoints
             [.. page.Items.Select(i => new InboxItemResponse(
                 i.Id,
                 i.Kind,
-                new InboxItemDataResponse(i.SessionId, i.BookingId),
+                new InboxItemDataResponse(i.SessionId, i.BookingId, i.PassId),
                 i.CreatedAt,
                 i.ReadAt,
                 i.SessionId is { } id && i.SessionStartsAt is { } at ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "") : null,

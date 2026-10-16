@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Notifications.Application;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
@@ -335,12 +336,10 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
         }
 
         await AuditAsync(unitOfWork, tenant, "pass.frozen", "pass", passId, new { personId, freezeId, startsOn, endsOn, days }, cancellationToken);
-        await using (var inbox = unitOfWork.Command(
-            "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, 'pass.frozen', jsonb_build_object('passId', $4::uuid), now())",
-            tenant.OrganizationId, Guid.CreateVersion7(), personId, passId))
-        {
-            await inbox.ExecuteNonQueryAsync(cancellationToken);
-        }
+        await NotificationRequests.WriteAsync(
+            unitOfWork,
+            new NotificationRequest(tenant.OrganizationId, personId, "pass.frozen", "pass", passId, new Dictionary<string, Guid> { ["passId"] = passId }),
+            cancellationToken);
 
         var frozen = (await PassesAsync(unitOfWork, tenant.OrganizationId, "WHERE ps.organization_id = $1 AND ps.id = $3", cancellationToken, passId)).Single();
         await unitOfWork.CommitAsync(cancellationToken);

@@ -25,6 +25,9 @@ const messages: Record<string, string> = {
   "permission.denied": "אין לך הרשאה לפעולה הזו.",
   "auth.mfa_required":
     "לחשבון שלך יש תפקיד ניהול בסטודיו, ולכן צריך להפעיל בו אימות דו־שלבי. הפעילו אותו במסוף הניהול, בעמוד אבטחת החשבון, ואז חזרו לכאן.",
+  // Notification preferences (docs/30 section 7).
+  "preferences.inbox_required": "תיבת ההודעות באפליקציה תמיד פעילה, ואי אפשר לכבות אותה.",
+  "quietHours.invalid": "שעת הסיום של השעות השקטות צריכה להיות שונה משעת ההתחלה.",
   "billing.restricted": "ההרשמה לשיעורים בסטודיו מושהית כרגע. אפשר עדיין לראות ולבטל הזמנות קיימות.",
 };
 

@@ -1478,6 +1478,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's notification channels, reminder switches and quiet hours in this studio (self)
+         * @description Defaults apply when the member never saved (docs/30 sections 5 and 7): inbox and push on for every group, every reminder the studio offers on, quiet hours null (the studio's window applies).
+         */
+        get: operations["getMyNotificationPreferences"];
+        /**
+         * Save the caller's notification preferences in this studio (self)
+         * @description The inbox cannot be switched off, and the `bookings` group (service notices about the member's own bookings) keeps at least the inbox: `inbox: false` answers 400 `preferences.inbox_required`. Quiet hours are two local times in the studio's time zone; equal times answer 400 `quietHours.invalid`.
+         */
+        put: operations["updateMyNotificationPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/push-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The caller's devices that receive push from this studio (self) */
+        get: operations["listMyPushSubscriptions"];
+        put?: never;
+        /**
+         * Register this browser's push subscription for this studio (self)
+         * @description The body is the browser's `PushSubscription.toJSON()` plus a device label. Registering an endpoint that is already registered for the caller in this studio returns the existing subscription with 200 (idempotent). The endpoint must be a browser push service over `https://` (FCM, Mozilla autopush, WNS, Apple); anything else answers 400 `push.endpoint_invalid`. Keys that do not decode to a P-256 point and a 16-byte secret answer 400 `push.keys_invalid`. A member keeps at most 10 devices per studio; registering an eleventh drops the oldest. A subscription the push service later reports gone (404 or 410) is deleted by the server.
+         */
+        post: operations["createMyPushSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/push-subscriptions/{subscriptionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                subscriptionId: components["parameters"]["SubscriptionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop push to one of the caller's devices (self) */
+        delete: operations["deleteMyPushSubscription"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/vapid-public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The environment's VAPID public key, for PushManager.subscribe (any signed-in account)
+         * @description The same key for every studio in the environment (docs/30 section 4.3). It changes only when the key pair is rotated, after which every browser subscribes again. Before the key pair is set up in an environment the route answers 404 `push.unavailable`; the app then hides the push switch.
+         */
+        get: operations["getVapidPublicKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/notification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's quiet hours and reminder timing (`organization.view`)
+         * @description Defaults until the studio saves (docs/30 D-4, D-5).
+         */
+        get: operations["getNotificationSettings"];
+        /**
+         * Change the studio's quiet hours and reminder timing (`organization.settings.manage`)
+         * @description A reminder switched off here is off for every member; one switched on is on for members who did not switch it off. Out-of-range values answer 400 with the field in `errors`. Equal quiet-hour times answer 400 `quietHours.invalid`.
+         */
+        put: operations["updateNotificationSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/billing": {
         parameters: {
             query?: never;
@@ -2655,9 +2770,13 @@ export interface components {
              * @example session.cancelled
              * @example waitlist.expired
              * @example pass.frozen
+             * @example reminder.class_tomorrow
+             * @example reminder.class_soon
+             * @example reminder.pass_ending
+             * @example reminder.entries_low
              */
             kind: string;
-            /** @description Ids only. */
+            /** @description Ids only, and only the ones the kind carries; a key that does not apply is left out. Class kinds carry `sessionId` (and `bookingId` for a place); `pass.frozen`, `reminder.pass_ending` and `reminder.entries_low` carry `passId`. */
             data: {
                 /** Format: uuid */
                 sessionId?: string;
@@ -2686,6 +2805,112 @@ export interface components {
             unreadCount: number;
             /** Format: uuid */
             nextBefore?: string | null;
+        };
+        /** @description A window that may cross midnight (22:00 to 08:00). Reminders and studio messages wait until it ends; a notice about the member's own booking for a class that starts inside the window still goes out (D-4). */
+        QuietHours: {
+            startsLocal: components["schemas"]["LocalTime"];
+            endsLocal: components["schemas"]["LocalTime"];
+        };
+        /** @description Email joins as an optional field once docs/30 D-1 is decided; clients must ignore unknown channels. */
+        NotificationChannels: {
+            /** @description Always true; the in-app inbox cannot be switched off. */
+            inbox: boolean;
+            push: boolean;
+        };
+        NotificationGroupPreference: {
+            /**
+             * @description `bookings` are service notices about the member's own bookings (docs/30 section 5).
+             * @enum {string}
+             */
+            group: "bookings" | "reminders" | "studio";
+            channels: components["schemas"]["NotificationChannels"];
+        };
+        /** @description The member's own switch per reminder; a reminder the studio switched off never fires. */
+        ReminderSwitches: {
+            classTomorrow: boolean;
+            classSoon: boolean;
+            passEnding: boolean;
+            entriesLow: boolean;
+        };
+        NotificationPreferences: {
+            /** @description One row per group, always all three, in the order bookings, reminders, studio. */
+            groups: components["schemas"]["NotificationGroupPreference"][];
+            reminders: components["schemas"]["ReminderSwitches"];
+            /** @description The member's own window; null means the studio's window applies. */
+            quietHours: components["schemas"]["QuietHours"] | null;
+            studioQuietHours: components["schemas"]["QuietHours"];
+            /** @description Which reminders the studio offers at all, so the settings page can hide the others. */
+            studioReminders: components["schemas"]["ReminderSwitches"];
+            /** @description The studio's IANA time zone, e.g. Asia/Jerusalem. */
+            timeZone: string;
+            version: string;
+        };
+        NotificationPreferencesInput: {
+            /** @description Groups left out keep their current channels. */
+            groups: components["schemas"]["NotificationGroupPreference"][];
+            reminders: components["schemas"]["ReminderSwitches"];
+            quietHours: components["schemas"]["QuietHours"] | null;
+        };
+        /** @description The endpoint and keys are never returned. */
+        PushSubscription: {
+            /** Format: uuid */
+            id: string;
+            /** @description What the settings page lists, e.g. "Chrome, Android". */
+            deviceLabel: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastSuccessAt?: string | null;
+        };
+        PushSubscriptionList: {
+            items: components["schemas"]["PushSubscription"][];
+        };
+        CreatePushSubscriptionRequest: {
+            /** Format: uri */
+            endpoint: string;
+            keys: {
+                /** @description Base64url, as the browser gives it. */
+                p256dh: string;
+                /** @description Base64url, as the browser gives it. */
+                auth: string;
+            };
+            deviceLabel: string;
+        };
+        VapidPublicKey: {
+            /** @description Base64url, uncompressed P-256 point (the `applicationServerKey`). */
+            publicKey: string;
+        };
+        ReminderTiming: {
+            /** @description The evening before the class (D-5 default 18:00). */
+            classTomorrow: {
+                enabled: boolean;
+                sendAtLocal: components["schemas"]["LocalTime"];
+            };
+            /** @description Before the class starts (D-5 default 2 hours). */
+            classSoon: {
+                enabled: boolean;
+                hoursBefore: number;
+            };
+            /** @description Before a pass's last day (D-5 default 7 days). */
+            passEnding: {
+                enabled: boolean;
+                daysBefore: number;
+            };
+            /** @description When a punch card reaches this many entries left (D-5 default 1). */
+            entriesLow: {
+                enabled: boolean;
+                entriesLeft: number;
+            };
+        };
+        NotificationSettings: {
+            quietHours: components["schemas"]["QuietHours"];
+            reminders: components["schemas"]["ReminderTiming"];
+            timeZone: string;
+            version: string;
+        };
+        NotificationSettingsInput: {
+            quietHours: components["schemas"]["QuietHours"];
+            reminders: components["schemas"]["ReminderTiming"];
         };
         /** @enum {string} */
         SubscriptionState: "trialing" | "active" | "past_due" | "grace" | "restricted" | "canceled";
@@ -2877,6 +3102,7 @@ export interface components {
         PersonId: string;
         /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
         IfMatch: string;
+        SubscriptionId: string;
         RoomId: string;
         ClassTypeId: string;
         TemplateId: string;
@@ -5518,6 +5744,235 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getMyNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateMyNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPreferencesInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listMyPushSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createMyPushSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePushSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Already registered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushSubscription"];
+                };
+            };
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushSubscription"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteMyPushSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                subscriptionId: components["parameters"]["SubscriptionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getVapidPublicKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VapidPublicKey"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getBilling: {

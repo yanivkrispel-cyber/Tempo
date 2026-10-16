@@ -12,6 +12,7 @@ import { HomeScreen } from "../features/member/HomeScreen";
 import { InboxScreen } from "../features/member/InboxScreen";
 import { MemberLayout } from "../features/member/MemberLayout";
 import { ProfileScreen } from "../features/member/ProfileScreen";
+import { NotificationsScreen } from "../features/member/NotificationsScreen";
 import { NotFoundPage } from "./NotFoundPage";
 
 export const routes: RouteObject[] = [
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
               { path: "/bookings", element: <BookingsScreen /> },
               { path: "/inbox", element: <InboxScreen /> },
               { path: "/profile", element: <ProfileScreen /> },
+              { path: "/profile/notifications", element: <NotificationsScreen /> },
             ],
           },
         ],
