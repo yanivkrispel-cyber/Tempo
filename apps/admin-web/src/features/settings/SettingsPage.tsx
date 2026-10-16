@@ -9,6 +9,7 @@ import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PlanCard } from "./PlanCard";
+import { TemplatesCard } from "./TemplatesCard";
 
 type Organization = Schemas["Organization"];
 
@@ -21,7 +22,7 @@ const timeZones = [{ value: "Asia/Jerusalem", label: "ישראל (Asia/Jerusalem
 
 /**
  * `/o/:slug/settings`: the studio's name, language and time zone (GET and PATCH /organizations/{id}), its
- * notification settings and its plan.
+ * notification settings, the words of its notifications and its plan.
  */
 export function SettingsPage() {
   const api = useApi();
@@ -48,6 +49,7 @@ export function SettingsPage() {
         <SettingsForm key={organization.data.version} organization={organization.data} />
       )}
       <NotificationSettingsCard />
+      <TemplatesCard />
       <PlanCard />
     </>
   );

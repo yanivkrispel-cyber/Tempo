@@ -20,6 +20,7 @@ import { SessionPage } from "../features/schedule/SessionPage";
 import { TemplatesPage } from "../features/schedule/TemplatesPage";
 import { SecurityPage } from "../features/security/SecurityPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
+import { TemplatePage } from "../features/settings/TemplatePage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
 import { SelectStudioPage } from "../features/studios/SelectStudioPage";
 import { NotFoundPage } from "./NotFoundPage";
@@ -54,6 +55,7 @@ export const routes: RouteObject[] = [
               { path: "rooms", element: <RoomsPage /> },
               { path: "passes", element: <PassProductsPage /> },
               { path: "settings", element: <SettingsPage /> },
+              { path: "settings/templates/:kind", element: <TemplatePage /> },
               { path: "audit", element: <AuditPage /> },
             ],
           },
