@@ -55,6 +55,7 @@
   --warning-soft: #efe3c9;
   --warning-ink: #6e4f12;
   --danger: #c0786b;
+  --danger-strong: #a85a4c;
   --danger-soft: #efd9d3;
   --danger-ink: #8e4a3c;
   --on-danger: #fffef4;
@@ -195,6 +196,7 @@
   --warning-soft: #4a3d22;
   --warning-ink: #ecd29a;
   --danger: #c0786b;
+  --danger-strong: #c0786b;
   --danger-soft: #4a2f29;
   --danger-ink: #f0b7ab;
   --on-danger: #2a1612;

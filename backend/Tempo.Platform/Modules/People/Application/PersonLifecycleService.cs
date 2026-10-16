@@ -243,6 +243,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         }
 
         var org = tenant.OrganizationId;
+        await CancelUpcomingBookingsAsync(unitOfWork, tenant, personId, clock.GetUtcNow(), cancellationToken);
         await ExecuteAsync(unitOfWork, "DELETE FROM people.contact_points WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
         await ExecuteAsync(unitOfWork, "DELETE FROM people.person_relationships WHERE organization_id = $1 AND (from_person_id = $2 OR to_person_id = $2)", cancellationToken, org, personId);
         await ExecuteAsync(
@@ -296,6 +297,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         // Class messages reach the person through inbox items that point at the text (docs/29 section 16.2); the
         // pointers go, the studio's message row (ids only) stays.
         await ExecuteAsync(unitOfWork, "DELETE FROM notifications.inbox_items WHERE organization_id = $1 AND person_id = $2 AND kind = 'session.message'", cancellationToken, org, personId);
+        // Preferences, quiet hours, push subscriptions and delivery requests go (docs/30 section 7); deliveries go
+        // with their requests, and the remaining inbox items lose the link.
+        await DeleteNotificationRowsAsync(unitOfWork, org, personId, cancellationToken);
 
         // Consent rows stay as proof: they hold states, timestamps and text versions, never names or contacts.
         // The reason is required but not kept: free text can name the person, and person.* audit data never
@@ -470,25 +474,16 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             }
 
             // One person, one class, one entry: the weaker place's entry always returns.
-            await ExecuteAsync(
-                unitOfWork,
-                """
-                WITH used AS (
-                    UPDATE scheduling.pass_uses SET status = 'returned', updated_at = now(), version = version + 1
-                    WHERE organization_id = $1 AND booking_id = $2 AND status = 'held'
-                    RETURNING pass_id
-                )
-                UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
-                FROM used WHERE p.organization_id = $1 AND p.id = used.pass_id AND p.entries IS NOT NULL
-                """,
-                cancellationToken,
-                org, loser);
+            await ReturnHeldEntryAsync(unitOfWork, org, loser, cancellationToken);
             await AuditAsync(unitOfWork, tenant, loserStatus is "attended" or "no_show" ? "booking.removed" : "booking.cancelled", "booking", loser, new { sessionId = session, reason = "person_merged" }, cancellationToken);
         }
 
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.bookings SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        // The survivor keeps its own notification preferences and devices; the merged record's go, with its
+        // delivery history (the inbox items above moved and keep showing).
+        await DeleteNotificationRowsAsync(unitOfWork, org, merged, cancellationToken);
 
         // Invitations follow the survivor, so erasing it later scrubs their emails too (#101). A pending one was
         // meant to link a login to the merged record, which is gone: it is revoked, and staff invite the survivor.
@@ -522,6 +517,71 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             await BookingService.PromoteSessionAsync(unitOfWork, tenant, session, now, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// An erased person keeps no place in a class that has not started (#191): each booked or waiting place is
+    /// cancelled by staff with no late charge, its held entry returns, and a freed seat goes to the waitlist as on
+    /// any cancel. The erased person is not notified. Past bookings and attendance stay as anonymised history.
+    /// </summary>
+    private static async Task CancelUpcomingBookingsAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid personId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var org = tenant.OrganizationId;
+        var upcoming = new List<(Guid Booking, Guid Session, string Status)>();
+        await using (var read = unitOfWork.Command(
+            """
+            SELECT b.id, b.session_id, b.status
+            FROM scheduling.bookings b
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE b.organization_id = $1 AND b.person_id = $2 AND b.status IN ('booked', 'waitlisted') AND s.starts_at > $3
+            FOR UPDATE OF b
+            """,
+            org, personId, now))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                upcoming.Add((reader.GetGuid(0), reader.GetGuid(1), reader.GetString(2)));
+            }
+        }
+
+        var freedSessions = new List<Guid>();
+        foreach (var (booking, session, status) in upcoming)
+        {
+            await ExecuteAsync(
+                unitOfWork,
+                "UPDATE scheduling.bookings SET status = 'cancelled', cancel_reason = 'staff', late_cancel = false, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND id = $2",
+                cancellationToken,
+                org, booking);
+            if (status == "booked")
+            {
+                await ExecuteAsync(unitOfWork, "UPDATE scheduling.sessions SET booked_count = booked_count - 1, version = version + 1 WHERE organization_id = $1 AND id = $2", cancellationToken, org, session);
+                freedSessions.Add(session);
+            }
+
+            await ReturnHeldEntryAsync(unitOfWork, org, booking, cancellationToken);
+            await AuditAsync(unitOfWork, tenant, "booking.cancelled", "booking", booking, new { sessionId = session, reason = "person_erased" }, cancellationToken);
+        }
+
+        foreach (var session in freedSessions.Distinct())
+        {
+            await BookingService.PromoteSessionAsync(unitOfWork, tenant, session, now, cancellationToken);
+        }
+    }
+
+    private static Task ReturnHeldEntryAsync(UnitOfWork unitOfWork, Guid org, Guid bookingId, CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            unitOfWork,
+            """
+            WITH used AS (
+                UPDATE scheduling.pass_uses SET status = 'returned', updated_at = now(), version = version + 1
+                WHERE organization_id = $1 AND booking_id = $2 AND status = 'held'
+                RETURNING pass_id
+            )
+            UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
+            FROM used WHERE p.organization_id = $1 AND p.id = used.pass_id AND p.entries IS NOT NULL
+            """,
+            cancellationToken,
+            org, bookingId);
 
     private static int Rank(string status) => status switch
     {
@@ -576,4 +636,16 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
 
     private Task<UnitOfWork> BeginAsync(TenantContext tenant, CancellationToken cancellationToken) =>
         UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, tenant.UserAccountId, tenant.OrganizationId, cancellationToken);
+
+    private static async Task DeleteNotificationRowsAsync(UnitOfWork unitOfWork, Guid org, Guid personId, CancellationToken cancellationToken)
+    {
+        foreach (var table in new[]
+        {
+            "notifications.preferences", "notifications.quiet_hours", "notifications.reminder_switches",
+            "notifications.preference_versions", "notifications.push_subscriptions", "notifications.requests"
+        })
+        {
+            await ExecuteAsync(unitOfWork, $"DELETE FROM {table} WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
+        }
+    }
 }

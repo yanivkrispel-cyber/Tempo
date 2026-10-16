@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" />
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" />
+    <PackageReference Include="AWSSDK.SQS" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Serilog.AspNetCore" />

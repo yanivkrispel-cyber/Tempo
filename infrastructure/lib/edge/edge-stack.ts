@@ -134,12 +134,14 @@ export class EdgeStack extends Stack {
               aggregateKeyType: "IP",
               scopeDownStatement: {
                 orStatement: {
-                  statements: GUESSABLE_INPUT_PATHS.map((path) => ({
+                  // ASP.NET Core routing ignores case and a trailing slash (#180), so each match lowercases the
+                  // path and every path also comes with a trailing slash.
+                  statements: GUESSABLE_INPUT_PATHS.flatMap((path) => [path, `${path}/`]).map((path) => ({
                     byteMatchStatement: {
                       searchString: path,
                       fieldToMatch: { uriPath: {} },
                       positionalConstraint: "EXACTLY",
-                      textTransformations: [{ priority: 0, type: "NONE" }]
+                      textTransformations: [{ priority: 0, type: "LOWERCASE" }]
                     }
                   }))
                 }

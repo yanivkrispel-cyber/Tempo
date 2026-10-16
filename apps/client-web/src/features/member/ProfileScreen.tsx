@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Avatar, Button, Card, Chip, Icon, IconButton, Select, Skeleton, useToast } from "../../shared/design-system";
+import { Link } from "react-router";
+import { Avatar, Button, Card, Chip, Icon, IconButton, Skeleton, useToast } from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
+import { useApi } from "../../api/ApiProvider";
+import { forgetPushOnSignOut } from "../../account/push";
 import { useProfile } from "./data";
 import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
@@ -15,6 +18,8 @@ export function ProfileScreen() {
   const profile = useProfile();
   const toast = useToast();
   const auth = useAuth();
+  const api = useApi();
+  const [signingOut, setSigningOut] = useState(false);
   const me = useAccount();
   const [editing, setEditing] = useState(false);
   const [details, setDetails] = useState(false);
@@ -80,17 +85,13 @@ export function ProfileScreen() {
           התראות
         </h2>
         <ConsentRows organizationId={studio?.organization.id} studioName={studio?.organization.displayName} />
-        <div className="tp-setting">
+        <Link to="/profile/notifications" className="tp-setting">
           <span className={styles.settingText}>
-            <span>תזכורת לפני שיעור</span>
-            <span className="tp-caption">כמה זמן לפני</span>
+            <span>העדפות התראות</span>
+            <span className="tp-caption">תזכורות, התראות בטלפון ושעות שקטות</span>
           </span>
-          <Select aria-label="תזכורת לפני שיעור" className={styles.settingSelect} defaultValue="2h">
-            <option value="2h">שעתיים</option>
-            <option value="1h">שעה</option>
-            <option value="1d">יום לפני</option>
-          </Select>
-        </div>
+          <Icon name="chevron-left" />
+        </Link>
       </Card>
 
       <Card as="section" tone="cream" className={styles.settings} aria-labelledby="account">
@@ -122,7 +123,16 @@ export function ProfileScreen() {
         </div>
       </Card>
 
-      <Button variant="ghost-danger" block onClick={() => auth.client?.signOut()}>
+      <Button
+        variant="ghost-danger"
+        block
+        loading={signingOut}
+        onClick={() => {
+          setSigningOut(true);
+          // A shared browser must not keep this member's push (docs/30 section 4.3).
+          void forgetPushOnSignOut(api).finally(() => auth.client?.signOut());
+        }}
+      >
         התנתקות
       </Button>
 

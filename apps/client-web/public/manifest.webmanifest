@@ -1,0 +1,11 @@
+{
+  "name": "Tempo",
+  "short_name": "Tempo",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ece9e4",
+  "theme_color": "#ece9e4"
+}

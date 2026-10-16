@@ -1,6 +1,8 @@
 # Communications LLD (Phase 4, part one: notifications)
 
-> **Status:** Proposed, design only (night board #136, B7). No code until Kris decides section 14.
+> **Status:** Proposed (night board #136, B7). On 2026-10-16 Kris approved building steps 1 to 4 and 6 of section
+> 13 with D-3, D-4, D-5, D-6, D-8 and D-9 as provisional defaults (day board #176). D-1, D-2 and D-7 wait for Kris,
+> so step 5 (email) is not built.
 > **Audience:** Kris, Ofir, the agents.
 > **Scope rule:** Platform Core stays industry-neutral; a studio's wording lives in its templates, not in code.
 > **Decision policy:** Statements marked **Proposed** become **Decision** when Kris accepts them (or stays silent
@@ -110,6 +112,26 @@ delivery status next to the item.
   tapping the notification opens the right screen and marks the item read.
 - iOS Safari needs the app installed to the home screen (PWA) before push works; the settings page says so.
 
+**Built (P4, day board #176), server side.** Where it differs from the proposal above:
+
+- The public key is served by `GET /push/vapid-public-key` (404 `push.unavailable` until a person runs
+  `tools/scripts/vapid-keys.mjs`), not baked into the app's build, so a rotation needs no app release.
+- **Payload: ids only.** It carries the kind, the studio id, the inbox item id, the ids in `data`, and the class name
+  and start for a class notice. There is no title, body or message text. The service worker (client-web) renders the
+  text per kind from these, so nothing a person wrote passes through Google, Mozilla, Microsoft or Apple.
+- **Endpoints:** only the four browser push services are accepted (`*.fcm.googleapis.com`,
+  `*.push.services.mozilla.com`, `*.notify.windows.com`, `*.push.apple.com`; https on the default port). They are
+  checked at subscribe time and again before every send, so the worker never calls an address a client made up. At
+  most 10 devices per person per studio; the oldest goes.
+- **Sending:** encryption is RFC 8291 `aes128gcm` and the VAPID token is RFC 8292 ES256 with a 12-hour expiry, both
+  in .NET with no package. TTL is one day. Urgency is high for the member's own bookings and normal otherwise.
+- **Answers from the push service:**
+  - 404 or 410 deletes the subscription.
+  - 429 or 5xx is retried after 1 min, 10 min and 1 h, then marked dead.
+  - Any other 4xx is dead at once, with `http_<status>`.
+- **Keys:** `/tempo/<env>/push/vapid-public-key` (String) and `/tempo/<env>/push/vapid-private-key` (SecureString
+  under the default `aws/ssm` key). Only the worker can read the private key.
+
 ### 4.4 SMS, WhatsApp
 
 Not in part one. The channel enum carries them so preferences and templates can be filled in later without a
@@ -178,20 +200,21 @@ Staff kinds (`roster.changed`, `booking.late_cancel`, `tripwire` and friends) ar
   (ADR-0008); the worker's `notifications.deliver` handler takes the request, applies section 7, writes one delivery
   per channel and sends. Retries: 1 min, 10 min, 1 h, then dead; a dead delivery shows on the dashboard (B3 widget
   "work queue, dead letters" already exists; a `notifications.dead` count joins it).
-- Reminders: the daily job (03:15, exists) creates `reminder.class_tomorrow` and `reminder.pass_ending` requests for
-  the next day; an hourly schedule creates `reminder.class_soon` for sessions starting in the next 2 to 3 hours.
-  Both idempotent through the dedupe key.
+- Reminders: one daytime hourly job writes every reminder kind; built as described in section 13, step 6.
 - The console (admin-web) shows per person the last 30 deliveries with status and reason; the member app shows
   nothing but the inbox.
 
 ## 9. API
 
-Section 9 of the contract, `x-tempo-planned` until built, as docs/29 did:
+Section 9 of the contract, `x-tempo-planned` until built, as docs/29 did. Preferences and studio settings are live
+since P3 (day board #176); push subscriptions and the VAPID key come with P4.
 
 | Route | Who |
 |---|---|
-| `GET/PUT /organizations/{id}/me/notification-preferences` | the member (preferences, quiet hours) |
-| `POST/DELETE /organizations/{id}/me/push-subscriptions` | the member (client-web) |
+| `GET/PUT /organizations/{id}/me/notification-preferences` | the member: channels per group, reminder switches, quiet hours (`getMyNotificationPreferences`, `updateMyNotificationPreferences`) |
+| `GET/POST /organizations/{id}/me/push-subscriptions`, `DELETE .../{subscriptionId}` | the member (client-web; `listMyPushSubscriptions`, `createMyPushSubscription`, `deleteMyPushSubscription`) |
+| `GET /push/vapid-public-key` | any signed-in account (`getVapidPublicKey`) |
+| `GET/PUT /organizations/{id}/notification-settings` | `organization.view` / `organization.settings.manage`: the studio's quiet hours and reminder timing (`getNotificationSettings`, `updateNotificationSettings`) |
 | `GET/PUT /organizations/{id}/notification-templates/{kind}` | `settings.manage` (console; preview included) |
 | `GET /organizations/{id}/people/{personId}/deliveries` | `people.view` (console) |
 | `POST /organizations/{id}/announcements` | `bookings.manage` (studio announcement) |
@@ -223,18 +246,51 @@ address.
 
 ## 13. Delivery plan
 
-1. This LLD and the contract rows (`x-tempo-planned`), SYNC on #136 or its successor.
-2. Migration 0012: templates, preferences, quiet hours, subscriptions, requests, deliveries; platform grants.
+1. This LLD and the contract rows (`x-tempo-planned`), SYNC 3a on board #176.
+2. Migration 0014 (0011 to 0013 went to docs/29 section 16 and #124): templates, preferences, quiet hours,
+   subscriptions, requests, deliveries; RLS, platform grants; deliveries join the retention job (B4) at 90 days
+   (D-6).
 3. Requests and the `notifications.deliver` handler with the inbox-only router (nothing new leaves the app yet);
-   the dedupe key; tests through the real host.
-4. Web push: VAPID keys, subscriptions, the adapter, the client-web settings page and service worker.
+   the dedupe key; tests through the real host. **Built (P3):** every inbox writer goes through
+   `NotificationRequests` (request, inbox item and a delivered inbox line in one transaction); the
+   `notifications.deliver` job writes one push line per request (`preference_off`, `no_subscription`,
+   `channel_unavailable`, or queued until quiet hours end, D-4); preferences and studio settings are live; erase
+   and merge delete a person's notification rows.
+4. Web push: VAPID keys, subscriptions, the adapter, the client-web settings page and service worker. **Built
+   (P4), server side**, as described in section 4.3:
+   - After a notification commits, the API puts one `notifications.deliver` message on the work queue. The hourly
+     schedule of P5 picks up anything missed.
+   - The worker claims due push lines with `FOR UPDATE SKIP LOCKED` (a line stuck in `sending` for 10 minutes is
+     taken again), sends to every device, and audits `notification.sent` or `notification.failed`.
+   - The service worker and the subscribe button are client-web's part (S3).
 5. Email: domain and SES (after D-1 and D-2), the HTML/RTL skeleton, bounces and complaints, the preferences link.
-6. Reminders: daily and hourly jobs, timing preferences.
+   **Waiting on D-1** (and D-2, D-7): not built on board #176.
+6. Reminders: daily and hourly jobs, timing preferences. **Built (P5)** as one job instead, with no daily part. It
+   runs on `cron(0 7-21 * * ? *)` Asia/Jerusalem, 15 ticks a day, and delivers in the same wake:
+   - **Class tomorrow:** from the studio's send time (default 18:00; a time after 21:00 sends at 21:00) for every
+     booked place.
+   - **Class soon:** at the tick that falls within the studio's hours before the start (default 2), so between one
+     and two hours before. Not for a place booked inside that window. The 07:00 tick covers classes up to 09:00.
+     It goes out at once even in quiet hours when the class starts before they end, as for the other notices about
+     a member's own class. A class before 07:00 gets only the evening-before reminder, and a place booked after the
+     21:00 tick for such a class gets neither (Ofir kept the 07:00-21:00 hours on #176).
+   - **Pass ending:** from the studio's days before the last day (default 7). Not when a later pass follows, nor for
+     a pass that was never longer than that.
+   - **Entries low:** once per card, when it reaches the studio's number of entries left (default 1) or fewer. Not
+     for a card that started that low.
+   - Only active members of active studios, and never a reminder the studio or the member switched off.
+   - The dedupe key (session date, last day, or `low` for entries) makes a repeated or late tick harmless.
+   - Each tick wakes Neon for its five-minute minimum, about 37 compute hours a month if nothing else keeps it
+     awake. Night ticks were dropped to stay inside the free plan.
 7. Templates per studio with preview in the console; the announcement and message-to-booked dialogs.
 
-Steps 1 to 4 and 6 cost nothing and need no domain. Step 5 is the first one that waits on Kris.
+Steps 1 to 4 and 6 cost nothing and need no domain (ADR-0021: VAPID keys in SSM standard parameters, the hourly
+reminder schedule inside the Scheduler free tier, no paid push service). Step 5 is the first one that waits on Kris.
 
 ## 14. Decisions for Kris
+
+On 2026-10-16 (board #176) Kris approved D-3, D-4, D-5, D-6, D-8 and D-9 as **provisional**: they are built as
+written and stay open to a change from Kris. D-1, D-2 and D-7 are **open**.
 
 | Id | Question | Default if nobody objects |
 |---|---|---|

@@ -399,7 +399,10 @@ CREATE INDEX ix_inbox_person ON notifications.inbox_items (organization_id, pers
 - Data migration: every existing studio gets a `booking_policies` row with the defaults; new studios get one in
   `OrganizationService.CreateAsync`.
 - Erasure (docs/27 section 4.7): bookings, passes and inbox items keep their ids and point at the anonymized person;
-  the only free text is `passes.note`, which erase clears. Export adds the person's bookings and passes.
+  the only free text is `passes.note`, which erase clears. Erase also cancels the person's booked and waiting places
+  in classes that have not started (staff cancel, no late charge, the entry returned, the next waiter promoted; audit
+  reason `person_erased`, no notification to the erased person, #191); past bookings and attendance stay for the
+  counts. Export adds the person's bookings and passes.
 - Merge (docs/27 section 4.6): bookings, passes and inbox items move to the survivor; a session where both records
   hold a live booking keeps the survivor's and cancels the other with its entry returned.
 
@@ -538,7 +541,7 @@ Staff with `bookings.manage` move a `booked` place to another session of the sam
   `booked_count` drops by one and its waitlist is promoted as after any cancellation (section 6.3). Both sessions are
   locked `FOR UPDATE` in id order inside one transaction, so two staff moving into the last place cannot overbook.
 - Audit: `booking.moved` on the new booking with `{ fromSessionId, toSessionId, previousBookingId }`. The member gets
-  an inbox item of kind `booking_moved` with the new session.
+  an inbox item of kind `booking.moved` with the new session.
 - A member cannot move their own booking in this step (C-9).
 
 ### 16.2 A message to everyone registered (A3, shipped in #156)
@@ -579,11 +582,13 @@ removes a freeze that has not started yet.
   shortened back on delete). `endsOn` stays the single truth for validity, so `GET /me/passes` and section 5.3 keep
   working without a new rule.
 - While frozen, pass selection (section 5.3) skips the membership; a member whose only pass is frozen gets 409
-  `booking.no_valid_pass` with the freeze dates in the Problem. Bookings already made inside the frozen period are
+  `booking.no_valid_pass` with `frozenUntil` (the last frozen day, `yyyy-MM-dd`) in the Problem, set only when a
+  frozen membership would otherwise have covered the class. Bookings already made inside the frozen period are
   kept (C-11).
 - Punch cards are not frozen in this step (C-12). Overlapping freezes on one pass answer 409 `pass.freeze_overlap`.
-- Audit: `pass.frozen` and `pass.unfrozen` with `{ passId, startsOn, endsOn, days }`. The member gets an inbox item
-  `pass_frozen`.
+- Audit (entity `pass`, id = the pass): `pass.frozen` with `{ personId, freezeId, startsOn, endsOn, days }` and
+  `pass.unfrozen` with `{ personId, freezeId, days }`. The member gets an inbox item `pass.frozen`; removing a freeze
+  sends none.
 
 ### 16.5 Open questions for Kris (added by this section)
 

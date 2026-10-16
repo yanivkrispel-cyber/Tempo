@@ -20,4 +20,10 @@ public static class MessageTypes
 
     /// <summary>The daily retention job: old finished invitations and inbox items go, sent by EventBridge Scheduler (night board #136, B4).</summary>
     public const string RetentionDaily = "retention.daily";
+
+    /// <summary>Route the push line of recent notification requests (docs/30 section 8; day board #176, P3).</summary>
+    public const string NotificationsDeliver = "notifications.deliver";
+
+    /// <summary>Write the due reminders and deliver them, sent hourly in the daytime by EventBridge Scheduler (day board #176, P5).</summary>
+    public const string NotificationsReminders = "notifications.reminders_hourly";
 }

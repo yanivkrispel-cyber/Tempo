@@ -84,14 +84,20 @@ export class Api {
    * (`/sessions`). Answers the parsed body (undefined on 204) and fails on any status not in `accept`.
    */
   async call<T = unknown>(
-    method: "GET" | "POST" | "PATCH" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
-    options: { data?: unknown; params?: Record<string, string | number>; accept?: number[] } = {},
+    options: {
+      data?: unknown;
+      params?: Record<string, string | number>;
+      headers?: Record<string, string>;
+      accept?: number[];
+    } = {},
   ): Promise<T> {
     const response = await this.context.fetch(`${this.studioPath}${path}`, {
       method,
       data: options.data,
       params: options.params,
+      headers: options.headers,
     });
     if (options.accept?.includes(response.status())) {
       return (response.status() === 204 ? undefined : await response.json().catch(() => undefined)) as T;

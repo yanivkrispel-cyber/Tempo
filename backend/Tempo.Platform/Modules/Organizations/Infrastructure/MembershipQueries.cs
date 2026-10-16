@@ -147,6 +147,7 @@ internal static class MembershipQueries
             FROM organizations.invitations i
             JOIN organizations.memberships m ON m.organization_id = i.organization_id AND m.id = i.invited_by_membership_id
             WHERE i.organization_id = $1 AND i.id = $2
+            FOR SHARE OF m
             """,
             organizationId,
             invitationId);

@@ -11,6 +11,9 @@ info:
     Contract v3 adds Studio scheduling and passes (docs/29_Studio_Scheduling_and_Passes_LLD.md, section 9) and
     thin billing (docs/28_Billing_and_Entitlements_LLD.md, section 8).
 
+    Phase 4 part one (docs/30_Communications_LLD.md, section 9) adds notification preferences and quiet hours,
+    web-push subscriptions, the VAPID public key and the studio's notification settings.
+
     **Planned operations.** An operation marked `x-tempo-planned: true` is agreed but not deployed yet; the
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
@@ -1923,7 +1926,7 @@ paths:
       tags: [Passes]
       operationId: unfreezePass
       summary: "Remove a freeze that has not started; validity shrinks back (`passes.manage`)"
-      description: "404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.voided`, `pass.not_freezable`."
+      description: "404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.freeze_has_bookings` (booked or waiting places fall in the days removing it would take off the end; `bookings` gives their count, never the people; move or cancel them first), `pass.voided`, `pass.not_freezable`."
       responses:
         "200":
           description: OK.
@@ -2041,6 +2044,178 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/notification-preferences:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Notifications]
+      operationId: getMyNotificationPreferences
+      summary: "The caller's notification channels, reminder switches and quiet hours in this studio (self)"
+      description: >-
+        Defaults apply when the member never saved (docs/30 sections 5 and 7): inbox and push on for every group,
+        every reminder the studio offers on, quiet hours null (the studio's window applies).
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Notifications]
+      operationId: updateMyNotificationPreferences
+      summary: "Save the caller's notification preferences in this studio (self)"
+      description: >-
+        The inbox cannot be switched off, and the `bookings` group (service notices about the member's own
+        bookings) keeps at least the inbox: `inbox: false` answers 400 `preferences.inbox_required`. Quiet hours are
+        two local times in the studio's time zone; equal times answer 400 `quietHours.invalid`.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationPreferencesInput" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPreferences" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/me/push-subscriptions:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Notifications]
+      operationId: listMyPushSubscriptions
+      summary: "The caller's devices that receive push from this studio (self)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushSubscriptionList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Notifications]
+      operationId: createMyPushSubscription
+      summary: "Register this browser's push subscription for this studio (self)"
+      description: >-
+        The body is the browser's `PushSubscription.toJSON()` plus a device label. Registering an endpoint that is
+        already registered for the caller in this studio returns the existing subscription with 200 (idempotent).
+        The endpoint must be a browser push service over `https://` (FCM, Mozilla autopush, WNS, Apple); anything
+        else answers 400 `push.endpoint_invalid`. Keys that do not decode to a P-256 point and a 16-byte secret
+        answer 400 `push.keys_invalid`. A member keeps at most 10 devices per studio; registering an eleventh drops
+        the oldest. A subscription the push service later reports gone (404 or 410) is deleted by the server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePushSubscriptionRequest" }
+      responses:
+        "200":
+          description: Already registered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushSubscription" }
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushSubscription" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/push-subscriptions/{subscriptionId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SubscriptionId"
+    delete:
+      tags: [Notifications]
+      operationId: deleteMyPushSubscription
+      summary: "Stop push to one of the caller's devices (self)"
+      responses:
+        "204":
+          description: Deleted.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/push/vapid-public-key:
+    get:
+      tags: [Notifications]
+      operationId: getVapidPublicKey
+      summary: "The environment's VAPID public key, for PushManager.subscribe (any signed-in account)"
+      description: >-
+        The same key for every studio in the environment (docs/30 section 4.3). It changes only when the key pair
+        is rotated, after which every browser subscribes again. Before the key pair is set up in an environment
+        the route answers 404 `push.unavailable`; the app then hides the push switch.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VapidPublicKey" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/notification-settings:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Notifications]
+      operationId: getNotificationSettings
+      summary: "The studio's quiet hours and reminder timing (`organization.view`)"
+      description: Defaults until the studio saves (docs/30 D-4, D-5).
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationSettings" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Notifications]
+      operationId: updateNotificationSettings
+      summary: "Change the studio's quiet hours and reminder timing (`organization.settings.manage`)"
+      description: >-
+        A reminder switched off here is off for every member; one switched on is on for members who did not switch
+        it off. Out-of-range values answer 400 with the field in `errors`. Equal quiet-hour times answer 400
+        `quietHours.invalid`.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationSettingsInput" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationSettings" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/organizations/{organizationId}/billing:
     parameters:
@@ -2225,6 +2400,12 @@ components:
       required: false
       description: The `version` you last read. A stale value returns 409 `concurrency.conflict`.
       schema: { type: string }
+
+    SubscriptionId:
+      name: subscriptionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
 
     RoomId:
       name: roomId
@@ -3648,10 +3829,14 @@ components:
         kind:
           type: string
           description: Clients must ignore kinds they do not know.
-          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen]
+          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen, reminder.class_tomorrow, reminder.class_soon, reminder.pass_ending, reminder.entries_low]
         data:
           type: object
-          description: Ids only.
+          description: >-
+            Ids only, and only the ones the kind carries; a key that does not apply is left out. Class kinds carry
+            `sessionId` (and `bookingId` for a place); `pass.frozen`, `reminder.pass_ending` and
+            `reminder.entries_low` carry `passId`. `session.message` carries `sessionId`; its text comes in `text`,
+            and the stored message id is never returned.
           properties:
             sessionId: { type: string, format: uuid }
             bookingId: { type: string, format: uuid }
@@ -3681,6 +3866,170 @@ components:
           items: { $ref: "#/components/schemas/InboxItem" }
         unreadCount: { type: integer }
         nextBefore: { type: [string, "null"], format: uuid }
+
+    # --- Notification preferences and push (docs/30, planned) -------------------------------------
+
+    QuietHours:
+      type: object
+      required: [startsLocal, endsLocal]
+      description: >-
+        A window that may cross midnight (22:00 to 08:00). Reminders and studio messages wait until it ends; a
+        notice about the member's own booking for a class that starts inside the window still goes out (D-4).
+      properties:
+        startsLocal: { $ref: "#/components/schemas/LocalTime" }
+        endsLocal: { $ref: "#/components/schemas/LocalTime" }
+
+    NotificationChannels:
+      type: object
+      required: [inbox, push]
+      description: Email joins as an optional field once docs/30 D-1 is decided; clients must ignore unknown channels.
+      properties:
+        inbox: { type: boolean, description: Always true; the in-app inbox cannot be switched off. }
+        push: { type: boolean }
+
+    NotificationGroupPreference:
+      type: object
+      required: [group, channels]
+      properties:
+        group:
+          type: string
+          enum: [bookings, reminders, studio]
+          description: "`bookings` are service notices about the member's own bookings (docs/30 section 5)."
+        channels: { $ref: "#/components/schemas/NotificationChannels" }
+
+    ReminderSwitches:
+      type: object
+      required: [classTomorrow, classSoon, passEnding, entriesLow]
+      description: The member's own switch per reminder; a reminder the studio switched off never fires.
+      properties:
+        classTomorrow: { type: boolean }
+        classSoon: { type: boolean }
+        passEnding: { type: boolean }
+        entriesLow: { type: boolean }
+
+    NotificationPreferences:
+      type: object
+      required: [groups, reminders, quietHours, studioQuietHours, studioReminders, timeZone, version]
+      properties:
+        groups:
+          type: array
+          description: One row per group, always all three, in the order bookings, reminders, studio.
+          items: { $ref: "#/components/schemas/NotificationGroupPreference" }
+        reminders: { $ref: "#/components/schemas/ReminderSwitches" }
+        quietHours:
+          description: The member's own window; null means the studio's window applies.
+          oneOf:
+            - $ref: "#/components/schemas/QuietHours"
+            - type: "null"
+        studioQuietHours: { $ref: "#/components/schemas/QuietHours" }
+        studioReminders:
+          description: Which reminders the studio offers at all, so the settings page can hide the others.
+          allOf:
+            - $ref: "#/components/schemas/ReminderSwitches"
+        timeZone: { type: string, description: "The studio's IANA time zone, e.g. Asia/Jerusalem." }
+        version: { type: string }
+
+    NotificationPreferencesInput:
+      type: object
+      required: [groups, reminders, quietHours]
+      properties:
+        groups:
+          type: array
+          minItems: 1
+          maxItems: 3
+          description: Groups left out keep their current channels.
+          items: { $ref: "#/components/schemas/NotificationGroupPreference" }
+        reminders: { $ref: "#/components/schemas/ReminderSwitches" }
+        quietHours:
+          oneOf:
+            - $ref: "#/components/schemas/QuietHours"
+            - type: "null"
+
+    PushSubscription:
+      type: object
+      required: [id, deviceLabel, createdAt]
+      description: The endpoint and keys are never returned.
+      properties:
+        id: { type: string, format: uuid }
+        deviceLabel: { type: string, description: "What the settings page lists, e.g. \"Chrome, Android\"." }
+        createdAt: { type: string, format: date-time }
+        lastSuccessAt: { type: [string, "null"], format: date-time }
+
+    PushSubscriptionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PushSubscription" }
+
+    CreatePushSubscriptionRequest:
+      type: object
+      required: [endpoint, keys, deviceLabel]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, maxLength: 128, description: "Base64url, as the browser gives it." }
+            auth: { type: string, maxLength: 64, description: "Base64url, as the browser gives it." }
+        deviceLabel: { type: string, minLength: 1, maxLength: 60 }
+
+    VapidPublicKey:
+      type: object
+      required: [publicKey]
+      properties:
+        publicKey: { type: string, description: "Base64url, uncompressed P-256 point (the `applicationServerKey`)." }
+
+    ReminderTiming:
+      type: object
+      required: [classTomorrow, classSoon, passEnding, entriesLow]
+      properties:
+        classTomorrow:
+          type: object
+          required: [enabled, sendAtLocal]
+          description: The evening before the class (D-5 default 18:00).
+          properties:
+            enabled: { type: boolean }
+            sendAtLocal: { $ref: "#/components/schemas/LocalTime" }
+        classSoon:
+          type: object
+          required: [enabled, hoursBefore]
+          description: Before the class starts (D-5 default 2 hours).
+          properties:
+            enabled: { type: boolean }
+            hoursBefore: { type: integer, minimum: 1, maximum: 12 }
+        passEnding:
+          type: object
+          required: [enabled, daysBefore]
+          description: Before a pass's last day (D-5 default 7 days).
+          properties:
+            enabled: { type: boolean }
+            daysBefore: { type: integer, minimum: 1, maximum: 30 }
+        entriesLow:
+          type: object
+          required: [enabled, entriesLeft]
+          description: When a punch card reaches this many entries left (D-5 default 1).
+          properties:
+            enabled: { type: boolean }
+            entriesLeft: { type: integer, minimum: 1, maximum: 5 }
+
+    NotificationSettings:
+      type: object
+      required: [quietHours, reminders, timeZone, version]
+      properties:
+        quietHours: { $ref: "#/components/schemas/QuietHours" }
+        reminders: { $ref: "#/components/schemas/ReminderTiming" }
+        timeZone: { type: string }
+        version: { type: string }
+
+    NotificationSettingsInput:
+      type: object
+      required: [quietHours, reminders]
+      properties:
+        quietHours: { $ref: "#/components/schemas/QuietHours" }
+        reminders: { $ref: "#/components/schemas/ReminderTiming" }
 
     # --- Billing (docs/28) ------------------------------------------------------------------------
 

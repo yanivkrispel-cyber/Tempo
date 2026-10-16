@@ -177,9 +177,8 @@
   display: flex;
   flex-direction: column;
 }
-.settingSelect {
-  width: 132px;
-  min-height: 38px;
+.quietHours {
+  padding-block: 8px;
 }
 
 .notice {
@@ -202,4 +201,10 @@
 .noticeText {
   white-space: pre-line;
   overflow-wrap: anywhere;
+}
+
+.devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }

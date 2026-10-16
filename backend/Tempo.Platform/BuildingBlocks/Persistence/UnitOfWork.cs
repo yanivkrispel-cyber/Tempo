@@ -13,6 +13,7 @@ public sealed class UnitOfWork : IAsyncDisposable
 {
     private readonly NpgsqlConnection connection;
     private readonly NpgsqlTransaction transaction;
+    private Dictionary<string, Func<CancellationToken, Task>>? afterCommit;
 
     private UnitOfWork(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
@@ -65,7 +66,24 @@ public sealed class UnitOfWork : IAsyncDisposable
     public Task SetTenantAsync(Guid userAccountId, Guid organizationId, CancellationToken cancellationToken) =>
         SetAsync(userAccountId, organizationId, cancellationToken);
 
-    public Task CommitAsync(CancellationToken cancellationToken) => transaction.CommitAsync(cancellationToken);
+    public async Task CommitAsync(CancellationToken cancellationToken)
+    {
+        await transaction.CommitAsync(cancellationToken);
+        foreach (var action in afterCommit?.Values ?? Enumerable.Empty<Func<CancellationToken, Task>>())
+        {
+            await action(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> once after a successful commit, however often it is registered under
+    /// <paramref name="key"/>; never after a rollback. The action must not throw: the change is already committed.
+    /// </summary>
+    public void AfterCommit(string key, Func<CancellationToken, Task> action)
+    {
+        afterCommit ??= new Dictionary<string, Func<CancellationToken, Task>>(StringComparer.Ordinal);
+        afterCommit.TryAdd(key, action);
+    }
 
     public async ValueTask DisposeAsync()
     {

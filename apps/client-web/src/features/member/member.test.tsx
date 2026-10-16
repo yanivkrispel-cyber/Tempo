@@ -445,6 +445,51 @@ describe("promotion and the inbox", () => {
     expect(within(item!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
   });
 
+  it("shows reminders, linking class ones to the class", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a06",
+          kind: "reminder.class_soon",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          createdAt: "2026-10-13T08:50:00Z",
+          readAt: null,
+        },
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a07",
+          kind: "reminder.entries_low",
+          data: { passId: "0199e5a1-0000-7000-8000-0000000000f1" },
+          createdAt: "2026-10-13T08:30:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [classSoon, entriesLow] = within(list).getAllByRole("listitem");
+    expect(classSoon).toHaveTextContent("תזכורת: השיעור מתחיל בקרוב");
+    expect(within(classSoon!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
+    expect(entriesLow).toHaveTextContent("נשארו מעט כניסות בכרטיסייה");
+    expect(within(entriesLow!).queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("tells a member the studio froze their pass (the push points here)", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a08",
+          kind: "pass.frozen",
+          data: { passId: "0199e5a1-0000-7000-8000-0000000000f1" },
+          createdAt: "2026-10-13T08:30:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [frozen] = within(list).getAllByRole("listitem");
+    expect(frozen).toHaveTextContent("הסטודיו הקפיא את המנוי שלך");
+    expect(within(frozen!).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("tells a member the studio moved the place, linking the new class", async () => {
     renderAt("/inbox", {
       inbox: [
@@ -583,7 +628,7 @@ describe("profile", () => {
     );
 
     expect(await screen.findByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
-    expect(screen.getByRole("combobox", { name: "תזכורת לפני שיעור" })).toHaveValue("2h");
+    expect(screen.getByRole("link", { name: /העדפות התראות/ })).toHaveAttribute("href", "/profile/notifications");
     expect(screen.getByText("נחתמה")).toHaveClass("tp-chip--success");
   });
 

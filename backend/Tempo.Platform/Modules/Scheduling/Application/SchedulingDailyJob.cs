@@ -1,4 +1,5 @@
 using Tempo.Platform.BuildingBlocks.Persistence;
+using Tempo.Platform.Modules.Notifications.Application;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
@@ -93,10 +94,10 @@ public sealed class SchedulingDailyJob(IDataSourceProvider dataSources, TimeProv
 
         foreach (var (organizationId, booking, person, session) in expired)
         {
-            await using var inbox = unitOfWork.Command(
-                "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, 'waitlist.expired', jsonb_build_object('sessionId', $4::uuid, 'bookingId', $5::uuid), now())",
-                organizationId, Guid.CreateVersion7(), person, session, booking);
-            await inbox.ExecuteNonQueryAsync(cancellationToken);
+            await NotificationRequests.WriteAsync(
+                unitOfWork,
+                new NotificationRequest(organizationId, person, "waitlist.expired", "booking", booking, new Dictionary<string, Guid> { ["sessionId"] = session, ["bookingId"] = booking }),
+                cancellationToken);
         }
 
         await unitOfWork.CommitAsync(cancellationToken);

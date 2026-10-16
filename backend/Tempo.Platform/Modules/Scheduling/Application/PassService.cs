@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Notifications.Application;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
@@ -123,7 +124,7 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
             weeklyCap = product.WeeklyCap is null or (>= 1 and <= 14) ? product.WeeklyCap : throw Invalid("weeklyCap", "Use 1 to 14 classes a week, or none.");
         }
 
-        var category = product.ClassCategory is null || System.Text.RegularExpressions.Regex.IsMatch(product.ClassCategory, "^[a-z][a-z0-9_]{1,29}$")
+        var category = product.ClassCategory is null || System.Text.RegularExpressions.Regex.IsMatch(product.ClassCategory, "^[a-z][a-z0-9_]{1,29}$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100))
             ? product.ClassCategory
             : throw Invalid("classCategory", "Use a class category, e.g. pilates.");
         var price = product.PriceAgorot is null or >= 0 ? product.PriceAgorot : throw Invalid("priceAgorot", "A price cannot be negative.");
@@ -335,12 +336,10 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
         }
 
         await AuditAsync(unitOfWork, tenant, "pass.frozen", "pass", passId, new { personId, freezeId, startsOn, endsOn, days }, cancellationToken);
-        await using (var inbox = unitOfWork.Command(
-            "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, 'pass.frozen', jsonb_build_object('passId', $4::uuid), now())",
-            tenant.OrganizationId, Guid.CreateVersion7(), personId, passId))
-        {
-            await inbox.ExecuteNonQueryAsync(cancellationToken);
-        }
+        await NotificationRequests.WriteAsync(
+            unitOfWork,
+            new NotificationRequest(tenant.OrganizationId, personId, "pass.frozen", "pass", passId, new Dictionary<string, Guid> { ["passId"] = passId }),
+            cancellationToken);
 
         var frozen = (await PassesAsync(unitOfWork, tenant.OrganizationId, "WHERE ps.organization_id = $1 AND ps.id = $3", cancellationToken, passId)).Single();
         await unitOfWork.CommitAsync(cancellationToken);
@@ -374,6 +373,33 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
         }
 
         var days = endsOn.DayNumber - startsOn.DayNumber + 1;
+
+        // Removing the freeze takes its days off the end (#178). A place held on this pass, or a waiting place of
+        // the person, in the days that would go would sit after the pass's end: staff move or cancel it first. The
+        // error gives the count, never the people.
+        await using (var held = unitOfWork.Command(
+            """
+            SELECT count(DISTINCT b.id)
+            FROM scheduling.passes ps
+            JOIN scheduling.bookings b ON b.organization_id = ps.organization_id AND b.status IN ('booked', 'waitlisted')
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE ps.organization_id = $1 AND ps.id = $2
+              AND s.local_date > ps.ends_on - $3 AND s.local_date <= ps.ends_on
+              AND (EXISTS (SELECT 1 FROM scheduling.pass_uses u WHERE u.organization_id = b.organization_id AND u.booking_id = b.id AND u.pass_id = ps.id AND u.status = 'held')
+                   OR (b.status = 'waitlisted' AND b.person_id = ps.person_id))
+            """,
+            tenant.OrganizationId, passId, days))
+        {
+            var count = (long)(await held.ExecuteScalarAsync(cancellationToken))!;
+            if (count > 0)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.freeze_has_bookings", "Bookings fall in the days this freeze added. Move or cancel them first.")
+                {
+                    Extensions = new Dictionary<string, object?> { ["bookings"] = count }
+                };
+            }
+        }
+
         await using (var delete = unitOfWork.Command("DELETE FROM scheduling.pass_freezes WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, freezeId))
         {
             await delete.ExecuteNonQueryAsync(cancellationToken);

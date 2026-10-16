@@ -427,6 +427,81 @@
           </div>
         </section>
 
+        <!-- ===================================================== Template preview -->
+        <section class="pv-cell tp-card" aria-labelledby="pv-template">
+          <header>
+            <h2 id="pv-template">תצוגה מקדימה של תבנית</h2>
+            <code>.tp-template-preview · .tp-template-preview--push · .tp-template-preview__var</code>
+            <span class="tp-caption tp-muted"
+              >ההודעה בתיבה עם כותרת וגוף מעוצב בקלות, והתראת הפוש: כותרת ושורה אחת עד 120 תווים. משתנה בלי ערך נשאר כפי
+              שנכתב.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch" id="pv-template-stage">
+            <div class="tp-template-preview" role="group" aria-label="תצוגה מקדימה של הודעה בתיבה">
+              <p class="tp-template-preview__title" dir="auto">השיעור מחר בוטל</p>
+              <div class="tp-template-preview__body">
+                <p dir="auto">היי דנה, השיעור <strong>פילאטיס מכשירים</strong> ביום שלישי, 21.10, בשעה 18:30 בוטל.</p>
+                <p dir="auto">
+                  הכניסה חזרה לכרטיסייה, ונשארו לך
+                  <span class="tp-template-preview__var">{{pass.entriesLeft}}</span> כניסות.
+                  <a href="#">לשיעורים אחרים</a>
+                </p>
+              </div>
+            </div>
+            <div
+              class="tp-template-preview tp-template-preview--push"
+              role="group"
+              aria-label="תצוגה מקדימה של התראת פוש"
+            >
+              <span class="tp-template-preview__tile" aria-hidden="true"
+                ><svg class="tp-icon"><use href="#i-bell" /></svg
+              ></span>
+              <div class="tp-template-preview__text">
+                <p class="tp-template-preview__title" dir="auto">השיעור מחר בוטל</p>
+                <p class="tp-template-preview__body" dir="auto">
+                  היי דנה, השיעור פילאטיס מכשירים ביום שלישי, 21.10, בשעה 18:30 בוטל.
+                </p>
+              </div>
+            </div>
+            <div class="tp-template-preview" role="group" aria-label="תצוגה מקדימה באנגלית">
+              <p class="tp-template-preview__title" dir="auto">Class cancelled</p>
+              <div class="tp-template-preview__body"><p dir="auto">Hi Dana, Tuesday's reformer class is off.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================== Time range -->
+        <section class="pv-cell tp-card" aria-labelledby="pv-time-range">
+          <header>
+            <h2 id="pv-time-range">טווח שעות</h2>
+            <code>.tp-time-range</code>
+            <span class="tp-caption tp-muted"
+              >שעות שקטות: "מ־" ו"עד" זו לצד זו, גם בטלפון; שעה זהה בשני השדות מסומנת בשדה הסיום.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch">
+            <div class="tp-time-range" role="group" aria-label="שעות שקטות">
+              <div class="tp-field">
+                <label class="tp-field__label" for="pv-tr-from">מ־</label>
+                <input class="tp-input" id="pv-tr-from" value="22:00" inputmode="numeric" />
+              </div>
+              <div class="tp-field tp-field--invalid">
+                <label class="tp-field__label" for="pv-tr-to">עד</label>
+                <input
+                  class="tp-input"
+                  id="pv-tr-to"
+                  value="22:00"
+                  inputmode="numeric"
+                  aria-invalid="true"
+                  aria-describedby="pv-tr-to-msg"
+                />
+                <p class="tp-field__help" id="pv-tr-to-msg">שעת הסיום צריכה להיות שונה משעת ההתחלה.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- ===================================================== Tab bar -->
         <section class="pv-cell tp-card" aria-labelledby="pv-tabbar">
           <header>

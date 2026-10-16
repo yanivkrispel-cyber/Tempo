@@ -20,6 +20,8 @@
 
 import { execFileSync } from "node:child_process";
 
+import { waitForOperations as waitForNeonOperations, withBranch } from "./lib/neon-branch.mjs";
+
 const NEON_API = "https://console.neon.tech/api/v2";
 const DEFAULT_PROJECT = { dev: "wild-darkness-22822656" };
 const TABLES = [
@@ -104,17 +106,11 @@ async function sql(connectionUri, query) {
   return body.rows;
 }
 
-async function waitForOperations(operations) {
-  for (const op of operations ?? []) {
-    for (let tries = 0; tries < 60; tries += 1) {
-      const { operation } = await neon("GET", `/projects/${args.project}/operations/${op.id}`);
-      if (operation.status === "finished") break;
-      if (operation.status === "failed" || operation.status === "error")
-        throw new Error(`operation ${op.action} ${operation.status}`);
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
-    }
-  }
-}
+const waitForOperations = (operations) =>
+  waitForNeonOperations(
+    async (id) => (await neon("GET", `/projects/${args.project}/operations/${id}`)).operation,
+    operations,
+  );
 
 async function connectionUri(branchId) {
   const { uri } = await neon(
@@ -158,34 +154,39 @@ const timestamp = new Date(Date.now() - args.minutesAgo * 60_000).toISOString();
 const name = `restore-drill-${timestamp.replace(/[:.]/g, "-")}`;
 console.log(`\ncreating branch ${name} from ${main.name} as of ${timestamp} ...`);
 const createdAt = Date.now();
-const created = await neon("POST", `/projects/${args.project}/branches`, {
-  branch: { parent_id: main.id, parent_timestamp: timestamp, name },
-  endpoints: [{ type: "read_only" }],
-});
-await waitForOperations(created.operations);
-const branchReadyMs = Date.now() - createdAt;
-console.log(`branch ready in ${branchReadyMs} ms`);
-
+let branchReadyMs = 0;
 let exitCode = 0;
-try {
-  const restored = await inspect("restored branch", await connectionUri(created.branch.id));
-  const live = await inspect("main branch (now)", await connectionUri(main.id));
-  const sameJournal = restored.journal.applied === live.journal.applied && restored.journal.last === live.journal.last;
-  console.log(`\n${sameJournal ? "✓" : "✗"} the restored branch carries the same migrations as main`);
-  const drifted = Object.keys(live.counts).filter((t) => live.counts[t] !== restored.counts[t]);
-  console.log(
-    `${drifted.length === 0 ? "✓" : "·"} row counts ${drifted.length === 0 ? "identical" : `differ in ${drifted.join(", ")} (changes since the restore point)`}`,
-  );
-  if (!sameJournal) exitCode = 1;
-} finally {
-  if (args.keep) {
-    console.log(`\nkeeping branch ${created.branch.id}; delete it yourself (it counts toward storage)`);
-  } else {
-    const deleted = await neon("DELETE", `/projects/${args.project}/branches/${created.branch.id}`);
-    await waitForOperations(deleted.operations);
-    console.log(`\nbranch deleted`);
-  }
-}
+await withBranch(
+  {
+    create: () =>
+      neon("POST", `/projects/${args.project}/branches`, {
+        branch: { parent_id: main.id, parent_timestamp: timestamp, name },
+        endpoints: [{ type: "read_only" }],
+      }),
+    wait: waitForOperations,
+    keep: args.keep,
+    remove: async (branchId) => {
+      const deleted = await neon("DELETE", `/projects/${args.project}/branches/${branchId}`);
+      await waitForOperations(deleted.operations);
+      console.log(`\nbranch deleted`);
+    },
+  },
+  async (created) => {
+    branchReadyMs = Date.now() - createdAt;
+    console.log(`branch ready in ${branchReadyMs} ms`);
+    if (args.keep) console.log(`keeping branch ${created.branch.id}; delete it yourself (it counts toward storage)`);
+    const restored = await inspect("restored branch", await connectionUri(created.branch.id));
+    const live = await inspect("main branch (now)", await connectionUri(main.id));
+    const sameJournal =
+      restored.journal.applied === live.journal.applied && restored.journal.last === live.journal.last;
+    console.log(`\n${sameJournal ? "✓" : "✗"} the restored branch carries the same migrations as main`);
+    const drifted = Object.keys(live.counts).filter((t) => live.counts[t] !== restored.counts[t]);
+    console.log(
+      `${drifted.length === 0 ? "✓" : "·"} row counts ${drifted.length === 0 ? "identical" : `differ in ${drifted.join(", ")} (changes since the restore point)`}`,
+    );
+    if (!sameJournal) exitCode = 1;
+  },
+);
 
 console.log(
   `\nRESTORE DRILL ${exitCode === 0 ? "PASSED" : "FAILED"}: window ${retentionHours} h, branch ready in ${(branchReadyMs / 1000).toFixed(1)} s, whole drill ${((Date.now() - drillStart) / 1000).toFixed(1)} s`,
