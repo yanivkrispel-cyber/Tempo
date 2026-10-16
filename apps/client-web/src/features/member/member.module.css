@@ -205,3 +205,9 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+
+.devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
