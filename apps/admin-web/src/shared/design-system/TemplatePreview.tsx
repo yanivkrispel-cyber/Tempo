@@ -82,6 +82,21 @@ function renderInline(text: string, values: Readonly<Record<string, string>>, ke
   return nodes;
 }
 
+/** The subject as the API sends it: variables filled, no markup (a `**` or `[x](y)` shows as written). */
+function renderSubject(text: string, values: Readonly<Record<string, string>>): ReactNode[] {
+  return text.split(/(\{\{\s*[A-Za-z][\w.]*\s*\}\})/).map((part, index) => {
+    const name = variable.exec(part)?.[1];
+    if (name === undefined) return part;
+    return (
+      values[name] ?? (
+        <span key={`t-${index}`} className="tp-template-preview__var">
+          {part}
+        </span>
+      )
+    );
+  });
+}
+
 /** The push body as plain text: the first paragraph without markup, variables filled, at most 120 characters. */
 export function pushBody(body: string, values: Readonly<Record<string, string>> = {}): string {
   const first = paragraphs(body)[0] ?? "";
@@ -106,7 +121,7 @@ export function pushBody(body: string, values: Readonly<Record<string, string>> 
  */
 export function TemplatePreview({ channel, subject, body, values = {}, label, className }: TemplatePreviewProps) {
   const name = label ?? (channel === "push" ? "תצוגה מקדימה של התראת פוש" : "תצוגה מקדימה של הודעה בתיבה");
-  const title = renderInline(subject, values, "t");
+  const title = renderSubject(subject, values);
 
   if (channel === "push") {
     return (
