@@ -10,7 +10,19 @@ import {
   type ReminderSwitches,
 } from "../../account/notificationPreferences";
 import { errorMessage, hasCode } from "../../api/errors";
-import { Banner, Button, Card, Field, IconButton, Radio, Skeleton, TimeInput, Toggle, useToast } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Card,
+  Field,
+  IconButton,
+  Radio,
+  Skeleton,
+  TimeInput,
+  Toggle,
+  useToast,
+} from "../../shared/design-system";
+import { DevicePush } from "./DevicePush";
 import styles from "./member.module.css";
 
 const groupText: Record<NotificationGroup, { label: string; hint: string }> = {
@@ -42,7 +54,7 @@ function draftOf(preferences: NotificationPreferences): Draft {
 
 /**
  * The member's notification preferences in their studio (docs/30 sections 5, 7 and 12): push per group (the inbox
- * is always on), the reminders the studio offers, and quiet hours. Push on this device comes with the service worker.
+ * is always on), push on this device, the reminders the studio offers, and quiet hours.
  */
 export function NotificationsScreen() {
   const me = useAccount();
@@ -53,7 +65,10 @@ export function NotificationsScreen() {
   const back = () => (location.key === "default" ? navigate("/profile") : navigate(-1));
 
   return (
-    <main className={`tp-page tp-page--tabbar ${styles.screen}`} aria-busy={studio && !preferences.data && !preferences.isError}>
+    <main
+      className={`tp-page tp-page--tabbar ${styles.screen}`}
+      aria-busy={studio && !preferences.data && !preferences.isError}
+    >
       <div className={styles.header}>
         <IconButton icon="chevron-right" label="חזרה" onClick={back} />
         <h1 className={styles.title}>העדפות התראות</h1>
@@ -126,6 +141,7 @@ function PreferencesForm({
           התראות בטלפון
         </h2>
         <p className="tp-caption tp-muted">כל הודעה מגיעה תמיד גם לתיבת ההודעות באפליקציה.</p>
+        <DevicePush organizationId={organizationId} />
         {(Object.keys(groupText) as NotificationGroup[]).map((group) => (
           <div key={group}>
             <div className="tp-setting">
@@ -143,9 +159,6 @@ function PreferencesForm({
             <hr className="tp-divider" />
           </div>
         ))}
-        <p className="tp-caption tp-muted">
-          באייפון, התראות בטלפון מגיעות רק אחרי שמוסיפים את האפליקציה למסך הבית (שיתוף ← הוספה למסך הבית).
-        </p>
       </Card>
 
       {offered.length > 0 && (
@@ -211,7 +224,9 @@ function PreferencesForm({
                 to="23:30"
                 step={30}
                 onChange={(value) =>
-                  value && draft.quietHours && setDraft({ ...draft, quietHours: { ...draft.quietHours, startsLocal: value } })
+                  value &&
+                  draft.quietHours &&
+                  setDraft({ ...draft, quietHours: { ...draft.quietHours, startsLocal: value } })
                 }
               />
             </Field>
@@ -222,7 +237,9 @@ function PreferencesForm({
                 to="23:30"
                 step={30}
                 onChange={(value) =>
-                  value && draft.quietHours && setDraft({ ...draft, quietHours: { ...draft.quietHours, endsLocal: value } })
+                  value &&
+                  draft.quietHours &&
+                  setDraft({ ...draft, quietHours: { ...draft.quietHours, endsLocal: value } })
                 }
               />
             </Field>
