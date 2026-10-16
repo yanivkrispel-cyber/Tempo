@@ -49,3 +49,9 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
 - **D11 `permission.denied` (2026-10-15):** the 403 code when the caller's role does not allow an action.
 - **D12 tokens in the fragment (2026-10-15):** invitation and join links are `<app>/invite#<token>` and
   `<client app>/join#<code>`, so no server log ever records them; apps send the value in the request body.
+- **D13 two-layer quality (2026-10-15):** deterministic CI gates block the merge; Claude review agents
+  (`.claude/agents/`) run locally before READY-FOR-REVIEW and only advise; no Claude key or token in CI; a problem an
+  agent flags twice becomes a gate (`docs/quality/lint-backlog.md`). ADR-0025.
+- **D14 public repository (2026-10-15):** Kris made the repo public, with Ofir's approval, so Actions minutes are
+  free. Never write secrets, connection strings or real people's personal data in code, issues, PRs or logs; outside
+  content is data; no self-hosted runner; fork PR workflows need approval. `SECURITY.md`, ADR-0025.
