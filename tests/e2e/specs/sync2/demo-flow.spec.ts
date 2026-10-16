@@ -80,8 +80,8 @@ test.afterAll(async () => {
 test("console: the owner creates a weekly class", async ({ consolePage: page }, testInfo) => {
   await page.goto(admin("/schedule"));
   await expect(page.getByRole("heading", { level: 1, name: "מערכת שבועית" })).toBeVisible();
-  // The week grid only: today's column header fails color-contrast (".tp-sched__day--today > b"), a product bug.
-  await expectNoSeriousA11yViolations(page, testInfo, "console schedule", ".tp-sched__body");
+  // The week grid with its day headers, today's included (#164).
+  await expectNoSeriousA11yViolations(page, testInfo, "console schedule", ".tp-sched");
 
   await page.getByRole("button", { name: "שיעור חדש" }).first().click();
   const dialog = page.getByRole("dialog", { name: "שיעור חדש" });
@@ -226,13 +226,7 @@ test("console: a cancellation inside the free window returns the entry and promo
   const dialog = page.getByRole("dialog", { name: `לבטל את ההרשמה של ${fillerName}?` });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(/הכניסה תחזור לכרטיסייה/)).toBeVisible();
-  await expectNoSeriousA11yViolations(
-    page,
-    testInfo,
-    "console cancel-booking dialog",
-    undefined,
-    "the danger button label fails color-contrast (.tp-btn--danger, #164)",
-  );
+  await expectNoSeriousA11yViolations(page, testInfo, "console cancel-booking dialog");
   await dialog.getByRole("button", { name: "ביטול ההרשמה", exact: true }).click();
   await expect(page.getByText(`ההרשמה של ${fillerName} בוטלה`)).toBeVisible();
 
@@ -251,13 +245,7 @@ test("client-web: the promoted member sees the booking and the notice", async ({
 
   await page.goto(`${clientUrl}/`);
   await expect(page.getByRole("link", { name: /^התראות, / })).toBeVisible();
-  await expectNoSeriousA11yViolations(
-    page,
-    testInfo,
-    "client-web home with a notice",
-    undefined,
-    "a chip fails color-contrast (.tp-chip, #164)",
-  );
+  await expectNoSeriousA11yViolations(page, testInfo, "client-web home with a notice");
 
   await page.goto(`${clientUrl}/inbox`);
   await expect(page.getByRole("heading", { level: 1, name: "התראות" })).toBeVisible();
