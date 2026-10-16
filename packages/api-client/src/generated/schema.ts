@@ -1373,7 +1373,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a freeze that has not started; validity shrinks back (`passes.manage`)
-         * @description 404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.voided`, `pass.not_freezable`.
+         * @description 404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.freeze_has_bookings` (booked or waiting places fall in the days removing it would take off the end; `bookings` gives their count, never the people; move or cancel them first), `pass.voided`, `pass.not_freezable`.
          */
         delete: operations["unfreezePass"];
         options?: never;
