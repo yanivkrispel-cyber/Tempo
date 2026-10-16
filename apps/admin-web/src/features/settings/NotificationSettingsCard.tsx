@@ -177,6 +177,9 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
             (hoursBefore) => setReminder("classSoon", { hoursBefore }),
             reminders.classSoon.enabled,
           )}
+          <p className="tp-caption tp-muted">
+            התזכורות יוצאות בין 07:00 ל־21:00, ולכן שיעור שמתחיל לפני 07:00 מקבל רק את התזכורת של הערב שלפני.
+          </p>
 
           <Toggle
             label="לפני שהמנוי או הכרטיסייה פגים"

@@ -63,6 +63,7 @@ describe("studio notification settings", () => {
     await userEvent.selectOptions(within(card).getByRole("combobox", { name: "כמה זמן לפני" }), "3");
     await userEvent.click(within(card).getByRole("switch", { name: "כשנשארות מעט כניסות בכרטיסייה" }));
     expect(within(card).getByRole("combobox", { name: "כשנשארות" })).toBeDisabled();
+    expect(card).toHaveTextContent("שיעור שמתחיל לפני 07:00 מקבל רק את התזכורת של הערב שלפני");
     await userEvent.click(save);
 
     expect(await screen.findByText("הגדרות ההתראות נשמרו")).toBeInTheDocument();
