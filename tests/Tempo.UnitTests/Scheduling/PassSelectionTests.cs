@@ -55,6 +55,19 @@ public sealed class PassSelectionTests
         PassSelection.Pick([frozen], Tuesday.AddDays(2), "pilates").Should().NotBeNull();
     }
 
+    [Fact]
+    public void FrozenUntil_OnlyWhenTheFrozenMembershipWouldOtherwiseFit()
+    {
+        // #172: a frozen yoga membership is not the reason a pilates class has no pass.
+        var frozenYoga = Pass("yoga", "membership", ends: Tuesday.AddDays(20), category: "yoga", freezes: [(Tuesday.AddDays(-1), Tuesday.AddDays(3))]);
+        var frozenPilates = Pass("pilates", "membership", ends: Tuesday.AddDays(20), category: "pilates", freezes: [(Tuesday.AddDays(-1), Tuesday.AddDays(3))]);
+        var cappedFrozen = Pass("capped", "membership", ends: Tuesday.AddDays(20), cap: 1, held: [Tuesday.AddDays(-1)], freezes: [(Tuesday, Tuesday.AddDays(3))]);
+
+        PassSelection.FrozenUntil([frozenYoga], Tuesday, "pilates").Should().BeNull();
+        PassSelection.FrozenUntil([frozenPilates], Tuesday, "pilates").Should().Be(Tuesday.AddDays(3));
+        PassSelection.FrozenUntil([cappedFrozen], Tuesday, "pilates").Should().BeNull("the weekly cap is the reason, not the freeze");
+    }
+
     private static PassCandidate Pass(string name, string kind, DateOnly ends, int? entries = null, int used = 0, int? cap = null, string? category = null, DateOnly[]? held = null, (DateOnly From, DateOnly To)[]? freezes = null) =>
         new(Guid.NewGuid(), name, kind, Tuesday.AddDays(-30), ends, entries, used, cap, category, held ?? [], freezes);
 }

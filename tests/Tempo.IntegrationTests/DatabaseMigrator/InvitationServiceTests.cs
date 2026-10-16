@@ -250,6 +250,35 @@ public sealed class InvitationServiceTests(PostgresFixture postgres) : IClassFix
         (await accept.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
     }
 
+    [Fact]
+    public async Task Accept_WaitsForAConcurrentDemotionOfTheInviter_AndIsThenRefused()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (_, studioId) = await StudioAsync(db);
+        var admin = await MemberAsync(db, studioId, "admin@example.com", MembershipRole.Admin);
+        var service = Invitations(db);
+        var invitee = await AccountAsync(db, "staff@example.com");
+        var created = await service.CreateAsync(admin, "staff@example.com", MembershipRole.Staff, CancellationToken.None);
+
+        // #137: the inviter loses the right in a transaction that has not committed yet.
+        await using var demotion = postgres.ConnectAsMaster(db.Name);
+        await demotion.OpenAsync();
+        await using var transaction = await demotion.BeginTransactionAsync();
+        await using (var demote = new Npgsql.NpgsqlCommand("UPDATE organizations.memberships SET role = 'staff' WHERE id = $1", demotion, transaction))
+        {
+            demote.Parameters.Add(new Npgsql.NpgsqlParameter { Value = admin.MembershipId });
+            await demote.ExecuteNonQueryAsync();
+        }
+
+        var accept = Task.Run(() => service.AcceptAsync(invitee, created.Token, "c", CancellationToken.None));
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        accept.IsCompleted.Should().BeFalse("the accept waits on the inviter's membership row instead of reading the old role");
+
+        await transaction.CommitAsync();
+        var refused = () => accept;
+        (await refused.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
+    }
+
     private static InvitationService Invitations(MigratedDatabase db) => new(db, new AccountProfiles(db), new AttemptLimiter(db));
 
     private static MemberService Members(MigratedDatabase db) => new(db, new AccountProfiles(db));

@@ -91,7 +91,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         }
 
         var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, person, session, lockRows: true, cancellationToken)
-            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, person, session.LocalDate, "No punch card or membership is valid for this class.", cancellationToken);
+            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, person, session, "No punch card or membership is valid for this class.", cancellationToken);
         var bookingId = Guid.CreateVersion7();
         try
         {
@@ -268,7 +268,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         // nothing was spent or returned, and a pass that does not cover the new class rolls the whole move back.
         await ReturnEntryAsync(unitOfWork, tenant.OrganizationId, bookingId, cancellationToken);
         var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, personId, to, lockRows: true, cancellationToken)
-            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, personId, to.LocalDate, "No punch card or membership is valid for the new class.", cancellationToken);
+            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, personId, to, "No punch card or membership is valid for the new class.", cancellationToken);
         if (!await TakePlaceAsync(unitOfWork, tenant.OrganizationId, to.Id, cancellationToken))
         {
             throw Conflict("session.full", "This class is full.");
@@ -413,7 +413,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         {
             var pick = PassSelection.Pick(candidates, date, category);
             // The sheet warns before the 409 when the caller's membership is frozen on that day (docs/29 section 16.4).
-            var frozenUntil = pick is null ? PassSelection.FrozenUntil(candidates, date) : null;
+            var frozenUntil = pick is null ? PassSelection.FrozenUntil(candidates, date, category) : null;
             if (pick is not null || frozenUntil is not null)
             {
                 previews[sessionId] = new SessionPassView(pick is null ? null : new PassSummaryView(pick.Id, pick.Name, pick.Kind, pick.EndsOn, pick.EntriesLeft), frozenUntil);
@@ -427,16 +427,9 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
     /// 409 booking.no_valid_pass; when the person's membership is frozen on that day the Problem says until when
     /// (`frozenUntil`), so the apps can explain instead of guessing.
     /// </summary>
-    private static async Task<DomainRuleViolationException> NoValidPassAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, DateOnly date, string message, CancellationToken cancellationToken)
+    private static async Task<DomainRuleViolationException> NoValidPassAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, SessionFacts session, string message, CancellationToken cancellationToken)
     {
-        await using var frozen = unitOfWork.Command(
-            """
-            SELECT max(f.ends_on) FROM scheduling.pass_freezes f
-            JOIN scheduling.passes ps ON ps.organization_id = f.organization_id AND ps.id = f.pass_id
-            WHERE f.organization_id = $1 AND ps.person_id = $2 AND ps.status = 'active' AND f.starts_on <= $3 AND f.ends_on >= $3
-            """,
-            organizationId, personId, date);
-        var until = await frozen.ExecuteScalarAsync(cancellationToken) as DateOnly?;
+        var until = PassSelection.FrozenUntil(await CandidatesAsync(unitOfWork, organizationId, personId, session.LocalDate, cancellationToken), session.LocalDate, session.Category);
         return new DomainRuleViolationException(ViolationKind.Conflict, "booking.no_valid_pass", message)
         {
             Extensions = until is { } u ? new Dictionary<string, object?> { ["frozenUntil"] = u } : null
