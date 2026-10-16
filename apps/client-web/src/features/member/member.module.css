@@ -206,6 +206,13 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+/* A paragraph of the studio's words (Markdown-light). */
+.richParagraph {
+  display: block;
+}
+.richParagraph + .richParagraph {
+  margin-top: 6px;
+}
 
 .devices {
   list-style: none;

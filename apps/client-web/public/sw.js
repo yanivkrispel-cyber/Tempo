@@ -1,8 +1,8 @@
 // Tempo's service worker: web push only (docs/30 section 4.3). No caching, no fetch handler.
 //
-// The push payload carries ids only, plus the class's name and start for class notices; the text is written here,
-// per kind, so nothing a person wrote passes through the browser's push service. Keep the kinds in step with
-// InboxScreen.tsx.
+// The push payload carries ids, the class's name and start for class notices, and since docs/30 step 7 the title and
+// plain body rendered from the studio's template. Without those (older payloads, and announcements, whose text stays
+// in the inbox) the text is written here per kind. Keep the kinds in step with InboxScreen.tsx.
 
 /* global self */
 
@@ -18,13 +18,17 @@ const titles = {
   "reminder.class_soon": "תזכורת: השיעור מתחיל בקרוב",
   "reminder.pass_ending": "המנוי או הכרטיסייה עומדים לפוג",
   "reminder.entries_low": "נשארו מעט כניסות בכרטיסייה",
+  "studio.announcement": "הודעה חדשה מהסטודיו",
 };
 
 const passBodies = {
   "pass.frozen": "הפרטים בתיבת ההודעות באפליקציה.",
   "reminder.pass_ending": "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לחידוש.",
   "reminder.entries_low": "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לכרטיסייה חדשה.",
+  "studio.announcement": "הפרטים בתיבת ההודעות באפליקציה.",
 };
+
+const text = (value) => (typeof value === "string" && value.trim() ? value.trim() : null);
 
 function classLine(session) {
   if (!session || !session.classTypeName) return "";
@@ -48,9 +52,9 @@ function notice(payload) {
   if (payload.inboxItemId) params.set("notification", payload.inboxItemId);
   const path = data.sessionId ? `/classes/${encodeURIComponent(data.sessionId)}` : "/inbox";
   return {
-    title: titles[payload.kind],
+    title: text(payload.title) || titles[payload.kind],
     options: {
-      body: passBodies[payload.kind] || classLine(payload.session),
+      body: text(payload.body) || passBodies[payload.kind] || classLine(payload.session),
       dir: "rtl",
       lang: "he",
       tag: payload.inboxItemId || undefined,

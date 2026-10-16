@@ -490,6 +490,62 @@ describe("promotion and the inbox", () => {
     expect(within(frozen!).queryByRole("link")).not.toBeInTheDocument();
   });
 
+  it("shows the studio's words when the item carries them, with values as plain text", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a09",
+          kind: "reminder.entries_low",
+          data: { passId: "0199e5a1-0000-7000-8000-0000000000f1" },
+          createdAt: "2026-10-13T08:30:00Z",
+          readAt: null,
+          title: "נשארו 2 כניסות",
+          // A filled-in value comes escaped: "\\*" is a plain star, not bold.
+          body: "היי נועה\\*, **כדאי לחדש**.\n\n[לכרטיסייה](/passes) [בחוץ](javascript:alert(1))",
+        },
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a0a",
+          kind: "reminder.class_soon",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          createdAt: "2026-10-13T08:20:00Z",
+          readAt: null,
+          title: "עוד מעט ויניאסה",
+          body: "[לפרטים](/classes/x)",
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [entriesLow, classSoon] = within(list).getAllByRole("listitem");
+    expect(entriesLow).toHaveTextContent("נשארו 2 כניסות");
+    expect(entriesLow).toHaveTextContent("היי נועה*, כדאי לחדש.");
+    expect(within(entriesLow!).getByText("כדאי לחדש", { selector: "strong" })).toBeInTheDocument();
+    expect(within(entriesLow!).getByRole("link", { name: "לכרטיסייה" })).toHaveAttribute("href", "/passes");
+    expect(within(entriesLow!).queryByRole("link", { name: "בחוץ" })).not.toBeInTheDocument();
+    // The card is the link to the class, so the body's link stays text.
+    expect(classSoon).toHaveTextContent("עוד מעט ויניאסה");
+    expect(within(classSoon!).getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("shows a studio announcement's subject and text", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a0b",
+          kind: "studio.announcement",
+          data: {},
+          createdAt: "2026-10-13T08:30:00Z",
+          readAt: null,
+          title: "שיעור פתוח בשישי",
+          text: "**בואו** לנסות",
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [announcement] = within(list).getAllByRole("listitem");
+    expect(announcement).toHaveTextContent("שיעור פתוח בשישי");
+    expect(within(announcement!).getByText("בואו", { selector: "strong" })).toBeInTheDocument();
+  });
+
   it("tells a member the studio moved the place, linking the new class", async () => {
     renderAt("/inbox", {
       inbox: [
