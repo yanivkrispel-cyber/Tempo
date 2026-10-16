@@ -26,10 +26,17 @@ public sealed record PassCandidate(
 /// </summary>
 public static class PassSelection
 {
-    /// <summary>The last frozen day covering <paramref name="sessionDate"/> on any of the person's memberships, or null.</summary>
-    public static DateOnly? FrozenUntil(IEnumerable<PassCandidate> passes, DateOnly sessionDate) =>
+    /// <summary>
+    /// The last frozen day covering <paramref name="sessionDate"/> on a membership that would otherwise fit the class
+    /// (dates, category, entries left, weekly cap), or null: when the real reason is something else, "frozen" would
+    /// mislead (#172).
+    /// </summary>
+    public static DateOnly? FrozenUntil(IEnumerable<PassCandidate> passes, DateOnly sessionDate, string classCategory) =>
         passes
-            .Where(p => p.StartsOn <= sessionDate && p.IsFrozenOn(sessionDate))
+            .Where(p => p.StartsOn <= sessionDate && sessionDate <= p.EndsOn && p.IsFrozenOn(sessionDate))
+            .Where(p => p.ClassCategory is null || p.ClassCategory == classCategory)
+            .Where(p => p.EntriesLeft is null or > 0)
+            .Where(p => p.WeeklyCap is not { } cap || HeldInWeek(p, sessionDate) < cap)
             .SelectMany(p => p.Freezes!.Where(f => f.From <= sessionDate && sessionDate <= f.To).Select(f => (DateOnly?)f.To))
             .Max();
 

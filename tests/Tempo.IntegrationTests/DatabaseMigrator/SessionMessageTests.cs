@@ -49,6 +49,25 @@ public sealed class SessionMessageTests(PostgresFixture postgres) : IClassFixtur
     }
 
     [Fact]
+    public async Task Send_SkipsAnErasedPersonWhosePlaceRemains()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var session = await SessionAsync(db, s, 1);
+        var dana = await PersonWithCardAsync(s, "Dana");
+        var erased = await PersonWithCardAsync(s, "Erased");
+        await s.Bookings.BookAsync(s.Owner, session, dana, CancellationToken.None);
+        await s.Bookings.BookAsync(s.Owner, session, erased, CancellationToken.None);
+        // #156: a place an erased record still holds (an older erase, a path that did not cancel it).
+        await db.AsMasterAsync("UPDATE people.people SET status = 'anonymized', display_name = 'נמחק' WHERE id = $1", erased);
+
+        var sent = await s.Bookings.SendAsync(s.Owner, session, Text, CancellationToken.None);
+
+        sent.Recipients.Should().Be(1);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE person_id = $1", erased)).Should().Be(0L, "no message reaches an erased person");
+    }
+
+    [Fact]
     public async Task Send_IsLimitedToFivePerClassPerHour()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

@@ -53,7 +53,13 @@ public sealed partial class BookingService : ISessionMessageService
 
         var recipients = new List<Guid>();
         await using (var list = unitOfWork.Command(
-            "SELECT person_id FROM scheduling.bookings WHERE organization_id = $1 AND session_id = $2 AND status IN ('booked', 'waitlisted') ORDER BY created_at",
+            """
+            SELECT b.person_id FROM scheduling.bookings b
+            JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
+            WHERE b.organization_id = $1 AND b.session_id = $2 AND b.status IN ('booked', 'waitlisted')
+              AND p.status NOT IN ('anonymized', 'merged')
+            ORDER BY b.created_at
+            """,
             tenant.OrganizationId, sessionId))
         await using (var reader = await list.ExecuteReaderAsync(cancellationToken))
         {

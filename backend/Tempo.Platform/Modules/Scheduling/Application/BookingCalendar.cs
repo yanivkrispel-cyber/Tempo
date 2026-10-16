@@ -93,13 +93,20 @@ public static class CalendarFile
         return builder.ToString();
     }
 
-    /// <summary>Backslash, semicolon, comma and newline are escaped as RFC 5545 section 3.3.11 says.</summary>
+    /// <summary>
+    /// Backslash, semicolon, comma and newline are escaped as RFC 5545 section 3.3.11 says; a lone CR is a newline
+    /// too, and other control characters (bar tab) are dropped, so no name can start a new content line (#157).
+    /// </summary>
     public static string Escape(string text) =>
-        text.Replace("\\", "\\\\", StringComparison.Ordinal)
+        new string(text
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace(";", "\\;", StringComparison.Ordinal)
             .Replace(",", "\\,", StringComparison.Ordinal)
             .Replace("\r\n", "\\n", StringComparison.Ordinal)
-            .Replace("\n", "\\n", StringComparison.Ordinal);
+            .Replace("\r", "\\n", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal)
+            .Where(c => c == '\t' || !char.IsControl(c))
+            .ToArray());
 
     /// <summary>
     /// A content line longer than 75 octets continues on the next line after a single space (section 3.1). The

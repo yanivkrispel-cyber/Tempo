@@ -9,6 +9,14 @@ namespace Tempo.UnitTests.Scheduling;
 public sealed class CalendarFileTests
 {
     [Fact]
+    public void Escape_ALoneCarriageReturnOrOtherControlCharacter_CannotStartANewLine()
+    {
+        // #157: a lone CR in a class, room or studio name would end the content line.
+        CalendarFile.Escape("Room\rBEGIN:VEVENT").Should().Be("Room\\nBEGIN:VEVENT");
+        CalendarFile.Escape("a\u0000b\u000bc\td").Should().Be("abc\td", "a tab is allowed in TEXT, other controls are dropped");
+    }
+
+    [Fact]
     public void Escape_CoversBackslashSemicolonCommaAndNewline()
     {
         CalendarFile.Escape("a,b;c\\d\ne\r\nf").Should().Be("a\\,b\\;c\\\\d\\ne\\nf");
