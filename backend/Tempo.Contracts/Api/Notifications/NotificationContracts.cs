@@ -93,3 +93,9 @@ public sealed record AnnouncementInput(string? Subject, string? Body);
 
 /// <summary>`Announcement`.</summary>
 public sealed record AnnouncementResponse(Guid Id, int Recipients, DateTimeOffset SentAt, int SentToday, int DailyLimit);
+
+/// <summary>`Delivery`: never the text or the address.</summary>
+public sealed record DeliveryResponse(Guid Id, string Kind, string Channel, string Status, string? Reason, int Attempts, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+
+/// <summary>`DeliveryList`.</summary>
+public sealed record DeliveryListResponse(IReadOnlyList<DeliveryResponse> Items);

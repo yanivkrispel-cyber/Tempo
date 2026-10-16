@@ -32,6 +32,7 @@ public static class NotificationEndpoints
         tenant.MapPut("/notification-templates/{kind}", UpdateTemplateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("updateNotificationTemplate").Produces<NotificationTemplateResponse>();
         tenant.MapGet("/announcements", GetAnnouncementAllowanceAsync).RequirePermission(Permissions.BookingsManage).WithName("getAnnouncementAllowance").Produces<AnnouncementAllowanceResponse>();
         tenant.MapPost("/announcements", SendAnnouncementAsync).RequirePermission(Permissions.BookingsManage).WithName("sendAnnouncement").Produces<AnnouncementResponse>(StatusCodes.Status201Created);
+        tenant.MapGet("/people/{personId:guid}/deliveries", ListDeliveriesAsync).RequirePermission(Permissions.PeopleView).WithName("listPersonDeliveries").Produces<DeliveryListResponse>();
         endpoints.MapAccountGroup().MapGet("/push/vapid-public-key", VapidPublicKeyAsync).WithName("getVapidPublicKey").Produces<VapidPublicKeyResponse>();
 
         return endpoints;
@@ -147,6 +148,10 @@ public static class NotificationEndpoints
         var sent = await announcements.SendAsync(TenantRouteFilter.Current(httpContext), request.Subject, request.Body, httpContext.RequestAborted);
         return Results.Created((string?)null, new AnnouncementResponse(sent.Id, sent.Recipients, sent.SentAt, sent.SentToday, sent.DailyLimit));
     }
+
+    private static async Task<IResult> ListDeliveriesAsync(HttpContext httpContext, Guid personId, IDeliveryLogService deliveries) =>
+        Results.Ok(new DeliveryListResponse([.. (await deliveries.ListAsync(TenantRouteFilter.Current(httpContext), personId, httpContext.RequestAborted))
+            .Select(d => new DeliveryResponse(d.Id, d.Kind, d.Channel, d.Status, d.Reason, d.Attempts, d.CreatedAt, d.UpdatedAt))]));
 
     private static async Task<IResult> ListDevicesAsync(HttpContext httpContext, IPushSubscriptionService devices) =>
         Results.Ok(new PushSubscriptionListResponse([.. (await devices.ListMineAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted)).Select(ToResponse)]));

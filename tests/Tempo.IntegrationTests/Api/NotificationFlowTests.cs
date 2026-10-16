@@ -366,7 +366,7 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
     }
 
     [Fact]
-    public async Task Announcements_ReachEveryActiveMember_ThreeADay_AndNeverOverFiveHundred()
+    public async Task Announcements_ReachEveryActiveMember_ThreeADay_AndNeverOverFiveHundred_AndTheStudioSeesTheDeliveryLines()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         using var factory = Factory(db, BrowserKey);
@@ -441,6 +441,24 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         (await tooMany.Content.ReadAsStringAsync()).Should().Contain("announcement.too_many_recipients").And.Contain("\"recipients\":501").And.Contain("\"maxRecipients\":500");
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.announcements WHERE organization_id = $1", bigId)).Should().Be(0L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE organization_id = $1", bigId)).Should().Be(0L);
+
+        // 5. The studio sees Rina's delivery lines, newest first, without the text or her device; a member does not.
+        var rina = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/people?query=rina@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var deliveries = await RawAsync(client, HttpMethod.Get, $"{studioPath}/people/{rina}/deliveries", Customer("owner"));
+        deliveries.StatusCode.Should().Be(HttpStatusCode.OK);
+        var log = await deliveries.Content.ReadAsStringAsync();
+        log.Should().NotContain("שיעור פתוח").And.NotContain("fcm.googleapis.com", "never the text or the address");
+        var lines = JsonSerializer.Deserialize<JsonElement>(log).GetProperty("items").EnumerateArray().ToList();
+        lines.Should().HaveCount(4, "three inbox lines and the push of the first announcement");
+        lines.Should().OnlyContain(l => l.GetProperty("kind").GetString() == "studio.announcement");
+        lines.Select(l => l.GetProperty("createdAt").GetDateTimeOffset()).Should().BeInDescendingOrder();
+        var pushLine = lines.Single(l => l.GetProperty("channel").GetString() == "push");
+        pushLine.GetProperty("status").GetString().Should().Be("accepted");
+        pushLine.GetProperty("attempts").GetInt32().Should().Be(1);
+        lines.Where(l => l.GetProperty("channel").GetString() == "inbox").Should().OnlyContain(l => l.GetProperty("status").GetString() == "delivered");
+        (await RawAsync(client, HttpMethod.Get, $"{studioPath}/people/{rina}/deliveries", Customer("noga"))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await RawAsync(client, HttpMethod.Get, $"{studioPath}/people/{Guid.CreateVersion7()}/deliveries", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await RawAsync(client, HttpMethod.Get, $"/api/v1/organizations/{bigId}/people/{rina}/deliveries", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.NotFound, "Rina is not in the other studio");
     }
 
     [Fact]
