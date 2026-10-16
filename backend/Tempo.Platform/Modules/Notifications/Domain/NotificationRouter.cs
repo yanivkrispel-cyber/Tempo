@@ -23,7 +23,11 @@ public static class NotificationGroups
     };
 
     /// <summary>A notice about the member's own class: it goes out inside quiet hours when the class starts inside them (D-4).</summary>
-    public static bool IsClassService(string kind) => Of(kind) == Bookings || kind == "session.message";
+    /// <summary>
+    /// About a class the person booked, so it may go out in quiet hours when the class starts before they end. The
+    /// class-soon reminder counts: held until 08:00 it would arrive after a 07:30 class began (review on #199).
+    /// </summary>
+    public static bool IsClassService(string kind) => Of(kind) == Bookings || kind is "session.message" or "reminder.class_soon";
 }
 
 /// <summary>A local window that may cross midnight, 22:00 to 08:00.</summary>

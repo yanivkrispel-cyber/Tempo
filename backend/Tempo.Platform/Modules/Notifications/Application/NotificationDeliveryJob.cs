@@ -22,12 +22,16 @@ public sealed record DeliveryRun(int Routed, int Skipped, int Accepted, int Retr
 public sealed class NotificationDeliveryJob(IDataSourceProvider dataSources, TimeProvider clock, Func<CancellationToken, Task<IPushSender?>>? pushSender = null)
 {
     private const int BatchSize = 500;
+
+    /// <summary>Time zones the last run did not know and routed in UTC instead; the worker logs them (review on #195).</summary>
+    public HashSet<string> UnknownTimeZones { get; } = new(StringComparer.Ordinal);
     private const int SendBatchSize = 100;
     private static readonly TimeSpan[] Backoff = [TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(10), TimeSpan.FromHours(1)];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<DeliveryRun> RunAsync(CancellationToken cancellationToken)
     {
+        UnknownTimeZones.Clear();
         var sender = pushSender is null ? null : await pushSender(cancellationToken);
         var (routed, skipped) = await RouteAsync(sender is not null, cancellationToken);
         if (sender is null)
@@ -88,7 +92,12 @@ public sealed class NotificationDeliveryJob(IDataSourceProvider dataSources, Tim
         var skipped = 0;
         foreach (var request in pending)
         {
-            var zone = TimeZoneInfo.TryFindSystemTimeZoneById(request.TimeZone, out var found) ? found : TimeZoneInfo.Utc;
+            if (!TimeZoneInfo.TryFindSystemTimeZoneById(request.TimeZone, out var zone))
+            {
+                UnknownTimeZones.Add(request.TimeZone);
+                zone = TimeZoneInfo.Utc;
+            }
+
             var decision = NotificationRouter.RoutePush(new RouteInput(
                 request.Kind,
                 request.PushEnabled,

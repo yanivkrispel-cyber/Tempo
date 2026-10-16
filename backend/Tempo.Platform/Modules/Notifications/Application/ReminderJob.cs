@@ -12,10 +12,10 @@ public sealed record ReminderRun(int ClassTomorrow, int ClassSoon, int PassEndin
 /// <item>class soon: within the studio's hours before the start (default 2), unless the place was booked inside them;</item>
 /// <item>pass ending: within the studio's days before the last day (default 7), unless a later pass follows or the
 /// pass was never longer than that;</item>
-/// <item>entries low: when a punch card has the studio's number of entries left (default 1) or fewer.</item>
+/// <item>entries low: once per punch card, when it has the studio's number of entries left (default 1) or fewer.</item>
 /// </list>
 /// Only active members of active studios, never a reminder the studio turned off or the member switched off. The
-/// dedupe key (the session date, the pass's last day, the entries left) makes every run safe to repeat, so a missed
+/// dedupe key (the session date, the pass's last day, once per card for entries low) makes every run safe to repeat, so a missed
 /// tick is caught by the next one. Quiet hours are the router's work, as for every other notification.
 /// </summary>
 public sealed class ReminderJob(IDataSourceProvider dataSources, TimeProvider clock)
@@ -96,7 +96,7 @@ public sealed class ReminderJob(IDataSourceProvider dataSources, TimeProvider cl
 
         var entriesLow = await WriteAsync(unitOfWork, "reminder.entries_low", "pass", Due(
             """
-            SELECT p.organization_id, p.person_id, p.id, NULL::uuid, (p.entries - p.entries_used)::text
+            SELECT p.organization_id, p.person_id, p.id, NULL::uuid, 'low'
             FROM scheduling.passes p
             JOIN organizations.organizations o ON o.id = p.organization_id AND o.status = 'active'
             JOIN people.people pe ON pe.organization_id = p.organization_id AND pe.id = p.person_id AND pe.status = 'active'
@@ -110,7 +110,7 @@ public sealed class ReminderJob(IDataSourceProvider dataSources, TimeProvider cl
                               WHERE rs.organization_id = p.organization_id AND rs.person_id = p.person_id AND rs.reminder = $3 AND NOT rs.enabled)
               AND NOT EXISTS (SELECT 1 FROM notifications.requests r
                               WHERE r.organization_id = p.organization_id
-                                AND r.dedupe_key = $2 || ':' || p.id || ':' || p.person_id || ':' || (p.entries - p.entries_used)::text)
+                                AND r.dedupe_key = $2 || ':' || p.id || ':' || p.person_id || ':low')
             ORDER BY p.ends_on
             LIMIT 2000
             """,

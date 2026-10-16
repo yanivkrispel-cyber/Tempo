@@ -93,10 +93,27 @@ public sealed class NotificationPreferencesService(IDataSourceProvider dataSourc
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         var person = await MyPersonAsync(unitOfWork, tenant, cancellationToken);
-        var current = await VersionAsync(unitOfWork, tenant.OrganizationId, person, cancellationToken);
-        if (expectedVersion is { } expected && expected != current)
+        // The version moves first and only from the expected one, so of two saves sent with the same If-Match the
+        // second waits on the row and then finds the version gone: 409, never a silent overwrite (review on #195).
+        await using (var bump = unitOfWork.Command(
+            expectedVersion switch
+            {
+                null => """
+                        INSERT INTO notifications.preference_versions (organization_id, person_id, version, updated_at) VALUES ($1, $2, 1, now())
+                        ON CONFLICT (organization_id, person_id) DO UPDATE SET version = notifications.preference_versions.version + 1, updated_at = now()
+                        """,
+                0 => """
+                     INSERT INTO notifications.preference_versions (organization_id, person_id, version, updated_at) VALUES ($1, $2, 1, now())
+                     ON CONFLICT (organization_id, person_id) DO NOTHING
+                     """,
+                _ => "UPDATE notifications.preference_versions SET version = version + 1, updated_at = now() WHERE organization_id = $1 AND person_id = $2 AND version = $3",
+            },
+            expectedVersion is null or 0 ? [tenant.OrganizationId, person] : [tenant.OrganizationId, person, (int)expectedVersion.Value]))
         {
-            throw Conflict();
+            if (await bump.ExecuteNonQueryAsync(cancellationToken) == 0)
+            {
+                throw Conflict();
+            }
         }
 
         foreach (var group in change.Groups)
@@ -144,16 +161,6 @@ public sealed class NotificationPreferencesService(IDataSourceProvider dataSourc
             await delete.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await using (var bump = unitOfWork.Command(
-            """
-            INSERT INTO notifications.preference_versions (organization_id, person_id, version, updated_at) VALUES ($1, $2, 1, now())
-            ON CONFLICT (organization_id, person_id) DO UPDATE SET version = notifications.preference_versions.version + 1, updated_at = now()
-            """,
-            tenant.OrganizationId, person))
-        {
-            await bump.ExecuteNonQueryAsync(cancellationToken);
-        }
-
         // Which switches, never times or anything else about the person (docs/30 section 10).
         await AuditWriter.WriteAsync(
             unitOfWork,
@@ -183,28 +190,27 @@ public sealed class NotificationPreferencesService(IDataSourceProvider dataSourc
         Range(reminders.EntriesLowLeft, 1, 5, "reminders.entriesLow.entriesLeft");
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
-        var current = await ReadSettingsAsync(unitOfWork, tenant.OrganizationId, cancellationToken);
-        if (expectedVersion is { } expected && expected != current.Version)
-        {
-            throw Conflict();
-        }
-
-        await using (var upsert = unitOfWork.Command(
-            """
-            INSERT INTO notifications.studio_settings (organization_id, quiet_starts_local, quiet_ends_local,
-                class_tomorrow_enabled, class_tomorrow_send_at, class_soon_enabled, class_soon_hours_before,
-                pass_ending_enabled, pass_ending_days_before, entries_low_enabled, entries_low_left, updated_at, version)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), 1)
-            ON CONFLICT (organization_id) DO UPDATE SET
-                quiet_starts_local = $2, quiet_ends_local = $3, class_tomorrow_enabled = $4, class_tomorrow_send_at = $5,
-                class_soon_enabled = $6, class_soon_hours_before = $7, pass_ending_enabled = $8, pass_ending_days_before = $9,
-                entries_low_enabled = $10, entries_low_left = $11, updated_at = now(), version = notifications.studio_settings.version + 1
-            """,
+        object[] values =
+        [
             tenant.OrganizationId, quiet.Starts, quiet.Ends,
             reminders.ClassTomorrowEnabled, reminders.ClassTomorrowSendAt, reminders.ClassSoonEnabled, reminders.ClassSoonHoursBefore,
-            reminders.PassEndingEnabled, reminders.PassEndingDaysBefore, reminders.EntriesLowEnabled, reminders.EntriesLowLeft))
+            reminders.PassEndingEnabled, reminders.PassEndingDaysBefore, reminders.EntriesLowEnabled, reminders.EntriesLowLeft
+        ];
+
+        // Written only from the expected version (see UpdateMineAsync): no row counts as version 0.
+        await using (var write = unitOfWork.Command(
+            expectedVersion switch
+            {
+                null => InsertSettings + " ON CONFLICT (organization_id) DO UPDATE SET " + SettingsFromParameters + ", updated_at = now(), version = notifications.studio_settings.version + 1",
+                0 => InsertSettings + " ON CONFLICT (organization_id) DO NOTHING",
+                _ => "UPDATE notifications.studio_settings SET " + SettingsFromParameters + ", updated_at = now(), version = version + 1 WHERE organization_id = $1 AND version = $12",
+            },
+            expectedVersion is null or 0 ? values : [.. values, (int)expectedVersion.Value]))
         {
-            await upsert.ExecuteNonQueryAsync(cancellationToken);
+            if (await write.ExecuteNonQueryAsync(cancellationToken) == 0)
+            {
+                throw Conflict();
+            }
         }
 
         await AuditWriter.WriteAsync(
@@ -300,6 +306,21 @@ public sealed class NotificationPreferencesService(IDataSourceProvider dataSourc
             reader.GetString(0),
             reader.GetInt32(11));
     }
+
+    private const string InsertSettings =
+        """
+        INSERT INTO notifications.studio_settings (organization_id, quiet_starts_local, quiet_ends_local,
+            class_tomorrow_enabled, class_tomorrow_send_at, class_soon_enabled, class_soon_hours_before,
+            pass_ending_enabled, pass_ending_days_before, entries_low_enabled, entries_low_left, updated_at, version)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), 1)
+        """;
+
+    private const string SettingsFromParameters =
+        """
+        quiet_starts_local = $2, quiet_ends_local = $3, class_tomorrow_enabled = $4, class_tomorrow_send_at = $5,
+            class_soon_enabled = $6, class_soon_hours_before = $7, pass_ending_enabled = $8, pass_ending_days_before = $9,
+            entries_low_enabled = $10, entries_low_left = $11
+        """;
 
     private static async Task<long> VersionAsync(UnitOfWork unitOfWork, Guid organizationId, Guid person, CancellationToken cancellationToken)
     {

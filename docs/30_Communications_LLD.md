@@ -270,14 +270,16 @@ address.
    - **Class tomorrow:** from the studio's send time (default 18:00; a time after 21:00 sends at 21:00) for every
      booked place.
    - **Class soon:** at the tick that falls within the studio's hours before the start (default 2), so between one
-     and two hours before. Not for a place booked inside that window. A class before 09:00 gets no class-soon
-     reminder; the evening-before one covers it.
+     and two hours before. Not for a place booked inside that window. The 07:00 tick covers classes up to 09:00.
+     It goes out at once even in quiet hours when the class starts before they end, as for the other notices about
+     a member's own class. A class before 07:00 gets only the evening-before reminder, and a place booked after the
+     21:00 tick for such a class gets neither (Ofir kept the 07:00-21:00 hours on #176).
    - **Pass ending:** from the studio's days before the last day (default 7). Not when a later pass follows, nor for
      a pass that was never longer than that.
-   - **Entries low:** once at each count at or below the studio's number (default 1), and not for a card that
-     started that low.
+   - **Entries low:** once per card, when it reaches the studio's number of entries left (default 1) or fewer. Not
+     for a card that started that low.
    - Only active members of active studios, and never a reminder the studio or the member switched off.
-   - The dedupe key (session date, last day, entries left) makes a repeated or late tick harmless.
+   - The dedupe key (session date, last day, or `low` for entries) makes a repeated or late tick harmless.
    - Each tick wakes Neon for its five-minute minimum, about 37 compute hours a month if nothing else keeps it
      awake. Night ticks were dropped to stay inside the free plan.
 7. Templates per studio with preview in the console; the announcement and message-to-booked dialogs.
