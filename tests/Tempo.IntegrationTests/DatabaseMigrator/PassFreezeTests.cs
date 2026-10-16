@@ -90,6 +90,30 @@ public sealed class PassFreezeTests(PostgresFixture postgres) : IClassFixture<Po
         (await past.Should().ThrowAsync<DomainRuleViolationException>()).Which.Kind.Should().Be(ViolationKind.Validation);
     }
 
+    [Fact]
+    public async Task Unfreeze_WithABookingInTheDaysItWouldRemove_IsRefusedWithTheCount()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var (dana, membership) = await MemberWithMembershipAsync(s);
+        var today = Today();
+        var frozen = await s.Passes.FreezeAsync(s.Owner, membership, new NewFreeze(today.AddDays(3), today.AddDays(9)), CancellationToken.None);
+        // Valid only because of the freeze: the membership ended 29 days from now before it.
+        var inExtension = await SessionAsync(db, s, TimeSpan.FromDays(33));
+        var booking = await s.Bookings.BookAsync(s.Owner, inExtension, dana, CancellationToken.None);
+
+        var unfreeze = () => s.Passes.UnfreezeAsync(s.Owner, membership, frozen.Freezes![0].Id, CancellationToken.None);
+
+        var problem = (await unfreeze.Should().ThrowAsync<DomainRuleViolationException>()).Which;
+        problem.Code.Should().Be("pass.freeze_has_bookings");
+        problem.Kind.Should().Be(ViolationKind.Conflict);
+        problem.Extensions!["bookings"].Should().Be(1L, "the count, never the people");
+        (await db.AsMasterAsync("SELECT ends_on FROM scheduling.passes WHERE id = $1", membership)).Should().Be(today.AddDays(36));
+
+        await s.Bookings.CancelAsync(s.Owner, booking.Id, false, CancellationToken.None);
+        (await unfreeze()).EndsOn.Should().Be(today.AddDays(29), "with the place cancelled the freeze can go");
+    }
+
     private sealed record Studio(TenantContext Owner, PeopleService People, PassService Passes, BookingService Bookings, Guid ClassType);
 
     [Fact]
