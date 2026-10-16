@@ -14,16 +14,85 @@ export const sampleMe: Me = {
       role: "owner",
       roles: [{ id: "00000000-0000-7000-8000-000000000001", key: "owner", displayName: "בעלים", isSystem: true }],
       permissions: [
-        "audit.view", "consent.manage", "members.invite.admin", "members.invite.staff", "members.manage", "members.view",
-        "organization.settings.manage", "organization.view", "ownership.transfer", "people.erase", "people.export",
-        "people.manage", "people.merge", "people.view", "roles.manage"
+        "audit.view",
+        "billing.manage",
+        "billing.view",
+        "consent.manage",
+        "members.invite.admin",
+        "members.invite.staff",
+        "members.manage",
+        "members.view",
+        "organization.settings.manage",
+        "organization.view",
+        "ownership.transfer",
+        "people.erase",
+        "people.export",
+        "people.manage",
+        "people.merge",
+        "people.view",
+        "roles.manage",
       ],
       pendingOwnershipTransfer: null,
       status: "active",
-      organization: { id: "0199e5a1-0000-7000-8000-000000000003", slug: "neshima", displayName: "סטודיו נשימה", status: "active" }
-    }
-  ]
+      organization: {
+        id: "0199e5a1-0000-7000-8000-000000000003",
+        slug: "neshima",
+        displayName: "סטודיו נשימה",
+        status: "active",
+      },
+    },
+  ],
 };
+
+type SystemRole = "owner" | "admin" | "staff" | "client";
+
+const systemRoleNames: Record<SystemRole, string> = { owner: "בעלים", admin: "מנהל", staff: "צוות", client: "מתאמן" };
+
+/** A system role as `roles` carries it (migration 0005's fixed ids, features/roles/catalog.ts). */
+export function roleSummary(role: SystemRole) {
+  const index = ["owner", "admin", "staff", "client"].indexOf(role) + 1;
+  return {
+    id: `00000000-0000-7000-8000-00000000000${index}`,
+    key: role,
+    displayName: systemRoleNames[role],
+    isSystem: true,
+  };
+}
+
+/** The system roles' permissions (docs/27 section 3.1, the Phase 1 matrix). */
+const systemRolePermissions: Record<SystemRole, readonly string[]> = {
+  owner: sampleMe.memberships[0]!.permissions,
+  admin: [
+    "organization.view",
+    "organization.settings.manage",
+    "members.view",
+    "members.invite.staff",
+    "members.manage",
+    "audit.view",
+    "billing.view",
+    "people.view",
+    "people.manage",
+    "people.merge",
+    "people.export",
+    "consent.manage",
+  ],
+  staff: ["organization.view", "members.view", "people.view", "people.manage"],
+  client: ["organization.view"],
+};
+
+/**
+ * sampleMe's studio membership with one system role, as GET /me sends it. The deprecated `role` field says `client`
+ * on purpose, whatever the role: the apps read `roles` and `permissions`, and a test that leans on `role` fails.
+ */
+export function membershipAs(role: SystemRole, overrides: Record<string, unknown> = {}) {
+  return {
+    ...sampleMe.memberships[0]!,
+    role: "client" as const,
+    roles: [roleSummary(role)],
+    permissions: [...systemRolePermissions[role]],
+    ...overrides,
+  };
+}
 
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
@@ -33,7 +102,7 @@ export function json(body: unknown, status = 200, headers: Record<string, string
 export function problem(status: number, code: string, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify({ type: "about:blank", title: code, status, code }), {
     status,
-    headers: { "Content-Type": "application/problem+json", ...headers }
+    headers: { "Content-Type": "application/problem+json", ...headers },
   });
 }
 

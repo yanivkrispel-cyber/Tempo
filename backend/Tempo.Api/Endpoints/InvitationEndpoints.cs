@@ -46,9 +46,9 @@ public static class InvitationEndpoints
         var tenant = endpoints.MapTenantGroup();
         tenant.MapGet("/invitations", ListAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("listInvitations").Produces<InvitationPageResponse>();
         tenant.MapPost("/invitations", CreateAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("createInvitation").Produces<CreatedInvitationResponse>(StatusCodes.Status201Created);
-        tenant.MapDelete("/invitations/{invitationId:guid}", RevokeAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("revokeInvitation").Produces(StatusCodes.Status204NoContent);
+        tenant.MapDelete("/invitations/{invitationId:guid}", RevokeAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("revokeInvitation").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces(StatusCodes.Status204NoContent);
         tenant.MapPut("/join-link", RotateJoinLinkAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("rotateJoinLink").Produces<JoinLinkResponse>();
-        tenant.MapDelete("/join-link", DisableJoinLinkAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("disableJoinLink").Produces(StatusCodes.Status204NoContent);
+        tenant.MapDelete("/join-link", DisableJoinLinkAsync).RequirePermission(Permissions.MembersInviteStaff).WithName("disableJoinLink").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces(StatusCodes.Status204NoContent);
 
         return endpoints;
     }

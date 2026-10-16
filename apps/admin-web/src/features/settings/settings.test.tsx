@@ -4,7 +4,7 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, problem, sampleMe } from "../../test/api";
+import { apiStub, json, membershipAs, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 
 const studio = sampleMe.memberships[0]!;
@@ -19,13 +19,20 @@ const organization = (overrides: Record<string, unknown> = {}) => ({
   joinLinkEnabled: true,
   createdAt: "2026-10-01T08:00:00Z",
   version: "3",
-  ...overrides
+  ...overrides,
 });
 
-function renderAt(url: string, routesForApi: Record<string, unknown>, role = "owner") {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: [] }] };
+function renderAt(url: string, routesForApi: Record<string, unknown>, role: "owner" | "staff" = "owner") {
+  const me = { ...sampleMe, memberships: [membershipAs(role)] };
   const api = apiStub({ "POST /api/v1/session": me, ...routesForApi });
-  render(<App router={createMemoryRouter(routes, { initialEntries: [url] })} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} />);
+  render(
+    <App
+      router={createMemoryRouter(routes, { initialEntries: [url] })}
+      auth={signedInAuth()}
+      apiUrl="https://api.test"
+      fetch={api.fetch}
+    />,
+  );
   return api;
 }
 
@@ -33,7 +40,7 @@ describe("studio settings", () => {
   it("sends only what changed, with If-Match, and refreshes the account", async () => {
     const api = renderAt("/o/neshima/settings", {
       [`GET ${base}`]: organization(),
-      [`PATCH ${base}`]: () => json(organization({ displayName: "סטודיו נשימה עמוקה", version: "4" }))
+      [`PATCH ${base}`]: () => json(organization({ displayName: "סטודיו נשימה עמוקה", version: "4" })),
     });
     const name = await screen.findByRole("textbox", { name: /שם הסטודיו/ });
     expect(screen.getByRole("button", { name: "שמירה" })).toBeDisabled();
@@ -47,11 +54,16 @@ describe("studio settings", () => {
     const patch = api.requests.findIndex((request) => request.method === "PATCH");
     expect(api.requests[patch]!.headers.get("If-Match")).toBe("3");
     expect(api.bodies[patch]).toEqual({ displayName: "סטודיו נשימה עמוקה" });
-    await waitFor(() => expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session")).length).toBe(2));
+    await waitFor(() =>
+      expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session")).length).toBe(2),
+    );
   });
 
   it("explains a conflict with someone else's change", async () => {
-    renderAt("/o/neshima/settings", { [`GET ${base}`]: organization(), [`PATCH ${base}`]: problem(409, "concurrency.conflict") });
+    renderAt("/o/neshima/settings", {
+      [`GET ${base}`]: organization(),
+      [`PATCH ${base}`]: problem(409, "concurrency.conflict"),
+    });
     const name = await screen.findByRole("textbox", { name: /שם הסטודיו/ });
     await userEvent.type(name, "!");
     await userEvent.click(screen.getByRole("button", { name: "שמירה" }));
@@ -66,14 +78,79 @@ describe("studio settings", () => {
   });
 });
 
+describe("the Tempo plan", () => {
+  const billing = (overrides: Record<string, unknown> = {}) => ({
+    plan: {
+      id: "0199e5a1-0000-7000-8000-000000000801",
+      planKey: "pilot",
+      displayName: "פיילוט",
+      priceMinor: 0,
+      currency: "ILS",
+      interval: "month",
+      entitlements: {},
+    },
+    state: "active",
+    provider: "manual",
+    currentPeriodEnd: null,
+    entitlements: {},
+    version: "1",
+    ...overrides,
+  });
+
+  it("shows the plan and its state on the settings page", async () => {
+    renderAt("/o/neshima/settings", { [`GET ${base}/billing`]: billing() });
+    const card = await screen.findByRole("region", { name: "המנוי ל־Tempo" });
+    expect(await within(card).findByText("פיילוט")).toBeInTheDocument();
+    expect(card).toHaveTextContent("פעיל");
+    expect(card).toHaveTextContent("ללא תשלום");
+  });
+
+  it("says when a studio is restricted, with the period end", async () => {
+    renderAt("/o/neshima/settings", {
+      [`GET ${base}/billing`]: billing({ state: "restricted", currentPeriodEnd: "2026-11-01T00:00:00Z" }),
+    });
+    const card = await screen.findByRole("region", { name: "המנוי ל־Tempo" });
+    expect(await within(card).findByText("מוגבל")).toBeInTheDocument();
+    expect(card).toHaveTextContent("התקופה הנוכחית עד 01.11.2026");
+  });
+
+  it("is not shown to staff, who cannot see billing", async () => {
+    renderAt("/o/neshima/settings", {}, "staff");
+    expect(await screen.findByRole("heading", { level: 1, name: "הגדרות הסטודיו" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "המנוי ל־Tempo" })).not.toBeInTheDocument();
+  });
+});
+
 describe("audit log", () => {
   it("lists events with who and what, in Hebrew, and pages back", async () => {
-    const event = (id: string, overrides: Record<string, unknown>) => ({ id, occurredAt: "2026-10-15T09:05:00Z", actorType: "user", actorDisplayName: "דנה כהן", action: "invitation.created", targetType: "invitation", targetId: null, ...overrides });
+    const event = (id: string, overrides: Record<string, unknown>) => ({
+      id,
+      occurredAt: "2026-10-15T09:05:00Z",
+      actorType: "user",
+      actorDisplayName: "דנה כהן",
+      action: "invitation.created",
+      targetType: "invitation",
+      targetId: null,
+      ...overrides,
+    });
     const api = renderAt("/o/neshima/audit", {
       [`GET ${base}/audit-events`]: (request: Request) =>
         new URL(request.url).searchParams.get("before")
-          ? json({ items: [event("0199e5a1-0000-7000-8000-000000000703", { action: "something.new" })], nextBefore: null })
-          : json({ items: [event("0199e5a1-0000-7000-8000-000000000701", {}), event("0199e5a1-0000-7000-8000-000000000702", { actorType: "operator", actorDisplayName: null, action: "organization.viewed_by_operator" })], nextBefore: "0199e5a1-0000-7000-8000-000000000702" })
+          ? json({
+              items: [event("0199e5a1-0000-7000-8000-000000000703", { action: "something.new" })],
+              nextBefore: null,
+            })
+          : json({
+              items: [
+                event("0199e5a1-0000-7000-8000-000000000701", {}),
+                event("0199e5a1-0000-7000-8000-000000000702", {
+                  actorType: "operator",
+                  actorDisplayName: null,
+                  action: "organization.viewed_by_operator",
+                }),
+              ],
+              nextBefore: "0199e5a1-0000-7000-8000-000000000702",
+            }),
     });
     const table = await screen.findByRole("table", { name: "יומן פעולות" });
     const rows = within(table).getAllByRole("row").slice(1);
@@ -85,6 +162,10 @@ describe("audit log", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "פעולות קודמות" }));
     expect(await screen.findByText("something.new")).toBeInTheDocument();
-    expect(new URL(api.requests.filter((request) => request.url.includes("/audit-events"))[1]!.url).searchParams.get("before")).toBe("0199e5a1-0000-7000-8000-000000000702");
+    expect(
+      new URL(api.requests.filter((request) => request.url.includes("/audit-events"))[1]!.url).searchParams.get(
+        "before",
+      ),
+    ).toBe("0199e5a1-0000-7000-8000-000000000702");
   });
 });

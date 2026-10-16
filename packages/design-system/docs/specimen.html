@@ -1,370 +1,1064 @@
 <!doctype html>
 <html dir="rtl" lang="he" data-theme="light">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tempo design system — specimen</title>
-<link rel="stylesheet" href="../css/tokens.css">
-<link rel="stylesheet" href="../css/base.css">
-<link rel="stylesheet" href="../css/components.css">
-<style>
-  /* specimen-only chrome */
-  .sp-section { margin-top: var(--space-16); }
-  .sp-section > h2 { margin-bottom: var(--space-5); }
-  .sp-section > .tp-eyebrow { margin-bottom: var(--space-1); }
-  .sp-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: var(--space-3); }
-  .sp-sw { border-radius: var(--radius-md); padding: var(--space-3); font-size: 12px; line-height: 16px; min-height: 76px; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: var(--shadow-raise-sm); }
-  .sp-sw code { background: transparent; padding: 0; box-shadow: none; opacity: .85; font-size: 11px; color: inherit; }
-  .sp-topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-8); }
-  .sp-type > div { display: flex; gap: var(--space-5); align-items: baseline; padding-block: var(--space-3); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--highlight); }
-  .sp-type > div:last-child { border: 0; box-shadow: none; }
-  .sp-type code { flex: none; min-width: 120px; }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tempo design system — specimen</title>
+    <link rel="stylesheet" href="../css/tokens.css" />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <style>
+      /* specimen-only chrome */
+      .sp-section {
+        margin-top: var(--space-16);
+      }
+      .sp-section > h2 {
+        margin-bottom: var(--space-5);
+      }
+      .sp-section > .tp-eyebrow {
+        margin-bottom: var(--space-1);
+      }
+      .sp-swatches {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+        gap: var(--space-3);
+      }
+      .sp-sw {
+        border-radius: var(--radius-md);
+        padding: var(--space-3);
+        font-size: 12px;
+        line-height: 16px;
+        min-height: 76px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        box-shadow: var(--shadow-raise-sm);
+      }
+      .sp-sw code {
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+        opacity: 0.85;
+        font-size: 11px;
+        color: inherit;
+      }
+      .sp-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-4);
+        flex-wrap: wrap;
+        margin-bottom: var(--space-8);
+      }
+      .sp-type > div {
+        display: flex;
+        gap: var(--space-5);
+        align-items: baseline;
+        padding-block: var(--space-3);
+        border-bottom: 1px solid var(--line);
+        box-shadow: 0 1px 0 var(--highlight);
+      }
+      .sp-type > div:last-child {
+        border: 0;
+        box-shadow: none;
+      }
+      .sp-type code {
+        flex: none;
+        min-width: 120px;
+      }
 
-  /* composed screens */
-  .sp-console { display: grid; grid-template-columns: var(--sidebar) 1fr; gap: var(--space-6); align-items: start; }
-  @media (max-width: 767px) { .sp-console { grid-template-columns: 1fr; } .tp-rail { flex-direction: row; width: auto; } .tp-rail__logo { margin: 0; } }
-  .sp-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
-  .sp-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-5); }
-  @media (max-width: 1023px) { .sp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .sp-main { display: grid; grid-template-columns: 1.7fr 1fr; gap: var(--space-5); align-items: start; }
-  @media (max-width: 1023px) { .sp-main { grid-template-columns: 1fr; } }
-  .sp-phone { width: 390px; max-width: 100%; margin-inline: auto; border-radius: 44px; padding: 14px; background: var(--surface); box-shadow: var(--shadow-raise), var(--shadow-float); }
-  .sp-phone__screen { border-radius: 32px; background: var(--canvas); padding: 20px 18px 16px; min-height: 760px; display: flex; flex-direction: column; gap: var(--space-5); position: relative; overflow: hidden; }
-  .sp-status { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding-inline: 6px; }
-</style>
-</head>
-<body>
-<div class="tp-page">
-  <div class="sp-topbar">
-    <div>
-      <div class="tp-eyebrow">TEMPO · DESIGN SYSTEM · v0.3 · NEO-TACTILE</div>
-      <h1>מערכת העיצוב של Tempo</h1>
-      <p class="tp-muted" style="margin-top:6px;max-width:60ch">אחד-לאחד לפי תמונת הייחוס: שמנת וחול, טאופ, מרווה לפעולות, ורוד-חרס להדגשה, כחול רק לפוקוס ולבחירה. האפליקציה בהירה; כהה קיים רק לבדיקה.</p>
-    </div>
-    <div class="tp-seg" role="group" aria-label="ערכת נושא">
-      <button class="tp-seg__opt" type="button" data-theme-pick="light" aria-pressed="true">בהיר</button>
-      <button class="tp-seg__opt" type="button" data-theme-pick="dark" aria-pressed="false">כהה</button>
-    </div>
-  </div>
+      /* composed screens */
+      .sp-console {
+        display: grid;
+        grid-template-columns: var(--sidebar) 1fr;
+        gap: var(--space-6);
+        align-items: start;
+      }
+      @media (max-width: 767px) {
+        .sp-console {
+          grid-template-columns: 1fr;
+        }
+        .tp-rail {
+          flex-direction: row;
+          width: auto;
+        }
+        .tp-rail__logo {
+          margin: 0;
+        }
+      }
+      .sp-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-4);
+        flex-wrap: wrap;
+      }
+      .sp-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-5);
+      }
+      @media (max-width: 1023px) {
+        .sp-stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .sp-main {
+        display: grid;
+        grid-template-columns: 1.7fr 1fr;
+        gap: var(--space-5);
+        align-items: start;
+      }
+      @media (max-width: 1023px) {
+        .sp-main {
+          grid-template-columns: 1fr;
+        }
+      }
+      .sp-phone {
+        width: 390px;
+        max-width: 100%;
+        margin-inline: auto;
+        border-radius: 44px;
+        padding: 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow-raise), var(--shadow-float);
+      }
+      .sp-phone__screen {
+        border-radius: 32px;
+        background: var(--canvas);
+        padding: 20px 18px 16px;
+        min-height: 760px;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
+        position: relative;
+        overflow: hidden;
+      }
+      .sp-status {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        font-weight: 700;
+        padding-inline: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tp-page">
+      <div class="sp-topbar">
+        <div>
+          <div class="tp-eyebrow">TEMPO · DESIGN SYSTEM · v0.3 · NEO-TACTILE</div>
+          <h1>מערכת העיצוב של Tempo</h1>
+          <p class="tp-muted" style="margin-top: 6px; max-width: 60ch">
+            אחד-לאחד לפי תמונת הייחוס: שמנת וחול, טאופ, מרווה לפעולות, ורוד-חרס להדגשה, כחול רק לפוקוס ולבחירה.
+            האפליקציה בהירה; כהה קיים רק לבדיקה.
+          </p>
+        </div>
+        <div class="tp-seg" role="group" aria-label="ערכת נושא">
+          <button class="tp-seg__opt" type="button" data-theme-pick="light" aria-pressed="true">בהיר</button>
+          <button class="tp-seg__opt" type="button" data-theme-pick="dark" aria-pressed="false">כהה</button>
+        </div>
+      </div>
 
-  <!-- ============================================================ CONSOLE -->
-  <section>
-    <div class="tp-eyebrow">מסך 1 · קונסולת הסטודיו</div>
-    <h2 style="margin-bottom:var(--space-5)">לוח השיעורים השבועי</h2>
-    <div class="sp-console">
-      <aside class="tp-rail" aria-label="ניווט ראשי">
-        <div class="tp-rail__logo">T</div>
-        <a class="tp-rail__item" href="#" aria-label="לוח בקרה"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9H4z"/></svg></a>
-        <a class="tp-rail__item" href="#" aria-current="page" aria-label="לוח שיעורים"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></a>
-        <a class="tp-rail__item" href="#" aria-label="לקוחות"><svg class="tp-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="tp-chip tp-chip--count">12</span></a>
-        <a class="tp-rail__item" href="#" aria-label="תשלומים"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/></svg><span class="tp-chip tp-chip--count">3</span></a>
-        <a class="tp-rail__item" href="#" aria-label="דוחות"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6"/></svg></a>
-        <div class="tp-rail__spacer"></div>
-        <a class="tp-rail__item" href="#" aria-label="הגדרות"><svg class="tp-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
-        <span class="tp-avatar tp-avatar--brand">דכ</span>
-      </aside>
+      <!-- ============================================================ CONSOLE -->
+      <section>
+        <div class="tp-eyebrow">מסך 1 · קונסולת הסטודיו</div>
+        <h2 style="margin-bottom: var(--space-5)">לוח השיעורים השבועי</h2>
+        <div class="sp-console">
+          <aside class="tp-rail" aria-label="ניווט ראשי">
+            <div class="tp-rail__logo">T</div>
+            <a class="tp-rail__item" href="#" aria-label="לוח בקרה"
+              ><svg class="tp-icon" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9H4z" /></svg
+            ></a>
+            <a class="tp-rail__item" href="#" aria-current="page" aria-label="לוח שיעורים"
+              ><svg class="tp-icon" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="16" rx="3" />
+                <path d="M3 10h18M8 3v4M16 3v4" /></svg
+            ></a>
+            <a class="tp-rail__item" href="#" aria-label="לקוחות"
+              ><svg class="tp-icon" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" /></svg
+              ><span class="tp-chip tp-chip--count">12</span></a
+            >
+            <a class="tp-rail__item" href="#" aria-label="תשלומים"
+              ><svg class="tp-icon" viewBox="0 0 24 24">
+                <rect x="3" y="6" width="18" height="12" rx="3" />
+                <path d="M3 10h18" /></svg
+              ><span class="tp-chip tp-chip--count">3</span></a
+            >
+            <a class="tp-rail__item" href="#" aria-label="דוחות"
+              ><svg class="tp-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6" /></svg
+            ></a>
+            <div class="tp-rail__spacer"></div>
+            <a class="tp-rail__item" href="#" aria-label="הגדרות"
+              ><svg class="tp-icon" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3" />
+                <path
+                  d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+                /></svg
+            ></a>
+            <span class="tp-avatar tp-avatar--brand">דכ</span>
+          </aside>
 
-      <div class="tp-stack" style="gap:var(--space-6)">
-        <div class="sp-head">
+          <div class="tp-stack" style="gap: var(--space-6)">
+            <div class="sp-head">
+              <div>
+                <div class="tp-eyebrow">ראשון, 13 באוקטובר 2026</div>
+                <h1 style="font-size: 32px; line-height: 40px">בוקר טוב, דנה</h1>
+              </div>
+              <div class="tp-row">
+                <input
+                  class="tp-input tp-input--search"
+                  style="width: 300px"
+                  placeholder="חיפוש לקוח, שיעור או תשלום"
+                  aria-label="חיפוש"
+                />
+                <button class="tp-btn tp-btn--secondary tp-btn--icon" type="button" aria-label="התראות">
+                  <svg class="tp-icon" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" /></svg>
+                </button>
+                <button class="tp-btn tp-btn--primary" type="button">
+                  <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>שיעור חדש
+                </button>
+              </div>
+            </div>
+
+            <div class="sp-stats">
+              <div class="tp-card tp-card--sm tp-stat">
+                <div class="tp-ring" style="--tp-ring-deg: 295deg"><div class="tp-ring__inner">82%</div></div>
+                <div>
+                  <div class="tp-stat__value">48</div>
+                  <div class="tp-stat__label">נרשמים היום</div>
+                </div>
+              </div>
+              <div class="tp-card tp-card--sm tp-card--base tp-stat">
+                <div class="tp-icon-tile">
+                  <svg class="tp-icon" viewBox="0 0 24 24">
+                    <rect x="3" y="6" width="18" height="12" rx="3" />
+                    <path d="M3 10h18" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="tp-stat__value">12,480 ₪</div>
+                  <div class="tp-stat__label">הכנסות השבוע</div>
+                  <div class="tp-stat__delta">+8% מהשבוע שעבר</div>
+                </div>
+              </div>
+              <div class="tp-card tp-card--sm tp-card--cream tp-stat">
+                <div class="tp-ring tp-ring--rose" style="--tp-ring-deg: 168deg">
+                  <div class="tp-ring__inner">7</div>
+                </div>
+                <div>
+                  <div class="tp-stat__value">7</div>
+                  <div class="tp-stat__label">ברשימת המתנה</div>
+                  <div class="tp-stat__delta tp-stat__delta--down">2 לשיעור 08:30</div>
+                </div>
+              </div>
+              <div class="tp-card tp-card--sm tp-card--elevated tp-stat">
+                <div>
+                  <div class="tp-stat__value">3</div>
+                  <div class="tp-stat__label">תשלומים נכשלו</div>
+                  <div class="tp-caption">לטיפול היום</div>
+                </div>
+                <button class="tp-btn tp-btn--rose tp-btn--sm" type="button" style="margin-inline-start: auto">
+                  לטיפול
+                </button>
+              </div>
+            </div>
+
+            <div class="sp-main">
+              <div class="tp-stack" style="gap: var(--space-5)">
+                <div class="tp-row" style="justify-content: space-between">
+                  <div class="tp-seg" role="group" aria-label="תצוגה">
+                    <button class="tp-seg__opt" type="button" aria-pressed="false">יום</button>
+                    <button class="tp-seg__opt" type="button" aria-pressed="true">שבוע</button>
+                    <button class="tp-seg__opt" type="button" aria-pressed="false">חודש</button>
+                  </div>
+                  <div class="tp-row" style="gap: 8px">
+                    <button
+                      class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm"
+                      type="button"
+                      aria-label="שבוע קודם"
+                    >
+                      <svg class="tp-icon" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+                    </button>
+                    <span class="tp-label">12 עד 18 באוקטובר</span>
+                    <button
+                      class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm"
+                      type="button"
+                      aria-label="שבוע הבא"
+                    >
+                      <svg class="tp-icon" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" /></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="tp-sched" style="--tp-sched-cols: 3">
+                  <div class="tp-sched__head">
+                    <div class="tp-sched__day tp-sched__day--today">ראשון <b>13</b></div>
+                    <div class="tp-sched__day">שני <b>14</b></div>
+                    <div class="tp-sched__day">שלישי <b>15</b></div>
+                  </div>
+                  <div class="tp-sched__body">
+                    <div class="tp-sched__col tp-sched__col--today">
+                      <button class="tp-event tp-event--sage" type="button">
+                        <span class="tp-event__count">12/15</span><span class="tp-event__title">יוגה בוקר</span
+                        ><span class="tp-event__meta">07:00 · נועה · סטודיו 1</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 80%"></i></span>
+                      </button>
+                      <button class="tp-event tp-event--blue" type="button">
+                        <span class="tp-event__count">15/15</span><span class="tp-event__title">פילאטיס מזרן</span
+                        ><span class="tp-event__meta">08:30 · דנה · סטודיו 2</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 100%"></i></span>
+                      </button>
+                      <button class="tp-event tp-event--amber" type="button">
+                        <span class="tp-event__count">6/15</span><span class="tp-event__title">HIIT ערב</span
+                        ><span class="tp-event__meta">18:00 · עומרי · אולם</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 40%"></i></span>
+                      </button>
+                    </div>
+                    <div class="tp-sched__col">
+                      <button class="tp-event tp-event--blue" type="button">
+                        <span class="tp-event__count">6/10</span><span class="tp-event__title">פילאטיס מכשירים</span
+                        ><span class="tp-event__meta">07:30 · דנה · סטודיו 2</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 60%"></i></span>
+                      </button>
+                      <button class="tp-event tp-event--cancelled" type="button">
+                        <span class="tp-event__title">ברה</span><span class="tp-event__meta">12:00 · בוטל</span>
+                      </button>
+                      <button class="tp-event tp-event--sage" type="button">
+                        <span class="tp-event__count">18/20</span><span class="tp-event__title">יוגה וינאסה</span
+                        ><span class="tp-event__meta">19:00 · נועה · סטודיו 1</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 90%"></i></span>
+                      </button>
+                    </div>
+                    <div class="tp-sched__col">
+                      <button class="tp-event tp-event--amber" type="button">
+                        <span class="tp-event__count">4/16</span><span class="tp-event__title">כוח פונקציונלי</span
+                        ><span class="tp-event__meta">06:30 · עומרי · אולם</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 25%"></i></span>
+                      </button>
+                      <button class="tp-event tp-event--mauve" type="button">
+                        <span class="tp-event__count">14/20</span><span class="tp-event__title">ריקוד</span
+                        ><span class="tp-event__meta">17:00 · מאיה · אולם</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 70%"></i></span>
+                      </button>
+                      <button class="tp-event tp-event--taupe" type="button">
+                        <span class="tp-event__count">11/20</span><span class="tp-event__title">ילדים</span
+                        ><span class="tp-event__meta">16:00 · רועי · חצר</span
+                        ><span class="tp-event__fill"><i style="--tp-fill: 55%"></i></span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tp-stack" style="gap: var(--space-5)">
+                <div class="tp-class">
+                  <div class="tp-ring tp-ring--lg" style="--tp-ring-deg: 288deg">
+                    <div class="tp-ring__inner">12/15</div>
+                  </div>
+                  <div class="tp-class__body">
+                    <div class="tp-class__title">פילאטיס מזרן</div>
+                    <div class="tp-class__meta">08:30 עד 09:20 · דנה כהן · סטודיו 2</div>
+                    <div class="tp-row" style="gap: 8px; margin-top: 6px">
+                      <span class="tp-chip tp-chip--success">מאושר</span
+                      ><span class="tp-chip tp-chip--warning">2 בהמתנה</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="tp-card">
+                  <div class="tp-card__head">
+                    <div class="tp-card__title">נרשמים</div>
+                    <button
+                      class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm"
+                      type="button"
+                      aria-label="הוספת נרשם"
+                    >
+                      <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+                    </button>
+                  </div>
+                  <div class="tp-stack" style="gap: var(--space-4)">
+                    <div class="tp-row" style="flex-wrap: nowrap">
+                      <span class="tp-avatar">יל</span>
+                      <div style="flex: 1; min-width: 0">
+                        <div style="font-weight: 600">יעל לוי</div>
+                        <div class="tp-caption">מנוי חודשי · עד 31.10</div>
+                      </div>
+                      <span class="tp-chip tp-chip--success">מאושר</span>
+                    </div>
+                    <div class="tp-row" style="flex-wrap: nowrap">
+                      <span class="tp-avatar">אב</span>
+                      <div style="flex: 1; min-width: 0">
+                        <div style="font-weight: 600">אורי בן דוד</div>
+                        <div class="tp-caption">כרטיסייה · נותרו 3</div>
+                      </div>
+                      <span class="tp-chip tp-chip--warning">ממתין</span>
+                    </div>
+                    <div class="tp-row" style="flex-wrap: nowrap">
+                      <span class="tp-avatar">רש</span>
+                      <div style="flex: 1; min-width: 0">
+                        <div style="font-weight: 600">רונית שמש</div>
+                        <div class="tp-caption">ניסיון ראשון</div>
+                      </div>
+                      <span class="tp-chip tp-chip--info">ניסיון</span>
+                    </div>
+                  </div>
+                  <hr class="tp-divider" style="margin-block: var(--space-5)" />
+                  <button class="tp-btn tp-btn--primary tp-btn--block" type="button">רישום לקוח לשיעור</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ MEMBER APP -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">מסך 2 · אפליקציית החבר.ה</div>
+        <h2>הבית של המתאמנ.ת</h2>
+        <div class="sp-phone">
+          <div class="sp-phone__screen">
+            <div class="sp-status"><span>9:41</span><span class="tp-ltr">●●● ▮</span></div>
+            <div class="tp-row" style="justify-content: space-between; flex-wrap: nowrap">
+              <div>
+                <div class="tp-eyebrow">ראשון, 13.10</div>
+                <div style="font-size: 26px; line-height: 32px; font-weight: 800; letter-spacing: -0.02em">היי יעל</div>
+              </div>
+              <span class="tp-avatar tp-avatar--lg">יל</span>
+            </div>
+            <div class="tp-card tp-card--elevated tp-card--sm" style="display: flex; align-items: center; gap: 16px">
+              <div
+                class="tp-ring"
+                style="
+                  --tp-ring-deg: 288deg;
+                  --tp-ring-color: #fffef4;
+                  --tp-ring-color2: #e8d6cf;
+                  background: var(--rose-deep);
+                  box-shadow: inset 3px 3px 8px #5a463740;
+                "
+              >
+                <div class="tp-ring__inner" style="color: var(--rose-ink)">12/15</div>
+              </div>
+              <div style="flex: 1; min-width: 0">
+                <div class="tp-caption">השיעור הבא · בעוד 40 דקות</div>
+                <div style="font-size: 20px; line-height: 26px; font-weight: 700">פילאטיס מזרן</div>
+                <div class="tp-caption">08:30 · דנה כהן · סטודיו 2</div>
+              </div>
+            </div>
+            <div class="tp-week" role="group" aria-label="ימי השבוע">
+              <button class="tp-week__day" type="button" aria-pressed="false">א׳<b>13</b></button
+              ><button class="tp-week__day" type="button" aria-pressed="true">ב׳<b>14</b></button
+              ><button class="tp-week__day" type="button" aria-pressed="false">ג׳<b>15</b></button
+              ><button class="tp-week__day" type="button" aria-pressed="false">ד׳<b>16</b></button
+              ><button class="tp-week__day" type="button" aria-pressed="false">ה׳<b>17</b></button
+              ><button class="tp-week__day" type="button" aria-pressed="false">ו׳<b>18</b></button
+              ><button class="tp-week__day" type="button" aria-pressed="false">ש׳<b>19</b></button>
+            </div>
+            <div class="tp-row" style="gap: 8px">
+              <button class="tp-chip tp-chip--plain tp-chip--brand" type="button" aria-pressed="true">הכל</button
+              ><button class="tp-chip tp-chip--plain" type="button" aria-pressed="false">פילאטיס</button
+              ><button class="tp-chip tp-chip--plain" type="button" aria-pressed="false">יוגה</button>
+            </div>
+            <div class="tp-class" style="padding: 14px; gap: 14px">
+              <span class="tp-slot">18:00<small>45 דק׳</small></span
+              ><span class="tp-class__body"
+                ><span class="tp-class__title" style="font-size: 16px; line-height: 22px">פילאטיס כוח</span
+                ><span class="tp-class__meta" style="font-size: 13px">עומר · מלא, 2 ממתינים</span></span
+              ><span class="tp-chip tp-chip--warning">במקום 2 בהמתנה</span>
+            </div>
+            <div class="tp-stack" style="gap: 12px">
+              <div class="tp-row" style="justify-content: space-between">
+                <span class="tp-label">שיעורים ביום שני</span
+                ><a href="#" class="tp-caption" style="color: var(--brand-ink)">כל השבוע</a>
+              </div>
+              <button class="tp-event tp-event--blue" type="button">
+                <span class="tp-event__count">6/10</span><span class="tp-event__title">פילאטיס מכשירים</span
+                ><span class="tp-event__meta">07:30 · דנה · סטודיו 2</span
+                ><span class="tp-event__fill"><i style="--tp-fill: 60%"></i></span>
+              </button>
+              <button class="tp-event tp-event--sage" type="button">
+                <span class="tp-event__count">18/20</span><span class="tp-event__title">יוגה וינאסה</span
+                ><span class="tp-event__meta">19:00 · נועה · סטודיו 1</span
+                ><span class="tp-event__fill"><i style="--tp-fill: 90%"></i></span>
+              </button>
+            </div>
+            <div class="tp-row" style="justify-content: space-between; flex-wrap: nowrap">
+              <div class="tp-card tp-card--sm" style="flex: 1; text-align: center; padding: 16px">
+                <div class="tp-stat__value" style="font-size: 26px; line-height: 32px">7</div>
+                <div class="tp-stat__label">כניסות נותרו</div>
+              </div>
+              <div class="tp-card tp-card--sm" style="flex: 1; text-align: center; padding: 16px">
+                <div class="tp-stat__value" style="font-size: 26px; line-height: 32px">31.10</div>
+                <div class="tp-stat__label">תוקף המנוי</div>
+              </div>
+            </div>
+            <div style="flex: 1"></div>
+            <nav class="tp-tabbar" aria-label="ניווט">
+              <a class="tp-tabbar__item" href="#" aria-current="page"
+                ><svg class="tp-icon" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9H4z" /></svg>בית</a
+              >
+              <a class="tp-tabbar__item" href="#"
+                ><svg class="tp-icon" viewBox="0 0 24 24">
+                  <rect x="3" y="5" width="18" height="16" rx="3" />
+                  <path d="M3 10h18M8 3v4M16 3v4" /></svg
+                >לו״ז</a
+              >
+              <button class="tp-tabbar__fab" type="button" aria-label="הרשמה לשיעור">
+                <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+              </button>
+              <a class="tp-tabbar__item" href="#"
+                ><svg class="tp-icon" viewBox="0 0 24 24">
+                  <rect x="3" y="6" width="18" height="12" rx="3" />
+                  <path d="M3 10h18" /></svg
+                >מנוי</a
+              >
+              <a class="tp-tabbar__item" href="#"
+                ><svg class="tp-icon" viewBox="0 0 24 24">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21a8 8 0 0 1 16 0" /></svg
+                >אני</a
+              >
+            </nav>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== COLORS -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">יסודות</div>
+        <h2>צבעים</h2>
+        <div class="sp-swatches" id="swatches"></div>
+      </section>
+
+      <!-- ================================================================== TYPE -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">יסודות</div>
+        <h2>טיפוגרפיה</h2>
+        <div class="sp-type tp-card">
+          <div><code>display-lg</code><span class="text-display-lg">לוח השיעורים</span></div>
+          <div><code>display-sm</code><span class="text-display-sm">12 / 15</span></div>
+          <div><code>h1</code><span class="text-h1">בוקר טוב, דנה</span></div>
+          <div><code>h2</code><span class="text-h2">השיעורים של היום</span></div>
+          <div><code>h3</code><span class="text-h3">פילאטיס מזרן</span></div>
+          <div><code>body-lg</code><span class="text-body-lg">השיעור מתקיים בסטודיו 2 עם דנה כהן.</span></div>
+          <div><code>body</code><span class="text-body">12 נרשמו · 3 מקומות · 2 בהמתנה</span></div>
+          <div><code>body-sm</code><span class="text-body-sm">07:00 · נועה · סטודיו 1</span></div>
+          <div><code>label</code><span class="text-label">רשימת המתנה</span></div>
+          <div><code>caption</code><span class="text-caption tp-muted">עודכן לפני 4 דקות</span></div>
           <div>
-            <div class="tp-eyebrow">ראשון, 13 באוקטובר 2026</div>
-            <h1 style="font-size:32px;line-height:40px">בוקר טוב, דנה</h1>
+            <code>code</code><span class="text-code"><code>org_7f3a · GET /v1/sessions</code></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== BUTTONS -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">רכיבים</div>
+        <h2>כפתורים</h2>
+        <div class="tp-card tp-stack" style="gap: var(--space-6)">
+          <div class="tp-row" style="gap: var(--space-4)">
+            <button class="tp-btn tp-btn--primary" type="button">רישום לשיעור</button>
+            <button class="tp-btn tp-btn--secondary" type="button">ביטול</button>
+            <button class="tp-btn tp-btn--ghost" type="button">עוד</button>
+            <button class="tp-btn tp-btn--rose" type="button">קריאה לפעולה</button>
+            <button class="tp-btn tp-btn--danger" type="button">מחיקה</button>
+            <button class="tp-btn tp-btn--primary" type="button" disabled>מושבת</button>
+            <button class="tp-btn tp-btn--loading" type="button">טוען</button>
+          </div>
+          <div class="tp-row" style="gap: var(--space-4)">
+            <button class="tp-btn tp-btn--primary tp-btn--sm" type="button">קטן</button>
+            <button class="tp-btn tp-btn--primary" type="button">רגיל</button>
+            <button class="tp-btn tp-btn--primary tp-btn--lg" type="button">גדול</button>
+            <button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm" type="button" aria-label="הוספה">
+              <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+            <button class="tp-btn tp-btn--secondary tp-btn--icon" type="button" aria-label="הוספה">
+              <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+            <button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--lg" type="button" aria-label="נגן">
+              <svg class="tp-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <button class="tp-btn tp-btn--primary tp-btn--icon tp-btn--lg" type="button" aria-label="הוספה">
+              <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+            <button class="tp-btn tp-btn--primary" type="button">
+              <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>שיעור חדש
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== REFERENCE TRIO -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">רכיבים · מתמונת הייחוס</div>
+        <h2>כרטיסים, סליידר, שלבים, תפריט</h2>
+        <div
+          class="tp-grid"
+          style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-6); align-items: start"
+        >
+          <div class="tp-card tp-card--base">
+            <div class="tp-icon-tile" style="margin-bottom: 14px">
+              <svg class="tp-icon" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="16" rx="3" />
+                <path d="M3 10h18M8 3v4M16 3v4" />
+              </svg>
+            </div>
+            <div class="tp-card__title">כרטיס בסיס</div>
+            <p class="tp-muted" style="margin-top: 6px">טאופ עם צל פנימי. לרקע של קבוצת נתונים, לא לפעולה.</p>
+          </div>
+          <div class="tp-card">
+            <div class="tp-card__media">
+              <svg class="tp-icon" viewBox="0 0 24 24" style="width: 28px; height: 28px">
+                <rect x="3" y="4" width="18" height="16" rx="3" />
+                <path d="m3 16 5-5 4 4 3-3 6 6" />
+                <circle cx="16" cy="9" r="1.5" />
+              </svg>
+            </div>
+            <div class="tp-card__title">כרטיס מוגבה</div>
+            <p class="tp-muted" style="margin-top: 6px">חול עם הרמה עדינה. ברירת המחדל לכל תוכן.</p>
+          </div>
+          <div class="tp-card tp-card--elevated">
+            <div class="tp-card__title">כרטיס מורם</div>
+            <p class="tp-muted" style="margin-top: 6px">ורוד-חרס, מרחף, מסגרת לבנה. אחד למסך, לדבר שחשוב.</p>
+            <button class="tp-btn tp-btn--rose" type="button" style="margin-top: 16px">קריאה לפעולה</button>
+          </div>
+          <div class="tp-card tp-card--cream tp-stack" style="gap: var(--space-5)">
+            <div>
+              <div class="tp-label" style="margin-bottom: 10px">סליידר</div>
+              <div class="tp-slider">
+                <input type="range" min="0" max="100" value="38" style="--tp-val: 38%" aria-label="עוצמה" />
+                <div class="tp-slider__ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+            <div>
+              <div class="tp-label" style="margin-bottom: 12px">מחוון שלבים</div>
+              <div class="tp-steps">
+                <span class="tp-steps__dot tp-steps__dot--done"
+                  ><svg class="tp-icon" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6" /></svg></span
+                ><span class="tp-steps__line tp-steps__line--done"></span
+                ><span class="tp-steps__dot tp-steps__dot--current"></span><span class="tp-steps__line"></span
+                ><span class="tp-steps__dot"></span><span class="tp-steps__line"></span
+                ><span class="tp-steps__dot"></span>
+              </div>
+            </div>
+          </div>
+          <div class="tp-stack" style="gap: 12px">
+            <div class="tp-label">תפריט נפתח</div>
+            <select class="tp-select" aria-label="בחירה">
+              <option>סטודיו 1</option>
+            </select>
+            <div class="tp-menu" role="listbox">
+              <button class="tp-menu__item" type="button">סטודיו 1</button
+              ><button class="tp-menu__item" type="button" aria-selected="true">סטודיו 2</button
+              ><button class="tp-menu__item" type="button">אולם</button>
+              <div class="tp-menu__sep"></div>
+              <button class="tp-menu__item" type="button">חצר</button
+              ><button class="tp-menu__item" type="button" disabled>מחסן (לא זמין)</button
+              ><button class="tp-menu__item tp-menu__item--danger" type="button">מחיקת חדר</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== FORMS -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">רכיבים</div>
+        <h2>טפסים</h2>
+        <div class="tp-card tp-grid" style="gap: var(--space-6)">
+          <label class="tp-field"
+            ><span class="tp-field__label">שם הלקוח <span class="tp-req">*</span></span
+            ><input class="tp-input" value="דנה כהן" /><span class="tp-field__help">כפי שיופיע בקבלה</span></label
+          >
+          <label class="tp-field"
+            ><span class="tp-field__label">טלפון</span><input class="tp-input" dir="ltr" placeholder="050-000-0000"
+          /></label>
+          <label class="tp-field"
+            ><span class="tp-field__label">סוג שיעור</span
+            ><select class="tp-select">
+              <option>יוגה</option>
+              <option selected>פילאטיס</option>
+              <option>HIIT</option>
+            </select></label
+          >
+          <label class="tp-field tp-field--invalid"
+            ><span class="tp-field__label">אימייל</span><input class="tp-input" dir="ltr" value="dana@" /><span
+              class="tp-field__help"
+              >כתובת לא תקינה. צריך @ ושם דומיין.</span
+            ></label
+          >
+          <label class="tp-field" style="grid-column: 1/-1"
+            ><span class="tp-field__label">הערות</span
+            ><textarea class="tp-textarea" placeholder="למשל: פציעה בברך, להימנע מקפיצות"></textarea>
+          </label>
+          <div class="tp-stack">
+            <label class="tp-toggle"
+              ><input type="checkbox" checked /><span class="tp-toggle__track"></span
+              ><span class="tp-toggle__label">רשימת המתנה פתוחה</span></label
+            >
+            <label class="tp-toggle"
+              ><input type="checkbox" /><span class="tp-toggle__track"></span
+              ><span class="tp-toggle__label">תזכורת ב-SMS</span></label
+            >
+          </div>
+          <div class="tp-stack" style="gap: 12px; grid-column: 1/-1">
+            <div class="tp-label">תאריך ושעה (DateInput, TimeInput)</div>
+            <div class="tp-row" style="gap: var(--space-6); align-items: flex-start; flex-wrap: wrap">
+              <div class="tp-stack" style="gap: 8px">
+                <div class="tp-field__control tp-field__control--adorned">
+                  <input class="tp-input" value="20.10.2026" aria-label="תאריך" /><button
+                    class="tp-btn tp-btn--icon tp-btn--sm tp-field__adorn"
+                    type="button"
+                    aria-label="בחירת תאריך"
+                  >
+                    <svg class="tp-icon" viewBox="0 0 24 24">
+                      <rect x="3" y="4" width="18" height="18" rx="2" />
+                      <path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="tp-calendar">
+                  <div class="tp-calendar__head">
+                    <button class="tp-btn tp-btn--icon tp-btn--sm" type="button" aria-label="החודש הקודם">
+                      <svg class="tp-icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+                    </button>
+                    <div class="tp-calendar__title">אוקטובר 2026</div>
+                    <button class="tp-btn tp-btn--icon tp-btn--sm" type="button" aria-label="החודש הבא">
+                      <svg class="tp-icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+                    </button>
+                  </div>
+                  <table class="tp-calendar__grid">
+                    <thead>
+                      <tr>
+                        <th>א׳</th>
+                        <th>ב׳</th>
+                        <th>ג׳</th>
+                        <th>ד׳</th>
+                        <th>ה׳</th>
+                        <th>ו׳</th>
+                        <th>ש׳</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="tp-calendar__day tp-calendar__day--outside">27</td>
+                        <td class="tp-calendar__day tp-calendar__day--outside">28</td>
+                        <td class="tp-calendar__day tp-calendar__day--outside">29</td>
+                        <td class="tp-calendar__day tp-calendar__day--outside">30</td>
+                        <td class="tp-calendar__day">1</td>
+                        <td class="tp-calendar__day">2</td>
+                        <td class="tp-calendar__day">3</td>
+                      </tr>
+                      <tr>
+                        <td class="tp-calendar__day">4</td>
+                        <td class="tp-calendar__day">5</td>
+                        <td class="tp-calendar__day">6</td>
+                        <td class="tp-calendar__day">7</td>
+                        <td class="tp-calendar__day">8</td>
+                        <td class="tp-calendar__day">9</td>
+                        <td class="tp-calendar__day">10</td>
+                      </tr>
+                      <tr>
+                        <td class="tp-calendar__day">11</td>
+                        <td class="tp-calendar__day">12</td>
+                        <td class="tp-calendar__day">13</td>
+                        <td class="tp-calendar__day">14</td>
+                        <td class="tp-calendar__day" aria-current="date">15</td>
+                        <td class="tp-calendar__day">16</td>
+                        <td class="tp-calendar__day">17</td>
+                      </tr>
+                      <tr>
+                        <td class="tp-calendar__day">18</td>
+                        <td class="tp-calendar__day">19</td>
+                        <td class="tp-calendar__day" aria-selected="true">20</td>
+                        <td class="tp-calendar__day">21</td>
+                        <td class="tp-calendar__day">22</td>
+                        <td class="tp-calendar__day">23</td>
+                        <td class="tp-calendar__day">24</td>
+                      </tr>
+                      <tr>
+                        <td class="tp-calendar__day">25</td>
+                        <td class="tp-calendar__day">26</td>
+                        <td class="tp-calendar__day">27</td>
+                        <td class="tp-calendar__day">28</td>
+                        <td class="tp-calendar__day">29</td>
+                        <td class="tp-calendar__day">30</td>
+                        <td class="tp-calendar__day">31</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="tp-stack" style="gap: 8px">
+                <input class="tp-input" value="18:30" aria-label="שעה" />
+                <ul class="tp-menu tp-listbox" style="list-style: none; margin: 0">
+                  <li class="tp-menu__item">18:00</li>
+                  <li class="tp-menu__item" aria-current="true">18:30</li>
+                  <li class="tp-menu__item" aria-selected="true">19:00</li>
+                  <li class="tp-menu__item">19:30</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="tp-stack" style="gap: 8px">
+            <label class="tp-check"><input type="checkbox" checked />חיוב אוטומטי</label>
+            <label class="tp-check"><input type="checkbox" />שליחת קבלה במייל</label>
+            <label class="tp-check"><input type="radio" name="r" checked />מנוי חודשי</label>
+            <label class="tp-check"><input type="radio" name="r" />כרטיסייה</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== CHIPS, BANNERS, TOAST -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">רכיבים</div>
+        <h2>צ׳יפים, הודעות, טוסט</h2>
+        <div class="tp-card tp-stack" style="gap: var(--space-5)">
+          <div class="tp-row">
+            <span class="tp-chip tp-chip--success">מאושר</span><span class="tp-chip tp-chip--warning">ממתין</span
+            ><span class="tp-chip tp-chip--danger">בוטל</span><span class="tp-chip tp-chip--info">ניסיון</span
+            ><span class="tp-chip tp-chip--brand">היום</span><span class="tp-chip tp-chip--sunken">טיוטה</span
+            ><span class="tp-chip tp-chip--count">7</span>
           </div>
           <div class="tp-row">
-            <input class="tp-input tp-input--search" style="width:300px" placeholder="חיפוש לקוח, שיעור או תשלום" aria-label="חיפוש">
-            <button class="tp-btn tp-btn--secondary tp-btn--icon" type="button" aria-label="התראות"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg></button>
-            <button class="tp-btn tp-btn--primary" type="button"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>שיעור חדש</button>
+            <span class="tp-chip tp-chip--cat-sage">יוגה</span><span class="tp-chip tp-chip--cat-rose">פילאטיס</span
+            ><span class="tp-chip tp-chip--cat-mauve">ריקוד</span><span class="tp-chip tp-chip--cat-blue">ברה</span
+            ><span class="tp-chip tp-chip--cat-amber">HIIT</span><span class="tp-chip tp-chip--cat-taupe">ילדים</span>
           </div>
-        </div>
-
-        <div class="sp-stats">
-          <div class="tp-card tp-card--sm tp-stat"><div class="tp-ring" style="--tp-ring-deg:295deg"><div class="tp-ring__inner">82%</div></div><div><div class="tp-stat__value">48</div><div class="tp-stat__label">נרשמים היום</div></div></div>
-          <div class="tp-card tp-card--sm tp-card--base tp-stat"><div class="tp-icon-tile"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/></svg></div><div><div class="tp-stat__value">12,480 ₪</div><div class="tp-stat__label">הכנסות השבוע</div><div class="tp-stat__delta">+8% מהשבוע שעבר</div></div></div>
-          <div class="tp-card tp-card--sm tp-card--cream tp-stat"><div class="tp-ring tp-ring--rose" style="--tp-ring-deg:168deg"><div class="tp-ring__inner">7</div></div><div><div class="tp-stat__value">7</div><div class="tp-stat__label">ברשימת המתנה</div><div class="tp-stat__delta tp-stat__delta--down">2 לשיעור 08:30</div></div></div>
-          <div class="tp-card tp-card--sm tp-card--elevated tp-stat"><div><div class="tp-stat__value">3</div><div class="tp-stat__label">תשלומים נכשלו</div><div class="tp-caption">לטיפול היום</div></div><button class="tp-btn tp-btn--rose tp-btn--sm" type="button" style="margin-inline-start:auto">לטיפול</button></div>
-        </div>
-
-        <div class="sp-main">
-          <div class="tp-stack" style="gap:var(--space-5)">
-            <div class="tp-row" style="justify-content:space-between">
-              <div class="tp-seg" role="group" aria-label="תצוגה">
-                <button class="tp-seg__opt" type="button" aria-pressed="false">יום</button>
-                <button class="tp-seg__opt" type="button" aria-pressed="true">שבוע</button>
-                <button class="tp-seg__opt" type="button" aria-pressed="false">חודש</button>
-              </div>
-              <div class="tp-row" style="gap:8px">
-                <button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm" type="button" aria-label="שבוע קודם"><svg class="tp-icon" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-                <span class="tp-label">12 עד 18 באוקטובר</span>
-                <button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm" type="button" aria-label="שבוע הבא"><svg class="tp-icon" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
-              </div>
-            </div>
-            <div class="tp-sched" style="--tp-sched-cols:3">
-              <div class="tp-sched__head">
-                <div class="tp-sched__day tp-sched__day--today">ראשון <b>13</b></div>
-                <div class="tp-sched__day">שני <b>14</b></div>
-                <div class="tp-sched__day">שלישי <b>15</b></div>
-              </div>
-              <div class="tp-sched__body">
-                <div class="tp-sched__col tp-sched__col--today">
-                  <button class="tp-event tp-event--sage" type="button"><span class="tp-event__count">12/15</span><span class="tp-event__title">יוגה בוקר</span><span class="tp-event__meta">07:00 · נועה · סטודיו 1</span><span class="tp-event__fill"><i style="--tp-fill:80%"></i></span></button>
-                  <button class="tp-event tp-event--blue" type="button"><span class="tp-event__count">15/15</span><span class="tp-event__title">פילאטיס מזרן</span><span class="tp-event__meta">08:30 · דנה · סטודיו 2</span><span class="tp-event__fill"><i style="--tp-fill:100%"></i></span></button>
-                  <button class="tp-event tp-event--amber" type="button"><span class="tp-event__count">6/15</span><span class="tp-event__title">HIIT ערב</span><span class="tp-event__meta">18:00 · עומרי · אולם</span><span class="tp-event__fill"><i style="--tp-fill:40%"></i></span></button>
-                </div>
-                <div class="tp-sched__col">
-                  <button class="tp-event tp-event--blue" type="button"><span class="tp-event__count">6/10</span><span class="tp-event__title">פילאטיס מכשירים</span><span class="tp-event__meta">07:30 · דנה · סטודיו 2</span><span class="tp-event__fill"><i style="--tp-fill:60%"></i></span></button>
-                  <button class="tp-event tp-event--cancelled" type="button"><span class="tp-event__title">ברה</span><span class="tp-event__meta">12:00 · בוטל</span></button>
-                  <button class="tp-event tp-event--sage" type="button"><span class="tp-event__count">18/20</span><span class="tp-event__title">יוגה וינאסה</span><span class="tp-event__meta">19:00 · נועה · סטודיו 1</span><span class="tp-event__fill"><i style="--tp-fill:90%"></i></span></button>
-                </div>
-                <div class="tp-sched__col">
-                  <button class="tp-event tp-event--amber" type="button"><span class="tp-event__count">4/16</span><span class="tp-event__title">כוח פונקציונלי</span><span class="tp-event__meta">06:30 · עומרי · אולם</span><span class="tp-event__fill"><i style="--tp-fill:25%"></i></span></button>
-                  <button class="tp-event tp-event--mauve" type="button"><span class="tp-event__count">14/20</span><span class="tp-event__title">ריקוד</span><span class="tp-event__meta">17:00 · מאיה · אולם</span><span class="tp-event__fill"><i style="--tp-fill:70%"></i></span></button>
-                  <button class="tp-event tp-event--taupe" type="button"><span class="tp-event__count">11/20</span><span class="tp-event__title">ילדים</span><span class="tp-event__meta">16:00 · רועי · חצר</span><span class="tp-event__fill"><i style="--tp-fill:55%"></i></span></button>
-                </div>
-              </div>
-            </div>
+          <div class="tp-banner tp-banner--info">
+            <svg class="tp-icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v5M12 8h.01" />
+            </svg>
+            <div>השיעור מלא. נרשמים חדשים ייכנסו לרשימת ההמתנה.</div>
           </div>
-
-          <div class="tp-stack" style="gap:var(--space-5)">
-            <div class="tp-class">
-              <div class="tp-ring tp-ring--lg" style="--tp-ring-deg:288deg"><div class="tp-ring__inner">12/15</div></div>
-              <div class="tp-class__body">
-                <div class="tp-class__title">פילאטיס מזרן</div>
-                <div class="tp-class__meta">08:30 עד 09:20 · דנה כהן · סטודיו 2</div>
-                <div class="tp-row" style="gap:8px;margin-top:6px"><span class="tp-chip tp-chip--success">מאושר</span><span class="tp-chip tp-chip--warning">2 בהמתנה</span></div>
-              </div>
+          <div class="tp-banner tp-banner--warning">
+            <svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17h.01" /></svg>
+            <div>3 תשלומים נכשלו השבוע. <a href="#">לרשימה</a></div>
+          </div>
+          <div class="tp-banner tp-banner--danger">
+            <svg class="tp-icon" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path d="m9 9 6 6M15 9l-6 6" />
+            </svg>
+            <div>לא ניתן לשמור. אין חיבור לשרת, נסה שוב בעוד רגע.</div>
+          </div>
+          <div class="tp-row" style="gap: var(--space-5)">
+            <div class="tp-toast">
+              <span class="tp-toast__tile"
+                ><svg class="tp-icon" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6" /></svg></span
+              >השיעור נשמר<button class="tp-toast__close" type="button" aria-label="סגירה">
+                <svg class="tp-icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
             </div>
-            <div class="tp-card">
-              <div class="tp-card__head"><div class="tp-card__title">נרשמים</div><button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm" type="button" aria-label="הוספת נרשם"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
-              <div class="tp-stack" style="gap:var(--space-4)">
-                <div class="tp-row" style="flex-wrap:nowrap"><span class="tp-avatar">יל</span><div style="flex:1;min-width:0"><div style="font-weight:600">יעל לוי</div><div class="tp-caption">מנוי חודשי · עד 31.10</div></div><span class="tp-chip tp-chip--success">מאושר</span></div>
-                <div class="tp-row" style="flex-wrap:nowrap"><span class="tp-avatar">אב</span><div style="flex:1;min-width:0"><div style="font-weight:600">אורי בן דוד</div><div class="tp-caption">כרטיסייה · נותרו 3</div></div><span class="tp-chip tp-chip--warning">ממתין</span></div>
-                <div class="tp-row" style="flex-wrap:nowrap"><span class="tp-avatar">רש</span><div style="flex:1;min-width:0"><div style="font-weight:600">רונית שמש</div><div class="tp-caption">ניסיון ראשון</div></div><span class="tp-chip tp-chip--info">ניסיון</span></div>
-              </div>
-              <hr class="tp-divider" style="margin-block:var(--space-5)">
-              <button class="tp-btn tp-btn--primary tp-btn--block" type="button">רישום לקוח לשיעור</button>
+            <div class="tp-toast tp-toast--danger">
+              <span class="tp-toast__tile"
+                ><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17h.01" /></svg></span
+              >השליחה נכשלה<button class="tp-btn tp-btn--secondary tp-btn--sm" type="button">נסה שוב</button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- ============================================================ MEMBER APP -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">מסך 2 · אפליקציית החבר.ה</div>
-    <h2>הבית של המתאמנ.ת</h2>
-    <div class="sp-phone">
-      <div class="sp-phone__screen">
-        <div class="sp-status"><span>9:41</span><span class="tp-ltr">●●● ▮</span></div>
-        <div class="tp-row" style="justify-content:space-between;flex-wrap:nowrap">
-          <div><div class="tp-eyebrow">ראשון, 13.10</div><div style="font-size:26px;line-height:32px;font-weight:800;letter-spacing:-0.02em">היי יעל</div></div>
-          <span class="tp-avatar tp-avatar--lg">יל</span>
+      <!-- ================================================================== TABLE + TABS -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">רכיבים</div>
+        <h2>טבלה וטאבים</h2>
+        <div class="tp-stack" style="gap: var(--space-5)">
+          <div class="tp-tabs" role="tablist">
+            <button class="tp-tab" role="tab" aria-selected="true">פעילים</button>
+            <button class="tp-tab" role="tab" aria-selected="false">ממתינים</button>
+            <button class="tp-tab" role="tab" aria-selected="false">בוטלו</button>
+          </div>
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead>
+                <tr>
+                  <th>לקוח</th>
+                  <th>מנוי</th>
+                  <th>סטטוס</th>
+                  <th class="tp-num">יתרה</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="tp-row" style="flex-wrap: nowrap">
+                      <span class="tp-avatar tp-avatar--sm">יל</span>יעל לוי
+                    </div>
+                  </td>
+                  <td>חודשי</td>
+                  <td><span class="tp-chip tp-chip--success">פעיל</span></td>
+                  <td class="tp-num">0 ₪</td>
+                  <td><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">פרטים</button></td>
+                </tr>
+                <tr aria-selected="true">
+                  <td>
+                    <div class="tp-row" style="flex-wrap: nowrap">
+                      <span class="tp-avatar tp-avatar--sm">אב</span>אורי בן דוד
+                    </div>
+                  </td>
+                  <td>כרטיסייה 10</td>
+                  <td><span class="tp-chip tp-chip--warning">חוב</span></td>
+                  <td class="tp-num">240 ₪</td>
+                  <td><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">פרטים</button></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="tp-row" style="flex-wrap: nowrap">
+                      <span class="tp-avatar tp-avatar--sm">רש</span>רונית שמש
+                    </div>
+                  </td>
+                  <td>ניסיון</td>
+                  <td><span class="tp-chip tp-chip--info">ניסיון</span></td>
+                  <td class="tp-num">0 ₪</td>
+                  <td><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">פרטים</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="tp-card tp-card--elevated tp-card--sm" style="display:flex;align-items:center;gap:16px">
-          <div class="tp-ring" style="--tp-ring-deg:288deg;--tp-ring-color:#fffef4;--tp-ring-color2:#e8d6cf;background:var(--rose-deep);box-shadow:inset 3px 3px 8px #5a463740"><div class="tp-ring__inner" style="color:var(--rose-ink)">12/15</div></div>
-          <div style="flex:1;min-width:0"><div class="tp-caption">השיעור הבא · בעוד 40 דקות</div><div style="font-size:20px;line-height:26px;font-weight:700">פילאטיס מזרן</div><div class="tp-caption">08:30 · דנה כהן · סטודיו 2</div></div>
+      </section>
+
+      <!-- ================================================================== STATES -->
+      <section class="sp-section">
+        <div class="tp-eyebrow">רכיבים</div>
+        <h2>מצבים: טעינה, ריק, דיאלוג</h2>
+        <div class="tp-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6)">
+          <div class="tp-card tp-stack" style="gap: 12px">
+            <div class="tp-skeleton" style="width: 40%; height: 22px"></div>
+            <div class="tp-skeleton"></div>
+            <div class="tp-skeleton" style="width: 70%"></div>
+            <div class="tp-skeleton" style="height: 44px; margin-top: 8px; border-radius: var(--radius-md)"></div>
+          </div>
+          <div class="tp-empty">
+            <svg class="tp-icon" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8" /></svg>
+            <div class="tp-empty__title">אין שיעורים השבוע</div>
+            <div>הוסיפו שיעור ראשון או העתיקו שבוע קודם.</div>
+            <button class="tp-btn tp-btn--primary" type="button">שיעור חדש</button>
+          </div>
+          <div class="tp-dialog" style="border-radius: var(--radius-2xl)">
+            <div class="tp-dialog__handle"></div>
+            <div class="tp-dialog__title">לבטל את השיעור?</div>
+            <div class="tp-dialog__body">12 נרשמים יקבלו הודעה, והכרטיסייה תוחזר להם אוטומטית.</div>
+            <div class="tp-dialog__actions">
+              <button class="tp-btn tp-btn--secondary" type="button">חזרה</button
+              ><button class="tp-btn tp-btn--primary" type="button">אישור הביטול</button>
+            </div>
+          </div>
         </div>
-        <div class="tp-week" role="group" aria-label="ימי השבוע">
-          <button class="tp-week__day" type="button" aria-pressed="false">א׳<b>13</b></button><button class="tp-week__day" type="button" aria-pressed="true">ב׳<b>14</b></button><button class="tp-week__day" type="button" aria-pressed="false">ג׳<b>15</b></button><button class="tp-week__day" type="button" aria-pressed="false">ד׳<b>16</b></button><button class="tp-week__day" type="button" aria-pressed="false">ה׳<b>17</b></button><button class="tp-week__day" type="button" aria-pressed="false">ו׳<b>18</b></button><button class="tp-week__day" type="button" aria-pressed="false">ש׳<b>19</b></button>
-        </div>
-        <div class="tp-row" style="gap:8px"><button class="tp-chip tp-chip--plain tp-chip--brand" type="button" aria-pressed="true">הכל</button><button class="tp-chip tp-chip--plain" type="button" aria-pressed="false">פילאטיס</button><button class="tp-chip tp-chip--plain" type="button" aria-pressed="false">יוגה</button></div>
-        <div class="tp-class" style="padding:14px;gap:14px"><span class="tp-slot">18:00<small>45 דק׳</small></span><span class="tp-class__body"><span class="tp-class__title" style="font-size:16px;line-height:22px">פילאטיס כוח</span><span class="tp-class__meta" style="font-size:13px">עומר · מלא, 2 ממתינים</span></span><span class="tp-chip tp-chip--warning">במקום 2 בהמתנה</span></div>
-        <div class="tp-stack" style="gap:12px">
-          <div class="tp-row" style="justify-content:space-between"><span class="tp-label">שיעורים ביום שני</span><a href="#" class="tp-caption" style="color:var(--brand-ink)">כל השבוע</a></div>
-          <button class="tp-event tp-event--blue" type="button"><span class="tp-event__count">6/10</span><span class="tp-event__title">פילאטיס מכשירים</span><span class="tp-event__meta">07:30 · דנה · סטודיו 2</span><span class="tp-event__fill"><i style="--tp-fill:60%"></i></span></button>
-          <button class="tp-event tp-event--sage" type="button"><span class="tp-event__count">18/20</span><span class="tp-event__title">יוגה וינאסה</span><span class="tp-event__meta">19:00 · נועה · סטודיו 1</span><span class="tp-event__fill"><i style="--tp-fill:90%"></i></span></button>
-        </div>
-        <div class="tp-row" style="justify-content:space-between;flex-wrap:nowrap">
-          <div class="tp-card tp-card--sm" style="flex:1;text-align:center;padding:16px"><div class="tp-stat__value" style="font-size:26px;line-height:32px">7</div><div class="tp-stat__label">כניסות נותרו</div></div>
-          <div class="tp-card tp-card--sm" style="flex:1;text-align:center;padding:16px"><div class="tp-stat__value" style="font-size:26px;line-height:32px">31.10</div><div class="tp-stat__label">תוקף המנוי</div></div>
-        </div>
-        <div style="flex:1"></div>
-        <nav class="tp-tabbar" aria-label="ניווט">
-          <a class="tp-tabbar__item" href="#" aria-current="page"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9H4z"/></svg>בית</a>
-          <a class="tp-tabbar__item" href="#"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>לו״ז</a>
-          <button class="tp-tabbar__fab" type="button" aria-label="הרשמה לשיעור"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-          <a class="tp-tabbar__item" href="#"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/></svg>מנוי</a>
-          <a class="tp-tabbar__item" href="#"><svg class="tp-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>אני</a>
-        </nav>
-      </div>
+      </section>
+
+      <p class="tp-caption" style="margin-top: var(--space-12)">
+        packages/design-system · גרסה 0.3.0 · הערכים ב-tokens/tokens.json, ה-CSS מיוצר ב-build.
+      </p>
     </div>
-  </section>
 
-  <!-- ================================================================== COLORS -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">יסודות</div>
-    <h2>צבעים</h2>
-    <div class="sp-swatches" id="swatches"></div>
-  </section>
-
-  <!-- ================================================================== TYPE -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">יסודות</div>
-    <h2>טיפוגרפיה</h2>
-    <div class="sp-type tp-card">
-      <div><code>display-lg</code><span class="text-display-lg">לוח השיעורים</span></div>
-      <div><code>display-sm</code><span class="text-display-sm">12 / 15</span></div>
-      <div><code>h1</code><span class="text-h1">בוקר טוב, דנה</span></div>
-      <div><code>h2</code><span class="text-h2">השיעורים של היום</span></div>
-      <div><code>h3</code><span class="text-h3">פילאטיס מזרן</span></div>
-      <div><code>body-lg</code><span class="text-body-lg">השיעור מתקיים בסטודיו 2 עם דנה כהן.</span></div>
-      <div><code>body</code><span class="text-body">12 נרשמו · 3 מקומות · 2 בהמתנה</span></div>
-      <div><code>body-sm</code><span class="text-body-sm">07:00 · נועה · סטודיו 1</span></div>
-      <div><code>label</code><span class="text-label">רשימת המתנה</span></div>
-      <div><code>caption</code><span class="text-caption tp-muted">עודכן לפני 4 דקות</span></div>
-      <div><code>code</code><span class="text-code"><code>org_7f3a · GET /v1/sessions</code></span></div>
-    </div>
-  </section>
-
-  <!-- ================================================================== BUTTONS -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">רכיבים</div>
-    <h2>כפתורים</h2>
-    <div class="tp-card tp-stack" style="gap:var(--space-6)">
-      <div class="tp-row" style="gap:var(--space-4)">
-        <button class="tp-btn tp-btn--primary" type="button">רישום לשיעור</button>
-        <button class="tp-btn tp-btn--secondary" type="button">ביטול</button>
-        <button class="tp-btn tp-btn--ghost" type="button">עוד</button>
-        <button class="tp-btn tp-btn--rose" type="button">קריאה לפעולה</button>
-        <button class="tp-btn tp-btn--danger" type="button">מחיקה</button>
-        <button class="tp-btn tp-btn--primary" type="button" disabled>מושבת</button>
-        <button class="tp-btn tp-btn--loading" type="button">טוען</button>
-      </div>
-      <div class="tp-row" style="gap:var(--space-4)">
-        <button class="tp-btn tp-btn--primary tp-btn--sm" type="button">קטן</button>
-        <button class="tp-btn tp-btn--primary" type="button">רגיל</button>
-        <button class="tp-btn tp-btn--primary tp-btn--lg" type="button">גדול</button>
-        <button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--sm" type="button" aria-label="הוספה"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-        <button class="tp-btn tp-btn--secondary tp-btn--icon" type="button" aria-label="הוספה"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-        <button class="tp-btn tp-btn--secondary tp-btn--icon tp-btn--lg" type="button" aria-label="נגן"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
-        <button class="tp-btn tp-btn--primary tp-btn--icon tp-btn--lg" type="button" aria-label="הוספה"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-        <button class="tp-btn tp-btn--primary" type="button"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>שיעור חדש</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================================== REFERENCE TRIO -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">רכיבים · מתמונת הייחוס</div>
-    <h2>כרטיסים, סליידר, שלבים, תפריט</h2>
-    <div class="tp-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-6);align-items:start">
-      <div class="tp-card tp-card--base"><div class="tp-icon-tile" style="margin-bottom:14px"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><div class="tp-card__title">כרטיס בסיס</div><p class="tp-muted" style="margin-top:6px">טאופ עם צל פנימי. לרקע של קבוצת נתונים, לא לפעולה.</p></div>
-      <div class="tp-card"><div class="tp-card__media"><svg class="tp-icon" viewBox="0 0 24 24" style="width:28px;height:28px"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg></div><div class="tp-card__title">כרטיס מוגבה</div><p class="tp-muted" style="margin-top:6px">חול עם הרמה עדינה. ברירת המחדל לכל תוכן.</p></div>
-      <div class="tp-card tp-card--elevated"><div class="tp-card__title">כרטיס מורם</div><p class="tp-muted" style="margin-top:6px">ורוד-חרס, מרחף, מסגרת לבנה. אחד למסך, לדבר שחשוב.</p><button class="tp-btn tp-btn--rose" type="button" style="margin-top:16px">קריאה לפעולה</button></div>
-      <div class="tp-card tp-card--cream tp-stack" style="gap:var(--space-5)">
-        <div><div class="tp-label" style="margin-bottom:10px">סליידר</div><div class="tp-slider"><input type="range" min="0" max="100" value="38" style="--tp-val:38%" aria-label="עוצמה"><div class="tp-slider__ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
-        <div><div class="tp-label" style="margin-bottom:12px">מחוון שלבים</div><div class="tp-steps"><span class="tp-steps__dot tp-steps__dot--done"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg></span><span class="tp-steps__line tp-steps__line--done"></span><span class="tp-steps__dot tp-steps__dot--current"></span><span class="tp-steps__line"></span><span class="tp-steps__dot"></span><span class="tp-steps__line"></span><span class="tp-steps__dot"></span></div></div>
-      </div>
-      <div class="tp-stack" style="gap:12px"><div class="tp-label">תפריט נפתח</div><select class="tp-select" aria-label="בחירה"><option>סטודיו 1</option></select><div class="tp-menu" role="listbox"><button class="tp-menu__item" type="button">סטודיו 1</button><button class="tp-menu__item" type="button" aria-selected="true">סטודיו 2</button><button class="tp-menu__item" type="button">אולם</button><div class="tp-menu__sep"></div><button class="tp-menu__item" type="button">חצר</button><button class="tp-menu__item" type="button" disabled>מחסן (לא זמין)</button><button class="tp-menu__item tp-menu__item--danger" type="button">מחיקת חדר</button></div></div>
-    </div>
-  </section>
-
-  <!-- ================================================================== FORMS -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">רכיבים</div>
-    <h2>טפסים</h2>
-    <div class="tp-card tp-grid" style="gap:var(--space-6)">
-      <label class="tp-field"><span class="tp-field__label">שם הלקוח <span class="tp-req">*</span></span><input class="tp-input" value="דנה כהן"><span class="tp-field__help">כפי שיופיע בקבלה</span></label>
-      <label class="tp-field"><span class="tp-field__label">טלפון</span><input class="tp-input" dir="ltr" placeholder="050-000-0000"></label>
-      <label class="tp-field"><span class="tp-field__label">סוג שיעור</span><select class="tp-select"><option>יוגה</option><option selected>פילאטיס</option><option>HIIT</option></select></label>
-      <label class="tp-field tp-field--invalid"><span class="tp-field__label">אימייל</span><input class="tp-input" dir="ltr" value="dana@"><span class="tp-field__help">כתובת לא תקינה. צריך @ ושם דומיין.</span></label>
-      <label class="tp-field" style="grid-column:1/-1"><span class="tp-field__label">הערות</span><textarea class="tp-textarea" placeholder="למשל: פציעה בברך, להימנע מקפיצות"></textarea></label>
-      <div class="tp-stack">
-        <label class="tp-toggle"><input type="checkbox" checked><span class="tp-toggle__track"></span><span class="tp-toggle__label">רשימת המתנה פתוחה</span></label>
-        <label class="tp-toggle"><input type="checkbox"><span class="tp-toggle__track"></span><span class="tp-toggle__label">תזכורת ב-SMS</span></label>
-      </div>
-      <div class="tp-stack" style="gap:12px;grid-column:1/-1"><div class="tp-label">תאריך ושעה (DateInput, TimeInput)</div>
-        <div class="tp-row" style="gap:var(--space-6);align-items:flex-start;flex-wrap:wrap">
-          <div class="tp-stack" style="gap:8px"><div class="tp-field__control tp-field__control--adorned"><input class="tp-input" value="20.10.2026" aria-label="תאריך"><button class="tp-btn tp-btn--icon tp-btn--sm tp-field__adorn" type="button" aria-label="בחירת תאריך"><svg class="tp-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button></div>
-          <div class="tp-calendar"><div class="tp-calendar__head"><button class="tp-btn tp-btn--icon tp-btn--sm" type="button" aria-label="החודש הקודם"><svg class="tp-icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button><div class="tp-calendar__title">אוקטובר 2026</div><button class="tp-btn tp-btn--icon tp-btn--sm" type="button" aria-label="החודש הבא"><svg class="tp-icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button></div><table class="tp-calendar__grid"><thead><tr><th>א׳</th><th>ב׳</th><th>ג׳</th><th>ד׳</th><th>ה׳</th><th>ו׳</th><th>ש׳</th></tr></thead><tbody><tr><td class="tp-calendar__day tp-calendar__day--outside">27</td><td class="tp-calendar__day tp-calendar__day--outside">28</td><td class="tp-calendar__day tp-calendar__day--outside">29</td><td class="tp-calendar__day tp-calendar__day--outside">30</td><td class="tp-calendar__day">1</td><td class="tp-calendar__day">2</td><td class="tp-calendar__day">3</td></tr><tr><td class="tp-calendar__day">4</td><td class="tp-calendar__day">5</td><td class="tp-calendar__day">6</td><td class="tp-calendar__day">7</td><td class="tp-calendar__day">8</td><td class="tp-calendar__day">9</td><td class="tp-calendar__day">10</td></tr><tr><td class="tp-calendar__day">11</td><td class="tp-calendar__day">12</td><td class="tp-calendar__day">13</td><td class="tp-calendar__day">14</td><td class="tp-calendar__day" aria-current="date">15</td><td class="tp-calendar__day">16</td><td class="tp-calendar__day">17</td></tr><tr><td class="tp-calendar__day">18</td><td class="tp-calendar__day">19</td><td class="tp-calendar__day" aria-selected="true">20</td><td class="tp-calendar__day">21</td><td class="tp-calendar__day">22</td><td class="tp-calendar__day">23</td><td class="tp-calendar__day">24</td></tr><tr><td class="tp-calendar__day">25</td><td class="tp-calendar__day">26</td><td class="tp-calendar__day">27</td><td class="tp-calendar__day">28</td><td class="tp-calendar__day">29</td><td class="tp-calendar__day">30</td><td class="tp-calendar__day">31</td></tr></tbody></table></div></div>
-          <div class="tp-stack" style="gap:8px"><input class="tp-input" value="18:30" aria-label="שעה"><ul class="tp-menu tp-listbox" style="list-style:none;margin:0"><li class="tp-menu__item">18:00</li><li class="tp-menu__item" aria-current="true">18:30</li><li class="tp-menu__item" aria-selected="true">19:00</li><li class="tp-menu__item">19:30</li></ul></div>
-        </div>
-      </div>
-      <div class="tp-stack" style="gap:8px">
-        <label class="tp-check"><input type="checkbox" checked>חיוב אוטומטי</label>
-        <label class="tp-check"><input type="checkbox">שליחת קבלה במייל</label>
-        <label class="tp-check"><input type="radio" name="r" checked>מנוי חודשי</label>
-        <label class="tp-check"><input type="radio" name="r">כרטיסייה</label>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================================== CHIPS, BANNERS, TOAST -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">רכיבים</div>
-    <h2>צ׳יפים, הודעות, טוסט</h2>
-    <div class="tp-card tp-stack" style="gap:var(--space-5)">
-      <div class="tp-row">
-        <span class="tp-chip tp-chip--success">מאושר</span><span class="tp-chip tp-chip--warning">ממתין</span><span class="tp-chip tp-chip--danger">בוטל</span><span class="tp-chip tp-chip--info">ניסיון</span><span class="tp-chip tp-chip--brand">היום</span><span class="tp-chip tp-chip--sunken">טיוטה</span><span class="tp-chip tp-chip--count">7</span>
-      </div>
-      <div class="tp-row">
-        <span class="tp-chip tp-chip--cat-sage">יוגה</span><span class="tp-chip tp-chip--cat-rose">פילאטיס</span><span class="tp-chip tp-chip--cat-mauve">ריקוד</span><span class="tp-chip tp-chip--cat-blue">ברה</span><span class="tp-chip tp-chip--cat-amber">HIIT</span><span class="tp-chip tp-chip--cat-taupe">ילדים</span>
-      </div>
-      <div class="tp-banner tp-banner--info"><svg class="tp-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div>השיעור מלא. נרשמים חדשים ייכנסו לרשימת ההמתנה.</div></div>
-      <div class="tp-banner tp-banner--warning"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></svg><div>3 תשלומים נכשלו השבוע. <a href="#">לרשימה</a></div></div>
-      <div class="tp-banner tp-banner--danger"><svg class="tp-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg><div>לא ניתן לשמור. אין חיבור לשרת, נסה שוב בעוד רגע.</div></div>
-      <div class="tp-row" style="gap:var(--space-5)">
-        <div class="tp-toast"><span class="tp-toast__tile"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg></span>השיעור נשמר<button class="tp-toast__close" type="button" aria-label="סגירה"><svg class="tp-icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-        <div class="tp-toast tp-toast--danger"><span class="tp-toast__tile"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></svg></span>השליחה נכשלה<button class="tp-btn tp-btn--secondary tp-btn--sm" type="button">נסה שוב</button></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================================== TABLE + TABS -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">רכיבים</div>
-    <h2>טבלה וטאבים</h2>
-    <div class="tp-stack" style="gap:var(--space-5)">
-      <div class="tp-tabs" role="tablist">
-        <button class="tp-tab" role="tab" aria-selected="true">פעילים</button>
-        <button class="tp-tab" role="tab" aria-selected="false">ממתינים</button>
-        <button class="tp-tab" role="tab" aria-selected="false">בוטלו</button>
-      </div>
-      <div class="tp-table-wrap">
-        <table class="tp-table">
-          <thead><tr><th>לקוח</th><th>מנוי</th><th>סטטוס</th><th class="tp-num">יתרה</th><th></th></tr></thead>
-          <tbody>
-            <tr><td><div class="tp-row" style="flex-wrap:nowrap"><span class="tp-avatar tp-avatar--sm">יל</span>יעל לוי</div></td><td>חודשי</td><td><span class="tp-chip tp-chip--success">פעיל</span></td><td class="tp-num">0 ₪</td><td><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">פרטים</button></td></tr>
-            <tr aria-selected="true"><td><div class="tp-row" style="flex-wrap:nowrap"><span class="tp-avatar tp-avatar--sm">אב</span>אורי בן דוד</div></td><td>כרטיסייה 10</td><td><span class="tp-chip tp-chip--warning">חוב</span></td><td class="tp-num">240 ₪</td><td><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">פרטים</button></td></tr>
-            <tr><td><div class="tp-row" style="flex-wrap:nowrap"><span class="tp-avatar tp-avatar--sm">רש</span>רונית שמש</div></td><td>ניסיון</td><td><span class="tp-chip tp-chip--info">ניסיון</span></td><td class="tp-num">0 ₪</td><td><button class="tp-btn tp-btn--ghost tp-btn--sm" type="button">פרטים</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================================== STATES -->
-  <section class="sp-section">
-    <div class="tp-eyebrow">רכיבים</div>
-    <h2>מצבים: טעינה, ריק, דיאלוג</h2>
-    <div class="tp-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-6)">
-      <div class="tp-card tp-stack" style="gap:12px"><div class="tp-skeleton" style="width:40%;height:22px"></div><div class="tp-skeleton"></div><div class="tp-skeleton" style="width:70%"></div><div class="tp-skeleton" style="height:44px;margin-top:8px;border-radius:var(--radius-md)"></div></div>
-      <div class="tp-empty"><svg class="tp-icon" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg><div class="tp-empty__title">אין שיעורים השבוע</div><div>הוסיפו שיעור ראשון או העתיקו שבוע קודם.</div><button class="tp-btn tp-btn--primary" type="button">שיעור חדש</button></div>
-      <div class="tp-dialog" style="border-radius:var(--radius-2xl)"><div class="tp-dialog__handle"></div><div class="tp-dialog__title">לבטל את השיעור?</div><div class="tp-dialog__body">12 נרשמים יקבלו הודעה, והכרטיסייה תוחזר להם אוטומטית.</div><div class="tp-dialog__actions"><button class="tp-btn tp-btn--secondary" type="button">חזרה</button><button class="tp-btn tp-btn--primary" type="button">אישור הביטול</button></div></div>
-    </div>
-  </section>
-
-  <p class="tp-caption" style="margin-top:var(--space-12)">packages/design-system · גרסה 0.3.0 · הערכים ב-tokens/tokens.json, ה-CSS מיוצר ב-build.</p>
-</div>
-
-<script>
-  const root = document.documentElement;
-  for (const b of document.querySelectorAll('[data-theme-pick]')) {
-    b.addEventListener('click', () => {
-      const v = b.dataset.themePick;
-      root.setAttribute('data-theme', v);
-      for (const o of document.querySelectorAll('[data-theme-pick]')) o.setAttribute('aria-pressed', String(o === b));
-    });
-  }
-  const names = ['canvas','surface','surface-sand','surface-sunken','surface-hover','surface-deep','highlight','shade','ink','ink-muted','ink-faint','line','line-strong','focus','focus-glow','selected','selected-line','selected-ink',
-    'brand-light','brand','brand-hover','brand-glow','brand-pressed','on-brand','brand-soft','brand-ink','brand-deep','rose','rose-deep','rose-soft','rose-ink','on-rose','taupe','taupe-deep','taupe-soft','taupe-ink','on-taupe','sand','sand-deep','icon-dark','disabled',
-    'info','info-soft','info-ink','success','success-soft','success-ink','warning','warning-soft','warning-ink','danger','danger-soft','danger-ink',
-    'cat-sage','cat-sage-soft','cat-sage-ink','cat-rose','cat-rose-soft','cat-rose-ink','cat-taupe','cat-taupe-soft','cat-taupe-ink','cat-blue','cat-blue-soft','cat-blue-ink','cat-amber','cat-amber-soft','cat-amber-ink','cat-mauve','cat-mauve-soft','cat-mauve-ink'];
-  const sw = document.getElementById('swatches');
-  const inkFor = n => /soft$|^surface|^canvas$|^on-|^line$|^highlight$|^focus|^selected$|^selected-line$|^sand|^disabled$|^brand-glow$/.test(n) ? 'var(--ink)' : (n.endsWith('-ink') || /^ink/.test(n) || n === 'line-strong' || n === 'shade' || n === 'icon-dark') ? 'var(--surface)' : 'var(--ink-inverse)';
-  sw.innerHTML = names.map(n => `<div class="sp-sw" style="background:var(--${n});color:${inkFor(n)}"><bdi style="font-weight:600">${n}</bdi><code data-var="${n}"></code></div>`).join('');
-  const refresh = () => { const cs = getComputedStyle(root); for (const c of sw.querySelectorAll('[data-var]')) c.textContent = cs.getPropertyValue('--' + c.dataset.var).trim(); };
-  refresh(); new MutationObserver(refresh).observe(root, { attributes: true });
-</script>
-</body>
+    <script>
+      const root = document.documentElement;
+      for (const b of document.querySelectorAll("[data-theme-pick]")) {
+        b.addEventListener("click", () => {
+          const v = b.dataset.themePick;
+          root.setAttribute("data-theme", v);
+          for (const o of document.querySelectorAll("[data-theme-pick]"))
+            o.setAttribute("aria-pressed", String(o === b));
+        });
+      }
+      const names = [
+        "canvas",
+        "surface",
+        "surface-sand",
+        "surface-sunken",
+        "surface-hover",
+        "surface-deep",
+        "highlight",
+        "shade",
+        "ink",
+        "ink-muted",
+        "ink-faint",
+        "line",
+        "line-strong",
+        "focus",
+        "focus-glow",
+        "selected",
+        "selected-line",
+        "selected-ink",
+        "brand-light",
+        "brand",
+        "brand-hover",
+        "brand-glow",
+        "brand-pressed",
+        "on-brand",
+        "brand-soft",
+        "brand-ink",
+        "brand-deep",
+        "rose",
+        "rose-deep",
+        "rose-soft",
+        "rose-ink",
+        "on-rose",
+        "taupe",
+        "taupe-deep",
+        "taupe-soft",
+        "taupe-ink",
+        "on-taupe",
+        "sand",
+        "sand-deep",
+        "icon-dark",
+        "disabled",
+        "info",
+        "info-soft",
+        "info-ink",
+        "success",
+        "success-soft",
+        "success-ink",
+        "warning",
+        "warning-soft",
+        "warning-ink",
+        "danger",
+        "danger-soft",
+        "danger-ink",
+        "cat-sage",
+        "cat-sage-soft",
+        "cat-sage-ink",
+        "cat-rose",
+        "cat-rose-soft",
+        "cat-rose-ink",
+        "cat-taupe",
+        "cat-taupe-soft",
+        "cat-taupe-ink",
+        "cat-blue",
+        "cat-blue-soft",
+        "cat-blue-ink",
+        "cat-amber",
+        "cat-amber-soft",
+        "cat-amber-ink",
+        "cat-mauve",
+        "cat-mauve-soft",
+        "cat-mauve-ink",
+      ];
+      const sw = document.getElementById("swatches");
+      const inkFor = (n) =>
+        /soft$|^surface|^canvas$|^on-|^line$|^highlight$|^focus|^selected$|^selected-line$|^sand|^disabled$|^brand-glow$/.test(
+          n,
+        )
+          ? "var(--ink)"
+          : n.endsWith("-ink") || /^ink/.test(n) || n === "line-strong" || n === "shade" || n === "icon-dark"
+            ? "var(--surface)"
+            : "var(--ink-inverse)";
+      sw.innerHTML = names
+        .map(
+          (n) =>
+            `<div class="sp-sw" style="background:var(--${n});color:${inkFor(n)}"><bdi style="font-weight:600">${n}</bdi><code data-var="${n}"></code></div>`,
+        )
+        .join("");
+      const refresh = () => {
+        const cs = getComputedStyle(root);
+        for (const c of sw.querySelectorAll("[data-var]"))
+          c.textContent = cs.getPropertyValue("--" + c.dataset.var).trim();
+      };
+      refresh();
+      new MutationObserver(refresh).observe(root, { attributes: true });
+    </script>
+  </body>
 </html>

@@ -8,8 +8,30 @@ const messages: Record<string, string> = {
   "organization.suspended": "הסטודיו לא פעיל כרגע.",
   "invitation.not_found": "ההזמנה לא נמצאה. ייתכן שפג תוקפה או שבוטלה. בקשו מהסטודיו הזמנה חדשה.",
   "invitation.expired": "פג התוקף של ההזמנה. בקשו מהסטודיו הזמנה חדשה.",
-  "invitation.email_mismatch": "ההזמנה נשלחה לכתובת מייל אחרת. התחברו עם הכתובת שאליה נשלחה."
+  "invitation.email_mismatch": "ההזמנה נשלחה לכתובת מייל אחרת. התחברו עם הכתובת שאליה נשלחה.",
+  // Booking and the waitlist (docs/29 section 9).
+  "session.not_found": "השיעור לא נמצא. ייתכן שהוסר מהמערכת.",
+  "session.full": "השיעור מלא ורשימת ההמתנה שלו סגורה.",
+  "session.cancelled": "הסטודיו ביטל את השיעור הזה.",
+  "booking.not_found": "ההרשמה לא נמצאה. ייתכן שכבר בוטלה.",
+  "booking.duplicate": "כבר נרשמתם לשיעור הזה, או שאתם ברשימת ההמתנה שלו.",
+  "booking.closed": "השיעור כבר התחיל, ואי אפשר להירשם אליו.",
+  "booking.not_open": "ההרשמה לשיעור הזה עוד לא נפתחה.",
+  "booking.no_valid_pass":
+    "אין כרטיסייה או מנוי בתוקף לשיעור הזה. אם המנוי מוקפא, אי אפשר להירשם בימי ההקפאה. פנו לסטודיו.",
+  "booking.not_cancellable": "אי אפשר לבטל את ההרשמה הזו. ייתכן שהשיעור כבר התחיל.",
+  "person.not_found": "לא מצאנו את הרשומה שלך בסטודיו. פנו לסטודיו.",
+  "person.read_only": "הרשומה שלך בסטודיו לא פעילה. פנו לסטודיו.",
+  "permission.denied": "אין לך הרשאה לפעולה הזו.",
+  "auth.mfa_required":
+    "לחשבון שלך יש תפקיד ניהול בסטודיו, ולכן צריך להפעיל בו אימות דו־שלבי. הפעילו אותו במסוף הניהול, בעמוד אבטחת החשבון, ואז חזרו לכאן.",
+  "billing.restricted": "ההרשמה לשיעורים בסטודיו מושהית כרגע. אפשר עדיין לראות ולבטל הזמנות קיימות.",
 };
+
+/** The sentence for a Problem code, when the app has one. */
+export function codeMessage(code: string): string | undefined {
+  return messages[code];
+}
 
 /** A sentence for the person in front of the screen; never the server's English text. */
 export function errorMessage(error: unknown, fallback = "משהו השתבש. נסו שוב."): string {

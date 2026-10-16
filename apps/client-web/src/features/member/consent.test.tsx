@@ -11,11 +11,29 @@ const consents = `POST /api/v1/organizations/${sampleMe.memberships[0]!.organiza
 
 function renderProfile(routesForApi: Record<string, unknown> = {}) {
   const api = apiStub({ ...signedInRoutes, ...routesForApi });
-  render(<App router={createMemoryRouter(routes, { initialEntries: ["/profile"] })} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} today="2026-10-13" />);
+  render(
+    <App
+      router={createMemoryRouter(routes, { initialEntries: ["/profile"] })}
+      auth={signedInAuth()}
+      apiUrl="https://api.test"
+      fetch={api.fetch}
+      today="2026-10-13"
+    />,
+  );
   return api;
 }
 
-const recorded = (body: { purpose: string; channel: string; state: string }) => json({ id: "0199e5a1-0000-7000-8000-000000000999", method: "self", textVersion: "draft-2026-10-15", occurredAt: "2026-10-15T09:00:00Z", ...body }, 201);
+const recorded = (body: { purpose: string; channel: string; state: string }) =>
+  json(
+    {
+      id: "0199e5a1-0000-7000-8000-000000000999",
+      method: "self",
+      textVersion: "draft-2026-10-15",
+      occurredAt: "2026-10-15T09:00:00Z",
+      ...body,
+    },
+    201,
+  );
 
 describe("notification consent", () => {
   it("shows the studio's recorded choices; marketing is off until chosen", async () => {
@@ -27,11 +45,18 @@ describe("notification consent", () => {
   });
 
   it("records a withdrawal as a new choice with the text version", async () => {
-    const api = renderProfile({ [consents]: () => recorded({ purpose: "reminders", channel: "push", state: "withdrawn" }) });
+    const api = renderProfile({
+      [consents]: () => recorded({ purpose: "reminders", channel: "push", state: "withdrawn" }),
+    });
     await userEvent.click(await screen.findByRole("switch", { name: "התראות בדחיפה" }));
     await waitFor(() => expect(screen.getByRole("switch", { name: "התראות בדחיפה" })).not.toBeChecked());
     const post = api.requests.findIndex((request) => request.url.endsWith("/me/consents"));
-    expect(api.bodies[post]).toEqual({ purpose: "reminders", channel: "push", state: "withdrawn", textVersion: "draft-2026-10-15" });
+    expect(api.bodies[post]).toEqual({
+      purpose: "reminders",
+      channel: "push",
+      state: "withdrawn",
+      textVersion: "draft-2026-10-15",
+    });
   });
 
   it("opts in to marketing by email", async () => {
@@ -54,11 +79,13 @@ describe("notification consent", () => {
   });
 });
 
-
 describe("my details in the studio", () => {
   it("saves first name, last name and birth date with If-Match, clearing an emptied field", async () => {
     const profilePath = `/api/v1/organizations/${sampleMe.memberships[0]!.organization.id}/me/profile`;
-    const api = renderProfile({ [`PATCH ${profilePath}`]: (request: Request) => request.json().then((body) => json({ ...sampleProfile, ...body, version: "3" })) });
+    const api = renderProfile({
+      [`PATCH ${profilePath}`]: (request: Request) =>
+        request.json().then((body) => json({ ...sampleProfile, ...body, version: "3" })),
+    });
     await userEvent.click(await screen.findByRole("button", { name: "הפרטים שלי" }));
     const dialog = screen.getByRole("dialog", { name: "הפרטים שלי" });
     expect(dialog).toHaveTextContent("מה שסטודיו נשימה רואה עליך");
@@ -72,4 +99,3 @@ describe("my details in the studio", () => {
     expect(api.bodies[patch]).toEqual({ givenName: "נגה", familyName: null, birthDate: "1990-04-02" });
   });
 });
-

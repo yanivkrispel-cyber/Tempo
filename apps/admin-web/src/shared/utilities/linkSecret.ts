@@ -5,7 +5,7 @@ import { useFragmentSecret } from "./fragment";
 export type LinkKind = "invite";
 
 const keys: Record<LinkKind, string> = {
-  invite: "tempo.admin-web.pending-invite"
+  invite: "tempo.admin-web.pending-invite",
 };
 
 function stored(kind: LinkKind): string | null {

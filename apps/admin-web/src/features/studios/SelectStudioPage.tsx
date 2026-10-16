@@ -6,7 +6,8 @@ import { consoleStudios, meKey, membershipRoleName, useAccount } from "../../acc
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
-import { Banner, Button, Card, EmptyState, Field, Icon, Input, useToast } from "../../shared/design-system";
+import { Banner, Button, ButtonLink, Card, EmptyState, Field, Icon, Input, useToast } from "../../shared/design-system";
+import { securityPath } from "../security/SecurityPage";
 
 /** Lowercase Latin letters, digits and hyphens, 3 to 40 characters (contract, `Slug`). */
 const slugPattern = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -21,9 +22,14 @@ export function SelectStudioPage() {
     <main className="tp-page tp-stack">
       <header className="tp-row" style={{ justifyContent: "space-between" }}>
         <h1>הסטודיואים שלך</h1>
-        <Button variant="ghost" icon="log-out" onClick={() => client?.signOut()}>
-          התנתקות
-        </Button>
+        <div className="tp-row">
+          <ButtonLink to={securityPath} variant="ghost" icon="shield">
+            אבטחת החשבון
+          </ButtonLink>
+          <Button variant="ghost" icon="log-out" onClick={() => client?.signOut()}>
+            התנתקות
+          </Button>
+        </div>
       </header>
 
       {studios.length === 0 ? (
@@ -64,12 +70,14 @@ function CreateStudio() {
   const create = useMutation({
     // The contract's defaults, sent explicitly (the generated type requires them); the settings screen changes them.
     mutationFn: (body: { displayName: string; slug: string }) =>
-      unwrap(api.POST("/api/v1/organizations", { body: { ...body, timeZone: "Asia/Jerusalem", defaultLocale: "he-IL" } })),
+      unwrap(
+        api.POST("/api/v1/organizations", { body: { ...body, timeZone: "Asia/Jerusalem", defaultLocale: "he-IL" } }),
+      ),
     onSuccess: async (studio) => {
       await queryClient.invalidateQueries({ queryKey: meKey });
       toast.show({ tone: "success", icon: "check", message: `${studio.displayName} נפתח` });
       void navigate(`/o/${studio.slug}`);
-    }
+    },
   });
 
   const name = displayName.trim();
@@ -95,7 +103,12 @@ function CreateStudio() {
         <Field label="שם הסטודיו" required error={submitted ? nameError : undefined}>
           <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={100} />
         </Field>
-        <Field label="כתובת" required help="מופיעה בכתובת הניהול, למשל studio-neshima" error={submitted ? slugError : undefined}>
+        <Field
+          label="כתובת"
+          required
+          help="מופיעה בכתובת הניהול, למשל studio-neshima"
+          error={submitted ? slugError : undefined}
+        >
           <Input
             dir="ltr"
             className="tp-ltr"

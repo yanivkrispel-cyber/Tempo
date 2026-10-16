@@ -10,6 +10,7 @@ import { MessagingStack } from "./async/messaging-stack";
 import { ApiStack } from "./api/api-stack";
 import { ObservabilityStack } from "./observability/observability-stack";
 import { EdgeStack } from "./edge/edge-stack";
+import { DevCanaryStack } from "./observability/dev-canary-stack";
 
 export interface TempoStageProps extends StageProps {
   readonly config: TempoEnvironmentConfig;
@@ -71,13 +72,25 @@ export class TempoStage extends Stage {
       });
     }
 
+    if (config.featureFlags.enableDevCanary && config.featureFlags.enableSmokeTestSignIn) {
+      new DevCanaryStack(this, "Canary", {
+        config,
+        env,
+        httpApi: api.httpApi,
+        userPool: identity.userPool,
+        clientWebClient: identity.clientWebClient
+      });
+    }
+
     new ObservabilityStack(this, "Observability", {
       config,
       env,
       httpApi: api.httpApi,
       apiFunction: api.apiFunction.function,
       workerFunction: messaging.workerFunction.function,
-      migratorFunction: database.migratorFunction.function
+      migratorFunction: database.migratorFunction.function,
+      workQueue: messaging.workQueue.queue,
+      workDeadLetterQueue: messaging.workQueue.deadLetterQueue
     });
   }
 }

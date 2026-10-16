@@ -1,0 +1,42 @@
+/* Two-step sign-in setup. Placement only; the look is the design system's (tp-card, tp-field). */
+.page {
+  max-width: 640px;
+  margin-inline: auto;
+}
+/* A QR code reads as dark modules on a light ground, so dark mode swaps the two tokens back. */
+.qr {
+  display: block;
+  width: 200px;
+  height: 200px;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-flat);
+}
+:global([data-theme="dark"]) .qr {
+  color: var(--ink-inverse);
+  background: var(--ink);
+}
+.setup {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+.secret {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+.code {
+  max-width: 200px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.2em;
+}
+
+@media (max-width: 599px) {
+  .setup {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}

@@ -21,7 +21,7 @@ export function CallbackPage() {
       },
       (error: unknown) => {
         if (current) setFailed(error instanceof SignInError && error.code === "denied" ? "denied" : "other");
-      }
+      },
     );
     return () => {
       current = false;

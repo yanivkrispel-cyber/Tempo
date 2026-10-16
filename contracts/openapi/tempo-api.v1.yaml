@@ -15,8 +15,14 @@ info:
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
 
-    **Restricted studios.** When a studio's subscription is `restricted`, writes answer 402
-    `billing.restricted`, except cancelling a booking, export and the billing page (docs/28 section 4).
+    **Restricted studios.** When a studio's subscription is `restricted`, every write on a studio route
+    (POST, PUT, PATCH, DELETE) answers 402 `billing.restricted`, whether or not the operation lists 402, except:
+    cancelBooking, exportPerson, erasePerson, recordMyConsent, updateBillingAccount, removeMember,
+    start/cancel/accept/declineOwnershipTransfer, revokeInvitation and disableJoinLink (docs/28 section 4).
+    Reads always work. `GET /me` carries each studio's `subscriptionState` and `entitlements`.
+
+    **Plan limits.** Creating above a plan limit answers 403 `entitlement.limit_reached` with the Problem
+    members `key` (e.g. `rooms.max`) and `limit`.
 
     **Permissions.** Every studio route checks one permission key (docs/27 section 3.1); the operation summary
     names it. Apps read `permissions` from `GET /me` to show or hide actions; the API is the only enforcement.
@@ -1214,7 +1220,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listRooms
-      x-tempo-planned: true
       summary: "The studio's rooms (`schedule.view`)"
       responses:
         "200":
@@ -1228,7 +1233,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createRoom
-      x-tempo-planned: true
       summary: "Add a room (`schedule.manage`, limit `rooms.max`)"
       requestBody:
         required: true
@@ -1254,7 +1258,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateRoom
-      x-tempo-planned: true
       summary: "Rename, resize or archive a room (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1282,7 +1285,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listClassTypes
-      x-tempo-planned: true
       summary: "The studio's class types (`schedule.view`)"
       responses:
         "200":
@@ -1296,7 +1298,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createClassType
-      x-tempo-planned: true
       summary: "Add a class type (`schedule.manage`, limit `class_types.max`)"
       requestBody:
         required: true
@@ -1322,7 +1323,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateClassType
-      x-tempo-planned: true
       summary: "Edit or archive a class type (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1350,7 +1350,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listScheduleTemplates
-      x-tempo-planned: true
       summary: "Weekly classes (`schedule.manage`)"
       responses:
         "200":
@@ -1364,7 +1363,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createScheduleTemplate
-      x-tempo-planned: true
       summary: "Add a weekly class; sessions appear for the next eight weeks (`schedule.manage`)"
       requestBody:
         required: true
@@ -1390,7 +1388,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateScheduleTemplate
-      x-tempo-planned: true
       summary: "Change or end a weekly class (`schedule.manage`)"
       description: "Applies to future sessions without live bookings. Sessions that have bookings keep their values and are listed in `untouchedSessions`."
       parameters:
@@ -1419,7 +1416,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: listSessions
-      x-tempo-planned: true
       summary: "Sessions in a date range (`schedule.view`)"
       parameters:
         - name: from
@@ -1453,7 +1449,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: createSession
-      x-tempo-planned: true
       summary: "Add a one-off session (`schedule.manage`)"
       requestBody:
         required: true
@@ -1479,7 +1474,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: getSession
-      x-tempo-planned: true
       summary: "One session with the caller's booking state (`schedule.view`)"
       responses:
         "200":
@@ -1493,7 +1487,6 @@ paths:
     patch:
       tags: [Schedule]
       operationId: updateSession
-      x-tempo-planned: true
       summary: "Change one session's instructor, room or capacity (`schedule.manage`)"
       description: "Capacity cannot go below the number booked (409 `session.capacity_below_booked`). Raising it promotes from the waitlist."
       parameters:
@@ -1523,7 +1516,6 @@ paths:
     post:
       tags: [Schedule]
       operationId: cancelSession
-      x-tempo-planned: true
       summary: "Cancel a session: every booking is cancelled and its entry returned (`schedule.manage`)"
       responses:
         "200":
@@ -1544,7 +1536,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: getSessionRoster
-      x-tempo-planned: true
       summary: "Booked and waiting people (`bookings.manage`, or the session's instructor)"
       responses:
         "200":
@@ -1556,6 +1547,37 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/sessions/{sessionId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [Bookings]
+      operationId: sendSessionMessage
+      summary: "A short text to everyone registered on a class (`bookings.manage`, or the session's instructor)"
+      description: |
+        Reaches every `booked` and `waitlisted` person as an inbox item of kind `session.message` that carries the
+        text (`InboxItem.text`). The audit log records that a message went out and to how many people, never the
+        text. At most 5 messages per class per hour (409 `session.message_limit`); a cancelled class, or one that
+        ended more than a day ago, answers 409 `booking.closed`. No push, SMS or email in this step (docs/30).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SendSessionMessageRequest" }
+      responses:
+        "202":
+          description: Accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionMessage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1563,9 +1585,8 @@ paths:
     post:
       tags: [Bookings]
       operationId: createBooking
-      x-tempo-planned: true
       summary: "Book a place, or join the waitlist when full (self, or `bookings.manage` with `personId`)"
-      description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass`, `session.full` (waitlist off or past its cutoff), `session.cancelled`."
+      description: "Takes one entry from the person's pass (docs/29 section 5.3). A full session puts the booking on the waitlist (`status: waitlisted`) without taking an entry. 409 codes: `booking.duplicate`, `booking.closed`, `booking.not_open`, `booking.no_valid_pass` (with `frozenUntil` when the membership is frozen that day), `session.full` (waitlist off or past its cutoff), `session.cancelled`."
       requestBody:
         required: false
         content:
@@ -1591,7 +1612,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: cancelBooking
-      x-tempo-planned: true
       summary: "Cancel a booking or leave the waitlist (self, or `bookings.manage`)"
       description: "Inside the free-cancellation window the entry returns; later it stays used and `lateCancel` is true. `returnEntry` (staff only) returns it anyway. Allowed in restricted mode."
       requestBody:
@@ -1611,6 +1631,38 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/organizations/{organizationId}/bookings/{bookingId}/move:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/BookingId"
+    post:
+      tags: [Bookings]
+      operationId: moveBooking
+      summary: "Move a booked place to another class (`bookings.manage`)"
+      description: |
+        The entry moves with the place: nothing is spent or returned. The old row becomes `cancelled` with
+        `cancelReason: moved` (never a late cancel) and the old class promotes its waitlist. A full target answers
+        409 `session.full` (a move never joins a waitlist); a pass that does not cover the target answers 409
+        `booking.no_valid_pass`; a place that is not `booked` answers 409 `booking.not_cancellable`. Returns the
+        **new** booking. The member gets an inbox item of kind `booking.moved`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MoveBookingRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/organizations/{organizationId}/bookings/{bookingId}/attendance:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1618,7 +1670,6 @@ paths:
     post:
       tags: [Bookings]
       operationId: markAttendance
-      x-tempo-planned: true
       summary: "Mark attended or no-show (`attendance.mark`, or the session's instructor)"
       requestBody:
         required: true
@@ -1644,7 +1695,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: listMyBookings
-      x-tempo-planned: true
       summary: "The caller's bookings in this studio (self)"
       parameters:
         - name: scope
@@ -1664,6 +1714,29 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/me/bookings/{bookingId}/calendar.ics:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/BookingId"
+    get:
+      tags: [Bookings]
+      operationId: getBookingCalendar
+      summary: "Add to calendar: an iCalendar file for the caller's own booked place (self)"
+      description: |
+        One `VEVENT` (RFC 5545): `UID` is `{bookingId}@tempo`, times in UTC, `SUMMARY` the class name, `LOCATION`
+        the studio and the room, `DESCRIPTION` one Hebrew line. Sent as an attachment named `tempo-{localDate}.ics`.
+        Only a `booked` or `attended` place of the caller; anything else answers 404. Cancelling later does not
+        update the calendar entry (no `METHOD:CANCEL` without email, docs/30).
+      responses:
+        "200":
+          description: The calendar file.
+          content:
+            text/calendar:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/people/{personId}/bookings:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1671,7 +1744,6 @@ paths:
     get:
       tags: [Bookings]
       operationId: listPersonBookings
-      x-tempo-planned: true
       summary: "One person's bookings (`bookings.manage`)"
       parameters:
         - name: scope
@@ -1697,7 +1769,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listPassProducts
-      x-tempo-planned: true
       summary: "Punch cards and memberships the studio sells (`passes.view`)"
       responses:
         "200":
@@ -1711,7 +1782,6 @@ paths:
     post:
       tags: [Passes]
       operationId: createPassProduct
-      x-tempo-planned: true
       summary: "Add a punch card or membership product (`passes.manage`)"
       requestBody:
         required: true
@@ -1737,7 +1807,6 @@ paths:
     post:
       tags: [Passes]
       operationId: archivePassProduct
-      x-tempo-planned: true
       summary: "Stop selling a product; granted passes keep working (`passes.manage`)"
       responses:
         "200":
@@ -1757,7 +1826,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listPersonPasses
-      x-tempo-planned: true
       summary: "One person's passes, newest first (`passes.view`)"
       responses:
         "200":
@@ -1771,7 +1839,6 @@ paths:
     post:
       tags: [Passes]
       operationId: grantPass
-      x-tempo-planned: true
       summary: "Grant a pass, e.g. paid at the desk (`passes.manage`)"
       requestBody:
         required: true
@@ -1798,8 +1865,65 @@ paths:
     post:
       tags: [Passes]
       operationId: voidPass
-      x-tempo-planned: true
       summary: "Void a pass; sessions already booked keep their entry (`passes.manage`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pass" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/passes/{passId}/freezes:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PassId"
+    post:
+      tags: [Passes]
+      operationId: freezePass
+      summary: "Freeze a period membership for a date range (`passes.manage`)"
+      description: |
+        Studio dates, inclusive, 1 to 90 days, starting today or later and before the membership ends. `endsOn` of
+        the pass moves out by the frozen days; no booking inside them (the member sees 409 `booking.no_valid_pass`);
+        bookings already made inside the period stay (C-11). The member gets an inbox item `pass.frozen`.
+        400 codes (`errors`): `startsOn.invalid` (missing, or before today), `endsOn.invalid` (missing, before
+        `startsOn`, or more than 90 days). 404: `pass.not_found`. 409 codes: `pass.not_freezable` (a punch card,
+        C-12), `pass.voided`, `pass.freeze_outside` (starts after the membership ends), `pass.freeze_overlap`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreezePassRequest" }
+      responses:
+        "201":
+          description: Frozen; the pass with its freezes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pass" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/passes/{passId}/freezes/{freezeId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PassId"
+      - name: freezeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Passes]
+      operationId: unfreezePass
+      summary: "Remove a freeze that has not started; validity shrinks back (`passes.manage`)"
+      description: "404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.voided`, `pass.not_freezable`."
       responses:
         "200":
           description: OK.
@@ -1818,7 +1942,6 @@ paths:
     get:
       tags: [Passes]
       operationId: listMyPasses
-      x-tempo-planned: true
       summary: "The caller's passes in this studio (self)"
       responses:
         "200":
@@ -1836,7 +1959,6 @@ paths:
     get:
       tags: [Schedule]
       operationId: getBookingPolicy
-      x-tempo-planned: true
       summary: "Cancellation window, waitlist cutoff, booking horizon (`schedule.view`)"
       responses:
         "200":
@@ -1850,7 +1972,6 @@ paths:
     put:
       tags: [Schedule]
       operationId: updateBookingPolicy
-      x-tempo-planned: true
       summary: "Change the booking policy (`schedule.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1878,7 +1999,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: listMyNotifications
-      x-tempo-planned: true
       summary: "The caller's in-app notifications in this studio, newest first (self)"
       parameters:
         - $ref: "#/components/parameters/Before"
@@ -1893,6 +2013,20 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/me/notifications/read-all:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: "Mark all of the caller's notifications in this studio read (self)"
+      responses:
+        "204":
+          description: Done.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/me/notifications/{itemId}/read:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -1900,7 +2034,6 @@ paths:
     post:
       tags: [Notifications]
       operationId: markNotificationRead
-      x-tempo-planned: true
       summary: "Mark one notification read (self)"
       responses:
         "204":
@@ -1915,7 +2048,6 @@ paths:
     get:
       tags: [Billing]
       operationId: getBilling
-      x-tempo-planned: true
       summary: "The studio's plan, subscription state and billing details (`billing.view`)"
       responses:
         "200":
@@ -1933,7 +2065,6 @@ paths:
     patch:
       tags: [Billing]
       operationId: updateBillingAccount
-      x-tempo-planned: true
       summary: "Billing email, legal name, business id (`billing.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1958,7 +2089,6 @@ paths:
     get:
       tags: [Billing]
       operationId: listPlans
-      x-tempo-planned: true
       summary: "Public plans and their entitlements (any signed-in account)"
       responses:
         "200":
@@ -2232,6 +2362,10 @@ components:
               field: { type: string }
               code: { type: string }
               message: { type: string }
+        frozenUntil:
+          type: string
+          format: date
+          description: On `booking.no_valid_pass` only, when the person's membership is frozen on that day (docs/29 section 16.4).
 
     Health:
       type: object
@@ -2298,12 +2432,12 @@ components:
             - type: "null"
         status: { $ref: "#/components/schemas/MembershipStatus" }
         subscriptionState:
-          description: Planned (docs/28). The studio's subscription state, for banners and restricted mode.
+          description: The studio's subscription state (docs/28), for banners and restricted mode.
           oneOf:
             - $ref: "#/components/schemas/SubscriptionState"
             - type: "null"
         entitlements:
-          description: Planned (docs/28). The studio's entitlements, to hide or upsell features.
+          description: The studio's entitlements (docs/28), to hide or upsell features.
           oneOf:
             - $ref: "#/components/schemas/Entitlements"
             - type: "null"
@@ -2874,7 +3008,7 @@ components:
 
     PersonExport:
       type: object
-      required: [exportedAt, person, consentHistory]
+      required: [exportedAt, person, consentHistory, bookings, passes]
       properties:
         exportedAt: { type: string, format: date-time }
         organization:
@@ -2887,6 +3021,43 @@ components:
         consentHistory:
           type: array
           items: { $ref: "#/components/schemas/Consent" }
+        bookings:
+          type: array
+          description: Every booking of this person, in class order (docs/29 section 7).
+          items: { $ref: "#/components/schemas/ExportBooking" }
+        passes:
+          type: array
+          description: Every pass granted to this person, in start order. No staff note.
+          items: { $ref: "#/components/schemas/ExportPass" }
+
+    ExportBooking:
+      type: object
+      required: [id, sessionId, className, startsAt, status, lateCancel, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        className: { type: string, examples: [פילאטיס מכשירים] }
+        startsAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/BookingStatus" }
+        lateCancel: { type: boolean }
+        cancelReason:
+          type: [string, "null"]
+          enum: [self, staff, session_cancelled, no_valid_pass, moved, null]
+        createdAt: { type: string, format: date-time }
+
+    ExportPass:
+      type: object
+      required: [id, productName, kind, startsOn, endsOn, entriesUsed, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        productName: { type: string, examples: [כרטיסיית 10] }
+        kind: { $ref: "#/components/schemas/PassKind" }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        entries: { type: [integer, "null"] }
+        entriesUsed: { type: integer }
+        status: { type: string, enum: [active, voided] }
+        createdAt: { type: string, format: date-time }
 
     DuplicateCandidate:
       type: object
@@ -3020,7 +3191,7 @@ components:
     ScheduleTemplate:
       type: object
       description: A weekly class. `weekday` 0 is Sunday; times are in the studio's time zone.
-      required: [id, classTypeId, weekday, localStart, minutes, capacity, validFrom, version]
+      required: [id, classTypeId, weekday, localStart, minutes, capacity, validFrom, version, classType]
       properties:
         id: { type: string, format: uuid }
         classTypeId: { type: string, format: uuid }
@@ -3033,6 +3204,28 @@ components:
         validFrom: { type: string, format: date }
         validUntil: { type: [string, "null"], format: date }
         version: { type: string }
+        classType:
+          description: The class type as the console shows it in the weekly grid (same shape as `Session.classType`).
+          type: object
+          required: [id, name, category, color]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            category: { type: string }
+            color: { $ref: "#/components/schemas/ClassColor" }
+            description: { type: [string, "null"] }
+        instructor:
+          oneOf:
+            - $ref: "#/components/schemas/InstructorRef"
+            - type: "null"
+        room:
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string, format: uuid }
+                name: { type: string }
+            - type: "null"
 
     ScheduleTemplateList:
       type: object
@@ -3128,6 +3321,7 @@ components:
             name: { type: string }
             category: { type: string }
             color: { $ref: "#/components/schemas/ClassColor" }
+            description: { type: [string, "null"], description: "About the class (AppClass)." }
         instructor:
           oneOf:
             - $ref: "#/components/schemas/InstructorRef"
@@ -3154,6 +3348,12 @@ components:
           oneOf:
             - $ref: "#/components/schemas/PassSummary"
             - type: "null"
+        frozenUntil:
+          type: [string, "null"]
+          format: date
+          description: |
+            When no pass is valid because the caller's membership is frozen on this class's day (docs/29 section
+            16.4): the last frozen day, so the booking sheet can say so before the 409. Null otherwise.
         version: { type: string }
 
     SessionList:
@@ -3207,9 +3407,15 @@ components:
         lateCancel: { type: boolean }
         cancelReason:
           type: [string, "null"]
-          enum: [self, staff, session_cancelled, no_valid_pass, null]
+          enum: [self, staff, session_cancelled, no_valid_pass, moved, null]
+        cancelledFrom:
+          type: [string, "null"]
+          enum: [booked, waitlisted, null]
+          description: For a cancelled booking, whether it held a place or a waitlist place; null otherwise.
         pass:
-          description: The pass whose entry this booking holds; null while waiting or after the entry returned.
+          description: |
+            The pass this booking used, with its entries left now; still set after a cancellation (the entry may
+            have returned). Null while waiting, and for a waitlist place that never got a seat.
           oneOf:
             - $ref: "#/components/schemas/PassSummary"
             - type: "null"
@@ -3223,6 +3429,27 @@ components:
           type: string
           format: uuid
           description: Book someone else (`bookings.manage`). Omit to book yourself.
+
+    MoveBookingRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: { type: string, format: uuid, description: The class the place moves to. }
+
+    SendSessionMessageRequest:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 500, examples: [החדר הוחלף לאולם הגדול, להביא מגבת] }
+
+    SessionMessage:
+      type: object
+      required: [id, sessionId, recipients, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        recipients: { type: integer, description: How many booked and waiting people got it. }
+        createdAt: { type: string, format: date-time }
 
     CancelBookingRequest:
       type: object
@@ -3246,6 +3473,9 @@ components:
         status: { $ref: "#/components/schemas/BookingStatus" }
         waitlistPosition: { type: [integer, "null"] }
         passName: { type: [string, "null"], examples: [כרטיסיית 10] }
+        entriesLeft:
+          type: [integer, "null"]
+          description: Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place).
         bookedAt: { type: string, format: date-time }
 
     Roster:
@@ -3352,6 +3582,25 @@ components:
         status: { type: string, enum: [active, voided, expired], description: "`expired` is computed from `endsOn`." }
         createdAt: { type: string, format: date-time }
         version: { type: string }
+        freezes:
+          type: array
+          description: Frozen periods of a membership, in start order (docs/29 section 16.4); empty for a punch card. Always sent; optional here so sample data without it still types.
+          items: { $ref: "#/components/schemas/PassFreeze" }
+
+    PassFreeze:
+      type: object
+      required: [id, startsOn, endsOn]
+      properties:
+        id: { type: string, format: uuid }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+
+    FreezePassRequest:
+      type: object
+      required: [startsOn, endsOn]
+      properties:
+        startsOn: { type: string, format: date, description: "Studio date, today or later." }
+        endsOn: { type: string, format: date, description: "Inclusive; at most 90 days after startsOn." }
 
     PassList:
       type: object
@@ -3399,15 +3648,29 @@ components:
         kind:
           type: string
           description: Clients must ignore kinds they do not know.
-          examples: [booking.promoted, booking.promotion_failed, session.cancelled, waitlist.expired]
+          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen]
         data:
           type: object
           description: Ids only.
           properties:
             sessionId: { type: string, format: uuid }
             bookingId: { type: string, format: uuid }
+            passId: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
         readAt: { type: [string, "null"], format: date-time }
+        text:
+          type: [string, "null"]
+          description: For `session.message`, the staff message (docs/29 section 16.2); null for every other kind.
+        session:
+          description: The class the notice is about, so a list needs no extra request; null when it has none.
+          oneOf:
+            - type: object
+              required: [id, startsAt, classTypeName]
+              properties:
+                id: { type: string, format: uuid }
+                startsAt: { type: string, format: date-time }
+                classTypeName: { type: string }
+            - type: "null"
 
     InboxPage:
       type: object

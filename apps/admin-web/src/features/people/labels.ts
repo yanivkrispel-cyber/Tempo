@@ -5,7 +5,7 @@ export const personStatus: Record<Schemas["PersonStatus"], { text: string; tone:
   active: { text: "פעיל", tone: "success" },
   archived: { text: "בארכיון", tone: "neutral" },
   anonymized: { text: "נמחק", tone: "danger" },
-  merged: { text: "אוחד", tone: "neutral" }
+  merged: { text: "אוחד", tone: "neutral" },
 };
 
 export const sourceLabel: Record<Schemas["PersonSource"], string> = {
@@ -13,5 +13,5 @@ export const sourceLabel: Record<Schemas["PersonSource"], string> = {
   join_link: "קישור הצטרפות",
   invitation: "הזמנה",
   staff_created: "הוספה בסטודיו",
-  import: "ייבוא"
+  import: "ייבוא",
 };

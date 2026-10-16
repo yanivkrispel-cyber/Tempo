@@ -1,0 +1,5 @@
+# Signed-in browser state (access and refresh tokens). Never commit.
+.auth/
+test-results/
+playwright-report/
+blob-report/

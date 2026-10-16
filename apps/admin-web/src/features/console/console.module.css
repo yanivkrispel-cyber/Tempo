@@ -1,15 +1,57 @@
 /* The console's frame: the studio's navigation at the start, the page beside it. Placement only; the look is the
    design system's (tp-card, tp-nav). */
-.frame { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: var(--space-6); align-items: start;
-  max-width: var(--content-max); margin-inline: auto; padding: var(--space-6) var(--space-8) var(--space-12); }
-.side { position: sticky; top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
-.studio { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.studioName { display: flex; flex-direction: column; min-width: 0; }
-.studioName strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.content { min-width: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.frame {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-8) var(--space-12);
+}
+.side {
+  position: sticky;
+  top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.studio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.studioName {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.studioName strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
 
 @media (max-width: 767px) {
-  .frame { grid-template-columns: 1fr; padding: var(--space-4); gap: var(--space-4); }
-  .side { position: static; }
-  .side nav { flex-direction: row; overflow-x: auto; }
+  .frame {
+    /* minmax(0, …): a bare 1fr never shrinks below its content, so the one-row nav widened the page (#163). */
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  .side {
+    position: static;
+    min-width: 0;
+  }
+  .side nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
 }

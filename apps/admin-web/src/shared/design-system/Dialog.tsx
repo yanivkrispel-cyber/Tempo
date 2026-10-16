@@ -67,6 +67,7 @@ function OpenDialog({ onClose, title, description, children, actions, dismissibl
   }
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop click is a mouse shortcut; keyboard users close with Escape or the dialog's buttons.
     <div
       className="tp-scrim"
       onMouseDown={(event) => {
@@ -74,6 +75,7 @@ function OpenDialog({ onClose, title, description, children, actions, dismissibl
         if (dismissible && event.target === event.currentTarget) onClose();
       }}
     >
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the keydown handler is the dialog's focus trap (WAI-ARIA modal dialog pattern). */}
       <div
         ref={dialog}
         className="tp-dialog"

@@ -36,6 +36,13 @@ export function addDays(iso: IsoDate, days: number): IsoDate {
   return toIsoDate(date);
 }
 
+/** Whole days from `from` to `to`: 1 for tomorrow, -1 for yesterday. UTC noon keeps a DST change out of it. */
+export function daysBetween(from: IsoDate, to: IsoDate): number {
+  const noon = (iso: IsoDate) =>
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)), 12);
+  return Math.round((noon(to) - noon(from)) / 86_400_000);
+}
+
 /** Same day of the month, or the month's last day when it is shorter: 31 Jan + 1 month = 28 Feb. */
 export function addMonths(iso: IsoDate, months: number): IsoDate {
   const date = requireDate(iso);
@@ -106,11 +113,16 @@ export function formatDate(iso: IsoDate): string {
  * "15.01.27" typed in October 2026 is next January). When `range` is given, the century that falls
  * inside it wins, so a birth date with max = today reads "15.10.30" as 1930.
  */
-export function parseDate(text: string, today: IsoDate = todayIso(), range: { min?: IsoDate; max?: IsoDate } = {}): IsoDate | null {
+export function parseDate(
+  text: string,
+  today: IsoDate = todayIso(),
+  range: { min?: IsoDate; max?: IsoDate } = {},
+): IsoDate | null {
   const value = text.trim();
   if (isoPattern.test(value)) return fromIsoDate(value) ? value : null;
 
-  const match = /^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2}|\d{4}))?$/.exec(value) ?? /^(\d{2})(\d{2})(\d{2}|\d{4})$/.exec(value);
+  const match =
+    /^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2}|\d{4}))?$/.exec(value) ?? /^(\d{2})(\d{2})(\d{2}|\d{4})$/.exec(value);
   if (!match) return null;
   const day = pad(Number(match[1]));
   const month = pad(Number(match[2]));

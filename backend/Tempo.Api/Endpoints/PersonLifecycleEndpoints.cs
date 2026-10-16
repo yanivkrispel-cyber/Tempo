@@ -18,8 +18,8 @@ public static class PersonLifecycleEndpoints
 
         tenant.MapGet("/duplicate-candidates", ListAsync).RequirePermission(Permissions.PeopleMerge).WithName("listDuplicateCandidates").Produces<DuplicateCandidatePageResponse>();
         tenant.MapPost("/duplicate-candidates/{candidateId:guid}/resolve", ResolveAsync).RequirePermission(Permissions.PeopleMerge).WithName("resolveDuplicateCandidate").Produces<DuplicateCandidateResponse>();
-        tenant.MapPost("/people/{personId:guid}/export", ExportAsync).RequirePermission(Permissions.PeopleExport).WithName("exportPerson").Produces<PersonExportResponse>();
-        tenant.MapPost("/people/{personId:guid}/erase", EraseAsync).RequirePermission(Permissions.PeopleErase).WithName("erasePerson").Produces<PersonDetailResponse>();
+        tenant.MapPost("/people/{personId:guid}/export", ExportAsync).RequirePermission(Permissions.PeopleExport).WithName("exportPerson").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<PersonExportResponse>();
+        tenant.MapPost("/people/{personId:guid}/erase", EraseAsync).RequirePermission(Permissions.PeopleErase).WithName("erasePerson").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<PersonDetailResponse>();
 
         return endpoints;
     }
@@ -44,7 +44,9 @@ public static class PersonLifecycleEndpoints
             export.ExportedAt,
             new ExportOrganizationResponse(export.OrganizationId, export.OrganizationName),
             PeopleEndpoints.ToResponse(export.Person),
-            [.. export.ConsentHistory.Select(PeopleEndpoints.ToResponse)]));
+            [.. export.ConsentHistory.Select(PeopleEndpoints.ToResponse)],
+            [.. export.Bookings.Select(b => new ExportBookingResponse(b.Id, b.SessionId, b.ClassName, b.StartsAt, b.Status, b.LateCancel, b.CancelReason, b.CreatedAt))],
+            [.. export.Passes.Select(p => new ExportPassResponse(p.Id, p.ProductName, p.Kind, p.StartsOn, p.EndsOn, p.Entries, p.EntriesUsed, p.Status, p.CreatedAt))]));
     }
 
     private static async Task<IResult> EraseAsync(HttpContext httpContext, Guid personId, ErasePersonRequest request, IPersonLifecycleService lifecycle, TimeProvider clock)

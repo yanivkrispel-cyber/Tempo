@@ -22,7 +22,7 @@ export function useMe() {
     enabled: isSignedIn,
     staleTime: Infinity,
     // A 4xx (disabled account, rejected token) will not change on a retry; a network error or a 5xx might.
-    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500)
+    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500),
   });
 }
 
@@ -38,13 +38,23 @@ export function useUpdateMe() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: Schemas["UpdateMeRequest"]) => unwrap(api.PATCH("/api/v1/me", { body })),
-    onSuccess: (me) => queryClient.setQueryData(meKey, me)
+    onSuccess: (me) => queryClient.setQueryData(meKey, me),
   });
+}
+
+/**
+ * The studio's subscription state from GET /me (docs/28 section 4). The field is optional: dev sends it once the
+ * billing API is deployed; until then, and for a studio without a subscription, this is null.
+ */
+export function subscriptionStateOf(membership: MyMembership | undefined): Schemas["SubscriptionState"] | null {
+  return membership?.subscriptionState ?? null;
 }
 
 /** The studios the caller can use now: active memberships in active studios. */
 export function activeMemberships(me: Me): MyMembership[] {
-  return me.memberships.filter((membership) => membership.status === "active" && membership.organization.status === "active");
+  return me.memberships.filter(
+    (membership) => membership.status === "active" && membership.organization.status === "active",
+  );
 }
 
 /** The name to show: the display name, else the part of the email before `@`. */
@@ -59,7 +69,10 @@ export function roleName(role: Schemas["Role"]): string {
   return roleNames[role];
 }
 
-/** The caller's role in a studio. Until the Phase 2 API is deployed (K5) dev sends only the deprecated `role`. */
+/**
+ * The names of the caller's roles in a studio, from `roles` ("מתאמן", or "מנהל · מדריך"). The deprecated `role` field
+ * is not read (contract, `MyMembership`).
+ */
 export function membershipRoleName(membership: MyMembership): string {
-  return (membership.roles ?? [])[0]?.displayName ?? roleName(membership.role);
+  return (membership.roles ?? []).map((role) => role.displayName).join(" · ") || "ללא תפקיד";
 }

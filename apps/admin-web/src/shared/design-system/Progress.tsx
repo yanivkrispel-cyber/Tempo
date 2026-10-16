@@ -19,7 +19,15 @@ export interface ProgressRingProps {
 }
 
 /** A conic ring. Over the maximum (an overbooked class) it turns amber. */
-export function ProgressRing({ value, max = 100, label, size = "md", tone = "brand", children, className }: ProgressRingProps) {
+export function ProgressRing({
+  value,
+  max = 100,
+  label,
+  size = "md",
+  tone = "brand",
+  children,
+  className,
+}: ProgressRingProps) {
   const style = { "--tp-ring-deg": `${fraction(value, max) * 360}deg` } as CSSProperties;
   return (
     <div
@@ -28,7 +36,13 @@ export function ProgressRing({ value, max = 100, label, size = "md", tone = "bra
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuenow={value}
-      className={cx("tp-ring", size !== "md" && `tp-ring--${size}`, tone === "rose" && "tp-ring--rose", value > max && "tp-ring--over", className)}
+      className={cx(
+        "tp-ring",
+        size !== "md" && `tp-ring--${size}`,
+        tone === "rose" && "tp-ring--rose",
+        value > max && "tp-ring--over",
+        className,
+      )}
       style={style}
     >
       <span className="tp-ring__inner">{children}</span>

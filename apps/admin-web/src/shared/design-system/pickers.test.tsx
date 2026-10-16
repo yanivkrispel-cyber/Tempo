@@ -7,7 +7,15 @@ import type { Time } from "../utilities/times";
 import { DateInput, Field, TimeInput } from "./index";
 
 describe("DateInput", () => {
-  function ClassDate({ initial = null, min, onChange = () => {} }: { initial?: IsoDate | null; min?: IsoDate; onChange?: (value: IsoDate | null) => void }) {
+  function ClassDate({
+    initial = null,
+    min,
+    onChange = () => {},
+  }: {
+    initial?: IsoDate | null;
+    min?: IsoDate;
+    onChange?: (value: IsoDate | null) => void;
+  }) {
     const [value, setValue] = useState<IsoDate | null>(initial);
     return (
       <div dir="rtl">
@@ -118,7 +126,7 @@ describe("DateInput", () => {
     render(
       <Field label="תאריך לידה">
         <DateInput value={null} max="2026-10-15" today="2026-10-15" onChange={onChange} />
-      </Field>
+      </Field>,
     );
     await userEvent.type(screen.getByLabelText("תאריך לידה"), "15.10.30");
     await userEvent.tab();
@@ -135,7 +143,13 @@ describe("DateInput", () => {
 });
 
 describe("TimeInput", () => {
-  function StartTime({ initial = null, onChange = () => {} }: { initial?: Time | null; onChange?: (value: Time | null) => void }) {
+  function StartTime({
+    initial = null,
+    onChange = () => {},
+  }: {
+    initial?: Time | null;
+    onChange?: (value: Time | null) => void;
+  }) {
     const [value, setValue] = useState<Time | null>(initial);
     return (
       <>
@@ -187,7 +201,11 @@ describe("TimeInput", () => {
     await userEvent.type(screen.getByRole("combobox"), "7");
 
     const list = screen.getByRole("listbox", { name: "שעות" });
-    expect(within(list).getAllByRole("option").map((option) => option.textContent)).toEqual(["07:00", "07:30"]);
+    expect(
+      within(list)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["07:00", "07:30"]);
 
     await userEvent.click(within(list).getByRole("option", { name: "07:30" }));
     expect(onChange).toHaveBeenLastCalledWith("07:30");

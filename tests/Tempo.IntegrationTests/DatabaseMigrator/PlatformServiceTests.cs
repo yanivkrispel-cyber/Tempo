@@ -65,7 +65,7 @@ public sealed class PlatformServiceTests(PostgresFixture postgres) : IClassFixtu
                 "SELECT string_agg(action, ',' ORDER BY action) FROM audit.audit_events WHERE organization_id = $1 AND actor_type = 'operator' AND actor_id = $2",
                 studioA,
                 caller.OperatorId))
-            .Should().Be("organization.suspended,organization.viewed_by_operator", "the second suspend changes nothing and writes nothing");
+            .Should().Be("organization.suspended,organization.viewed_by_operator,organization.viewed_by_operator", "the second suspend changes nothing but still showed the operator the studio (#124)");
     }
 
     [Fact]

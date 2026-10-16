@@ -7,12 +7,13 @@ import { errorMessage } from "../../api/errors";
 import { Banner, Button, Card, Field, Input, Select, Skeleton, useToast } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
+import { PlanCard } from "./PlanCard";
 
 type Organization = Schemas["Organization"];
 
 const locales = [
   { value: "he-IL", label: "עברית" },
-  { value: "en-US", label: "English" }
+  { value: "en-US", label: "English" },
 ];
 
 const timeZones = [{ value: "Asia/Jerusalem", label: "ישראל (Asia/Jerusalem)" }];
@@ -23,7 +24,7 @@ export function SettingsPage() {
   const { organizationId } = useStudio();
   const organization = useQuery({
     queryKey: ["studio", organizationId, "organization"],
-    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } }))
+    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } })),
   });
 
   return (
@@ -42,6 +43,7 @@ export function SettingsPage() {
         // Keyed by version: after a save the form starts again from what the API returned.
         <SettingsForm key={organization.data.version} organization={organization.data} />
       )}
+      <PlanCard />
     </>
   );
 }
@@ -58,19 +60,20 @@ function SettingsForm({ organization }: { organization: Organization }) {
   const editable = studio.can("organization.settings.manage");
 
   const save = useMutation({
+    mutationKey: [organization.id, "settings.updateSettings"],
     mutationFn: (body: Schemas["UpdateOrganizationRequest"]) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}", {
           params: { path: { organizationId: organization.id }, header: { "If-Match": organization.version } },
-          body
-        })
+          body,
+        }),
       ),
     onSuccess: async (updated) => {
       queryClient.setQueryData(["studio", organization.id, "organization"], updated);
       // The name also shows in the console frame and the studio list, which come from GET /me.
       await queryClient.invalidateQueries({ queryKey: meKey });
       toast.show({ tone: "success", icon: "check", message: "ההגדרות נשמרו" });
-    }
+    },
   });
 
   const name = displayName.trim();
@@ -78,7 +81,7 @@ function SettingsForm({ organization }: { organization: Organization }) {
   const changes: Schemas["UpdateOrganizationRequest"] = {
     ...(name !== organization.displayName ? { displayName: name } : {}),
     ...(defaultLocale !== organization.defaultLocale ? { defaultLocale } : {}),
-    ...(timeZone !== organization.timeZone ? { timeZone } : {})
+    ...(timeZone !== organization.timeZone ? { timeZone } : {}),
   };
   const changed = Object.keys(changes).length > 0;
 
@@ -92,11 +95,21 @@ function SettingsForm({ organization }: { organization: Organization }) {
     <Card as="section" aria-label="הגדרות הסטודיו">
       <form className="tp-stack" onSubmit={submit} noValidate>
         <Field label="שם הסטודיו" required error={submitted ? nameError : undefined}>
-          <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={100} disabled={!editable} />
+          <Input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            maxLength={100}
+            disabled={!editable}
+          />
         </Field>
         <Field label="שפת ברירת המחדל">
           <Select value={defaultLocale} onChange={(event) => setDefaultLocale(event.target.value)} disabled={!editable}>
-            {[...locales, ...(locales.some((locale) => locale.value === organization.defaultLocale) ? [] : [{ value: organization.defaultLocale, label: organization.defaultLocale }])].map((locale) => (
+            {[
+              ...locales,
+              ...(locales.some((locale) => locale.value === organization.defaultLocale)
+                ? []
+                : [{ value: organization.defaultLocale, label: organization.defaultLocale }]),
+            ].map((locale) => (
               <option key={locale.value} value={locale.value}>
                 {locale.label}
               </option>
@@ -105,7 +118,12 @@ function SettingsForm({ organization }: { organization: Organization }) {
         </Field>
         <Field label="אזור זמן">
           <Select value={timeZone} onChange={(event) => setTimeZone(event.target.value)} disabled={!editable}>
-            {[...timeZones, ...(timeZones.some((zone) => zone.value === organization.timeZone) ? [] : [{ value: organization.timeZone, label: organization.timeZone }])].map((zone) => (
+            {[
+              ...timeZones,
+              ...(timeZones.some((zone) => zone.value === organization.timeZone)
+                ? []
+                : [{ value: organization.timeZone, label: organization.timeZone }]),
+            ].map((zone) => (
               <option key={zone.value} value={zone.value}>
                 {zone.label}
               </option>

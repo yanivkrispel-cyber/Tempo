@@ -55,7 +55,8 @@ public sealed record MembershipSnapshot(
     MembershipRole Role,
     MembershipStatus Status,
     OrganizationStatus OrganizationStatus,
-    IReadOnlySet<string>? Permissions = null)
+    IReadOnlySet<string>? Permissions = null,
+    string? SubscriptionState = null)
 {
     public IReadOnlySet<string> EffectivePermissions => Permissions ?? SystemRoles.Of(Role).Permissions;
 }
@@ -76,7 +77,9 @@ public sealed record AccountMembership(
     OrganizationStatus OrganizationStatus,
     IReadOnlyList<RoleSummary>? Roles = null,
     IReadOnlyCollection<string>? Permissions = null,
-    PendingOwnershipTransfer? PendingOwnershipTransfer = null)
+    PendingOwnershipTransfer? PendingOwnershipTransfer = null,
+    string? SubscriptionState = null,
+    string? EntitlementsJson = null)
 {
     public IReadOnlyList<RoleSummary> EffectiveRoles => Roles ?? [RoleSummary.Of(SystemRoles.Of(Role))];
 

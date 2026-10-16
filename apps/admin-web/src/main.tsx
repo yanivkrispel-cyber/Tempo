@@ -19,5 +19,5 @@ const auth = config.auth ? new AuthClient({ config: config.auth, app: "admin-web
 createRoot(root).render(
   <StrictMode>
     <App router={createBrowserRouter(routes)} auth={auth} apiUrl={config.apiUrl} />
-  </StrictMode>
+  </StrictMode>,
 );

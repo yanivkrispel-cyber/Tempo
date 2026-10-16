@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, endOfWeek, formatDate, fromIsoDate, monthWeeks, parseDate, startOfWeek } from "./dates";
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  endOfWeek,
+  formatDate,
+  fromIsoDate,
+  monthWeeks,
+  parseDate,
+  startOfWeek,
+} from "./dates";
 import { matchTimes, parseTime, timeOptions } from "./times";
 
 describe("dates", () => {
+  it("counts whole days between two dates, across the DST change and the year's end", () => {
+    expect(daysBetween("2026-10-13", "2026-10-14")).toBe(1);
+    expect(daysBetween("2026-10-14", "2026-10-13")).toBe(-1);
+    expect(daysBetween("2026-10-20", "2026-10-27")).toBe(7);
+    expect(daysBetween("2026-03-26", "2026-03-28")).toBe(2);
+    expect(daysBetween("2026-12-31", "2027-01-01")).toBe(1);
+  });
+
   it("rejects dates that do not exist", () => {
     expect(fromIsoDate("2026-02-29")).toBeNull();
     expect(fromIsoDate("2028-02-29")).not.toBeNull();
@@ -16,7 +34,7 @@ describe("dates", () => {
     ["151026", "2026-10-15"],
     ["15102026", "2026-10-15"],
     ["15.10", "2026-10-15"],
-    [" 2026-10-15 ", "2026-10-15"]
+    [" 2026-10-15 ", "2026-10-15"],
   ])("reads %j day first", (text, iso) => {
     expect(parseDate(text, "2026-06-01")).toBe(iso);
   });
@@ -86,7 +104,7 @@ describe("times", () => {
     ["1830", "18:30"],
     ["930", "09:30"],
     ["9:05", "09:05"],
-    ["18", "18:00"]
+    ["18", "18:00"],
   ])("reads %j", (text, time) => {
     expect(parseTime(text)).toBe(time);
   });

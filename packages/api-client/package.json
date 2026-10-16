@@ -12,7 +12,7 @@
     "generate": "node scripts/generate.mjs",
     "check:generated": "node scripts/generate.mjs --check",
     "build": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit && eslint .",
     "test": "node scripts/generate.mjs --check && vitest run"
   },
   "dependencies": {

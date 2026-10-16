@@ -4,7 +4,9 @@ import {
   ComparisonOperator,
   Dashboard,
   GraphWidget,
+  IWidget,
   Metric,
+  TextWidget,
   TreatMissingData
 } from "aws-cdk-lib/aws-cloudwatch";
 import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
@@ -12,6 +14,7 @@ import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { Function as LambdaFunction } from "aws-cdk-lib/aws-lambda";
 import { Topic } from "aws-cdk-lib/aws-sns";
 import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
+import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
@@ -22,6 +25,13 @@ export const SES_BOUNCE_RATE_THRESHOLD = 0.05;
 export const SES_COMPLAINT_RATE_THRESHOLD = 0.001;
 /** ADR-0022 tripwire: alert the owners at 70% of any Neon Free plan limit. */
 export const NEON_FREE_LIMIT_ALARM_PERCENT = 70;
+/**
+ * The account's Lambda concurrency quota: a new account gets 10, Tempo's
+ * development account was raised to 40 (quota case 179192381800130, still
+ * open for the 1,000 default). Shown as a line on the dashboard; the
+ * `lambda-throttles` alarm fires when it is hit.
+ */
+export const LAMBDA_CONCURRENCY_QUOTA = 40;
 
 export interface ObservabilityStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -29,13 +39,17 @@ export interface ObservabilityStackProps extends StackProps {
   readonly apiFunction: LambdaFunction;
   readonly workerFunction: LambdaFunction;
   readonly migratorFunction: LambdaFunction;
+  readonly workQueue: Queue;
+  readonly workDeadLetterQueue: Queue;
 }
 
 /**
- * Cross-cutting CloudWatch alarms and a starter dashboard (LLD sections 25,
- * 34). Queue-level alarms (DLQ depth, oldest-message age) already live on
- * each SecureQueue and are not duplicated here. Development has no alarms
- * (ADR-0012 amendment).
+ * Cross-cutting CloudWatch alarms and the dashboard (LLD sections 25, 34).
+ * Queue-level alarms (DLQ depth, oldest-message age) already live on each
+ * SecureQueue and are not duplicated here. Development has no alarms
+ * (ADR-0012 amendment); its dashboard is the one place to look. The
+ * dashboard stays inside the free tier: three dashboards of up to fifty
+ * metrics each are free, and this is one of them.
  *
  * Alarm notifications are optional in development (no approved channel
  * configured yet) but the SNS topic + subscription wiring is real and is
@@ -53,46 +67,139 @@ export class ObservabilityStack extends Stack {
 
     new Dashboard(this, "Dashboard", {
       dashboardName: resourceName(config, "dashboard"),
-      widgets: [
-        [
-          new GraphWidget({
-            title: "API Gateway - requests / errors / latency",
-            left: [props.httpApi.metricCount(), props.httpApi.metricServerError(), props.httpApi.metricClientError()],
-            right: [props.httpApi.metricLatency({ statistic: "p99" })]
-          })
-        ],
-        [
-          new GraphWidget({
-            title: "Lambda - errors / throttles",
-            left: [
-              props.apiFunction.metricErrors(),
-              props.workerFunction.metricErrors(),
-              props.migratorFunction.metricErrors()
-            ],
-            right: [
-              props.apiFunction.metricThrottles(),
-              props.workerFunction.metricThrottles(),
-              props.migratorFunction.metricThrottles()
-            ]
-          })
-        ],
-        [
-          new GraphWidget({
-            title: "Neon - highest share of a Free plan limit (%)",
-            left: [
-              new Metric({
-                ...NEON_USAGE_METRIC,
-                dimensionsMap: { Environment: config.environmentName },
-                statistic: "Maximum",
-                period: Duration.hours(NEON_USAGE_INTERVAL_HOURS)
-              })
-            ]
-          })
-        ]
-      ]
+      widgets: this.dashboardRows(config, props)
     });
 
     applyStandardTags(this, config, "observability");
+  }
+
+  /**
+   * One row per question an operator asks at night: is the API healthy, is
+   * Lambda near the concurrency quota, is the queue draining, did the daily
+   * jobs and the canary run, how close is Neon to a Free plan limit.
+   */
+  private dashboardRows(config: TempoEnvironmentConfig, props: ObservabilityStackProps): IWidget[][] {
+    const fiveMinutes = Duration.minutes(5);
+    const lambdaByName = (metricName: string, functionName: string, label: string): Metric =>
+      new Metric({
+        namespace: "AWS/Lambda",
+        metricName,
+        dimensionsMap: { FunctionName: functionName },
+        statistic: "Sum",
+        period: fiveMinutes,
+        label
+      });
+    const scheduler = (metricName: string): Metric =>
+      new Metric({ namespace: "AWS/Scheduler", metricName, statistic: "Sum", period: Duration.hours(1) });
+
+    // The daily jobs are messages the Scheduler puts on the work queue; the
+    // worker runs them. The canary and the Neon usage check are functions of
+    // their own, named here so this stack does not depend on theirs.
+    const jobFunctions = [
+      { name: props.workerFunction.functionName, label: "worker (daily jobs)" },
+      { name: resourceName(config, "neon-usage"), label: "neon-usage" },
+      ...(config.featureFlags.enableDevCanary ? [{ name: resourceName(config, "api-canary"), label: "api-canary" }] : [])
+    ];
+
+    return [
+      [
+        new TextWidget({
+          width: 24,
+          height: 2,
+          markdown:
+            `# Tempo ${config.environmentName}\n` +
+            "API health, Lambda against its concurrency quota, the work queue, the daily jobs and the canary, Neon. " +
+            "Alarms (production only) are listed in ADR-0012; development has none, so this page is where to look."
+        })
+      ],
+      [
+        new GraphWidget({
+          title: "API Gateway - requests / errors / latency",
+          width: 12,
+          left: [props.httpApi.metricCount(), props.httpApi.metricServerError(), props.httpApi.metricClientError()],
+          right: [props.httpApi.metricLatency({ statistic: "p99" })]
+        }),
+        new GraphWidget({
+          title: "API function - duration p50 / p99 (ms)",
+          width: 12,
+          left: [
+            props.apiFunction.metricDuration({ statistic: "p50", period: fiveMinutes }),
+            props.apiFunction.metricDuration({ statistic: "p99", period: fiveMinutes })
+          ],
+          leftAnnotations: [{ value: API_P99_THRESHOLD_MS, label: "p99 alarm threshold" }]
+        })
+      ],
+      [
+        new GraphWidget({
+          title: "Lambda - errors / throttles",
+          width: 12,
+          left: [
+            props.apiFunction.metricErrors(),
+            props.workerFunction.metricErrors(),
+            props.migratorFunction.metricErrors()
+          ],
+          right: [
+            props.apiFunction.metricThrottles(),
+            props.workerFunction.metricThrottles(),
+            props.migratorFunction.metricThrottles()
+          ]
+        }),
+        new GraphWidget({
+          title: `Lambda - concurrent executions vs. the quota (${LAMBDA_CONCURRENCY_QUOTA})`,
+          width: 12,
+          left: [
+            new Metric({
+              namespace: "AWS/Lambda",
+              metricName: "ConcurrentExecutions",
+              statistic: "Maximum",
+              period: Duration.minutes(1),
+              label: "all functions"
+            }),
+            props.apiFunction.metricInvocations({ period: fiveMinutes, label: "API invocations" })
+          ],
+          leftAnnotations: [{ value: LAMBDA_CONCURRENCY_QUOTA, label: "account quota" }]
+        })
+      ],
+      [
+        new GraphWidget({
+          title: "Work queue - visible / in flight / dead letters",
+          width: 12,
+          left: [
+            props.workQueue.metricApproximateNumberOfMessagesVisible({ label: "visible" }),
+            props.workQueue.metricApproximateNumberOfMessagesNotVisible({ label: "in flight" }),
+            props.workDeadLetterQueue.metricApproximateNumberOfMessagesVisible({ label: "dead letters" })
+          ],
+          right: [props.workQueue.metricApproximateAgeOfOldestMessage({ label: "oldest message (s)" })]
+        }),
+        new GraphWidget({
+          title: "Daily jobs and canary - invocations / errors",
+          width: 12,
+          left: jobFunctions.map((fn) => lambdaByName("Invocations", fn.name, `${fn.label} invocations`)),
+          right: jobFunctions.map((fn) => lambdaByName("Errors", fn.name, `${fn.label} errors`))
+        })
+      ],
+      [
+        new GraphWidget({
+          title: "EventBridge Scheduler - attempts / target errors / dropped (per hour)",
+          width: 12,
+          left: [scheduler("InvocationAttemptCount")],
+          right: [scheduler("TargetErrorCount"), scheduler("InvocationDroppedCount")]
+        }),
+        new GraphWidget({
+          title: "Neon - highest share of a Free plan limit (%)",
+          width: 12,
+          left: [
+            new Metric({
+              ...NEON_USAGE_METRIC,
+              dimensionsMap: { Environment: config.environmentName },
+              statistic: "Maximum",
+              period: Duration.hours(NEON_USAGE_INTERVAL_HOURS)
+            })
+          ],
+          leftAnnotations: [{ value: NEON_FREE_LIMIT_ALARM_PERCENT, label: "alarm threshold" }]
+        })
+      ]
+    ];
   }
 
   /**
@@ -203,7 +310,8 @@ export class ObservabilityStack extends Stack {
     }
 
     const topic = new Topic(this, "AlarmTopic", {
-      topicName: resourceName(config, "alarms")
+      topicName: resourceName(config, "alarms"),
+      enforceSSL: true
     });
     topic.addSubscription(new EmailSubscription(config.observability.alarmEmail));
 

@@ -3,6 +3,14 @@ name: Deploy Development
 on:
   push:
     branches: [main]
+    # Nothing under these paths reaches the dev stacks: the apps are not deployed
+    # while the edge stack is off (featureFlags.enableFrontendHosting: false), and
+    # docs and agent files never are. workflow_dispatch still deploys on demand.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "apps/**"
+      - ".claude/**"
   workflow_dispatch: {}
 
 permissions:
@@ -30,11 +38,12 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: dotnet restore / build / test
+      # The tests already ran on the PR (pull-request.yml, a required check), so
+      # the deploy only builds; publish below needs the build anyway.
+      - name: dotnet restore / build
         run: |
           dotnet restore Tempo.sln
           dotnet build Tempo.sln --configuration Release --no-restore
-          dotnet test Tempo.sln --configuration Release --no-build
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

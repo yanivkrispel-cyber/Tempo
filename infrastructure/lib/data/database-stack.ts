@@ -136,7 +136,7 @@ export class DatabaseStack extends Stack {
     const fn = new LambdaFunction(this, "NeonUsageFunction", {
       functionName,
       description: "Publishes the share of the Neon Free plan limits used this period (ADR-0022)",
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 128,
       timeout: Duration.seconds(30),

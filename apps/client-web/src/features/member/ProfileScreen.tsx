@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Avatar, Button, Card, Chip, Icon, IconButton, ProgressBar, Select, Skeleton, shortDate, useToast } from "../../shared/design-system";
+import { Avatar, Button, Card, Chip, Icon, IconButton, Select, Skeleton, useToast } from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useProfile } from "./data";
@@ -7,7 +7,9 @@ import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
 import { EditNameDialog } from "./EditNameDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
+import { PassesCard } from "./Passes";
 import styles from "./member.module.css";
+import { StudioNotices } from "./StudioNotices";
 
 export function ProfileScreen() {
   const profile = useProfile();
@@ -30,8 +32,8 @@ export function ProfileScreen() {
     );
   }
 
-  // The plan and the health declaration stay sample data until the studio API exists; the rest is the account.
-  const { plan, healthDeclarationSigned } = profile.data;
+  // The health declaration stays sample data until the studio API has it; the passes and the rest are real.
+  const { healthDeclarationSigned } = profile.data;
   const name = nameOf(me);
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.profile}`}>
@@ -45,23 +47,9 @@ export function ProfileScreen() {
         </div>
         <IconButton icon="edit" label="עריכת פרטים" onClick={() => setEditing(true)} />
       </header>
+      <StudioNotices />
 
-      <Card as="section" tone="base" className={styles.plan} aria-labelledby="plan-name">
-        <div className={styles.planHead}>
-          <span className="tp-eyebrow">המנוי שלך</span>
-          <span className="tp-icon-tile tp-icon-tile--sm">
-            <Icon name="credit-card" />
-          </span>
-        </div>
-        <h2 id="plan-name" className={styles.planName}>
-          {plan.name}
-        </h2>
-        <span>
-          מתחדש אוטומטית ב-{shortDate(plan.renewsOn)} · ויזה <bdi>{plan.card}</bdi>
-        </span>
-        <ProgressBar tone="sand" value={plan.periodDays - plan.daysLeft} max={plan.periodDays} label="ימים שעברו בתקופה הנוכחית" />
-        <span className="tp-caption">עוד {plan.daysLeft} ימים בתקופה הנוכחית</span>
-      </Card>
+      {studio && <PassesCard organizationId={studio.organization.id} />}
 
       <Card as="section" small className={styles.studio} aria-label="הסטודיו שלך">
         {studio ? (

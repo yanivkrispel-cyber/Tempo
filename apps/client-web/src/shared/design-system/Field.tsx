@@ -6,7 +6,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
-  type TextareaHTMLAttributes
+  type TextareaHTMLAttributes,
 } from "react";
 import { cx } from "./cx";
 
@@ -73,7 +73,7 @@ export function useFieldControl<P extends ControlProps>(props: P): P {
     id: props.id ?? field.id,
     required: props.required ?? field.required,
     "aria-describedby": cx(field.describedBy, props["aria-describedby"]) || undefined,
-    "aria-invalid": field.invalid || props["aria-invalid"] || undefined
+    "aria-invalid": field.invalid || props["aria-invalid"] || undefined,
   };
 }
 

@@ -2,10 +2,10 @@ import { Stack } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
 import {
-  AUTH_PATH_PREFIX,
   AUTH_RATE_LIMIT,
   CANARY_INTERVAL_MINUTES,
   GENERAL_RATE_LIMIT,
+  GUESSABLE_INPUT_PATHS,
   HEALTH_PATH
 } from "../../lib/edge/edge-stack";
 import { dev, devWithEdge, prod } from "./helpers/synth";
@@ -45,7 +45,7 @@ describe.each([
     });
   });
 
-  it("rate-limits every client, and authentication paths more strictly", () => {
+  it("rate-limits every client, and the guessable-input paths more strictly (#124)", () => {
     const rules = Object.values(template.findResources("AWS::WAFv2::WebACL"))[0].Properties.Rules as Array<{
       Name: string;
       Statement: { RateBasedStatement?: { Limit: number; ScopeDownStatement?: unknown } };
@@ -54,7 +54,12 @@ describe.each([
     const auth = rules.find((r) => r.Name === "RateLimitAuth")?.Statement.RateBasedStatement;
     expect(all?.Limit).toBe(GENERAL_RATE_LIMIT);
     expect(auth?.Limit).toBe(AUTH_RATE_LIMIT);
-    expect(JSON.stringify(auth?.ScopeDownStatement)).toContain(AUTH_PATH_PREFIX);
+    const scope = JSON.stringify(auth?.ScopeDownStatement);
+    for (const path of GUESSABLE_INPUT_PATHS) {
+      expect(scope).toContain(`"SearchString":"${path}"`);
+    }
+    expect(scope).toContain('"PositionalConstraint":"EXACTLY"');
+    expect(scope).not.toContain("/api/v1/auth/");
   });
 
   it("subscribes the distribution and the web ACL to the FREE plan tier", () => {
@@ -68,10 +73,27 @@ describe.each([
     expect(covered.some((arn) => arn.includes(aclId))).toBe(true);
   });
 
-  it("uses only managed cache and origin request policies, which the Free plan requires", () => {
+  it("uses only managed cache, origin request and response header policies, which the Free plan requires", () => {
     template.resourceCountIs("AWS::CloudFront::CachePolicy", 0);
     template.resourceCountIs("AWS::CloudFront::OriginRequestPolicy", 0);
     template.resourceCountIs("AWS::CloudFront::ResponseHeadersPolicy", 0);
+  });
+
+  it("serves the apps with the managed security headers and a Content-Security-Policy function (#133)", () => {
+    const distribution = Object.values(template.findResources("AWS::CloudFront::Distribution"))[0];
+    const app = distribution.Properties.DistributionConfig.DefaultCacheBehavior;
+    // Managed SecurityHeadersPolicy.
+    expect(app.ResponseHeadersPolicyId).toBe("67f7725c-6f97-4210-82d7-5512b31e9d03");
+    expect(app.FunctionAssociations).toHaveLength(1);
+    expect(app.FunctionAssociations[0].EventType).toBe("viewer-response");
+    const functions = Object.values(template.findResources("AWS::CloudFront::Function"));
+    expect(functions).toHaveLength(1);
+    const code = functions[0].Properties.FunctionCode as string;
+    expect(code).toContain("content-security-policy");
+    expect(code).toContain("script-src 'self'");
+    expect(code).toContain("frame-ancestors 'none'");
+    expect(code).toContain("https://cognito-idp.");
+    expect(code).not.toContain("unsafe-eval");
   });
 
   it("sends /api/* uncached to the API Function URL through a signing origin access control", () => {

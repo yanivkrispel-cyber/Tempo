@@ -57,6 +57,11 @@ public static class Problems
             problem.Extensions["errors"] = new[] { new { field = violation.Field, code = violation.Code, message = violation.Message } };
         }
 
+        foreach (var (name, value) in violation.Extensions ?? new Dictionary<string, object?>())
+        {
+            problem.Extensions[name] = value;
+        }
+
         return problem;
     }
 

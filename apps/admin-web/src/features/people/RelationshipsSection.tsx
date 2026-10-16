@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Card, Dialog, Field, Input, Select, useToast } from "../../shared/design-system";
-import { phoneSearchText } from "../../shared/utilities/phones";
+import { Banner, Button, Card, Dialog, Field, Select, useToast } from "../../shared/design-system";
+import { PersonPicker, type PickedPerson } from "../../shared/PersonPicker";
 import { useStudio } from "../console/studio";
 
 type PersonDetail = Schemas["PersonDetail"];
@@ -20,7 +20,7 @@ type Kind = "guardian_of" | "has_guardian" | "has_emergency_contact";
 const kinds: { value: Kind; label: string }[] = [
   { value: "has_guardian", label: "ההורה או האפוטרופוס הוא…" },
   { value: "guardian_of", label: "הורה או אפוטרופוס של…" },
-  { value: "has_emergency_contact", label: "איש הקשר לחירום הוא…" }
+  { value: "has_emergency_contact", label: "איש הקשר לחירום הוא…" },
 ];
 
 function describe(relationship: Relationship, personId: string): string {
@@ -37,15 +37,16 @@ export function RelationshipsSection({ person, writable }: { person: PersonDetai
   const { organizationId } = useStudio();
   const [adding, setAdding] = useState(false);
   const remove = useMutation({
+    mutationKey: [organizationId, "people.remove"],
     mutationFn: (relationship: Relationship) =>
       unwrap(
         api.DELETE("/api/v1/organizations/{organizationId}/people/{personId}/relationships/{relationshipId}", {
-          params: { path: { organizationId, personId: person.id, relationshipId: relationship.id } }
-        })
+          params: { path: { organizationId, personId: person.id, relationshipId: relationship.id } },
+        }),
       ),
     onSuccess: () => toast.show({ tone: "success", icon: "check", message: "הקשר הוסר" }),
     onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person"] })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person"] }),
   });
 
   return (
@@ -73,7 +74,12 @@ export function RelationshipsSection({ person, writable }: { person: PersonDetai
                   </Link>
                 </span>
                 {writable && (
-                  <Button variant="ghost-danger" size="sm" onClick={() => remove.mutate(relationship)} aria-label={`הסרת הקשר עם ${relationship.otherDisplayName}`}>
+                  <Button
+                    variant="ghost-danger"
+                    size="sm"
+                    onClick={() => remove.mutate(relationship)}
+                    aria-label={`הסרת הקשר עם ${relationship.otherDisplayName}`}
+                  >
                     הסרה
                   </Button>
                 )}
@@ -93,40 +99,30 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
   const toast = useToast();
   const { organizationId } = useStudio();
   const [kind, setKind] = useState<Kind>("has_guardian");
-  const [text, setText] = useState("");
-  const [picked, setPicked] = useState<{ id: string; displayName: string } | null>(null);
-  const query = text.trim();
-  const found = useQuery({
-    queryKey: ["studio", organizationId, "people", { query, status: "active", picker: true }],
-    queryFn: () =>
-      unwrap(
-        api.GET("/api/v1/organizations/{organizationId}/people", {
-          params: { path: { organizationId }, query: { query: phoneSearchText(query), status: "active", limit: 8 } }
-        })
-      ),
-    enabled: query.length >= 2 && !picked
-  });
-  const candidates = (found.data?.items ?? []).filter((candidate) => candidate.id !== person.id);
+  const [picked, setPicked] = useState<PickedPerson | null>(null);
 
   const add = useMutation({
+    mutationKey: [organizationId, "people.add"],
     mutationFn: (other: string) => {
       // The path's person is the guardian or the emergency contact.
       const [from, to, type] =
-        kind === "guardian_of" ? [person.id, other, "guardian_of" as const]
-        : kind === "has_guardian" ? [other, person.id, "guardian_of" as const]
-        : [other, person.id, "emergency_contact_for" as const];
+        kind === "guardian_of"
+          ? [person.id, other, "guardian_of" as const]
+          : kind === "has_guardian"
+            ? [other, person.id, "guardian_of" as const]
+            : [other, person.id, "emergency_contact_for" as const];
       return unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/relationships", {
           params: { path: { organizationId, personId: from } },
-          body: { type, toPersonId: to }
-        })
+          body: { type, toPersonId: to },
+        }),
       );
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person"] });
       toast.show({ tone: "success", icon: "check", message: "הקשר נוסף" });
       onClose();
-    }
+    },
   });
 
   const submit = (event: FormEvent) => {
@@ -161,37 +157,7 @@ function AddRelationshipDialog({ person, onClose }: { person: PersonDetail; onCl
             ))}
           </Select>
         </Field>
-        {picked ? (
-          <div className="tp-row" style={{ justifyContent: "space-between" }}>
-            <strong>{picked.displayName}</strong>
-            <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
-              החלפה
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Field label="חיפוש אדם" help="לפי שם, טלפון או מייל">
-              <Input type="search" value={text} onChange={(event) => setText(event.target.value)} />
-            </Field>
-            {query.length >= 2 && (
-              <ul className="tp-menu" role="listbox" aria-label="תוצאות">
-                {candidates.length === 0 ? (
-                  <li className="tp-menu__item" aria-disabled="true">
-                    {found.isFetching ? "מחפשים…" : "לא נמצא אף אחד"}
-                  </li>
-                ) : (
-                  candidates.map((candidate) => (
-                    <li key={candidate.id} role="option" aria-selected="false" className="tp-menu__item" tabIndex={0}
-                      onClick={() => setPicked({ id: candidate.id, displayName: candidate.displayName })}
-                      onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && (event.preventDefault(), setPicked({ id: candidate.id, displayName: candidate.displayName }))}>
-                      {candidate.displayName}
-                    </li>
-                  ))
-                )}
-              </ul>
-            )}
-          </>
-        )}
+        <PersonPicker value={picked} onChange={setPicked} excludeId={person.id} />
         {add.isError && (
           <Banner tone="danger" icon="info">
             {errorMessage(add.error, "לא הצלחנו להוסיף את הקשר. נסו שוב.")}

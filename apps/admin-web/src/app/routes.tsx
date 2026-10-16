@@ -8,10 +8,17 @@ import { ConsoleLayout } from "../features/console/ConsoleLayout";
 import { InvitationsPage } from "../features/invitations/InvitationsPage";
 import { InvitePage } from "../features/invitations/InvitePage";
 import { MembersPage } from "../features/members/MembersPage";
+import { PassProductsPage } from "../features/passes/PassProductsPage";
 import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
 import { RolesPage } from "../features/roles/RolesPage";
+import { ClassTypesPage } from "../features/schedule/ClassTypesPage";
+import { RoomsPage } from "../features/schedule/RoomsPage";
+import { SchedulePage } from "../features/schedule/SchedulePage";
+import { SessionPage } from "../features/schedule/SessionPage";
+import { TemplatesPage } from "../features/schedule/TemplatesPage";
+import { SecurityPage } from "../features/security/SecurityPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
 import { SelectStudioPage } from "../features/studios/SelectStudioPage";
@@ -28,6 +35,8 @@ export const routes: RouteObject[] = [
         children: [
           { path: "/", element: <HomeRedirect /> },
           { path: "/select-organization", element: <SelectStudioPage /> },
+          // The account, not a studio: two-step sign-in setup (docs/27 section 3.6).
+          { path: "/account/security", element: <SecurityPage /> },
           {
             path: "/o/:slug",
             element: <ConsoleLayout />,
@@ -38,13 +47,19 @@ export const routes: RouteObject[] = [
               { path: "people", element: <PeoplePage /> },
               { path: "people/:personId", element: <PersonPage /> },
               { path: "duplicates", element: <DuplicatesPage /> },
+              { path: "schedule", element: <SchedulePage /> },
+              { path: "schedule/sessions/:sessionId", element: <SessionPage /> },
+              { path: "weekly-classes", element: <TemplatesPage /> },
+              { path: "class-types", element: <ClassTypesPage /> },
+              { path: "rooms", element: <RoomsPage /> },
+              { path: "passes", element: <PassProductsPage /> },
               { path: "settings", element: <SettingsPage /> },
-              { path: "audit", element: <AuditPage /> }
-            ]
-          }
-        ]
-      }
-    ]
+              { path: "audit", element: <AuditPage /> },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { path: "/login", element: <LoginPage /> },
   // Cognito's exact callback URL (infrastructure/config/<env>.ts, cognitoCallbackUrls.adminWeb).
@@ -52,5 +67,5 @@ export const routes: RouteObject[] = [
   // Staff and admin invitations open here as <app>/invite#<token> (docs/26 section 5.3). Join links are for
   // clients and open the client app. Public: a visitor who is not signed in signs in or up first.
   { path: "/invite", element: <InvitePage /> },
-  { path: "*", element: <NotFoundPage /> }
+  { path: "*", element: <NotFoundPage /> },
 ];

@@ -21,7 +21,7 @@ public static class ConsentEndpoints
 
         tenant.MapGet("/me/profile", GetMyProfileAsync).RequirePermission(Permissions.OrganizationView).WithName("getMyProfile").Produces<PersonDetailResponse>();
         tenant.MapPatch("/me/profile", UpdateMyProfileAsync).RequirePermission(Permissions.OrganizationView).WithName("updateMyProfile").Produces<PersonDetailResponse>();
-        tenant.MapPost("/me/consents", RecordMyConsentAsync).RequirePermission(Permissions.OrganizationView).WithName("recordMyConsent").Produces<ConsentResponse>(StatusCodes.Status201Created);
+        tenant.MapPost("/me/consents", RecordMyConsentAsync).RequirePermission(Permissions.OrganizationView).WithName("recordMyConsent").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<ConsentResponse>(StatusCodes.Status201Created);
 
         tenant.MapGet("/people/{personId:guid}/consents", HistoryAsync).RequirePermission(Permissions.PeopleView).WithName("listConsentHistory").Produces<ConsentListResponse>();
         tenant.MapPost("/people/{personId:guid}/consents", RecordOnBehalfAsync).RequirePermission(Permissions.ConsentManage).WithName("recordConsentOnBehalf").Produces<ConsentResponse>(StatusCodes.Status201Created);
