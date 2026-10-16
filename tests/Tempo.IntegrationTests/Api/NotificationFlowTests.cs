@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using Tempo.Api.DependencyInjection;
 using Tempo.IntegrationTests.DatabaseMigrator;
 using Tempo.Platform.BuildingBlocks.Persistence;
@@ -78,6 +79,10 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         saved.GetProperty("reminders").GetProperty("classSoon").GetBoolean().Should().BeFalse();
         saved.GetProperty("quietHours").GetProperty("endsLocal").GetString().Should().Be("07:00");
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/me/notification-preferences", Customer("rina"), choice, ifMatch: "0")).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // Another save of version 1 is still in flight when this one, also from version 1, arrives: this one waits
+        // and is then refused, rather than overwriting it (review on #195).
+        (await RacingSaveAsync(db, "UPDATE notifications.preference_versions SET version = version + 1 WHERE version = 1",
+            () => RawAsync(client, HttpMethod.Put, $"{studioPath}/me/notification-preferences", Customer("rina"), choice, ifMatch: "1"))).Should().Be(HttpStatusCode.Conflict);
         await ProblemAsync(client, $"{studioPath}/me/notification-preferences", "rina", new
         {
             groups = new[] { new { group = "studio", channels = new { inbox = false, push = true } } },
@@ -109,6 +114,11 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("noga"), studioChoice)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var changed = await SendAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), studioChoice, ifMatch: "0");
         changed.GetProperty("version").GetString().Should().Be("1");
+        (await RacingSaveAsync(db, "UPDATE notifications.studio_settings SET version = version + 1 WHERE version = 1",
+            () => RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), studioChoice, ifMatch: "1"))).Should().Be(HttpStatusCode.Conflict);
+        changed = await SendAsync(client, HttpMethod.Get, $"{studioPath}/notification-settings", Customer("owner"));
+        changed.GetProperty("version").GetString().Should().Be("2");
+        (await RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), studioChoice, ifMatch: "0")).StatusCode.Should().Be(HttpStatusCode.Conflict, "the row exists");
         changed.GetProperty("quietHours").GetProperty("startsLocal").GetString().Should().Be("21:30");
         (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notification-preferences", Customer("noga"))).GetProperty("studioReminders").GetProperty("passEnding").GetBoolean().Should().BeFalse();
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), new
@@ -262,6 +272,227 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/me/push-subscriptions/{phoneId}", Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/me/push-subscriptions/{phoneId}", Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Reminders_AreDueOnce_ForActiveMembers_WhoKeepThemOn()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, israel).DateTime);
+        ReminderJob At(DateOnly date, int hour, int minute = 0) =>
+            new(db, new FakeClock(new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(new TimeOnly(hour, minute)), israel))));
+
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו חוף", slug = "studio-hof" }, HttpStatusCode.Created);
+        var studioPath = $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}";
+        var dana = await JoinByInvitationAsync(client, studioPath, "dana", "staff");
+        var members = new[] { "noga", "rina", "tal" };
+        foreach (var member in members)
+        {
+            await JoinByInvitationAsync(client, studioPath, member, "client");
+        }
+
+        // Rina does not want the evening-before reminder.
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/me/notification-preferences", Customer("rina"), new
+        {
+            groups = Groups.Select(group => new { group, channels = new { inbox = true, push = true } }),
+            reminders = new { classTomorrow = false, classSoon = true, passEnding = true, entriesLow = true },
+            quietHours = (object?)null
+        }, ifMatch: "0");
+
+        // A class tomorrow at 12:00 and a five-entry card each; all three book.
+        var room = await SendAsync(client, HttpMethod.Post, $"{studioPath}/rooms", Customer("owner"), new { name = "חדר", defaultCapacity = 10 }, HttpStatusCode.Created);
+        var yoga = await SendAsync(client, HttpMethod.Post, $"{studioPath}/class-types", Customer("owner"), new { name = "יוגה", category = "yoga", color = "sage", defaultMinutes = 60 }, HttpStatusCode.Created);
+        var session = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+        {
+            classTypeId = yoga.GetProperty("id").GetGuid(),
+            localDate = today.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            localStart = "12:00",
+            instructorMembershipId = dana,
+            roomId = room.GetProperty("id").GetGuid(),
+            capacity = 10
+        }, HttpStatusCode.Created);
+        var card = await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "כרטיסייה", entries = 5, validDays = 60 }, HttpStatusCode.Created);
+        var people = new Dictionary<string, Guid>();
+        foreach (var member in members)
+        {
+            people[member] = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/people?query={member}@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+            await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{people[member]}/passes", Customer("owner"), new { productId = card.GetProperty("id").GetGuid() }, HttpStatusCode.Created);
+            await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions/{session.GetProperty("id").GetGuid()}/bookings", Customer(member), null, HttpStatusCode.Created);
+        }
+
+        // 1. Before the studio's 18:00 nothing is due; after it, the evening-before reminder for Noga and Tal, once.
+        (await At(today, 17, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0));
+        (await At(today, 18, 5).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(2, 0, 0, 0));
+        (await At(today, 19, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0), "the dedupe key holds");
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE kind = 'reminder.class_tomorrow' AND person_id = $1", people["rina"])).Should().Be(0L);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests WHERE kind = 'reminder.class_tomorrow' AND data ? 'sessionId' AND data ? 'bookingId'")).Should().Be(2L);
+
+        // 2. Two hours before, everyone booked is told the class is soon. Tal is suspended first and is not.
+        await db.AsMasterAsync("UPDATE organizations.memberships m SET status = 'suspended' FROM people.people p WHERE p.organization_id = m.organization_id AND p.membership_id = m.id AND p.id = $1 RETURNING 1", people["tal"]);
+        (await At(today.AddDays(1), 9, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0), "three hours before is too early");
+        (await At(today.AddDays(1), 10, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 2, 0, 0));
+        (await At(today.AddDays(1), 11, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0));
+        await db.AsMasterAsync("UPDATE organizations.memberships m SET status = 'active' FROM people.people p WHERE p.organization_id = m.organization_id AND p.membership_id = m.id AND p.id = $1 RETURNING 1", people["tal"]);
+
+        // 3. Noga's card is down to one entry: told once, not again at the next tick.
+        await db.AsMasterAsync("UPDATE scheduling.passes SET entries_used = entries - 1 WHERE person_id = $1 RETURNING 1", people["noga"]);
+        (await At(today.AddDays(1), 13, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 1));
+        (await At(today.AddDays(1), 14, 0).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0));
+
+        // 4. A week before the cards end: Noga and Tal are told; Rina already holds a later pass.
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{people["rina"]}/passes", Customer("owner"), new { productId = card.GetProperty("id").GetGuid(), startsOn = today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) }, HttpStatusCode.Created);
+        var endsOn = (DateOnly)(await db.AsMasterAsync("SELECT min(ends_on) FROM scheduling.passes WHERE person_id = $1", people["noga"]))!;
+        (await At(endsOn.AddDays(-8), 10).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0));
+        (await At(endsOn.AddDays(-7), 10).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 2, 0));
+        (await At(endsOn.AddDays(-6), 10).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0));
+
+        // 5. The studio turns the class-soon reminder off: a new class gets the evening-before one only.
+        var settings = await SendAsync(client, HttpMethod.Get, $"{studioPath}/notification-settings", Customer("owner"));
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), new
+        {
+            quietHours = new { startsLocal = "22:00", endsLocal = "08:00" },
+            reminders = new
+            {
+                classTomorrow = new { enabled = true, sendAtLocal = "18:00" },
+                classSoon = new { enabled = false, hoursBefore = 2 },
+                passEnding = new { enabled = true, daysBefore = 7 },
+                entriesLow = new { enabled = true, entriesLeft = 1 }
+            }
+        }, ifMatch: settings.GetProperty("version").GetString());
+        var later = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+        {
+            classTypeId = yoga.GetProperty("id").GetGuid(),
+            localDate = today.AddDays(3).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            localStart = "12:00",
+            instructorMembershipId = dana,
+            roomId = room.GetProperty("id").GetGuid(),
+            capacity = 10
+        }, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions/{later.GetProperty("id").GetGuid()}/bookings", Customer("tal"), null, HttpStatusCode.Created);
+        (await At(today.AddDays(2), 18).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(1, 0, 0, 0));
+        (await At(today.AddDays(3), 10).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, 0));
+
+        // 6. Reminders go through the router like every other notice (no device here, so push is skipped).
+        (await new NotificationDeliveryJob(db, TimeProvider.System).RunAsync(CancellationToken.None)).Routed.Should().Be(8);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.deliveries d JOIN notifications.requests r ON r.id = d.request_id WHERE r.kind LIKE 'reminder.%' AND d.channel = 'push' AND d.skip_reason = 'no_subscription'")).Should().Be(8L);
+    }
+
+    [Fact]
+    public async Task Reminders_KeepToTheirStudio_AndToBookedPlaces()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, israel).DateTime);
+        var tomorrow = today.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ReminderJob At(DateOnly date, int hour) =>
+            new(db, new FakeClock(new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(new TimeOnly(hour, 0)), israel))));
+
+        // Two studios with the same owner. In Hof: a one-place 07:30 class tomorrow (Noga booked, Rina waiting) and a
+        // 12:00 class Tal booked and cancelled. In Gal: a 07:30 class tomorrow Gil booked.
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studios = new Dictionary<string, (string Path, Guid Instructor, Guid Room, Guid ClassType, Guid Card)>();
+        var people = new Dictionary<string, Guid>();
+        foreach (var (slug, instructor, members) in new[] { ("studio-hof", "dana", new[] { "noga", "rina", "tal" }), ("studio-gal", "gal", new[] { "gil" }) })
+        {
+            var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = slug, slug }, HttpStatusCode.Created);
+            var path = $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}";
+            var staff = await JoinByInvitationAsync(client, path, instructor, "staff");
+            var room = await SendAsync(client, HttpMethod.Post, $"{path}/rooms", Customer("owner"), new { name = "חדר", defaultCapacity = 1 }, HttpStatusCode.Created);
+            var yoga = await SendAsync(client, HttpMethod.Post, $"{path}/class-types", Customer("owner"), new { name = "יוגה", category = "yoga", color = "sage", defaultMinutes = 60 }, HttpStatusCode.Created);
+            var card = await SendAsync(client, HttpMethod.Post, $"{path}/pass-products", Customer("owner"), new { kind = "punch_card", name = "כרטיסייה", entries = 5, validDays = 60 }, HttpStatusCode.Created);
+            studios[slug] = (path, staff, room.GetProperty("id").GetGuid(), yoga.GetProperty("id").GetGuid(), card.GetProperty("id").GetGuid());
+            foreach (var member in members)
+            {
+                await JoinByInvitationAsync(client, path, member, "client");
+                people[member] = (await SendAsync(client, HttpMethod.Get, $"{path}/people?query={member}@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+                await SendAsync(client, HttpMethod.Post, $"{path}/people/{people[member]}/passes", Customer("owner"), new { productId = studios[slug].Card }, HttpStatusCode.Created);
+            }
+        }
+
+        async Task<string> SessionAsync(string slug, string localStart, int capacity)
+        {
+            var (path, instructor, room, classType, _) = studios[slug];
+            var session = await SendAsync(client, HttpMethod.Post, $"{path}/sessions", Customer("owner"), new { classTypeId = classType, localDate = tomorrow, localStart, instructorMembershipId = instructor, roomId = room, capacity }, HttpStatusCode.Created);
+            return $"{path}/sessions/{session.GetProperty("id").GetGuid()}";
+        }
+
+        var early = await SessionAsync("studio-hof", "07:30", 1);
+        await SendAsync(client, HttpMethod.Post, $"{early}/bookings", Customer("noga"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{early}/bookings", Customer("rina"), null, HttpStatusCode.Created);
+        var noon = await SessionAsync("studio-hof", "12:00", 10);
+        var tal = await SendAsync(client, HttpMethod.Post, $"{noon}/bookings", Customer("tal"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{studios["studio-hof"].Path}/bookings/{tal.GetProperty("id").GetGuid()}/cancel", Customer("tal"));
+        await SendAsync(client, HttpMethod.Post, $"{await SessionAsync("studio-gal", "07:30", 10)}/bookings", Customer("gil"), null, HttpStatusCode.Created);
+
+        // Hof sends the evening-before reminder late (after the last tick) and warns at three entries left.
+        var settings = await SendAsync(client, HttpMethod.Get, $"{studios["studio-hof"].Path}/notification-settings", Customer("owner"));
+        await SendAsync(client, HttpMethod.Put, $"{studios["studio-hof"].Path}/notification-settings", Customer("owner"), new
+        {
+            quietHours = new { startsLocal = "22:00", endsLocal = "08:00" },
+            reminders = new
+            {
+                classTomorrow = new { enabled = true, sendAtLocal = "21:00" },
+                classSoon = new { enabled = true, hoursBefore = 2 },
+                passEnding = new { enabled = true, daysBefore = 7 },
+                entriesLow = new { enabled = true, entriesLeft = 3 }
+            }
+        }, ifMatch: settings.GetProperty("version").GetString());
+        await db.AsMasterAsync("UPDATE notifications.studio_settings SET class_tomorrow_send_at = '22:30' RETURNING 1");
+
+        // 1. Gal's 18:00 comes first; Hof's 22:30 sends at the 21:00 tick. Only booked places: not Rina, not Tal.
+        (await At(today, 20).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(1, 0, 0, 0));
+        (await At(today, 21).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(1, 0, 0, 0));
+
+        // 2. The 07:30 classes are told at the first tick of the day, 07:00, in both studios.
+        (await At(today.AddDays(1), 7).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 2, 0, 0));
+
+        // 3. With a threshold of three, Noga is told once at three left and not again at two or one.
+        foreach (var (used, told) in new[] { (2, 1), (3, 0), (4, 0) })
+        {
+            await db.AsMasterAsync("UPDATE scheduling.passes SET entries_used = $1 WHERE person_id = $2 RETURNING 1", used, people["noga"]);
+            (await At(today.AddDays(1), 13).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, told));
+        }
+
+        // The inbox gives each kind only its own ids: a pass reminder its pass, a class reminder its class and place.
+        var nogaInbox = (await SendAsync(client, HttpMethod.Get, $"{studios["studio-hof"].Path}/me/notifications", Customer("noga"))).GetProperty("items").EnumerateArray().ToList();
+        var low = nogaInbox.Single(i => i.GetProperty("kind").GetString() == "reminder.entries_low").GetProperty("data");
+        low.EnumerateObject().Select(p => p.Name).Should().Equal("passId");
+        low.GetProperty("passId").GetGuid().Should().Be((Guid)(await db.AsMasterAsync("SELECT id FROM scheduling.passes WHERE person_id = $1", people["noga"]))!);
+        nogaInbox.First(i => i.GetProperty("kind").GetString() == "reminder.class_soon").GetProperty("data").EnumerateObject().Select(p => p.Name)
+            .Should().BeEquivalentTo("sessionId", "bookingId");
+
+        // 4. Every reminder stays in its member's studio, and the waiting and the cancelled got none.
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests r JOIN people.people pe ON pe.id = r.person_id WHERE pe.organization_id <> r.organization_id")).Should().Be(0L);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests WHERE kind LIKE 'reminder.%' AND person_id IN ($1, $2)", people["rina"], people["tal"])).Should().Be(0L);
+        (await db.AsMasterAsync("SELECT count(DISTINCT organization_id) FROM notifications.requests WHERE kind LIKE 'reminder.class%'")).Should().Be(2L);
+    }
+
+    /// <summary>
+    /// Holds <paramref name="otherSave"/> open in a second connection while <paramref name="save"/> runs, then commits
+    /// it: what a second save sent with the same If-Match meets.
+    /// </summary>
+    private async Task<HttpStatusCode> RacingSaveAsync(MigratedDatabase db, string otherSave, Func<Task<HttpResponseMessage>> save)
+    {
+        await using var other = postgres.ConnectAsMaster(db.Name);
+        await other.OpenAsync();
+        await using var transaction = await other.BeginTransactionAsync();
+        await using (var command = new NpgsqlCommand(otherSave, other, transaction))
+        {
+            (await command.ExecuteNonQueryAsync()).Should().Be(1);
+        }
+
+        var inFlight = save();
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        await transaction.CommitAsync();
+        return (await inFlight).StatusCode;
+    }
+
+    private static readonly string[] Groups = ["bookings", "reminders", "studio"];
 
     // The browser key and auth secret of RFC 8291 section 5: published test values, no real device. The browser key
     // doubles as a well-formed VAPID public key for the key route.

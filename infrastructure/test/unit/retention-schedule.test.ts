@@ -18,7 +18,7 @@ describe("The daily retention job (night board #136, B4)", () => {
     expect(retention!.Properties.ScheduleExpressionTimezone).toBe("Asia/Jerusalem");
     expect(retention!.Properties.Target.Arn).toBe("arn:aws:scheduler:::aws-sdk:sqs:sendMessage");
     expect(JSON.stringify(retention!.Properties.Target.Input)).toContain("retention.daily");
-    // Three daily messages, one schedule each: tripwire, scheduling, retention.
-    expect(schedules).toHaveLength(3);
+    // One schedule per message: the three daily ones (tripwire, scheduling, retention) and the hourly reminders.
+    expect(schedules).toHaveLength(4);
   });
 });

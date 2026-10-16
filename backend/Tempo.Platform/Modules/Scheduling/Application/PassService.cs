@@ -373,6 +373,33 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
         }
 
         var days = endsOn.DayNumber - startsOn.DayNumber + 1;
+
+        // Removing the freeze takes its days off the end (#178). A place held on this pass, or a waiting place of
+        // the person, in the days that would go would sit after the pass's end: staff move or cancel it first. The
+        // error gives the count, never the people.
+        await using (var held = unitOfWork.Command(
+            """
+            SELECT count(DISTINCT b.id)
+            FROM scheduling.passes ps
+            JOIN scheduling.bookings b ON b.organization_id = ps.organization_id AND b.status IN ('booked', 'waitlisted')
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE ps.organization_id = $1 AND ps.id = $2
+              AND s.local_date > ps.ends_on - $3 AND s.local_date <= ps.ends_on
+              AND (EXISTS (SELECT 1 FROM scheduling.pass_uses u WHERE u.organization_id = b.organization_id AND u.booking_id = b.id AND u.pass_id = ps.id AND u.status = 'held')
+                   OR (b.status = 'waitlisted' AND b.person_id = ps.person_id))
+            """,
+            tenant.OrganizationId, passId, days))
+        {
+            var count = (long)(await held.ExecuteScalarAsync(cancellationToken))!;
+            if (count > 0)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Conflict, "pass.freeze_has_bookings", "Bookings fall in the days this freeze added. Move or cancel them first.")
+                {
+                    Extensions = new Dictionary<string, object?> { ["bookings"] = count }
+                };
+            }
+        }
+
         await using (var delete = unitOfWork.Command("DELETE FROM scheduling.pass_freezes WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, freezeId))
         {
             await delete.ExecuteNonQueryAsync(cancellationToken);

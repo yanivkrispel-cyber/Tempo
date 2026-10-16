@@ -1926,7 +1926,7 @@ paths:
       tags: [Passes]
       operationId: unfreezePass
       summary: "Remove a freeze that has not started; validity shrinks back (`passes.manage`)"
-      description: "404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.voided`, `pass.not_freezable`."
+      description: "404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.freeze_has_bookings` (booked or waiting places fall in the days removing it would take off the end; `bookings` gives their count, never the people; move or cancel them first), `pass.voided`, `pass.not_freezable`."
       responses:
         "200":
           description: OK.
@@ -3829,10 +3829,13 @@ components:
         kind:
           type: string
           description: Clients must ignore kinds they do not know.
-          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen]
+          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen, reminder.class_tomorrow, reminder.class_soon, reminder.pass_ending, reminder.entries_low]
         data:
           type: object
-          description: Ids only.
+          description: >-
+            Ids only, and only the ones the kind carries; a key that does not apply is left out. Class kinds carry
+            `sessionId` (and `bookingId` for a place); `pass.frozen`, `reminder.pass_ending` and
+            `reminder.entries_low` carry `passId`.
           properties:
             sessionId: { type: string, format: uuid }
             bookingId: { type: string, format: uuid }

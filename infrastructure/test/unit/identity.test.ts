@@ -55,6 +55,27 @@ describe.each([
     });
   });
 
+  it("both pools keep the original email until a changed one is verified (#124)", () => {
+    const pools = Object.values(template.findResources("AWS::Cognito::UserPool"));
+    expect(pools).toHaveLength(2);
+    for (const pool of pools) {
+      expect(pool.Properties.UserAttributeUpdateSettings).toEqual({ AttributesRequireVerificationBeforeUpdate: ["email"] });
+    }
+  });
+
+  it("no app client allows SRP or a direct password sign-in from a browser (#124)", () => {
+    const clients = Object.values(template.findResources("AWS::Cognito::UserPoolClient"));
+    expect(clients).toHaveLength(3);
+    for (const client of clients) {
+      const flows = client.Properties.ExplicitAuthFlows as string[];
+      expect(flows).toContain("ALLOW_REFRESH_TOKEN_AUTH");
+      expect(flows).not.toContain("ALLOW_USER_SRP_AUTH");
+      expect(flows).not.toContain("ALLOW_USER_PASSWORD_AUTH");
+      expect(flows).not.toContain("ALLOW_USER_AUTH");
+      expect(flows).not.toContain("ALLOW_CUSTOM_AUTH");
+    }
+  });
+
   it("the customer pool has only admin-web and client-web", () => {
     const pool = poolLogicalId(template, `tempo-${env}-users`);
     expect(clientNamesOf(template, pool)).toEqual([

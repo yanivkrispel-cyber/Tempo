@@ -23,5 +23,9 @@ public sealed class NotificationDeliveryMessageHandler(ILogger logger, Notificat
             run.Dead,
             run.SubscriptionsRemoved,
             correlationId);
+        foreach (var zone in job.UnknownTimeZones)
+        {
+            logger.Warning("Notification delivery routed studios with unknown time zone {TimeZone} in UTC. CorrelationId={CorrelationId}", zone, correlationId);
+        }
     }
 }

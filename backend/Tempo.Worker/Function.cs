@@ -60,7 +60,11 @@ public class Function
                 Environment.GetEnvironmentVariable("ALARM_TOPIC_ARN") is { Length: > 0 } topic ? new SnsOwnerAlert(topic) : null),
             [MessageTypes.SchedulingDaily] = new SchedulingDailyMessageHandler(Logger, new SchedulingDailyJob(DataSources, TimeProvider.System)),
             [MessageTypes.RetentionDaily] = new RetentionMessageHandler(Logger, new RetentionJob(DataSources, TimeProvider.System, RetentionPolicy.Default)),
-            [MessageTypes.NotificationsDeliver] = new NotificationDeliveryMessageHandler(Logger, new NotificationDeliveryJob(DataSources, TimeProvider.System, PushSenderAsync))
+            [MessageTypes.NotificationsDeliver] = new NotificationDeliveryMessageHandler(Logger, new NotificationDeliveryJob(DataSources, TimeProvider.System, PushSenderAsync)),
+            [MessageTypes.NotificationsReminders] = new ReminderMessageHandler(
+                Logger,
+                new ReminderJob(DataSources, TimeProvider.System),
+                new NotificationDeliveryJob(DataSources, TimeProvider.System, PushSenderAsync))
         });
 
     public Task<SQSBatchResponse> FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)

@@ -70,7 +70,12 @@ export class MessagingStack extends Stack {
 
     this.addTripwireSchedule(config);
 
-    StringParameter.fromStringParameterName(this, "VapidPublicKeyParameter", pushParameterName(config, "publicKey")).grantRead(
+    // Grant by name only: fromStringParameterName would add a deploy-time SSM parameter, and the deploy
+    // would fail until someone had written the key (tools/scripts/vapid-keys.mjs).
+    StringParameter.fromStringParameterAttributes(this, "VapidPublicKeyParameter", {
+      parameterName: pushParameterName(config, "publicKey"),
+      forceDynamicReference: true
+    }).grantRead(
       this.workerFunction.function
     );
     StringParameter.fromSecureStringParameterAttributes(this, "VapidPrivateKeyParameter", {
@@ -171,6 +176,27 @@ export class MessagingStack extends Stack {
           MessageAttributes: { MessageType: { DataType: "String", StringValue: "retention.daily" } }
         }),
         retryPolicy: { maximumRetryAttempts: 1 }
+      }
+    });
+
+    // Reminders (docs/30 section 8, D-5; day board #176, P5): hourly, daytime only. Each tick wakes Neon for its
+    // five-minute minimum, so 15 ticks a day instead of 24 keep the free compute hours. The job and the delivery
+    // run in the same wake. A missed tick is caught by the next one, so no retry. Fourth schedule, free tier.
+    new CfnSchedule(this, "NotificationRemindersSchedule", {
+      name: resourceName(config, "notification-reminders"),
+      description: "Hourly 07:00-21:00 reminders: class tomorrow, class soon, pass ending, entries low (docs/30 section 8)",
+      scheduleExpression: "cron(0 7-21 * * ? *)",
+      scheduleExpressionTimezone: "Asia/Jerusalem",
+      flexibleTimeWindow: { mode: "OFF" },
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:sqs:sendMessage",
+        roleArn: role.roleArn,
+        input: Stack.of(this).toJsonString({
+          QueueUrl: this.workQueue.queue.queueUrl,
+          MessageBody: "{}",
+          MessageAttributes: { MessageType: { DataType: "String", StringValue: "notifications.reminders_hourly" } }
+        }),
+        retryPolicy: { maximumRetryAttempts: 0 }
       }
     });
   }

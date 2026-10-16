@@ -1373,7 +1373,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a freeze that has not started; validity shrinks back (`passes.manage`)
-         * @description 404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.voided`, `pass.not_freezable`.
+         * @description 404 codes: `pass.not_found`, `pass.freeze_not_found`. 409 codes: `pass.freeze_started` (a freeze that already started stays), `pass.freeze_has_bookings` (booked or waiting places fall in the days removing it would take off the end; `bookings` gives their count, never the people; move or cancel them first), `pass.voided`, `pass.not_freezable`.
          */
         delete: operations["unfreezePass"];
         options?: never;
@@ -2770,9 +2770,13 @@ export interface components {
              * @example session.cancelled
              * @example waitlist.expired
              * @example pass.frozen
+             * @example reminder.class_tomorrow
+             * @example reminder.class_soon
+             * @example reminder.pass_ending
+             * @example reminder.entries_low
              */
             kind: string;
-            /** @description Ids only. */
+            /** @description Ids only, and only the ones the kind carries; a key that does not apply is left out. Class kinds carry `sessionId` (and `bookingId` for a place); `pass.frozen`, `reminder.pass_ending` and `reminder.entries_low` carry `passId`. */
             data: {
                 /** Format: uuid */
                 sessionId?: string;
