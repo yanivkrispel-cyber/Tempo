@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,6 +20,7 @@ using Tempo.IntegrationTests.DatabaseMigrator;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Notifications.Application;
+using Tempo.Platform.Modules.Notifications.Infrastructure;
 using Xunit;
 
 namespace Tempo.IntegrationTests.Api;
@@ -152,10 +154,10 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
 
         // 6. The deliver job: Rina switched push off for bookings; the class message has no device to go to.
         var job = new NotificationDeliveryJob(db, TimeProvider.System);
-        (await job.RunAsync(CancellationToken.None)).Should().Be((2, 2));
+        (await job.RunAsync(CancellationToken.None)).Should().Be(new DeliveryRun(2, 2, 0, 0, 0, 0));
         (await db.AsMasterAsync("SELECT string_agg(r.kind || '=' || d.skip_reason, ',' ORDER BY r.kind) FROM notifications.deliveries d JOIN notifications.requests r ON r.id = d.request_id WHERE d.channel = 'push'"))
             .Should().Be("booking.promoted=preference_off,session.message=no_subscription");
-        (await job.RunAsync(CancellationToken.None)).Should().Be((0, 0), "one push line per request");
+        (await job.RunAsync(CancellationToken.None)).Should().Be(new DeliveryRun(0, 0, 0, 0, 0, 0), "one push line per request");
 
         // 7. Erasing Rina takes her preferences, requests and deliveries with her; the studio's settings stay.
         await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{people["rina"]}/erase", Customer("owner", freshSignIn: true), new { reason = "בקשת מחיקה" });
@@ -166,6 +168,117 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
 
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.deliveries")).Should().Be(0L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.studio_settings")).Should().Be(1L);
+    }
+
+    [Fact]
+    public async Task Devices_Subscribe_GetTheirPush_AndGoneOnesAreRemoved()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using (var noKeys = Factory(db))
+        {
+            await SendAsync(noKeys.CreateClient(), HttpMethod.Post, "/api/v1/session", Customer("owner"));
+            (await RawAsync(noKeys.CreateClient(), HttpMethod.Get, "/api/v1/push/vapid-public-key", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.NotFound, "no key pair yet");
+        }
+
+        using var factory = Factory(db, BrowserKey);
+        var client = factory.CreateClient();
+        (await SendAsync(client, HttpMethod.Get, "/api/v1/push/vapid-public-key", Customer("owner"))).GetProperty("publicKey").GetString().Should().Be(BrowserKey);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem")).DateTime);
+        var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו ים", slug = "studio-yam" }, HttpStatusCode.Created);
+        var studioPath = $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}";
+        var dana = await JoinByInvitationAsync(client, studioPath, "dana", "staff");
+        foreach (var member in new[] { "noga", "rina" })
+        {
+            await JoinByInvitationAsync(client, studioPath, member, "client");
+        }
+
+        // 1. Rina's phone and laptop subscribe; the same endpoint again is the same device; made-up addresses are refused.
+        var phone = new { endpoint = "https://fcm.googleapis.com/fcm/send/rina-phone", keys = new { p256dh = BrowserKey, auth = BrowserAuth }, deviceLabel = "Chrome, Android" };
+        var created = await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", Customer("rina"), phone, HttpStatusCode.Created);
+        (await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", Customer("rina"), phone)).GetProperty("id").GetGuid().Should().Be(created.GetProperty("id").GetGuid());
+        created.TryGetProperty("endpoint", out _).Should().BeFalse("the endpoint is never sent back");
+        await ProblemAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", "rina", new { endpoint = "https://push.example.com/x", phone.keys, phone.deviceLabel }, "push.endpoint_invalid");
+        await ProblemAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", "rina", new { phone.endpoint, keys = new { p256dh = "AAAA", auth = BrowserAuth }, phone.deviceLabel }, "push.keys_invalid");
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", Customer("rina"), new
+        {
+            endpoint = "https://updates.push.services.mozilla.com/wpush/v2/rina-laptop",
+            phone.keys,
+            deviceLabel = "Firefox, Windows"
+        }, HttpStatusCode.Created);
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/push-subscriptions", Customer("rina"))).GetProperty("items").GetArrayLength().Should().Be(2);
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/push-subscriptions", Customer("noga"))).GetProperty("items").GetArrayLength().Should().Be(0);
+
+        // 2. Rina is promoted into a one-place class and the instructor messages it.
+        var room = await SendAsync(client, HttpMethod.Post, $"{studioPath}/rooms", Customer("owner"), new { name = "חדר", defaultCapacity = 1 }, HttpStatusCode.Created);
+        var yoga = await SendAsync(client, HttpMethod.Post, $"{studioPath}/class-types", Customer("owner"), new { name = "יוגה", category = "yoga", color = "sage", defaultMinutes = 60 }, HttpStatusCode.Created);
+        var session = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+        {
+            classTypeId = yoga.GetProperty("id").GetGuid(),
+            localDate = today.AddDays(3).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            localStart = "12:00",
+            instructorMembershipId = dana,
+            roomId = room.GetProperty("id").GetGuid(),
+            capacity = 1
+        }, HttpStatusCode.Created);
+        var sessionPath = $"{studioPath}/sessions/{session.GetProperty("id").GetGuid()}";
+        var card = await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "כרטיסייה", entries = 5, validDays = 60 }, HttpStatusCode.Created);
+        foreach (var member in new[] { "noga", "rina" })
+        {
+            var person = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/people?query={member}@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+            await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{person}/passes", Customer("owner"), new { productId = card.GetProperty("id").GetGuid() }, HttpStatusCode.Created);
+        }
+
+        var noga = await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("noga"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("rina"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{noga.GetProperty("id").GetGuid()}/cancel", Customer("noga"));
+
+        // 3. The phone takes the promotion, the laptop is gone: the line is accepted and the laptop removed. Run at
+        //    noon studio time so quiet hours do not hold it.
+        var noon = new FakeClock(new DateTimeOffset(DateTime.SpecifyKind(DateTime.UtcNow.Date.AddHours(10), DateTimeKind.Utc)));
+        var push = new ScriptedPush(PushOutcome.Accepted, goneHost: "updates.push.services.mozilla.com");
+        var run = await new NotificationDeliveryJob(db, noon, _ => Task.FromResult<IPushSender?>(push)).RunAsync(CancellationToken.None);
+        run.Should().Be(new DeliveryRun(1, 0, 1, 0, 0, 1));
+        push.Sent.Select(m => m.Target.Endpoint).Should().BeEquivalentTo("https://updates.push.services.mozilla.com/wpush/v2/rina-laptop", "https://fcm.googleapis.com/fcm/send/rina-phone");
+        var payload = JsonSerializer.Deserialize<JsonElement>(push.Sent[0].Payload);
+        push.Sent[1].Payload.Should().Equal(push.Sent[0].Payload, "every device gets the same message");
+        payload.GetProperty("kind").GetString().Should().Be("booking.promoted");
+        payload.GetProperty("session").GetProperty("classTypeName").GetString().Should().Be("יוגה");
+        payload.GetProperty("inboxItemId").GetGuid().Should().NotBeEmpty();
+        push.Sent[0].Urgent.Should().BeTrue("a notice about the member's own booking");
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/push-subscriptions", Customer("rina"))).GetProperty("items").EnumerateArray()
+            .Should().ContainSingle().Which.GetProperty("lastSuccessAt").ValueKind.Should().Be(JsonValueKind.String);
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'notification.sent'")).Should().Be(1L);
+
+        // 4. The class message meets a busy push service: it is retried in a minute, and the text never travels.
+        await SendAsync(client, HttpMethod.Post, $"{sessionPath}/messages", Customer("dana"), new { text = "מביאים מגבת" }, HttpStatusCode.Accepted);
+        var busy = new ScriptedPush(PushOutcome.Retry);
+        (await new NotificationDeliveryJob(db, noon, _ => Task.FromResult<IPushSender?>(busy)).RunAsync(CancellationToken.None)).Should().Be(new DeliveryRun(1, 0, 0, 1, 0, 0));
+        Encoding.UTF8.GetString(busy.Sent.Single().Payload).Should().NotContain("מגבת");
+        (await db.AsMasterAsync("SELECT status || ':' || attempts || ':' || (next_attempt_at - updated_at) FROM notifications.deliveries d JOIN notifications.requests r ON r.id = d.request_id WHERE r.kind = 'session.message' AND d.channel = 'push'"))
+            .Should().Be("retry_scheduled:1:00:01:00");
+
+        // 5. Rina removes her phone.
+        var phoneId = created.GetProperty("id").GetGuid();
+        (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/me/push-subscriptions/{phoneId}", Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/me/push-subscriptions/{phoneId}", Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // The browser key and auth secret of RFC 8291 section 5: published test values, no real device. The browser key
+    // doubles as a well-formed VAPID public key for the key route.
+    private const string BrowserKey = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4";
+    private const string BrowserAuth = "BTBZMqHH6r4Tts7J_aSIgg";
+
+    private sealed class FakeClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private async Task ProblemAsync(HttpClient client, HttpMethod method, string path, string subject, object body, string code)
+    {
+        var response = await RawAsync(client, method, path, Customer(subject), body);
+        var text = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, text);
+        JsonSerializer.Deserialize<JsonElement>(text).GetProperty("code").GetString().Should().Be(code);
     }
 
     private async Task ProblemAsync(HttpClient client, string path, string subject, object body, string code)
@@ -184,11 +297,16 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         return membership.GetProperty("membershipId").GetGuid();
     }
 
-    private WebApplicationFactory<Program> Factory(MigratedDatabase db)
+    private WebApplicationFactory<Program> Factory(MigratedDatabase db, string? vapidPublicKey = null)
     {
         var key = new RsaSecurityKey(rsa) { KeyId = "test-key" };
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            if (vapidPublicKey is not null)
+            {
+                builder.UseSetting("VAPID_PUBLIC_KEY", vapidPublicKey);
+            }
+
             builder.UseSetting("DATABASE_APP_CONNECTION_STRING", db.ConnectionString(DatabaseRole.Application));
             builder.UseSetting("DATABASE_PLATFORM_CONNECTION_STRING", db.ConnectionString(DatabaseRole.Platform));
             builder.UseSetting("COGNITO_CLIENT_IDS", "customer-client");
@@ -259,5 +377,18 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
     {
         public Task<CognitoUser> GetAsync(string issuer, string username, CancellationToken cancellationToken) =>
             Task.FromResult(new CognitoUser($"{username}@example.com", true));
+    }
+}
+
+/// <summary>Answers every send with one outcome, or Gone for the given push service, and records what was sent.</summary>
+internal sealed class ScriptedPush(PushOutcome outcome, string? goneHost = null) : IPushSender
+{
+    public List<(PushTarget Target, byte[] Payload, bool Urgent)> Sent { get; } = [];
+
+    public Task<(PushOutcome Outcome, int? Status)> SendAsync(PushTarget target, ReadOnlyMemory<byte> payload, bool urgent, CancellationToken cancellationToken)
+    {
+        Sent.Add((target, payload.ToArray(), urgent));
+        var answer = new Uri(target.Endpoint).Host == goneHost ? PushOutcome.Gone : outcome;
+        return Task.FromResult<(PushOutcome, int?)>((answer, answer switch { PushOutcome.Retry => 503, PushOutcome.Gone => 410, _ => 201 }));
     }
 }

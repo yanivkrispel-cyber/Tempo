@@ -2,3 +2,7 @@
 # Test fixtures shaped like invitation tokens (base64url of placeholder text), PR #69, 2026-10-15.
 6cc1daea558043a851317112c448eec5c40c5b72:apps/client-web/src/features/joining.test.tsx:generic-api-key:11
 624acdcb492346935f1740953061c8df395532fb:apps/client-web/src/app/routes.test.tsx:generic-api-key:11
+# RFC 8291 appendix A example values (published web-push test vectors, no real device or key), PR #197, 2026-10-16.
+06fdee3174352d89ac49ac081a0cd739ee44a82e:tests/Tempo.UnitTests/Notifications/WebPushTests.cs:generic-api-key:20
+06fdee3174352d89ac49ac081a0cd739ee44a82e:tests/Tempo.IntegrationTests/Api/NotificationFlowTests.cs:generic-api-key:268
+06fdee3174352d89ac49ac081a0cd739ee44a82e:tests/Tempo.IntegrationTests/Api/NotificationFlowTests.cs:generic-api-key:269
