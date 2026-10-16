@@ -1,6 +1,7 @@
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Notifications.Application;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
@@ -72,10 +73,10 @@ public sealed partial class BookingService : ISessionMessageService
 
         foreach (var personId in recipients)
         {
-            await using var item = unitOfWork.Command(
-                "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, $4, jsonb_build_object('sessionId', $5::uuid, 'messageId', $6::uuid), now())",
-                tenant.OrganizationId, Guid.CreateVersion7(), personId, MessageKind, sessionId, messageId);
-            await item.ExecuteNonQueryAsync(cancellationToken);
+            await NotificationRequests.WriteAsync(
+                unitOfWork,
+                new NotificationRequest(tenant.OrganizationId, personId, MessageKind, "session_message", messageId, new Dictionary<string, Guid> { ["sessionId"] = sessionId, ["messageId"] = messageId }),
+                cancellationToken);
         }
 
         await AuditWriter.WriteAsync(
