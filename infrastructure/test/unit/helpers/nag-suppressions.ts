@@ -18,7 +18,8 @@ const LAMBDA_ROLES = [
   "Database/MigratorFunction/Function/ServiceRole",
   "Database/NeonUsageFunction/ServiceRole",
   "Messaging/OutboxWorkerFunction/Function/ServiceRole",
-  "Edge/CanaryFunction/ServiceRole"
+  "Edge/CanaryFunction/ServiceRole",
+  "Canary/CanaryFunction/ServiceRole"
 ];
 
 const TRACKED_IN_109 = "Hardening tracked in issue #109 (cdk-nag findings that existed before the gate).";
@@ -51,7 +52,7 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
   {
     id: "AwsSolutions-IAM5[Resource::<CanaryFunctionD1692701.Arn>:*]",
     reason: "EventBridge Scheduler's role may invoke this one function and its versions; CDK adds the :* suffix.",
-    paths: ["Edge"]
+    paths: ["Edge", "Canary"]
   },
   {
     id: "AwsSolutions-IAM5[Resource::arn:aws:iam::687239340846:role/cdk-*]",

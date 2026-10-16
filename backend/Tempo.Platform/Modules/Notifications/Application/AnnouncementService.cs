@@ -128,11 +128,24 @@ public sealed class AnnouncementService(IDataSourceProvider dataSources, TimePro
         await using var command = unitOfWork.Command("SELECT time_zone FROM organizations.organizations WHERE id = $1", organizationId);
         var zone = TimeZoneInfo.FindSystemTimeZoneById((string)(await command.ExecuteScalarAsync(cancellationToken))!);
         var today = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), zone).Date;
-        return (Instant(today, zone), Instant(today.AddDays(1), zone));
+        return (MidnightUtc(today, zone), MidnightUtc(today.AddDays(1), zone));
     }
 
-    private static DateTimeOffset Instant(DateTime localMidnight, TimeZoneInfo zone) =>
-        new(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localMidnight, DateTimeKind.Unspecified), zone), TimeSpan.Zero);
+    /// <summary>
+    /// When a local day starts. Where the clocks jump forward at midnight (America/Santiago in September) midnight never
+    /// happens and the day starts at the jump; where midnight comes twice, at the first one. Both use the offset just
+    /// before midnight.
+    /// </summary>
+    public static DateTimeOffset MidnightUtc(DateTime localMidnight, TimeZoneInfo zone)
+    {
+        var local = DateTime.SpecifyKind(localMidnight.Date, DateTimeKind.Unspecified);
+        if (zone.IsInvalidTime(local) || zone.IsAmbiguousTime(local))
+        {
+            return new(local - zone.GetUtcOffset(local.AddTicks(-1)), TimeSpan.Zero);
+        }
+
+        return new(TimeZoneInfo.ConvertTimeToUtc(local, zone), TimeSpan.Zero);
+    }
 
     private static async Task<int> SentSinceAsync(UnitOfWork unitOfWork, Guid organizationId, DateTimeOffset since, CancellationToken cancellationToken)
     {

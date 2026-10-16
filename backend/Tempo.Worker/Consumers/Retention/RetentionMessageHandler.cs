@@ -13,12 +13,13 @@ public sealed class RetentionMessageHandler(ILogger logger, RetentionJob job) : 
 {
     public async Task HandleAsync(SQSEvent.SQSMessage record, string correlationId, ILambdaContext context)
     {
-        var (invitations, inboxItems, deliveries) = await job.RunAsync(CancellationToken.None);
+        var (invitations, inboxItems, deliveries, announcements) = await job.RunAsync(CancellationToken.None);
         logger.Information(
-            "Retention job: {Invitations} invitations, {InboxItems} inbox items and {Deliveries} deliveries deleted. CorrelationId={CorrelationId}",
+            "Retention job: {Invitations} invitations, {InboxItems} inbox items, {Deliveries} deliveries and {Announcements} announcements deleted. CorrelationId={CorrelationId}",
             invitations,
             inboxItems,
             deliveries,
+            announcements,
             correlationId);
     }
 }
