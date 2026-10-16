@@ -57,8 +57,12 @@ describe.each([
     const scope = JSON.stringify(auth?.ScopeDownStatement);
     for (const path of GUESSABLE_INPUT_PATHS) {
       expect(scope).toContain(`"SearchString":"${path}"`);
+      expect(scope).toContain(`"SearchString":"${path}/"`);
     }
     expect(scope).toContain('"PositionalConstraint":"EXACTLY"');
+    // The API routes ignore case (#180): every match lowercases the path first, so /API/v1/Join is limited too.
+    expect(scope).not.toContain('"Type":"NONE"');
+    expect(scope.match(/"Type":"LOWERCASE"/g)).toHaveLength(GUESSABLE_INPUT_PATHS.length * 2);
     expect(scope).not.toContain("/api/v1/auth/");
   });
 

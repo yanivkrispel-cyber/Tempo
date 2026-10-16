@@ -53,7 +53,9 @@ describe("studio notification settings", () => {
     const save = within(card).getByRole("button", { name: "שמירת הגדרות ההתראות" });
     expect(save).toBeDisabled();
 
-    const sendAt = within(card).getByRole("combobox", { name: "שעת השליחה" });
+    // Each reminder is a named group, so "שעת השליחה" is heard with the reminder it belongs to.
+    const classTomorrow = within(card).getByRole("group", { name: "ערב לפני שיעור" });
+    const sendAt = within(classTomorrow).getByRole("combobox", { name: "שעת השליחה" });
     expect(
       within(sendAt)
         .getAllByRole("option")

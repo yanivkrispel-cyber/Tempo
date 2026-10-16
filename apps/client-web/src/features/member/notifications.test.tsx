@@ -48,6 +48,10 @@ describe("notification preferences", () => {
   it("shows push per group, only the reminders the studio offers, and the studio's quiet hours", async () => {
     renderAt("/profile/notifications");
     expect(await screen.findByRole("switch", { name: "ההרשמות שלי: התראה בטלפון" })).toBeChecked();
+    // The row's hint is the switch's description, so a screen reader hears it once, with the switch.
+    expect(screen.getByRole("switch", { name: "ההרשמות שלי: התראה בטלפון" })).toHaveAccessibleDescription(
+      "נרשמת, עברת מרשימת ההמתנה, שיעור בוטל או השתנה",
+    );
     expect(screen.getByRole("switch", { name: "הודעות מהסטודיו: התראה בטלפון" })).toBeChecked();
     expect(screen.getByRole("switch", { name: "ערב לפני שיעור" })).toBeChecked();
     expect(screen.queryByRole("switch", { name: "כשנשארות מעט כניסות בכרטיסייה" })).not.toBeInTheDocument();
@@ -59,7 +63,10 @@ describe("notification preferences", () => {
   it("saves the changes with the version it read", async () => {
     const api = renderAt("/profile/notifications", {
       [`PUT ${preferencesRoute}`]: (request: Request) =>
-        request.clone().json().then((body) => json({ ...defaults, ...body, version: "4" })),
+        request
+          .clone()
+          .json()
+          .then((body) => json({ ...defaults, ...body, version: "4" })),
     });
     await userEvent.click(await screen.findByRole("switch", { name: "הודעות מהסטודיו: התראה בטלפון" }));
     await userEvent.click(screen.getByRole("switch", { name: "זמן קצר לפני שיעור" }));

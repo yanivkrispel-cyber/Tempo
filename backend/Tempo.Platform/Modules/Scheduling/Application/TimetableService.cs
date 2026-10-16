@@ -733,7 +733,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
     }
 
     private static string Category(string value, string field) =>
-        System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-z][a-z0-9_]{1,29}$") ? value : throw Invalid(field, "Use lowercase English letters, e.g. pilates.");
+        System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-z][a-z0-9_]{1,29}$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100)) ? value : throw Invalid(field, "Use lowercase English letters, e.g. pilates.");
 
     private static string Color(string value) => Colors.Contains(value) ? value : throw Invalid("color", "Choose one of the class colors.");
 
