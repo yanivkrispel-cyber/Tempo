@@ -83,8 +83,13 @@ const scheduleRoutes = {
     json({ items: new URL(request.url).searchParams.get("role") === "staff" ? [dana] : [], nextBefore: null }),
 };
 
-function renderAt(url: string, routesForApi: Record<string, unknown>, role: "owner" | "staff" = "owner") {
-  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions: permissionsFor[role] }] };
+function renderAt(
+  url: string,
+  routesForApi: Record<string, unknown>,
+  role: "owner" | "staff" = "owner",
+  permissions: readonly string[] = permissionsFor[role],
+) {
+  const me = { ...sampleMe, memberships: [{ ...studio, role, roles: [], permissions }] };
   const api = apiStub({ "POST /api/v1/session": me, ...scheduleRoutes, ...routesForApi });
   render(
     <App
@@ -386,5 +391,95 @@ describe("class types and rooms", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "שמירה" }));
     expect(await screen.findByText("החדר נוסף")).toBeInTheDocument();
     expect(api.bodies[lastIndex(api, "POST", "/rooms")]).toEqual({ name: "האולם הגדול", defaultCapacity: 14 });
+  });
+});
+
+describe("a studio announcement", () => {
+  const allowance = (overrides: Record<string, unknown> = {}) => ({
+    recipients: 42,
+    maxRecipients: 500,
+    sentToday: 1,
+    dailyLimit: 3,
+    ...overrides,
+  });
+  const open = async () => {
+    await userEvent.click(await screen.findByRole("button", { name: "הודעה לכל הסטודיו" }));
+    return screen.findByRole("dialog", { name: "הודעה לכל הסטודיו" });
+  };
+
+  it("previews the text, says who it reaches and sends it to every active member", async () => {
+    const api = renderAt(
+      "/o/neshima/schedule",
+      {
+        [`GET ${base}/sessions`]: { items: [] },
+        [`GET ${base}/announcements`]: allowance(),
+        [`POST ${base}/announcements`]: json(
+          { id: id(40), recipients: 42, sentAt: "2026-10-14T09:00:00Z", sentToday: 2, dailyLimit: 3 },
+          201,
+        ),
+      },
+      "staff",
+    );
+    const dialog = await open();
+    expect(await within(dialog).findByText(/ההודעה תגיע ל־42 מתאמנים פעילים. נשלחו היום 1 מתוך 3/)).toBeInTheDocument();
+
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /נושא/ }), "סגור בחג");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /ההודעה/ }), "הסטודיו **סגור** ביום חמישי.");
+    const preview = within(dialog).getByRole("group", { name: "תצוגה מקדימה של הודעה בתיבה" });
+    expect(within(preview).getByText("סגור", { selector: "strong" })).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "שליחה ל־42 מתאמנים פעילים" }));
+    expect(await screen.findByText("ההודעה נשלחה ל־42 מתאמנים פעילים.")).toBeInTheDocument();
+    expect(api.bodies[lastIndex(api, "POST", "/announcements")]).toEqual({
+      subject: "סגור בחג",
+      body: "הסטודיו **סגור** ביום חמישי.",
+    });
+  });
+
+  it("asks for a subject and a text before sending", async () => {
+    const api = renderAt("/o/neshima/schedule", {
+      [`GET ${base}/sessions`]: { items: [] },
+      [`GET ${base}/announcements`]: allowance(),
+    });
+    const dialog = await open();
+    await userEvent.click(await within(dialog).findByRole("button", { name: /^שליחה ל/ }));
+    expect(within(dialog).getByRole("textbox", { name: /נושא/ })).toHaveAccessibleDescription(/כתבו נושא קצר/);
+    expect(api.requests.some((request) => request.method === "POST" && request.url.endsWith("/announcements"))).toBe(
+      false,
+    );
+  });
+
+  it("does not offer to send after the day's limit", async () => {
+    renderAt("/o/neshima/schedule", {
+      [`GET ${base}/sessions`]: { items: [] },
+      [`GET ${base}/announcements`]: allowance({ sentToday: 3 }),
+    });
+    const dialog = await open();
+    expect(await within(dialog).findByText(/כבר נשלחו היום 3 הודעות לכל הסטודיו/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "שליחה" })).toBeDisabled();
+  });
+
+  it("explains a limit the API reports when sending", async () => {
+    renderAt("/o/neshima/schedule", {
+      [`GET ${base}/sessions`]: { items: [] },
+      [`GET ${base}/announcements`]: allowance(),
+      [`POST ${base}/announcements`]: problem(429, "announcement.daily_limit", { "Retry-After": "3600" }),
+    });
+    const dialog = await open();
+    await userEvent.type(await within(dialog).findByRole("textbox", { name: /נושא/ }), "א");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /ההודעה/ }), "ב");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^שליחה ל/ }));
+    expect(await within(dialog).findByText(/כבר נשלחו היום כל ההודעות האפשריות/)).toBeInTheDocument();
+  });
+
+  it("is not offered without bookings.manage", async () => {
+    renderAt(
+      "/o/neshima/schedule",
+      { [`GET ${base}/sessions`]: { items: [] } },
+      "staff",
+      permissionsFor.staff.filter((name) => name !== "bookings.manage"),
+    );
+    await screen.findByRole("heading", { level: 1, name: "מערכת שבועית" });
+    expect(screen.queryByRole("button", { name: "הודעה לכל הסטודיו" })).not.toBeInTheDocument();
   });
 });
