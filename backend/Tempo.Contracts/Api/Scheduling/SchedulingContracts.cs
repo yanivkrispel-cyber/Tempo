@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Tempo.Contracts.Api.Scheduling;
 
 /// <summary>`Room` in contracts/openapi/tempo-api.v1.yaml (docs/29).</summary>
@@ -185,7 +187,11 @@ public sealed record BookingPolicyResponse(int FreeCancelHours, int WaitlistCuto
 
 public sealed record BookingPolicyInput(int? FreeCancelHours, int? WaitlistCutoffHours, int? BookingHorizonDays, bool? WaitlistEnabled);
 
-public sealed record InboxItemDataResponse(Guid? SessionId, Guid? BookingId);
+/// <summary>`InboxItem.data`: ids only, and only the ones the kind carries (a key that does not apply is left out).</summary>
+public sealed record InboxItemDataResponse(
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? SessionId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? BookingId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? PassId = null);
 
 /// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
 public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);

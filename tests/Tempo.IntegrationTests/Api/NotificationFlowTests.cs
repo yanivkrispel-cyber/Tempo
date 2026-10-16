@@ -458,6 +458,14 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
             (await At(today.AddDays(1), 13).RunAsync(CancellationToken.None)).Should().Be(new ReminderRun(0, 0, 0, told));
         }
 
+        // The inbox gives each kind only its own ids: a pass reminder its pass, a class reminder its class and place.
+        var nogaInbox = (await SendAsync(client, HttpMethod.Get, $"{studios["studio-hof"].Path}/me/notifications", Customer("noga"))).GetProperty("items").EnumerateArray().ToList();
+        var low = nogaInbox.Single(i => i.GetProperty("kind").GetString() == "reminder.entries_low").GetProperty("data");
+        low.EnumerateObject().Select(p => p.Name).Should().Equal("passId");
+        low.GetProperty("passId").GetGuid().Should().Be((Guid)(await db.AsMasterAsync("SELECT id FROM scheduling.passes WHERE person_id = $1", people["noga"]))!);
+        nogaInbox.First(i => i.GetProperty("kind").GetString() == "reminder.class_soon").GetProperty("data").EnumerateObject().Select(p => p.Name)
+            .Should().BeEquivalentTo("sessionId", "bookingId");
+
         // 4. Every reminder stays in its member's studio, and the waiting and the cancelled got none.
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests r JOIN people.people pe ON pe.id = r.person_id WHERE pe.organization_id <> r.organization_id")).Should().Be(0L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests WHERE kind LIKE 'reminder.%' AND person_id IN ($1, $2)", people["rina"], people["tal"])).Should().Be(0L);
