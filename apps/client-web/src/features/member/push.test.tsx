@@ -229,6 +229,22 @@ describe("the service worker", () => {
     expect(notice(null)).toBeNull();
   });
 
+  it("shows the studio's title and body when the payload carries them, and a pointer for an announcement", () => {
+    const worded = notice({
+      kind: "reminder.class_soon",
+      title: "עוד מעט ויניאסה",
+      body: "נתראה בעוד שעה",
+      data: { sessionId: "session-1" },
+      session: { classTypeName: "ויניאסה", startsAt: "2026-10-19T09:00:00Z" },
+    });
+    expect(worded?.title).toBe("עוד מעט ויניאסה");
+    expect(worded?.options.body).toBe("נתראה בעוד שעה");
+    const announcement = notice({ kind: "studio.announcement", organizationId: "org-1", data: {} });
+    expect(announcement?.title).toBe("הודעה חדשה מהסטודיו");
+    expect(announcement?.options.body).toBe("הפרטים בתיבת ההודעות באפליקציה.");
+    expect(announcement?.options.data.url).toBe("/inbox?studio=org-1");
+  });
+
   it("listens for push and notification clicks", () => {
     expect(events).toEqual(expect.arrayContaining(["push", "notificationclick"]));
   });
