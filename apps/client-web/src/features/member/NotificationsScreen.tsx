@@ -14,11 +14,11 @@ import {
   Banner,
   Button,
   Card,
-  Field,
   IconButton,
+  isTimeWindowValid,
   Radio,
   Skeleton,
-  TimeInput,
+  TimeRange,
   Toggle,
   useToast,
 } from "../../shared/design-system";
@@ -108,7 +108,7 @@ function PreferencesForm({
   const toast = useToast();
   const studioWindow = preferences.studioQuietHours;
   const offered = reminderKeys.filter((key) => preferences.studioReminders[key]);
-  const ownWindowValid = draft.quietHours === null || draft.quietHours.startsLocal !== draft.quietHours.endsLocal;
+  const ownWindowValid = draft.quietHours === null || isTimeWindowValid(draft.quietHours);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
 
   const submit = () =>
@@ -216,34 +216,12 @@ function PreferencesForm({
           />
         </div>
         {draft.quietHours && (
-          <div className={styles.quietHours}>
-            <Field label="מ־">
-              <TimeInput
-                value={draft.quietHours.startsLocal}
-                from="00:00"
-                to="23:30"
-                step={30}
-                onChange={(value) =>
-                  value &&
-                  draft.quietHours &&
-                  setDraft({ ...draft, quietHours: { ...draft.quietHours, startsLocal: value } })
-                }
-              />
-            </Field>
-            <Field label="עד" error={ownWindowValid ? undefined : "שעת הסיום צריכה להיות שונה משעת ההתחלה."}>
-              <TimeInput
-                value={draft.quietHours.endsLocal}
-                from="00:00"
-                to="23:30"
-                step={30}
-                onChange={(value) =>
-                  value &&
-                  draft.quietHours &&
-                  setDraft({ ...draft, quietHours: { ...draft.quietHours, endsLocal: value } })
-                }
-              />
-            </Field>
-          </div>
+          <TimeRange
+            label="שעות שקטות משלי"
+            className={styles.quietHours}
+            value={draft.quietHours}
+            onChange={(quietHours) => setDraft({ ...draft, quietHours })}
+          />
         )}
         <p className="tp-caption tp-muted">השעות לפי שעון הסטודיו. ההעדפות נשמרות ב{studioName}.</p>
       </Card>

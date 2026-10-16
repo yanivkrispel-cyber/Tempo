@@ -45,6 +45,12 @@ export default defineConfig({
       use: { ...devices["Pixel 7"], storageState: sessionStatePath },
     },
     {
+      // The design system's preview page from disk (no app, no sign-in): axe on the primitives at phone width.
+      name: "design-system",
+      testDir: "./specs/design-system",
+      use: { ...devices["Pixel 7"] },
+    },
+    {
       // SYNC 3, notifications (day board #176): both apps at phone width, absolute URLs.
       name: "sync3",
       testDir: "./specs/sync3",
