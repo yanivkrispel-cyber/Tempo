@@ -57,6 +57,13 @@ export default defineConfig({
       dependencies: ["sign-in"],
       use: { ...devices["Pixel 7"], storageState: sessionStatePath },
     },
+    {
+      // SYNC 4, communications (day board #208): templates, an announcement and its delivery lines, at phone width.
+      name: "sync4",
+      testDir: "./specs/sync4",
+      dependencies: ["sign-in"],
+      use: { ...devices["Pixel 7"], storageState: sessionStatePath },
+    },
   ],
   webServer: [
     {
