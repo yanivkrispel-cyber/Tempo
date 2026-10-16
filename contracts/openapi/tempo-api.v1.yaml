@@ -2223,7 +2223,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: listNotificationTemplates
-      x-tempo-planned: true
       summary: "Every kind a studio can word, by group, and whether it has its own words (`organization.settings.manage`)"
       description: >-
         One row per templated kind of docs/30 section 5. `session.message` and `studio.announcement` carry the
@@ -2249,7 +2248,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: getNotificationTemplate
-      x-tempo-planned: true
       summary: "The words in use for one kind, with its variables and a preview on the demo studio's data (`organization.settings.manage`)"
       parameters:
         - name: locale
@@ -2267,7 +2265,6 @@ paths:
     put:
       tags: [Notifications]
       operationId: updateNotificationTemplate
-      x-tempo-planned: true
       summary: "Save the studio's words for one kind, or go back to the default (`organization.settings.manage`)"
       description: >-
         Each channel saved becomes the studio's new active version (the previous one is kept as `retired`); `null`
@@ -3997,14 +3994,16 @@ components:
         title:
           type: [string, "null"]
           description: >-
-            Planned (docs/30 step 7): the subject rendered from the studio's template (or the default) when the item
-            was written, or the announcement's subject. Absent or null on older items: show the app's own text for
-            the kind.
+            The subject rendered from the studio's template (or the default) when the item was written (docs/30
+            step 7); the announcement's subject once announcements ship. Absent or null on older items and on
+            `session.message`: show the app's own text for the kind.
         body:
           type: [string, "null"]
           description: >-
-            Planned (docs/30 step 7): the template's Markdown-light body with the variables filled when the item was
-            written. Absent or null on older items and on `session.message` / `studio.announcement` (see `text`).
+            The template's Markdown-light body with the variables filled when the item was written. A backslash
+            escapes `\`, `*`, `[`, `]`, `(` and `)` that came from a value, so a name never bolds or links. Links
+            are app paths (`/classes/{id}`, `/profile/notifications`). Absent or null on older items and on
+            `session.message` / `studio.announcement` (see `text`).
         session:
           description: The class the notice is about, so a list needs no extra request; null when it has none.
           oneOf:
@@ -4220,8 +4219,9 @@ components:
         body:
           type: string
           description: >-
-            Markdown-light (paragraphs split by a blank line, `**bold**`, `[text](https://...)`) with variables
-            written `{{person.firstName}}`. Push shows the first paragraph, cut at 120 characters.
+            Markdown-light (paragraphs split by a blank line, `**bold**`, `[text](link)`) with variables written
+            `{{person.firstName}}`; `{{link.session}}` and `{{link.preferences}}` are app paths. Push shows the
+            first paragraph without markup, cut at 120 characters.
         source: { type: string, enum: [default, studio] }
         studioVersion: { type: [integer, "null"], description: "The studio's active version; null on the default." }
         preview:

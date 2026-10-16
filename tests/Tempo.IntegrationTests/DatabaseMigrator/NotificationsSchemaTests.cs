@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentAssertions;
 using Npgsql;
 using Tempo.Platform.BuildingBlocks.Persistence;
@@ -69,6 +70,33 @@ public sealed class NotificationsSchemaTests(PostgresFixture postgres) : IClassF
 
         var write = () => AsAppAsync(db, a.Id, connection => ExecuteAsync(connection, "UPDATE notifications.templates SET body = 'x'"));
         (await write.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(InsufficientPrivilege);
+    }
+
+    [Fact]
+    public async Task Templates_AStudioWritesAndRetiresOnlyItsOwnVersions()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var a = await StudioAsync(db, "studio-a");
+        var b = await StudioAsync(db, "studio-b");
+        await TemplateAsync(db, null);
+        await TemplateAsync(db, b.Id);
+        const string Insert = "INSERT INTO notifications.templates (id, organization_id, kind, locale, channel, version, subject, body, status, created_at) VALUES (gen_random_uuid(), {0}, 'booking.promoted', 'he', 'inbox', 1, 'שלום', 'גוף', 'active', now())";
+
+        await AsAppAsync(db, a.Id, async connection =>
+        {
+            (await ExecuteAsync(connection, string.Format(CultureInfo.InvariantCulture, Insert, $"'{a.Id}'"))).Should().Be(1);
+            (await ExecuteAsync(connection, "UPDATE notifications.templates SET status = 'retired' WHERE organization_id IS NOT NULL")).Should().Be(1, "only studio a's own row");
+            (await ExecuteAsync(connection, "UPDATE notifications.templates SET status = 'retired' WHERE organization_id IS NULL")).Should().Be(0, "the platform default is not the studio's");
+        });
+
+        foreach (var other in new[] { "NULL", $"'{b.Id}'" })
+        {
+            var write = () => AsAppAsync(db, a.Id, connection => ExecuteAsync(connection, string.Format(CultureInfo.InvariantCulture, Insert, other)));
+            (await write.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(InsufficientPrivilege);
+        }
+
+        var rewrite = () => AsAppAsync(db, a.Id, connection => ExecuteAsync(connection, "UPDATE notifications.templates SET body = 'x' WHERE organization_id IS NOT NULL"));
+        (await rewrite.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(InsufficientPrivilege, "a version's words never change");
     }
 
     [Fact]

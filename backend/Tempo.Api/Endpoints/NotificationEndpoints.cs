@@ -27,6 +27,9 @@ public static class NotificationEndpoints
         tenant.MapGet("/me/push-subscriptions", ListDevicesAsync).RequirePermission(Permissions.OrganizationView).WithName("listMyPushSubscriptions").Produces<PushSubscriptionListResponse>();
         tenant.MapPost("/me/push-subscriptions", CreateDeviceAsync).RequirePermission(Permissions.OrganizationView).WithName("createMyPushSubscription").Produces<PushSubscriptionResponse>(StatusCodes.Status201Created);
         tenant.MapDelete("/me/push-subscriptions/{subscriptionId:guid}", DeleteDeviceAsync).RequirePermission(Permissions.OrganizationView).WithName("deleteMyPushSubscription").Produces(StatusCodes.Status204NoContent);
+        tenant.MapGet("/notification-templates", ListTemplatesAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("listNotificationTemplates").Produces<NotificationTemplateListResponse>();
+        tenant.MapGet("/notification-templates/{kind}", GetTemplateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("getNotificationTemplate").Produces<NotificationTemplateResponse>();
+        tenant.MapPut("/notification-templates/{kind}", UpdateTemplateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("updateNotificationTemplate").Produces<NotificationTemplateResponse>();
         endpoints.MapAccountGroup().MapGet("/push/vapid-public-key", VapidPublicKeyAsync).WithName("getVapidPublicKey").Produces<VapidPublicKeyResponse>();
 
         return endpoints;
@@ -88,6 +91,48 @@ public static class NotificationEndpoints
         var updated = await preferences.UpdateSettingsAsync(TenantRouteFilter.Current(httpContext), quiet, timing, OrganizationEndpoints.ParseVersion(ifMatch), httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
     }
+
+    private static async Task<IResult> ListTemplatesAsync(HttpContext httpContext, INotificationTemplateService templates) =>
+        Results.Ok(new NotificationTemplateListResponse(
+            [.. (await templates.ListAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted))
+                .Select(t => new NotificationTemplateSummaryDto(t.Kind, t.Group, t.Customized, t.UpdatedAt))]));
+
+    private static async Task<IResult> GetTemplateAsync(HttpContext httpContext, string kind, string? locale, INotificationTemplateService templates) =>
+        Results.Ok(ToTemplateResponse(await templates.GetAsync(TenantRouteFilter.Current(httpContext), kind, locale ?? TemplateCatalog.DefaultLocale, httpContext.RequestAborted)));
+
+    private static async Task<IResult> UpdateTemplateAsync(
+        HttpContext httpContext,
+        string kind,
+        NotificationTemplateInput request,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        INotificationTemplateService templates)
+    {
+        var updated = await templates.UpdateAsync(
+            TenantRouteFilter.Current(httpContext),
+            kind,
+            request.Locale ?? throw Required("locale"),
+            Words(request.Inbox, "inbox"),
+            Words(request.Push, "push"),
+            OrganizationEndpoints.ParseVersion(ifMatch),
+            httpContext.RequestAborted);
+        return Results.Ok(ToTemplateResponse(updated));
+    }
+
+    private static TemplateWords? Words(TemplateTextInputDto? input, string field) =>
+        input is null ? null : new(input.Subject ?? throw Required($"{field}.subject"), input.Body ?? throw Required($"{field}.body"));
+
+    private static NotificationTemplateResponse ToTemplateResponse(NotificationTemplateView t) =>
+        new(
+            t.Kind.Kind,
+            t.Kind.Group,
+            t.Locale,
+            t.Kind.Variables,
+            TemplateCatalog.SampleValues.Where(v => t.Kind.Variables.Contains(v.Key)).ToDictionary(v => v.Key, v => v.Value),
+            new NotificationTemplateChannelsResponse(ToTextResponse(t.Inbox), ToTextResponse(t.Push)),
+            t.Version.ToString(CultureInfo.InvariantCulture));
+
+    private static TemplateTextResponse ToTextResponse(TemplateChannelView c) =>
+        new(c.Words.Subject, c.Words.Body, c.Studio ? "studio" : "default", c.StudioVersion, new TemplatePreviewDto(c.Preview.Subject, c.Preview.Body));
 
     private static async Task<IResult> ListDevicesAsync(HttpContext httpContext, IPushSubscriptionService devices) =>
         Results.Ok(new PushSubscriptionListResponse([.. (await devices.ListMineAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted)).Select(ToResponse)]));

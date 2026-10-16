@@ -274,6 +274,98 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
     }
 
     [Fact]
+    public async Task Templates_AStudioWordsAKind_TheInboxAndThePushUseIt_AndNullGoesBackToTheDefault()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db, BrowserKey);
+        var client = factory.CreateClient();
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem")).DateTime);
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו חוף", slug = "studio-hof" }, HttpStatusCode.Created);
+        var studioPath = $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}";
+        var templates = $"{studioPath}/notification-templates";
+        foreach (var member in new[] { "noga", "rina" })
+        {
+            await JoinByInvitationAsync(client, studioPath, member, "client");
+        }
+
+        // 1. Every templated kind is listed on the defaults; a member may not read or change them.
+        var list = await SendAsync(client, HttpMethod.Get, templates, Customer("owner"));
+        list.GetProperty("items").GetArrayLength().Should().Be(10);
+        list.GetProperty("items").EnumerateArray().Should().OnlyContain(i => i.GetProperty("customized").GetArrayLength() == 0);
+        (await RawAsync(client, HttpMethod.Get, templates, Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var promoted = await SendAsync(client, HttpMethod.Get, $"{templates}/booking.promoted", Customer("owner"));
+        promoted.GetProperty("channels").GetProperty("inbox").GetProperty("source").GetString().Should().Be("default");
+        promoted.GetProperty("channels").GetProperty("push").GetProperty("preview").GetProperty("body").GetString().Should().Be("יוגה ויניאסה, יום רביעי, 21.10, בשעה 18:30");
+        promoted.GetProperty("version").GetString().Should().Be("0");
+        (await RawAsync(client, HttpMethod.Get, $"{templates}/session.message", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // 2. A variable the kind does not have is refused with the field; a stale If-Match is a conflict.
+        var unknown = await RawAsync(client, HttpMethod.Put, $"{templates}/booking.promoted", Customer("owner"),
+            new { locale = "he", inbox = new { subject = "נכנסת", body = "נשארו {{pass.entriesLeft}}" }, push = (object?)null }, "0");
+        unknown.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await unknown.Content.ReadAsStringAsync()).Should().Contain("template.unknown_variable").And.Contain("inbox.body").And.Contain("pass.entriesLeft");
+        var words = new
+        {
+            locale = "he",
+            inbox = new { subject = "{{person.firstName}}, נכנסת ל{{session.classTypeName}}", body = "**{{session.startsLocal}}** ב{{session.room}}.\n\nנתראה ב{{studio.name}}" },
+            push = new { subject = "נכנסת!", body = "{{session.classTypeName}} מחכה לך" }
+        };
+        var saved = await SendAsync(client, HttpMethod.Put, $"{templates}/booking.promoted", Customer("owner"), words, ifMatch: "0");
+        saved.GetProperty("channels").GetProperty("inbox").GetProperty("source").GetString().Should().Be("studio");
+        saved.GetProperty("channels").GetProperty("inbox").GetProperty("studioVersion").GetInt32().Should().Be(1);
+        saved.GetProperty("version").GetString().Should().Be("2");
+        (await RawAsync(client, HttpMethod.Put, $"{templates}/booking.promoted", Customer("owner"), words, "0")).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await SendAsync(client, HttpMethod.Get, templates, Customer("owner"))).GetProperty("items").EnumerateArray()
+            .Single(i => i.GetProperty("kind").GetString() == "booking.promoted").GetProperty("customized").EnumerateArray().Select(c => c.GetString())
+            .Should().BeEquivalentTo("inbox", "push");
+
+        // 3. Rina is promoted: the inbox item keeps the studio's words with her values, and so does her push.
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", Customer("rina"),
+            new { endpoint = "https://fcm.googleapis.com/fcm/send/rina-phone", keys = new { p256dh = BrowserKey, auth = BrowserAuth }, deviceLabel = "Chrome, Android" }, HttpStatusCode.Created);
+        var room = await SendAsync(client, HttpMethod.Post, $"{studioPath}/rooms", Customer("owner"), new { name = "האולם", defaultCapacity = 1 }, HttpStatusCode.Created);
+        var yoga = await SendAsync(client, HttpMethod.Post, $"{studioPath}/class-types", Customer("owner"), new { name = "יוגה", category = "yoga", color = "sage", defaultMinutes = 60 }, HttpStatusCode.Created);
+        var session = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+        {
+            classTypeId = yoga.GetProperty("id").GetGuid(),
+            localDate = today.AddDays(3).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            localStart = "12:00",
+            roomId = room.GetProperty("id").GetGuid(),
+            capacity = 1
+        }, HttpStatusCode.Created);
+        var sessionPath = $"{studioPath}/sessions/{session.GetProperty("id").GetGuid()}";
+        var card = await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "כרטיסייה", entries = 5, validDays = 60 }, HttpStatusCode.Created);
+        foreach (var member in new[] { "noga", "rina" })
+        {
+            var person = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/people?query={member}@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+            await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{person}/passes", Customer("owner"), new { productId = card.GetProperty("id").GetGuid() }, HttpStatusCode.Created);
+        }
+
+        var noga = await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("noga"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("rina"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{noga.GetProperty("id").GetGuid()}/cancel", Customer("noga"));
+
+        var item = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notifications", Customer("rina"))).GetProperty("items").EnumerateArray().Single();
+        item.GetProperty("title").GetString().Should().Be("rina, נכנסת ליוגה");
+        item.GetProperty("body").GetString().Should().StartWith("**יום ").And.Contain("בשעה 12:00** בהאולם.").And.EndWith("נתראה בסטודיו חוף");
+        var noon = new FakeClock(new DateTimeOffset(DateTime.SpecifyKind(DateTime.UtcNow.Date.AddHours(10), DateTimeKind.Utc)));
+        var push = new ScriptedPush(PushOutcome.Accepted);
+        await new NotificationDeliveryJob(db, noon, _ => Task.FromResult<IPushSender?>(push)).RunAsync(CancellationToken.None);
+        var payload = JsonSerializer.Deserialize<JsonElement>(push.Sent.Single().Payload);
+        payload.GetProperty("title").GetString().Should().Be("נכנסת!");
+        payload.GetProperty("body").GetString().Should().Be("יוגה מחכה לך");
+
+        // 4. Null for both channels goes back to the defaults; the inbox item keeps the words it was sent with.
+        var reset = await SendAsync(client, HttpMethod.Put, $"{templates}/booking.promoted", Customer("owner"), new { locale = "he", inbox = (object?)null, push = (object?)null }, ifMatch: "2");
+        reset.GetProperty("channels").GetProperty("inbox").GetProperty("source").GetString().Should().Be("default");
+        reset.GetProperty("channels").GetProperty("push").GetProperty("studioVersion").ValueKind.Should().Be(JsonValueKind.Null);
+        reset.GetProperty("version").GetString().Should().Be("4");
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notifications", Customer("rina"))).GetProperty("items")[0].GetProperty("title").GetString().Should().Be("rina, נכנסת ליוגה");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'template.changed'")).Should().Be(4L);
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'template.changed' AND data::text LIKE '%נכנסת%'")).Should().Be(0L, "the audit never keeps the words");
+    }
+
+    [Fact]
     public async Task Reminders_AreDueOnce_ForActiveMembers_WhoKeepThemOn()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

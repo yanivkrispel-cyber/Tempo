@@ -287,9 +287,9 @@ address.
    - **Templated kinds:** `booking.promoted`, `booking.promotion_failed`, `booking.moved`, `session.cancelled`,
      `waitlist.expired`, `pass.frozen`, and the four reminders. `session.message` and `studio.announcement` carry
      the staff's own text and have no template.
-   - **Defaults:** one platform row per (kind, `he`, channel) for inbox and push, seeded by a migration
-     (`organization_id` NULL, version 1, `active`). They read like the apps' current text, so nothing changes for a
-     studio that never edits.
+   - **Defaults:** kept in code (`TemplateCatalog`), as migration 0014 planned, one per (kind, channel) in Hebrew;
+     English falls back to them. They read like the apps' current text, so nothing changes for a studio that never
+     edits. Studio rows only live in `notifications.templates`.
    - **Studio words:** `PUT .../notification-templates/{kind}` writes a new version per channel saved, marks the
      earlier one `retired` and audits `template.changed` (kind, locale, channel, version; no text). `null` for a
      channel retires the studio's version and the default applies again. Lookup: the studio's `active` row, else
@@ -318,9 +318,10 @@ address.
      `GET .../announcements` gives the dialog the recipient count and what is left today.
    - **Deliveries:** `GET .../people/{personId}/deliveries` (`people.view`) returns the last 30 lines, newest first:
      kind, channel, status, reason (skip reason or last error code) and times. Never the text or the address.
-   - **Migration 0015** if 0014 lacks a column: `inbox_items.title`/`body` and `notifications.announcements`
-     (organization, id, sent_by, subject, body, recipients, created_at), with the same RLS as `session_messages`.
-     Erase and merge treat it like `session_messages`.
+   - **Migrations:** 0015 adds `inbox_items.title`/`body` and lets a studio insert its own template rows and
+     retire them (status only; a version's words never change). 0016 (with announcements) adds
+     `notifications.announcements` (organization, id, sent_by, subject, body, recipients, created_at), with the
+     same RLS as `session_messages`; erase and merge treat it like `session_messages`.
 
 Steps 1 to 4 and 6 cost nothing and need no domain (ADR-0021: VAPID keys in SSM standard parameters, the hourly
 reminder schedule inside the Scheduler free tier, no paid push service). Step 5 is the first one that waits on Kris.

@@ -20,8 +20,9 @@ public sealed record NotificationRequest(
 
 /// <summary>
 /// Written by the domain code that tells a member something, inside its own transaction: the inbox item (what the
-/// app shows, as before), the request the delivery pipeline works from, and the inbox delivery, which is delivered
-/// by being written. Push is routed later by <see cref="NotificationDeliveryJob"/>.
+/// app shows, its title and body rendered from the studio's template or the default), the request the delivery
+/// pipeline works from, and the inbox delivery, which is delivered by being written. Push is routed later by
+/// <see cref="NotificationDeliveryJob"/>.
 /// </summary>
 public static class NotificationRequests
 {
@@ -48,9 +49,12 @@ public static class NotificationRequests
             }
         }
 
+        // The words are fixed when the item is written, so a later template change never rewrites what was sent.
+        var words = await NotificationTexts.RenderAsync(
+            unitOfWork, request.OrganizationId, request.PersonId, request.Kind, request.Data, TemplateCatalog.Inbox, cancellationToken);
         await using (var item = unitOfWork.Command(
-            "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, request_id, created_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6, now())",
-            request.OrganizationId, itemId, request.PersonId, request.Kind, data, requestId))
+            "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, request_id, title, body, created_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, now())",
+            request.OrganizationId, itemId, request.PersonId, request.Kind, data, requestId, words?.Subject, words?.Body))
         {
             await item.ExecuteNonQueryAsync(cancellationToken);
         }

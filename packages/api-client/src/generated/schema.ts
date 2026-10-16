@@ -2884,9 +2884,9 @@ export interface components {
             readAt?: string | null;
             /** @description For `session.message`, the staff message (docs/29 section 16.2); for `studio.announcement` (planned, docs/30 step 7), the announcement's Markdown-light body. Null for every other kind. */
             text?: string | null;
-            /** @description Planned (docs/30 step 7): the subject rendered from the studio's template (or the default) when the item was written, or the announcement's subject. Absent or null on older items: show the app's own text for the kind. */
+            /** @description The subject rendered from the studio's template (or the default) when the item was written (docs/30 step 7); the announcement's subject once announcements ship. Absent or null on older items and on `session.message`: show the app's own text for the kind. */
             title?: string | null;
-            /** @description Planned (docs/30 step 7): the template's Markdown-light body with the variables filled when the item was written. Absent or null on older items and on `session.message` / `studio.announcement` (see `text`). */
+            /** @description The template's Markdown-light body with the variables filled when the item was written. A backslash escapes `\`, `*`, `[`, `]`, `(` and `)` that came from a value, so a name never bolds or links. Links are app paths (`/classes/{id}`, `/profile/notifications`). Absent or null on older items and on `session.message` / `studio.announcement` (see `text`). */
             body?: string | null;
             /** @description The class the notice is about, so a list needs no extra request; null when it has none. */
             session?: {
@@ -3025,7 +3025,7 @@ export interface components {
         TemplateText: {
             /** @description The inbox subject; the push title. */
             subject: string;
-            /** @description Markdown-light (paragraphs split by a blank line, `**bold**`, `[text](https://...)`) with variables written `{{person.firstName}}`. Push shows the first paragraph, cut at 120 characters. */
+            /** @description Markdown-light (paragraphs split by a blank line, `**bold**`, `[text](link)`) with variables written `{{person.firstName}}`; `{{link.session}}` and `{{link.preferences}}` are app paths. Push shows the first paragraph without markup, cut at 120 characters. */
             body: string;
             /** @enum {string} */
             source: "default" | "studio";

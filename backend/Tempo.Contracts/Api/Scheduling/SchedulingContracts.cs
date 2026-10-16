@@ -196,7 +196,7 @@ public sealed record InboxItemDataResponse(
 /// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
 public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);
 
-public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null, string? Text = null);
+public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null, string? Text = null, string? Title = null, string? Body = null);
 
 /// <summary>`SendSessionMessageRequest`: a short text to everyone registered on a class (docs/29 section 16.2).</summary>
 public sealed record SendSessionMessageRequest(string? Text);
