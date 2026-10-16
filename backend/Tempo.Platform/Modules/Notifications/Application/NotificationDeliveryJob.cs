@@ -231,13 +231,18 @@ public sealed class NotificationDeliveryJob(IDataSourceProvider dataSources, Tim
         return (accepted, retried, dead, removed);
     }
 
-    /// <summary>The kind, the payload (ids, the class name and start; never a name or a message text) and the person's devices.</summary>
+    /// <summary>
+    /// The kind, the payload and the person's devices. The payload carries ids, the class name and start and, for a
+    /// templated kind, the rendered push title and body (docs/30 section 13 step 7; RFC 8291 keeps them from the push
+    /// service). A staff message or announcement text never goes in it.
+    /// </summary>
     private async Task<(string Kind, byte[] Payload, List<(Guid Id, PushTarget Target)> Targets)> MessageAsync(Claimed line, CancellationToken cancellationToken)
     {
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Platform, null, null, cancellationToken);
         string kind;
         Guid person;
         Dictionary<string, object?> payload;
+        string data;
         await using (var command = unitOfWork.Command(
             """
             SELECT r.kind, r.person_id, r.data::text, i.id, ct.name, s.starts_at
@@ -263,14 +268,22 @@ public sealed class NotificationDeliveryJob(IDataSourceProvider dataSources, Tim
                 };
             }
 
+            data = reader.GetString(2);
             payload = new Dictionary<string, object?>
             {
                 ["kind"] = kind,
                 ["organizationId"] = line.OrganizationId,
                 ["inboxItemId"] = await reader.IsDBNullAsync(3, cancellationToken) ? null : reader.GetGuid(3),
-                ["data"] = JsonSerializer.Deserialize<JsonElement>(reader.GetString(2)),
+                ["data"] = JsonSerializer.Deserialize<JsonElement>(data),
                 ["session"] = session
             };
+        }
+
+        var ids = JsonSerializer.Deserialize<Dictionary<string, Guid>>(data) ?? [];
+        if (await NotificationTexts.RenderAsync(unitOfWork, line.OrganizationId, person, kind, ids, TemplateCatalog.Push, cancellationToken) is { } words)
+        {
+            payload["title"] = words.Subject;
+            payload["body"] = words.Body;
         }
 
         var targets = new List<(Guid, PushTarget)>();

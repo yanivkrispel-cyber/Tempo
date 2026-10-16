@@ -55,3 +55,32 @@ public sealed record CreatePushSubscriptionRequest(string? Endpoint, PushSubscri
 
 /// <summary>`VapidPublicKey`.</summary>
 public sealed record VapidPublicKeyResponse(string PublicKey);
+
+/// <summary>`NotificationTemplateList` row: a templated kind and the channels the studio words itself (docs/30 step 7).</summary>
+public sealed record NotificationTemplateSummaryDto(string Kind, string Group, IReadOnlyList<string> Customized, DateTimeOffset? UpdatedAt);
+
+/// <summary>`NotificationTemplateList`.</summary>
+public sealed record NotificationTemplateListResponse(IReadOnlyList<NotificationTemplateSummaryDto> Items);
+
+public sealed record TemplatePreviewDto(string Subject, string Body);
+
+/// <summary>`TemplateText`: the words in use for one channel, where they come from and their preview.</summary>
+public sealed record TemplateTextResponse(string Subject, string Body, string Source, int? StudioVersion, TemplatePreviewDto Preview);
+
+public sealed record NotificationTemplateChannelsResponse(TemplateTextResponse Inbox, TemplateTextResponse Push);
+
+/// <summary>`NotificationTemplate`.</summary>
+public sealed record NotificationTemplateResponse(
+    string Kind,
+    string Group,
+    string Locale,
+    IReadOnlyList<string> Variables,
+    IReadOnlyDictionary<string, string> SampleValues,
+    NotificationTemplateChannelsResponse Channels,
+    string Version);
+
+/// <summary>`TemplateTextInput`.</summary>
+public sealed record TemplateTextInputDto(string? Subject, string? Body);
+
+/// <summary>`NotificationTemplateInput`: null for a channel goes back to the platform default.</summary>
+public sealed record NotificationTemplateInput(string? Locale, TemplateTextInputDto? Inbox, TemplateTextInputDto? Push);

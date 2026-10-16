@@ -102,7 +102,9 @@ public static class ClassEndpoints
                 i.CreatedAt,
                 i.ReadAt,
                 i.SessionId is { } id && i.SessionStartsAt is { } at ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "") : null,
-                i.Text))],
+                i.Text,
+                i.Title,
+                i.Body))],
             page.UnreadCount,
             page.NextBefore));
     }
