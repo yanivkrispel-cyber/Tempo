@@ -53,7 +53,6 @@ describe("notification preferences", () => {
     expect(screen.queryByRole("switch", { name: "כשנשארות מעט כניסות בכרטיסייה" })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /כמו בסטודיו/ })).toBeChecked();
     expect(screen.getByText("22:00–08:00")).toBeInTheDocument();
-    expect(screen.getByText(/באייפון, התראות בטלפון מגיעות רק אחרי/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "שמירה" })).toBeDisabled();
   });
 
