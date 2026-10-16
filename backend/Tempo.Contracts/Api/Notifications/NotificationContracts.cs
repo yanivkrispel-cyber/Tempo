@@ -41,3 +41,17 @@ public sealed record NotificationSettingsResponse(QuietHoursDto QuietHours, Remi
 
 /// <summary>`NotificationSettingsInput`.</summary>
 public sealed record NotificationSettingsInput(QuietHoursDto? QuietHours, ReminderTimingDto? Reminders);
+
+/// <summary>`PushSubscription`: never the endpoint or the keys.</summary>
+public sealed record PushSubscriptionResponse(Guid Id, string DeviceLabel, DateTimeOffset CreatedAt, DateTimeOffset? LastSuccessAt);
+
+/// <summary>`PushSubscriptionList`.</summary>
+public sealed record PushSubscriptionListResponse(IReadOnlyList<PushSubscriptionResponse> Items);
+
+public sealed record PushSubscriptionKeysDto(string? P256dh, string? Auth);
+
+/// <summary>`CreatePushSubscriptionRequest`: the browser's `PushSubscription.toJSON()` plus a label.</summary>
+public sealed record CreatePushSubscriptionRequest(string? Endpoint, PushSubscriptionKeysDto? Keys, string? DeviceLabel);
+
+/// <summary>`VapidPublicKey`.</summary>
+public sealed record VapidPublicKeyResponse(string PublicKey);

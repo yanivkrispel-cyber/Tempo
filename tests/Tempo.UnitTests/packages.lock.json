@@ -607,6 +607,7 @@
         "type": "Project",
         "dependencies": {
           "AWSSDK.CognitoIdentityProvider": "[4.0.105.2, )",
+          "AWSSDK.SQS": "[4.0.100.14, )",
           "Amazon.Lambda.AspNetCoreServer.Hosting": "[2.2.0, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.10, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.10, )",
@@ -700,6 +701,15 @@
         "contentHash": "krzwvPcmMBVuBZ1fhruesVZLOTXbIttFMotP81nkwmJ2TI8nk+Mam8fwiwpHAkIdbAUu0QQneK53+bhLzT0X7g==",
         "dependencies": {
           "AWSSDK.Core": "[4.0.102.8, 5.0.0)"
+        }
+      },
+      "AWSSDK.SQS": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.100.14, )",
+        "resolved": "4.0.100.14",
+        "contentHash": "bFMwWy14LyVocTM9kVfyVRgjbgJBkBXEJXi8i6KLVJV2PXVnVeTfwlxClMFTMDOPhYWlpmHzO2aHuaBdVlaFzg==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.6, 5.0.0)"
         }
       },
       "libphonenumber-csharp": {

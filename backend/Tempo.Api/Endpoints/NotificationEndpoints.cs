@@ -6,12 +6,13 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Notifications.Application;
 using Tempo.Platform.Modules.Notifications.Domain;
+using Tempo.Platform.Modules.Notifications.Infrastructure;
 
 namespace Tempo.Api.Endpoints;
 
 /// <summary>
 /// A member's notification preferences and the studio's quiet hours and reminder timing (docs/30 sections 7 and
-/// 9). Push subscriptions and the VAPID key come with the push adapter (P4).
+/// 9), the member's push devices and the environment's VAPID public key (section 4.3).
 /// </summary>
 public static class NotificationEndpoints
 {
@@ -23,6 +24,10 @@ public static class NotificationEndpoints
         tenant.MapPut("/me/notification-preferences", UpdateMineAsync).RequirePermission(Permissions.OrganizationView).WithName("updateMyNotificationPreferences").Produces<NotificationPreferencesResponse>();
         tenant.MapGet("/notification-settings", GetSettingsAsync).RequirePermission(Permissions.OrganizationView).WithName("getNotificationSettings").Produces<NotificationSettingsResponse>();
         tenant.MapPut("/notification-settings", UpdateSettingsAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("updateNotificationSettings").Produces<NotificationSettingsResponse>();
+        tenant.MapGet("/me/push-subscriptions", ListDevicesAsync).RequirePermission(Permissions.OrganizationView).WithName("listMyPushSubscriptions").Produces<PushSubscriptionListResponse>();
+        tenant.MapPost("/me/push-subscriptions", CreateDeviceAsync).RequirePermission(Permissions.OrganizationView).WithName("createMyPushSubscription").Produces<PushSubscriptionResponse>(StatusCodes.Status201Created);
+        tenant.MapDelete("/me/push-subscriptions/{subscriptionId:guid}", DeleteDeviceAsync).RequirePermission(Permissions.OrganizationView).WithName("deleteMyPushSubscription").Produces(StatusCodes.Status204NoContent);
+        endpoints.MapAccountGroup().MapGet("/push/vapid-public-key", VapidPublicKeyAsync).WithName("getVapidPublicKey").Produces<VapidPublicKeyResponse>();
 
         return endpoints;
     }
@@ -83,6 +88,34 @@ public static class NotificationEndpoints
         var updated = await preferences.UpdateSettingsAsync(TenantRouteFilter.Current(httpContext), quiet, timing, OrganizationEndpoints.ParseVersion(ifMatch), httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
     }
+
+    private static async Task<IResult> ListDevicesAsync(HttpContext httpContext, IPushSubscriptionService devices) =>
+        Results.Ok(new PushSubscriptionListResponse([.. (await devices.ListMineAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted)).Select(ToResponse)]));
+
+    private static async Task<IResult> CreateDeviceAsync(HttpContext httpContext, CreatePushSubscriptionRequest request, IPushSubscriptionService devices)
+    {
+        var (subscription, created) = await devices.CreateMineAsync(
+            TenantRouteFilter.Current(httpContext),
+            request.Endpoint ?? throw Required("endpoint"),
+            request.Keys?.P256dh ?? throw Required("keys"),
+            request.Keys.Auth ?? throw Required("keys"),
+            request.DeviceLabel ?? throw Required("deviceLabel"),
+            httpContext.RequestAborted);
+        return created ? Results.Created((string?)null, ToResponse(subscription)) : Results.Ok(ToResponse(subscription));
+    }
+
+    private static async Task<IResult> DeleteDeviceAsync(HttpContext httpContext, Guid subscriptionId, IPushSubscriptionService devices)
+    {
+        await devices.DeleteMineAsync(TenantRouteFilter.Current(httpContext), subscriptionId, httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> VapidPublicKeyAsync(HttpContext httpContext, VapidKeySource keys) =>
+        await keys.GetAsync(httpContext.RequestAborted) is { } pair
+            ? Results.Ok(new VapidPublicKeyResponse(pair.PublicKey))
+            : throw new DomainRuleViolationException(ViolationKind.NotFound, "push.unavailable", "Push is not set up in this environment yet.");
+
+    private static PushSubscriptionResponse ToResponse(PushSubscriptionView s) => new(s.Id, s.DeviceLabel, s.CreatedAt, s.LastSuccessAt);
 
     private static NotificationPreferencesResponse ToResponse(NotificationPreferencesView p) =>
         new(

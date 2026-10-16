@@ -112,6 +112,26 @@ delivery status next to the item.
   tapping the notification opens the right screen and marks the item read.
 - iOS Safari needs the app installed to the home screen (PWA) before push works; the settings page says so.
 
+**Built (P4, day board #176), server side.** Where it differs from the proposal above:
+
+- The public key is served by `GET /push/vapid-public-key` (404 `push.unavailable` until a person runs
+  `tools/scripts/vapid-keys.mjs`), not baked into the app's build, so a rotation needs no app release.
+- **Payload: ids only.** It carries the kind, the studio id, the inbox item id, the ids in `data`, and the class name
+  and start for a class notice. There is no title, body or message text. The service worker (client-web) renders the
+  text per kind from these, so nothing a person wrote passes through Google, Mozilla, Microsoft or Apple.
+- **Endpoints:** only the four browser push services are accepted (`*.fcm.googleapis.com`,
+  `*.push.services.mozilla.com`, `*.notify.windows.com`, `*.push.apple.com`; https on the default port). They are
+  checked at subscribe time and again before every send, so the worker never calls an address a client made up. At
+  most 10 devices per person per studio; the oldest goes.
+- **Sending:** encryption is RFC 8291 `aes128gcm` and the VAPID token is RFC 8292 ES256 with a 12-hour expiry, both
+  in .NET with no package. TTL is one day. Urgency is high for the member's own bookings and normal otherwise.
+- **Answers from the push service:**
+  - 404 or 410 deletes the subscription.
+  - 429 or 5xx is retried after 1 min, 10 min and 1 h, then marked dead.
+  - Any other 4xx is dead at once, with `http_<status>`.
+- **Keys:** `/tempo/<env>/push/vapid-public-key` (String) and `/tempo/<env>/push/vapid-private-key` (SecureString
+  under the default `aws/ssm` key). Only the worker can read the private key.
+
 ### 4.4 SMS, WhatsApp
 
 Not in part one. The channel enum carries them so preferences and templates can be filled in later without a
@@ -237,9 +257,14 @@ address.
    `NotificationRequests` (request, inbox item and a delivered inbox line in one transaction); the
    `notifications.deliver` job writes one push line per request (`preference_off`, `no_subscription`,
    `channel_unavailable`, or queued until quiet hours end, D-4); preferences and studio settings are live; erase
-   and merge delete a person's notification rows. Nothing sends the `notifications.deliver` message yet: P4
-   (after a commit) and the hourly schedule of P5 will.
-4. Web push: VAPID keys, subscriptions, the adapter, the client-web settings page and service worker.
+   and merge delete a person's notification rows.
+4. Web push: VAPID keys, subscriptions, the adapter, the client-web settings page and service worker. **Built
+   (P4), server side**, as described in section 4.3:
+   - After a notification commits, the API puts one `notifications.deliver` message on the work queue. The hourly
+     schedule of P5 picks up anything missed.
+   - The worker claims due push lines with `FOR UPDATE SKIP LOCKED` (a line stuck in `sending` for 10 minutes is
+     taken again), sends to every device, and audits `notification.sent` or `notification.failed`.
+   - The service worker and the subscribe button are client-web's part (S3).
 5. Email: domain and SES (after D-1 and D-2), the HTML/RTL skeleton, bounces and complaints, the preferences link.
    **Waiting on D-1** (and D-2, D-7): not built on board #176.
 6. Reminders: daily and hourly jobs, timing preferences.

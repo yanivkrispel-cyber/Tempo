@@ -10,6 +10,7 @@ import { TempoFunction } from "../constructs/lambda-defaults";
 import { SecureQueue } from "../constructs/secure-queue";
 import { applyStandardTags } from "../constructs/tagging";
 import { databaseParameterName } from "../data/database-stack";
+import { pushParameterName, vapidSubject } from "./push-parameters";
 
 export interface MessagingStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -54,7 +55,13 @@ export class MessagingStack extends Stack {
       memoryMb: config.lambda.workerMemoryMb,
       timeoutSeconds: config.lambda.workerTimeoutSeconds,
       reservedConcurrentExecutions: config.lambda.workerReservedConcurrency,
-      environment: this.tripwireEnvironment(config)
+      environment: {
+        ...this.tripwireEnvironment(config),
+        // Web push (docs/30 section 8): the worker signs and sends, so it reads both VAPID keys.
+        VAPID_PUBLIC_KEY_PARAMETER: pushParameterName(config, "publicKey"),
+        VAPID_PRIVATE_KEY_PARAMETER: pushParameterName(config, "privateKey"),
+        VAPID_SUBJECT: vapidSubject(config)
+      }
     });
 
     this.workerFunction.function.addEventSource(
@@ -62,6 +69,13 @@ export class MessagingStack extends Stack {
     );
 
     this.addTripwireSchedule(config);
+
+    StringParameter.fromStringParameterName(this, "VapidPublicKeyParameter", pushParameterName(config, "publicKey")).grantRead(
+      this.workerFunction.function
+    );
+    StringParameter.fromSecureStringParameterAttributes(this, "VapidPrivateKeyParameter", {
+      parameterName: pushParameterName(config, "privateKey")
+    }).grantRead(this.workerFunction.function);
 
     applyStandardTags(this, config, "messaging");
   }

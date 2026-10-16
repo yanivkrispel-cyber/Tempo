@@ -1518,7 +1518,7 @@ export interface paths {
         put?: never;
         /**
          * Register this browser's push subscription for this studio (self)
-         * @description The body is the browser's `PushSubscription.toJSON()` plus a device label. Registering an endpoint that is already registered for the caller in this studio returns the existing subscription with 200 (idempotent). An endpoint that is not `https://` answers 400 `push.endpoint_invalid`; keys that do not decode answer 400 `push.keys_invalid`. A subscription the push service later reports gone (404 or 410) is deleted by the server.
+         * @description The body is the browser's `PushSubscription.toJSON()` plus a device label. Registering an endpoint that is already registered for the caller in this studio returns the existing subscription with 200 (idempotent). The endpoint must be a browser push service over `https://` (FCM, Mozilla autopush, WNS, Apple); anything else answers 400 `push.endpoint_invalid`. Keys that do not decode to a P-256 point and a 16-byte secret answer 400 `push.keys_invalid`. A member keeps at most 10 devices per studio; registering an eleventh drops the oldest. A subscription the push service later reports gone (404 or 410) is deleted by the server.
          */
         post: operations["createMyPushSubscription"];
         delete?: never;
@@ -1556,7 +1556,7 @@ export interface paths {
         };
         /**
          * The environment's VAPID public key, for PushManager.subscribe (any signed-in account)
-         * @description The same key for every studio in the environment (docs/30 section 4.3). It changes only when the key pair is rotated, after which every browser subscribes again.
+         * @description The same key for every studio in the environment (docs/30 section 4.3). It changes only when the key pair is rotated, after which every browser subscribes again. Before the key pair is set up in an environment the route answers 404 `push.unavailable`; the app then hides the push switch.
          */
         get: operations["getVapidPublicKey"];
         put?: never;
@@ -5908,6 +5908,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getNotificationSettings: {

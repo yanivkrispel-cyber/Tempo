@@ -19,6 +19,7 @@ import { resolveDotNetLambdaCode } from "../constructs/dotnet-lambda-code";
 import { createLogGroup } from "../constructs/log-group-defaults";
 import { TempoFunction } from "../constructs/lambda-defaults";
 import { applyStandardTags } from "../constructs/tagging";
+import { pushParameterName } from "../async/push-parameters";
 import { databaseParameterName } from "../data/database-stack";
 
 export interface ApiStackProps extends StackProps {
@@ -98,6 +99,12 @@ export class ApiStack extends Stack {
         // so each app's origin is configured once.
         ADMIN_APP_URL: new URL(config.cognitoCallbackUrls.adminWeb[0]).origin,
         CLIENT_APP_URL: new URL(config.cognitoCallbackUrls.clientWeb[0]).origin,
+        // Web push (docs/30 section 8): after a notification commits, the API
+        // puts `notifications.deliver` on the work queue. The queue's address
+        // comes from its fixed name, so this stack imports nothing from
+        // Messaging. The API reads only the public VAPID key.
+        WORK_QUEUE_URL: `https://sqs.${config.region}.amazonaws.com/${config.accountId}/${resourceName(config, "work")}`,
+        VAPID_PUBLIC_KEY_PARAMETER: pushParameterName(config, "publicKey"),
         ...database.environment
       }
     });
@@ -105,6 +112,16 @@ export class ApiStack extends Stack {
     for (const parameter of database.passwords) {
       parameter.grantRead(this.apiFunction.function);
     }
+
+    StringParameter.fromStringParameterName(this, "VapidPublicKeyParameter", pushParameterName(config, "publicKey")).grantRead(
+      this.apiFunction.function
+    );
+    this.apiFunction.function.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["sqs:SendMessage"],
+        resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work")}`]
+      })
+    );
 
     // Account provisioning reads the caller's email from Cognito, because
     // access tokens carry no email claim (Phase 1 LLD section 2.3). Only the

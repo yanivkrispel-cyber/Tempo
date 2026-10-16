@@ -12,6 +12,7 @@ using Tempo.Worker.Consumers.SmokeTest;
 using Tempo.Platform.Modules.Retention.Application;
 using Tempo.Platform.Modules.Scheduling.Application;
 using Tempo.Platform.Modules.Notifications.Application;
+using Tempo.Platform.Modules.Notifications.Infrastructure;
 using Tempo.Worker.Consumers.Notifications;
 using Tempo.Worker.Consumers.Retention;
 using Tempo.Worker.Consumers.Scheduling;
@@ -41,6 +42,12 @@ public class Function
     // come from the stack; ALARM_TOPIC_ARN only where alarms email the owner.
     private static readonly ConfiguredDataSourceProvider DataSources = new(Environment.GetEnvironmentVariable);
 
+    // VAPID_PUBLIC_KEY_PARAMETER, VAPID_PRIVATE_KEY_PARAMETER and VAPID_SUBJECT come from the stack; until a person
+    // writes the keys, push deliveries are skipped as channel_unavailable (docs/30 section 4.3).
+    private static readonly VapidKeySource VapidKeys = new(Environment.GetEnvironmentVariable, needsPrivateKey: true);
+
+    private static readonly HttpClient PushHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
+
     private readonly SqsMessageDispatcher _dispatcher = new(
         Logger,
         new Dictionary<string, IQueueMessageHandler>(StringComparer.Ordinal)
@@ -53,9 +60,12 @@ public class Function
                 Environment.GetEnvironmentVariable("ALARM_TOPIC_ARN") is { Length: > 0 } topic ? new SnsOwnerAlert(topic) : null),
             [MessageTypes.SchedulingDaily] = new SchedulingDailyMessageHandler(Logger, new SchedulingDailyJob(DataSources, TimeProvider.System)),
             [MessageTypes.RetentionDaily] = new RetentionMessageHandler(Logger, new RetentionJob(DataSources, TimeProvider.System, RetentionPolicy.Default)),
-            [MessageTypes.NotificationsDeliver] = new NotificationDeliveryMessageHandler(Logger, new NotificationDeliveryJob(DataSources, TimeProvider.System))
+            [MessageTypes.NotificationsDeliver] = new NotificationDeliveryMessageHandler(Logger, new NotificationDeliveryJob(DataSources, TimeProvider.System, PushSenderAsync))
         });
 
     public Task<SQSBatchResponse> FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)
         => _dispatcher.HandleAsync(sqsEvent, context);
+
+    private static async Task<IPushSender?> PushSenderAsync(CancellationToken cancellationToken) =>
+        await VapidKeys.GetAsync(cancellationToken) is { } keys ? new WebPushSender(PushHttp, keys, TimeProvider.System) : null;
 }

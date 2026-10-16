@@ -62,6 +62,21 @@ public static class NotificationRequests
             await delivery.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        if (NotificationSignal.Send is { } send)
+        {
+            unitOfWork.AfterCommit(nameof(NotificationSignal), send);
+        }
+
         return itemId;
     }
+}
+
+/// <summary>
+/// How the API tells the worker that requests are waiting: set once at start-up to put one `notifications.deliver`
+/// message on the work queue after each committed transaction that wrote requests. Unset (tests, local runs, the
+/// worker itself) the requests wait for the next scheduled run. The sender logs and swallows its own failures.
+/// </summary>
+public static class NotificationSignal
+{
+    public static Func<CancellationToken, Task>? Send { get; set; }
 }
