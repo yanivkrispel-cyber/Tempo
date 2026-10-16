@@ -46,7 +46,7 @@ public static class Problems
     {
         httpContext.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
         httpContext.Response.ContentType = "application/problem+json";
-        await httpContext.Response.WriteAsJsonAsync(problem, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json");
+        await httpContext.Response.WriteAsJsonAsync(problem, (System.Text.Json.JsonSerializerOptions?)null, "application/problem+json", httpContext.RequestAborted);
     }
 
     private static ProblemDetails Create(HttpContext httpContext, DomainRuleViolationException violation)

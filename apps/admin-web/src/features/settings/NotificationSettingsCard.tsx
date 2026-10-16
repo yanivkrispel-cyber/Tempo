@@ -3,7 +3,18 @@ import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Card, Field, Select, Skeleton, TimeInput, Toggle, useToast } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Card,
+  Field,
+  isTimeWindowValid,
+  Select,
+  Skeleton,
+  TimeRange,
+  Toggle,
+  useToast,
+} from "../../shared/design-system";
 import { useStudio } from "../console/studio";
 
 type NotificationSettings = Schemas["NotificationSettings"];
@@ -70,7 +81,7 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
     },
   });
 
-  const quietValid = quietHours.startsLocal !== quietHours.endsLocal;
+  const quietValid = isTimeWindowValid(quietHours);
   const changed =
     JSON.stringify({ quietHours, reminders }) !==
     JSON.stringify({ quietHours: settings.quietHours, reminders: settings.reminders });
@@ -113,28 +124,7 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
             בשעות האלה תזכורות והודעות מהסטודיו מחכות לסוף החלון. הודעה על שיעור שמתחיל בתוך החלון יוצאת מיד. כל מתאמן
             יכול לקבוע שעות משלו. השעות לפי אזור הזמן של הסטודיו (<bdi className="tp-ltr">{settings.timeZone}</bdi>).
           </p>
-          <div className="tp-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 12rem))", gap: 16 }}>
-            <Field label="מ־">
-              <TimeInput
-                value={quietHours.startsLocal}
-                from="00:00"
-                to="23:30"
-                step={30}
-                disabled={!editable}
-                onChange={(value) => value && setQuietHours({ ...quietHours, startsLocal: value })}
-              />
-            </Field>
-            <Field label="עד" error={quietValid ? undefined : "שעת הסיום צריכה להיות שונה משעת ההתחלה."}>
-              <TimeInput
-                value={quietHours.endsLocal}
-                from="00:00"
-                to="23:30"
-                step={30}
-                disabled={!editable}
-                onChange={(value) => value && setQuietHours({ ...quietHours, endsLocal: value })}
-              />
-            </Field>
-          </div>
+          <TimeRange label="שעות שקטות" value={quietHours} disabled={!editable} onChange={setQuietHours} />
         </fieldset>
 
         <fieldset className="tp-stack" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -143,73 +133,81 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
             תזכורת שכבויה כאן לא נשלחת לאף אחד. תזכורת פעילה נשלחת לכל מי שלא כיבה אותה אצלו.
           </p>
 
-          <Toggle
-            label="ערב לפני שיעור"
-            checked={reminders.classTomorrow.enabled}
-            disabled={!editable}
-            onChange={(event) => setReminder("classTomorrow", { enabled: event.target.checked })}
-          />
-          <Field label="שעת השליחה" help="התזכורות יוצאות בשעות עגולות, בין 12:00 ל־21:00.">
-            <Select
-              value={reminders.classTomorrow.sendAtLocal}
-              onChange={(event) => setReminder("classTomorrow", { sendAtLocal: event.target.value })}
-              disabled={!editable || !reminders.classTomorrow.enabled}
-            >
-              {sendTimes(reminders.classTomorrow.sendAtLocal).map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div role="group" aria-label="ערב לפני שיעור" className="tp-stack">
+            <Toggle
+              label="ערב לפני שיעור"
+              checked={reminders.classTomorrow.enabled}
+              disabled={!editable}
+              onChange={(event) => setReminder("classTomorrow", { enabled: event.target.checked })}
+            />
+            <Field label="שעת השליחה" help="התזכורות יוצאות בשעות עגולות, בין 12:00 ל־21:00.">
+              <Select
+                value={reminders.classTomorrow.sendAtLocal}
+                onChange={(event) => setReminder("classTomorrow", { sendAtLocal: event.target.value })}
+                disabled={!editable || !reminders.classTomorrow.enabled}
+              >
+                {sendTimes(reminders.classTomorrow.sendAtLocal).map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
 
-          <Toggle
-            label="זמן קצר לפני שיעור"
-            checked={reminders.classSoon.enabled}
-            disabled={!editable}
-            onChange={(event) => setReminder("classSoon", { enabled: event.target.checked })}
-          />
-          {numberSelect(
-            "כמה זמן לפני",
-            reminders.classSoon.hoursBefore,
-            range(1, 12),
-            (n) => (n === 1 ? "שעה" : n === 2 ? "שעתיים" : `${n} שעות`),
-            (hoursBefore) => setReminder("classSoon", { hoursBefore }),
-            reminders.classSoon.enabled,
-          )}
-          <p className="tp-caption tp-muted">
-            התזכורות יוצאות בין 07:00 ל־21:00, ולכן שיעור שמתחיל לפני 07:00 מקבל רק את התזכורת של הערב שלפני.
-          </p>
+          <div role="group" aria-label="זמן קצר לפני שיעור" className="tp-stack">
+            <Toggle
+              label="זמן קצר לפני שיעור"
+              checked={reminders.classSoon.enabled}
+              disabled={!editable}
+              onChange={(event) => setReminder("classSoon", { enabled: event.target.checked })}
+            />
+            {numberSelect(
+              "כמה זמן לפני",
+              reminders.classSoon.hoursBefore,
+              range(1, 12),
+              (n) => (n === 1 ? "שעה" : n === 2 ? "שעתיים" : `${n} שעות`),
+              (hoursBefore) => setReminder("classSoon", { hoursBefore }),
+              reminders.classSoon.enabled,
+            )}
+            <p className="tp-caption tp-muted">
+              התזכורות יוצאות בין 07:00 ל־21:00, ולכן שיעור שמתחיל לפני 07:00 מקבל רק את התזכורת של הערב שלפני.
+            </p>
+          </div>
 
-          <Toggle
-            label="לפני שהמנוי או הכרטיסייה פגים"
-            checked={reminders.passEnding.enabled}
-            disabled={!editable}
-            onChange={(event) => setReminder("passEnding", { enabled: event.target.checked })}
-          />
-          {numberSelect(
-            "כמה ימים לפני",
-            reminders.passEnding.daysBefore,
-            range(1, 30),
-            (n) => (n === 1 ? "יום" : n === 2 ? "יומיים" : `${n} ימים`),
-            (daysBefore) => setReminder("passEnding", { daysBefore }),
-            reminders.passEnding.enabled,
-          )}
+          <div role="group" aria-label="לפני שהמנוי או הכרטיסייה פגים" className="tp-stack">
+            <Toggle
+              label="לפני שהמנוי או הכרטיסייה פגים"
+              checked={reminders.passEnding.enabled}
+              disabled={!editable}
+              onChange={(event) => setReminder("passEnding", { enabled: event.target.checked })}
+            />
+            {numberSelect(
+              "כמה ימים לפני",
+              reminders.passEnding.daysBefore,
+              range(1, 30),
+              (n) => (n === 1 ? "יום" : n === 2 ? "יומיים" : `${n} ימים`),
+              (daysBefore) => setReminder("passEnding", { daysBefore }),
+              reminders.passEnding.enabled,
+            )}
+          </div>
 
-          <Toggle
-            label="כשנשארות מעט כניסות בכרטיסייה"
-            checked={reminders.entriesLow.enabled}
-            disabled={!editable}
-            onChange={(event) => setReminder("entriesLow", { enabled: event.target.checked })}
-          />
-          {numberSelect(
-            "כשנשארות",
-            reminders.entriesLow.entriesLeft,
-            range(1, 5),
-            (n) => (n === 1 ? "כניסה אחת" : `${n} כניסות`),
-            (entriesLeft) => setReminder("entriesLow", { entriesLeft }),
-            reminders.entriesLow.enabled,
-          )}
+          <div role="group" aria-label="כשנשארות מעט כניסות בכרטיסייה" className="tp-stack">
+            <Toggle
+              label="כשנשארות מעט כניסות בכרטיסייה"
+              checked={reminders.entriesLow.enabled}
+              disabled={!editable}
+              onChange={(event) => setReminder("entriesLow", { enabled: event.target.checked })}
+            />
+            {numberSelect(
+              "כשנשארות",
+              reminders.entriesLow.entriesLeft,
+              range(1, 5),
+              (n) => (n === 1 ? "כניסה אחת" : `${n} כניסות`),
+              (entriesLeft) => setReminder("entriesLow", { entriesLeft }),
+              reminders.entriesLow.enabled,
+            )}
+          </div>
         </fieldset>
 
         {save.isError && (

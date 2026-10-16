@@ -124,7 +124,7 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
             weeklyCap = product.WeeklyCap is null or (>= 1 and <= 14) ? product.WeeklyCap : throw Invalid("weeklyCap", "Use 1 to 14 classes a week, or none.");
         }
 
-        var category = product.ClassCategory is null || System.Text.RegularExpressions.Regex.IsMatch(product.ClassCategory, "^[a-z][a-z0-9_]{1,29}$")
+        var category = product.ClassCategory is null || System.Text.RegularExpressions.Regex.IsMatch(product.ClassCategory, "^[a-z][a-z0-9_]{1,29}$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100))
             ? product.ClassCategory
             : throw Invalid("classCategory", "Use a class category, e.g. pilates.");
         var price = product.PriceAgorot is null or >= 0 ? product.PriceAgorot : throw Invalid("priceAgorot", "A price cannot be negative.");

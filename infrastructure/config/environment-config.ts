@@ -226,7 +226,7 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
       errors.push(`wildcard URLs are prohibited, got "${url}"`);
     }
     // Only a developer's machine talks to the API over plain HTTP; staging and production never do (#124).
-    if (config.environmentName !== "dev" && (!url.startsWith("https://") || /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url))) {
+    if (config.environmentName !== "dev" && !isPublicHttpsUrl(url)) {
       errors.push(`${config.environmentName} allows only https origins and callbacks, never localhost, got "${url}"`);
     }
   }
@@ -270,4 +270,18 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
 export function resourceName(config: TempoEnvironmentConfig, component: string): string {
   return `tempo-${config.environmentName}-${component}`;
+}
+
+/** An https URL whose host is not this machine: no localhost, loopback or unspecified address, in any case (#180). */
+function isPublicHttpsUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  // URL lowercases the scheme and the host.
+  const host = parsed.hostname;
+  const local = host === "localhost" || host.endsWith(".localhost") || host.startsWith("127.") || host === "0.0.0.0" || host === "[::1]" || host === "[::]";
+  return parsed.protocol === "https:" && !local;
 }
