@@ -1,6 +1,8 @@
 # Communications LLD (Phase 4, part one: notifications)
 
-> **Status:** Proposed, design only (night board #136, B7). No code until Kris decides section 14.
+> **Status:** Proposed (night board #136, B7). On 2026-10-16 Kris approved building steps 1 to 4 and 6 of section
+> 13 with D-3, D-4, D-5, D-6, D-8 and D-9 as provisional defaults (day board #176). D-1, D-2 and D-7 wait for Kris,
+> so step 5 (email) is not built.
 > **Audience:** Kris, Ofir, the agents.
 > **Scope rule:** Platform Core stays industry-neutral; a studio's wording lives in its templates, not in code.
 > **Decision policy:** Statements marked **Proposed** become **Decision** when Kris accepts them (or stays silent
@@ -190,8 +192,10 @@ Section 9 of the contract, `x-tempo-planned` until built, as docs/29 did:
 
 | Route | Who |
 |---|---|
-| `GET/PUT /organizations/{id}/me/notification-preferences` | the member (preferences, quiet hours) |
-| `POST/DELETE /organizations/{id}/me/push-subscriptions` | the member (client-web) |
+| `GET/PUT /organizations/{id}/me/notification-preferences` | the member: channels per group, reminder switches, quiet hours (`getMyNotificationPreferences`, `updateMyNotificationPreferences`) |
+| `GET/POST /organizations/{id}/me/push-subscriptions`, `DELETE .../{subscriptionId}` | the member (client-web; `listMyPushSubscriptions`, `createMyPushSubscription`, `deleteMyPushSubscription`) |
+| `GET /push/vapid-public-key` | any signed-in account (`getVapidPublicKey`) |
+| `GET/PUT /organizations/{id}/notification-settings` | `organization.view` / `organization.settings.manage`: the studio's quiet hours and reminder timing (`getNotificationSettings`, `updateNotificationSettings`) |
 | `GET/PUT /organizations/{id}/notification-templates/{kind}` | `settings.manage` (console; preview included) |
 | `GET /organizations/{id}/people/{personId}/deliveries` | `people.view` (console) |
 | `POST /organizations/{id}/announcements` | `bookings.manage` (studio announcement) |
@@ -223,18 +227,25 @@ address.
 
 ## 13. Delivery plan
 
-1. This LLD and the contract rows (`x-tempo-planned`), SYNC on #136 or its successor.
-2. Migration 0012: templates, preferences, quiet hours, subscriptions, requests, deliveries; platform grants.
+1. This LLD and the contract rows (`x-tempo-planned`), SYNC 3a on board #176.
+2. Migration 0014 (0011 to 0013 went to docs/29 section 16 and #124): templates, preferences, quiet hours,
+   subscriptions, requests, deliveries; RLS, platform grants; deliveries join the retention job (B4) at 90 days
+   (D-6).
 3. Requests and the `notifications.deliver` handler with the inbox-only router (nothing new leaves the app yet);
    the dedupe key; tests through the real host.
 4. Web push: VAPID keys, subscriptions, the adapter, the client-web settings page and service worker.
 5. Email: domain and SES (after D-1 and D-2), the HTML/RTL skeleton, bounces and complaints, the preferences link.
+   **Waiting on D-1** (and D-2, D-7): not built on board #176.
 6. Reminders: daily and hourly jobs, timing preferences.
 7. Templates per studio with preview in the console; the announcement and message-to-booked dialogs.
 
-Steps 1 to 4 and 6 cost nothing and need no domain. Step 5 is the first one that waits on Kris.
+Steps 1 to 4 and 6 cost nothing and need no domain (ADR-0021: VAPID keys in SSM standard parameters, the hourly
+reminder schedule inside the Scheduler free tier, no paid push service). Step 5 is the first one that waits on Kris.
 
 ## 14. Decisions for Kris
+
+On 2026-10-16 (board #176) Kris approved D-3, D-4, D-5, D-6, D-8 and D-9 as **provisional**: they are built as
+written and stay open to a change from Kris. D-1, D-2 and D-7 are **open**.
 
 | Id | Question | Default if nobody objects |
 |---|---|---|
