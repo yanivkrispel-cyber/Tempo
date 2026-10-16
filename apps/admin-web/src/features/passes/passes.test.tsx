@@ -356,6 +356,33 @@ describe("passes on the person card", () => {
       expect(lastIndex(api, "DELETE", `/freezes/${id(41)}`)).toBeGreaterThan(-1);
     });
 
+    it("explains with the count when bookings fall in the days the freeze added", async () => {
+      renderAt(`/o/neshima/people/${personId}`, {
+        ...freezeRoutes([membership({ freezes: [{ id: id(41), startsOn: "2026-11-20", endsOn: "2026-11-30" }] })]),
+        [`DELETE ${base}/passes/${id(30)}/freezes/${id(41)}`]: () =>
+          new Response(
+            JSON.stringify({
+              type: "about:blank",
+              title: "x",
+              status: 409,
+              code: "pass.freeze_has_bookings",
+              bookings: 2,
+            }),
+            {
+              status: 409,
+              headers: { "Content-Type": "application/problem+json" },
+            },
+          ),
+      });
+      const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+      await userEvent.click(await within(section).findByRole("button", { name: "הסרת ההקפאה 20.11 עד 30.11" }));
+      const dialog = screen.getByRole("dialog", { name: "להסיר את ההקפאה?" });
+      await userEvent.click(within(dialog).getByRole("button", { name: "הסרת ההקפאה" }));
+      expect(
+        await within(dialog).findByText("יש 2 הזמנות בימים שההקפאה הוסיפה. העבירו או בטלו אותן קודם."),
+      ).toBeInTheDocument();
+    });
+
     it("hides freezing from staff without passes.manage", async () => {
       renderAt(`/o/neshima/people/${personId}`, freezeRoutes([membership()]), "staff");
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });

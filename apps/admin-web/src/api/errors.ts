@@ -74,6 +74,7 @@ const messages: Record<string, string> = {
   "pass.freeze_outside": "ההקפאה צריכה להתחיל לפני שהמנוי נגמר.",
   "pass.freeze_started": "ההקפאה כבר התחילה, ואי אפשר להסיר אותה.",
   "pass.freeze_not_found": "ההקפאה לא נמצאה. ייתכן שהוסרה כבר.",
+  "pass.freeze_has_bookings": "יש הזמנות בימים שההקפאה הוסיפה. העבירו או בטלו אותן קודם.",
   "startsOn.invalid": "ההקפאה מתחילה היום או אחר כך.",
   "endsOn.invalid": "ההקפאה נמשכת בין יום אחד ל־90 ימים.",
 };
@@ -89,6 +90,12 @@ export function errorMessage(error: unknown, fallback = "משהו השתבש. נ
   if (error.status === 429) {
     const minutes = Math.max(1, Math.ceil((error.retryAfterSeconds ?? 60) / 60));
     return minutes === 1 ? "יותר מדי ניסיונות. נסו שוב בעוד דקה." : `יותר מדי ניסיונות. נסו שוב בעוד ${minutes} דקות.`;
+  }
+  if (error.code === "pass.freeze_has_bookings") {
+    const count = (error.problem as { bookings?: unknown } | null)?.bookings;
+    if (count === 1) return "יש הזמנה אחת בימים שההקפאה הוסיפה. העבירו או בטלו אותה קודם.";
+    if (typeof count === "number" && count > 1)
+      return `יש ${count} הזמנות בימים שההקפאה הוסיפה. העבירו או בטלו אותן קודם.`;
   }
   return messages[error.code] ?? fallback;
 }
