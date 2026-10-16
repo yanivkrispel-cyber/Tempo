@@ -48,6 +48,31 @@ const kinds: Record<string, { title: string; body: string; icon: IconName; tone:
     icon: "clock",
     tone: "neutral",
   },
+  // Reminders (docs/30 section 7, D-5). The class's name and time come from the session, as for the other kinds.
+  "reminder.class_tomorrow": {
+    title: "תזכורת: יש לך שיעור מחר",
+    body: "אם התוכניות השתנו, אפשר לבטל בעמוד השיעור ולפנות את המקום.",
+    icon: "calendar",
+    tone: "info",
+  },
+  "reminder.class_soon": {
+    title: "תזכורת: השיעור מתחיל בקרוב",
+    body: "כל הפרטים בעמוד השיעור.",
+    icon: "clock",
+    tone: "info",
+  },
+  "reminder.pass_ending": {
+    title: "המנוי או הכרטיסייה עומדים לפוג",
+    body: "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לחידוש.",
+    icon: "credit-card",
+    tone: "warning",
+  },
+  "reminder.entries_low": {
+    title: "נשארו מעט כניסות בכרטיסייה",
+    body: "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לכרטיסייה חדשה.",
+    icon: "credit-card",
+    tone: "warning",
+  },
 };
 
 export function knownNotices(items: readonly InboxItem[]): InboxItem[] {
