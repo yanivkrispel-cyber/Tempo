@@ -61,6 +61,13 @@ const kinds: Record<string, { title: string; body: string; icon: IconName; tone:
     icon: "clock",
     tone: "info",
   },
+  // A5 (docs/29 section 16.4): the item carries the passId only; the push points here for the details.
+  "pass.frozen": {
+    title: "הסטודיו הקפיא את המנוי שלך",
+    body: "בימי ההקפאה אי אפשר להירשם לשיעורים, והתוקף של המנוי הוארך באותו מספר ימים.",
+    icon: "credit-card",
+    tone: "info",
+  },
   "reminder.pass_ending": {
     title: "המנוי או הכרטיסייה עומדים לפוג",
     body: "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לחידוש.",
