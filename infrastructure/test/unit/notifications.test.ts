@@ -25,7 +25,7 @@ function statements(template: Template) {
 
 const asText = (value: unknown) => JSON.stringify(value);
 
-describe("web push (docs/30 section 8)", () => {
+describe("web push and reminders (docs/30 section 8)", () => {
   const api = stackTemplate("Api");
   const messaging = stackTemplate("Messaging");
 
@@ -50,6 +50,16 @@ describe("web push (docs/30 section 8)", () => {
     const reads = asText(statements(messaging).filter((s) => asText(s.Action).includes("ssm:GetParameter")));
     expect(reads).toContain("push/vapid-public-key");
     expect(reads).toContain("push/vapid-private-key");
+  });
+
+  it("sends reminders hourly in the daytime only, without retries", () => {
+    const schedules = Object.values(messaging.findResources("AWS::Scheduler::Schedule")).filter((schedule) =>
+      asText(schedule.Properties.Target.Input).includes("notifications.reminders_hourly")
+    );
+    expect(schedules).toHaveLength(1);
+    expect(schedules[0].Properties.ScheduleExpression).toBe("cron(0 7-21 * * ? *)");
+    expect(schedules[0].Properties.ScheduleExpressionTimezone).toBe("Asia/Jerusalem");
+    expect(schedules[0].Properties.Target.RetryPolicy.MaximumRetryAttempts).toBe(0);
   });
 
   it("creates no key, parameter or paid resource for push", () => {

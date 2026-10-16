@@ -2770,6 +2770,10 @@ export interface components {
              * @example session.cancelled
              * @example waitlist.expired
              * @example pass.frozen
+             * @example reminder.class_tomorrow
+             * @example reminder.class_soon
+             * @example reminder.pass_ending
+             * @example reminder.entries_low
              */
             kind: string;
             /** @description Ids only. */

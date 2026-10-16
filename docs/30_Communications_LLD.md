@@ -200,9 +200,7 @@ Staff kinds (`roster.changed`, `booking.late_cancel`, `tripwire` and friends) ar
   (ADR-0008); the worker's `notifications.deliver` handler takes the request, applies section 7, writes one delivery
   per channel and sends. Retries: 1 min, 10 min, 1 h, then dead; a dead delivery shows on the dashboard (B3 widget
   "work queue, dead letters" already exists; a `notifications.dead` count joins it).
-- Reminders: the daily job (03:15, exists) creates `reminder.class_tomorrow` and `reminder.pass_ending` requests for
-  the next day; an hourly schedule creates `reminder.class_soon` for sessions starting in the next 2 to 3 hours.
-  Both idempotent through the dedupe key.
+- Reminders: one daytime hourly job writes every reminder kind; built as described in section 13, step 6.
 - The console (admin-web) shows per person the last 30 deliveries with status and reason; the member app shows
   nothing but the inbox.
 
@@ -267,7 +265,21 @@ address.
    - The service worker and the subscribe button are client-web's part (S3).
 5. Email: domain and SES (after D-1 and D-2), the HTML/RTL skeleton, bounces and complaints, the preferences link.
    **Waiting on D-1** (and D-2, D-7): not built on board #176.
-6. Reminders: daily and hourly jobs, timing preferences.
+6. Reminders: daily and hourly jobs, timing preferences. **Built (P5)** as one job instead, with no daily part. It
+   runs on `cron(0 7-21 * * ? *)` Asia/Jerusalem, 15 ticks a day, and delivers in the same wake:
+   - **Class tomorrow:** from the studio's send time (default 18:00; a time after 21:00 sends at 21:00) for every
+     booked place.
+   - **Class soon:** at the tick that falls within the studio's hours before the start (default 2), so between one
+     and two hours before. Not for a place booked inside that window. A class before 09:00 gets no class-soon
+     reminder; the evening-before one covers it.
+   - **Pass ending:** from the studio's days before the last day (default 7). Not when a later pass follows, nor for
+     a pass that was never longer than that.
+   - **Entries low:** once at each count at or below the studio's number (default 1), and not for a card that
+     started that low.
+   - Only active members of active studios, and never a reminder the studio or the member switched off.
+   - The dedupe key (session date, last day, entries left) makes a repeated or late tick harmless.
+   - Each tick wakes Neon for its five-minute minimum, about 37 compute hours a month if nothing else keeps it
+     awake. Night ticks were dropped to stay inside the free plan.
 7. Templates per studio with preview in the console; the announcement and message-to-booked dialogs.
 
 Steps 1 to 4 and 6 cost nothing and need no domain (ADR-0021: VAPID keys in SSM standard parameters, the hourly
