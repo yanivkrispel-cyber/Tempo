@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, Chip, EmptyState, Icon, IconButton, type ChipTone, type IconName } from "../../shared/design-system";
 import { relativeDay } from "./format";
@@ -144,6 +145,16 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
   const session = useSession(studio.id, sessionId ?? "", sessionId !== undefined);
   const kind = kinds[item.kind]!;
   const unread = !item.readAt;
+  // "New" stays for this visit, even after the item is marked read below.
+  const [arrivedUnread] = useState(unread);
+  const { mutate: markItemRead } = markRead;
+  const seen = useRef(false);
+  useEffect(() => {
+    // An item with nowhere to open is read once it is shown; one with a class is read when opened.
+    if (sessionId || !unread || seen.current) return;
+    seen.current = true;
+    markItemRead(item.id);
+  }, [sessionId, unread, item.id, markItemRead]);
   const when = session.data
     ? metaLine([
         session.data.classType.name,
@@ -175,7 +186,7 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
         )}
         <span className="tp-caption">{momentText(item.createdAt, timeZone, today)}</span>
       </span>
-      {unread && <Chip tone="brand">חדש</Chip>}
+      {(sessionId ? unread : arrivedUnread) && <Chip tone="brand">חדש</Chip>}
     </>
   );
 

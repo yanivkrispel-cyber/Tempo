@@ -589,6 +589,26 @@ describe("promotion and the inbox", () => {
     await waitFor(() => expect(within(list).getAllByRole("listitem")[1]).toHaveTextContent("נרשמת מההמתנה"));
   });
 
+  it("marks a notification with nothing to open read once it is shown, keeping it new for this visit", async () => {
+    const { api, studio } = renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a08",
+          kind: "reminder.entries_low",
+          data: { passId: "0199e5a1-0000-7000-8000-0000000000f1" },
+          createdAt: "2026-10-13T08:30:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    await waitFor(() => expect(studio.inbox[0]!.readAt).not.toBeNull());
+    const posts = api.requests.filter((request) => request.method === "POST" && request.url.endsWith("/read"));
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.url).toContain("/notifications/0199e5a1-0000-7000-8000-000000000a08/read");
+    expect(within(list).getByText("חדש")).toBeInTheDocument();
+  });
+
   it("says when there are no notifications", async () => {
     renderAt("/inbox");
     expect(await screen.findByText("אין התראות")).toBeInTheDocument();
