@@ -2776,7 +2776,7 @@ export interface components {
              * @example reminder.entries_low
              */
             kind: string;
-            /** @description Ids only. */
+            /** @description Ids only, and only the ones the kind carries; a key that does not apply is left out. Class kinds carry `sessionId` (and `bookingId` for a place); `pass.frozen`, `reminder.pass_ending` and `reminder.entries_low` carry `passId`. */
             data: {
                 /** Format: uuid */
                 sessionId?: string;
