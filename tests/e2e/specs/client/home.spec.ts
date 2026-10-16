@@ -15,12 +15,6 @@ test("client-web home: greets the signed-in member by first name", async ({ page
 
   await expect(page.getByRole("heading", { level: 1, name: `היי ${firstName}` })).toBeVisible();
   await expect(page.getByRole("link", { name: /^התראות/ })).toBeVisible();
-  // The smoke user's inbox keeps an unread notice from the SYNC 2 flow, and its chip fails color-contrast (#164).
-  await expectNoSeriousA11yViolations(
-    page,
-    testInfo,
-    "client-web home",
-    undefined,
-    "a chip fails color-contrast (#164)",
-  );
+  // The smoke user's inbox keeps an unread notice from the SYNC 2 flow, so the bell carries its count chip.
+  await expectNoSeriousA11yViolations(page, testInfo, "client-web home");
 });
