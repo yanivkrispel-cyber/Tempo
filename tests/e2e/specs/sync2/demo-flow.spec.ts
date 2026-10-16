@@ -331,8 +331,8 @@ test("console: the audit log has the whole flow", async ({ consolePage: page }, 
   const table = page.getByRole("table", { name: "יומן פעולות" });
   await expect(table).toBeVisible();
   expect(await table.getByRole("row").count()).toBeGreaterThan(8);
-  // The page names an action in Hebrew when it knows it, and as sent when it does not (features/audit/actions.ts).
-  await expect(table.getByRole("cell", { name: /booking\.promoted|הרשמה אוטומטית|קידום/ }).first()).toBeVisible();
+  // The page names each known action in Hebrew (features/audit/actions.ts, #166).
+  await expect(table.getByRole("cell", { name: "קבלת מקום מרשימת ההמתנה" }).first()).toBeVisible();
   await expectNoSeriousA11yViolations(page, testInfo, "console audit log");
 });
 
