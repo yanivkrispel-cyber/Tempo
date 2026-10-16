@@ -252,6 +252,8 @@ export function useMarkRead(organizationId: string) {
           params: { path: { organizationId, itemId } },
         }),
       ),
+    // Marking read is idempotent, so a throttled or cold API (503) gets a second try.
+    retry: retryOnce,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: studioKeys.inbox(organizationId) }),
   });
 }
