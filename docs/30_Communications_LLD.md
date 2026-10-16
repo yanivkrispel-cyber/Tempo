@@ -282,7 +282,45 @@ address.
    - The dedupe key (session date, last day, or `low` for entries) makes a repeated or late tick harmless.
    - Each tick wakes Neon for its five-minute minimum, about 37 compute hours a month if nothing else keeps it
      awake. Night ticks were dropped to stay inside the free plan.
-7. Templates per studio with preview in the console; the announcement and message-to-booked dialogs.
+7. Templates per studio with preview in the console; the announcement and message-to-booked dialogs. **Planned
+   in detail (DAY-PLAN-4, board #208); no email (D-1), so the channels are inbox and push.**
+   - **Templated kinds:** `booking.promoted`, `booking.promotion_failed`, `booking.moved`, `session.cancelled`,
+     `waitlist.expired`, `pass.frozen`, and the four reminders. `session.message` and `studio.announcement` carry
+     the staff's own text and have no template.
+   - **Defaults:** one platform row per (kind, `he`, channel) for inbox and push, seeded by a migration
+     (`organization_id` NULL, version 1, `active`). They read like the apps' current text, so nothing changes for a
+     studio that never edits.
+   - **Studio words:** `PUT .../notification-templates/{kind}` writes a new version per channel saved, marks the
+     earlier one `retired` and audits `template.changed` (kind, locale, channel, version; no text). `null` for a
+     channel retires the studio's version and the default applies again. Lookup: the studio's `active` row, else
+     the platform default.
+   - **Variables per kind** (closed, section 6): every kind gets `person.firstName`, `studio.name` and
+     `link.preferences`. Class kinds add `session.classTypeName`, `session.startsLocal`, `session.room` and
+     `link.session`. Pass kinds add `pass.entriesLeft`, and `pass.frozen` adds `pass.frozenUntil`. An unknown
+     variable answers 400 `template.unknown_variable` with the field and the variable. The API answers every
+     validation failure with 400 and a typed code (no 422).
+   - **Rendering:** values are inserted as text. The inbox body stays Markdown-light and the apps turn it into
+     elements, never HTML. Dates read in words in the studio's time zone ("יום שלישי, 21.10, בשעה 18:30"). The push
+     body is the first paragraph without markup, cut at 120 characters.
+   - **Where rendered text goes:** when the item is written, `NotificationRequests` renders the inbox words into the
+     item (`title`, `body`), so a later template change does not rewrite history. For a templated kind, the push
+     title and 120-character body go inside the push payload. The payload is end-to-end encrypted (RFC 8291), so the
+     push service sees ciphertext only. Announcement and class-message text stays out of push: the payload keeps ids
+     only and the service worker shows its own text for those kinds. Kris may override this (handoff).
+   - **Preview:** `GET .../notification-templates/{kind}` returns each channel's words, the kind's variables, the
+     demo studio's `sampleValues` and a rendered `preview`, so the console previews live without a request per
+     keystroke.
+   - **Announcements:** `POST .../announcements` (`bookings.manage`) sends one `studio.announcement` to every active
+     member of the studio through `NotificationRequests`. Preferences (group `studio`), quiet hours and the dedupe
+     key `studio.announcement:{announcementId}:{personId}` apply. Limits: at most 3 per studio per local day (429
+     `announcement.daily_limit`) and at most 500 recipients (409 `announcement.too_many_recipients`), so one click
+     cannot wake Neon or the push services at scale. Audited as `announcement.sent` with the count, never the text.
+     `GET .../announcements` gives the dialog the recipient count and what is left today.
+   - **Deliveries:** `GET .../people/{personId}/deliveries` (`people.view`) returns the last 30 lines, newest first:
+     kind, channel, status, reason (skip reason or last error code) and times. Never the text or the address.
+   - **Migration 0015** if 0014 lacks a column: `inbox_items.title`/`body` and `notifications.announcements`
+     (organization, id, sent_by, subject, body, recipients, created_at), with the same RLS as `session_messages`.
+     Erase and merge treat it like `session_messages`.
 
 Steps 1 to 4 and 6 cost nothing and need no domain (ADR-0021: VAPID keys in SSM standard parameters, the hourly
 reminder schedule inside the Scheduler free tier, no paid push service). Step 5 is the first one that waits on Kris.
