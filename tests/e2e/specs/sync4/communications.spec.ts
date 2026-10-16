@@ -113,7 +113,7 @@ test("console and client-web: an announcement reaches the member and shows on th
   const own = await api.ownPerson();
   if (!own) throw new Error("The smoke user has no person record in the studio.");
   await page.goto(`${adminUrl}/o/${studioSlug}/people/${own.id}`);
-  const deliveries = page.getByRole("region", { name: "התראות אחרונות" });
+  const deliveries = page.locator("section[aria-labelledby='deliveries']");
   await expect(deliveries.getByRole("row").filter({ hasText: "הודעה לכל הסטודיו" }).first()).toBeVisible();
   await expect(deliveries).not.toContainText(subject);
   await expectNoSeriousA11yViolations(
