@@ -1,20 +1,26 @@
 # Project status
 
-Updated 2026-10-15, evening (day board #60, evening board #89).
+Updated 2026-10-16, morning (after night board #136; day board #176).
 
 ## In one paragraph
 
-Phases 0, 1 and 2 of `docs/24` are on `main` and live on dev, and so is the backend of the first vertical
-skeleton, Studio scheduling (docs/29). The next backend work is thin Phase 3 billing (docs/28) and the apps'
-scheduling screens. The repo is **public** since 2026-10-15: no secrets, tokens, real people's emails or personal
-data in code, PRs, issues or logs.
+Phases 0 to 3 of `docs/24` are on `main` and live on dev (Phase 3 thin: the free pilot plan), and so is the first
+vertical skeleton, Studio scheduling and passes (docs/29), backend and screens, including the night's additions A0 to
+A5. Next is Phase 4 part one, notifications (`docs/30` steps 1 to 4 and 6: inbox router, preferences, quiet hours,
+web push, reminders, migration 0014); email (step 5) waits for Kris's D-1. The repo is **public** since 2026-10-15:
+no secrets, tokens, real people's emails or personal data in code, PRs, issues or logs.
 
 ## Phase 0 (foundation): closed, except the edge
 
 - Dev deploys from CI on every merge to `main` (`deploy-development.yml`): stacks, migrator and a smoke test.
-  Dev API: `https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com`.
+  Dev API: `https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com`. Only `apps/**` and docs skip the deploy.
 - Dev edge (CloudFront) stays off until AWS verifies the account (support case 179198465900800). Lambda
   concurrency is still 40 (quota case 179192381800130).
+- Operations (night of 2026-10-15): the dashboard answers the night questions (queue, concurrency, daily jobs,
+  canary, Scheduler; #145), the canary checks health every 5 minutes and a signed-in read hourly (#119), the Neon
+  restore drill and `docs/runbooks/restore.md` (#149: 6 h restore window on Free, a branch in about 4 s), the pilot
+  onboarding runbook (#146), and the demo studio on dev (#140; remove it with
+  `node tools/scripts/demo-studio.mjs clean --profile tempo`).
 
 ## Phase 1 (identity, studios, tenancy): done
 
@@ -24,44 +30,58 @@ docs/26 and ADR-0023, PRs #30 to #43 and #52. Migrations 0002 to 0004.
 
 docs/27 with every section 14 default decided by Kris (#47). Permissions on every tenant route, the roles API with
 step-up, owner transfer (tenant and operator), people, contact points, consent, relationships, duplicates and
-merge, export and erase, inviting a recorded person (#61 to #88). Migrations 0005 to 0008. Privacy fix #90: the
-audit log keeps no invitee email, and erasing a person revokes and scrubs their invitations.
+merge, export and erase, inviting a recorded person (#61 to #88). Migrations 0005 to 0008. Privacy fixes: the audit
+log keeps no invitee email, erasing a person revokes and scrubs their invitations (#90) and reaches invitations after
+a merge (#138); a removed, suspended or demoted inviter's invitations stop working (#137).
 
-## Studio skeleton: scheduling and passes (backend done 2026-10-15)
+## Phase 3 (billing and entitlements): thin, done (2026-10-15)
 
-Kris decided on 2026-10-15 (board #89): scheduling runs in parallel with thin billing; booking needs a punch
-card or a membership already in the skeleton (granted by hand at the desk); the waitlist promotes automatically.
+`docs/28` (#83), section 14 defaults apply. #105 shipped the free `pilot` plan with an **active** subscription per
+studio, entitlements, plan limits, restricted mode and the billing page (migration 0009). No payment provider until a
+studio is ready to pay (B-1, B-2, B-6 go back to Kris then). The console's settings page shows the plan (#174).
+
+## Studio skeleton: scheduling and passes (done 2026-10-15/16)
 
 | Step | PR |
 |---|---|
 | LLD `docs/29_Studio_Scheduling_and_Passes_LLD.md` (open questions C-1 to C-8 have defaults) | #91 |
-| contract-v3 (37 operations, `x-tempo-planned` until built; the conformance test checks both ways) | #92 |
+| contract-v3 (`x-tempo-planned` until built; the conformance test checks both ways) | #92 |
 | Migration 0010: `scheduling` and `notifications` schemas, RLS, six permission keys | #93 |
 | Timetable, passes, booking, waitlist with promotion, roster, attendance, booking policy, inbox | #95 |
 | Daily job: eight-week horizon, closed waitlists (second Scheduler schedule, $0) | #100 |
+| A0 docs/29 section 16 (moves, messages, calendar files, freezes; C-9 to C-13 have defaults) | #143, #160 |
+| A1 a weekly class carries class type, instructor and room; roster entries carry entries left | #148 |
+| A2 move a booked place to another class (migration 0011) | #154 |
+| A3 a message from staff to everyone registered (no text in the audit log) | #156 |
+| A4 add to calendar, an `.ics` of the caller's own booking | #157 |
+| A5 freeze a period membership (migration 0012); `Session.frozenUntil` for the booking sheet | #158, #172 |
+| Screens: console schedule, products, roster (#129); client-web booking, waitlist, inbox (#128); A1 to A5 | #153 #162 #168 #170 #169 |
 
 - Concurrency is in the schema: `booked_count <= capacity` and `entries_used <= entries` are CHECKs, and the
   services take places and entries with guarded updates. Tests: 20 parallel bookings for 8 places give 8 booked and
   12 waiting; parallel bookings on a card's last entry spend it once.
-- `StudioScheduleFlowTests` runs the demo of docs/29 section 1 through the real host.
-- Migration 0009 is reserved for billing (docs/28); DbUp applies scripts by name, so the gap is harmless.
+- `StudioScheduleFlowTests` runs the demo of docs/29 section 1 through the real host. SYNC 2 runs the same demo in
+  the browser with Playwright against dev (#155, 11/11 on dev).
+- Migration 0013 (#159) holds the #124 backend lows: `platform_admin.operator_notes`, the no-op suspend audit and
+  read-only self-clause policies. Migrations on dev: up to 0013; 0014 is the next free number (`docs/30`).
+- Retention job (#152): `tempo-dev-retention-daily` at 03:45 Israel time deletes finished invitations after 90 days
+  and inbox items after 180 days (`RetentionPolicy.Default`, provisional until Kris confirms).
 
-## Phase 3 (billing and entitlements): designed
+## Phase 4 part one: communications (designed; building since 2026-10-16)
 
-`docs/28_Billing_and_Entitlements_LLD.md` (#83), section 14 defaults apply. Thin first: a free `pilot` plan with an
-**active** subscription per studio (a trial would restrict every pilot studio after 30 days under the manual
-provider), entitlements, restricted mode. No payment provider until a studio is ready to pay (B-1, B-2, B-6 go
-back to Kris then).
+`docs/30_Communications_LLD.md` (#147). Kris approved on 2026-10-16 that D-3, D-4, D-5, D-6, D-8 and D-9 apply as
+provisional defaults, so steps 1 to 4 and 6 are built on board #176. D-1, D-2 and D-7 (domain, sender, marketing
+wording) wait for Kris, so step 5 (email, SES) is not built. Every piece stays inside ADR-0021: VAPID keys in SSM
+standard parameters, the reminder job inside the existing Scheduler pattern, no paid push service.
 
 ## Apps
 
-`apps/client-web` and `apps/admin-web` run on the real API for Phases 1 and 2 (sign-in with the Hosted UI,
-studios, members, invitations, roles, people, consent, owner transfer, duplicates, export, erase). Contract-v3 types
-are in `@tempo/api-client` since #92. client-web's member screens are on the scheduling API since O13/O14 (board
-#89): timetable, `/classes/:sessionId`, booking, cancel, waitlist, `/inbox` and passes; only the home goal and
-streak and the health declaration are still sample data (`features/member/sample.ts`). Member render code reads
-time from `features/member/clock.tsx`, never `Date.now()` (the `react-hooks/purity` lint rule). admin-web has
-no scheduling screens yet.
+`apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in
+with the Hosted UI and TOTP enrollment, studios, members, invitations, roles, people, consent, owner transfer,
+duplicates, export, erase, timetable, booking, waitlist, inbox, passes, moves, messages, calendar files, freezes,
+the plan card). Only client-web's home goal and streak and the health declaration are still sample data
+(`features/member/sample.ts`). Member render code reads time from `features/member/clock.tsx`, never `Date.now()`
+(the `react-hooks/purity` lint rule). The console fits a phone (#171). #164 (axe contrast) is open.
 
 ## Open items for Kris
 
@@ -69,9 +89,14 @@ no scheduling screens yet.
 |---|---|
 | Register as the first operator | `tools/scripts/register-operator.ps1`, needs Kris's MFA |
 | IAM grants so CI can run the smoke test with `--sign-in` | `cognito-idp:AdminInitiateAuth` and `ssm:GetParameter` for the deploy role |
+| Confirm the canary's SNS email subscription | From #119 |
+| Retention days | 90 days invitations, 180 days inbox items (`RetentionPolicy.Default`) |
+| `docs/30` D-1, D-2, D-7, and a look at the provisional defaults | Email waits for D-1 (the domain first) |
+| `docs/29` C-9 to C-13 | Defaults apply unless Kris objects |
+| #97 dev self sign-up and a Neon usage alarm | It gated the full load test (B5) |
+| #96, #123, #122, #115 | Kris decides; nobody else touches them |
 | Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot |
-| Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | Needs the TOTP enrollment screen first (O8) |
-| Docs/29 open questions C-1 to C-8 | Defaults apply unless Kris objects |
+| Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
 
 ## Who works on what
 
@@ -93,3 +118,11 @@ in `contracts/openapi/`.
   security) and the scheduling lane. The scheduling lane does not edit `.github/workflows/`.
 - Merges are squash, except the Phase 1 chain #32 to #40 and #43 and the Phase 2 backend chain, which merged with
   merge commits.
+
+### 2026-10-16 to 2026-10-17 07:00: lanes O1 and O2 (board #176)
+
+Kris's agents rest, so both lanes run on Ofir's machine, approved by Kris on 2026-10-16 10:45. **[O1]** covers
+Kris's areas above (backend, contracts, the generated client, migrations, infrastructure, tools, docs, the lock
+file); **[O2]** is Ofir's lane (formerly [O]). Both post from the same GitHub account, so the review is a
+`REVIEWED #N on <sha>` comment on the board, and it counts as the approval for the gate. Kris's split above applies
+again from 2026-10-17 07:00.
