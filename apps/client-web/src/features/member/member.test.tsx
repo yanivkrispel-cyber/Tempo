@@ -11,6 +11,7 @@ import {
   bookingIdOf,
   card,
   createStudio,
+  organizationId,
   pastBookings,
   sessionIds,
   testNow,
@@ -607,6 +608,20 @@ describe("promotion and the inbox", () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]!.url).toContain("/notifications/0199e5a1-0000-7000-8000-000000000a08/read");
     expect(within(list).getByText("חדש")).toBeInTheDocument();
+  });
+
+  it("tries marking read once more when the API is briefly unavailable", async () => {
+    const id = "0199e5a1-0000-7000-8000-000000000a09";
+    const { api, studio } = renderAt("/inbox", {
+      inbox: [{ id, kind: "reminder.entries_low", data: {}, createdAt: "2026-10-13T08:30:00Z", readAt: null }],
+    });
+    const route = `POST /api/v1/organizations/${organizationId}/me/notifications/${id}/read`;
+    const markRead = studio.routes[route] as (request: Request) => Response;
+    let calls = 0;
+    // A throttled Lambda answers 503 the first time.
+    studio.routes[route] = (request: Request) => (++calls === 1 ? problem(503, "http.503") : markRead(request));
+    await waitFor(() => expect(studio.inbox[0]!.readAt).not.toBeNull(), { timeout: 3000 });
+    expect(api.requests.filter((request) => request.url.endsWith(`/${id}/read`))).toHaveLength(2);
   });
 
   it("says when there are no notifications", async () => {
