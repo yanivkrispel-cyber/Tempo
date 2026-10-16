@@ -7,6 +7,7 @@ import { errorMessage } from "../../api/errors";
 import { Banner, Button, Card, Field, Input, Select, Skeleton, useToast } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
+import { PlanCard } from "./PlanCard";
 
 type Organization = Schemas["Organization"];
 
@@ -42,6 +43,7 @@ export function SettingsPage() {
         // Keyed by version: after a save the form starts again from what the API returned.
         <SettingsForm key={organization.data.version} organization={organization.data} />
       )}
+      <PlanCard />
     </>
   );
 }

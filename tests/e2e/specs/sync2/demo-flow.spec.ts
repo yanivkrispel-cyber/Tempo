@@ -337,13 +337,16 @@ test("console: the audit log has the whole flow", async ({ consolePage: page }, 
 });
 
 test("console: the studio's subscription is the pilot plan, active", async ({ consolePage: page }, testInfo) => {
-  const billing = await api.call<{ plan: { planKey: string }; state: string }>("GET", "/billing");
+  const billing = await api.call<{ plan: { planKey: string; displayName: string }; state: string }>("GET", "/billing");
   expect(billing.plan.planKey).toBe("pilot");
   expect(billing.state).toBe("active");
 
-  // The console shows no plan name today; it opens without a billing notice because the studio is not restricted.
+  // The settings page's plan card (#165) names the plan and says it is active.
   await page.goto(admin("/settings"));
   await expect(page.getByRole("heading", { level: 1, name: "הגדרות הסטודיו" })).toBeVisible();
+  const plan = page.getByRole("region", { name: "המנוי ל־Tempo" });
+  await expect(plan.getByText(billing.plan.displayName, { exact: true })).toBeVisible();
+  await expect(plan).toContainText("פעיל");
   await expectNoSeriousA11yViolations(page, testInfo, "console settings");
 });
 

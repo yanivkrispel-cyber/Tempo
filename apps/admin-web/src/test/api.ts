@@ -15,6 +15,8 @@ export const sampleMe: Me = {
       roles: [{ id: "00000000-0000-7000-8000-000000000001", key: "owner", displayName: "בעלים", isSystem: true }],
       permissions: [
         "audit.view",
+        "billing.manage",
+        "billing.view",
         "consent.manage",
         "members.invite.admin",
         "members.invite.staff",
@@ -67,6 +69,7 @@ const systemRolePermissions: Record<SystemRole, readonly string[]> = {
     "members.invite.staff",
     "members.manage",
     "audit.view",
+    "billing.view",
     "people.view",
     "people.manage",
     "people.merge",
