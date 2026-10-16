@@ -58,7 +58,7 @@ const pairs = [
   ["success-ink", ["success-soft", "surface"], 4.5],
   ["warning-ink", ["warning-soft", "surface"], 4.5],
   ["danger-ink", ["danger-soft", "surface"], 4.5],
-  ["on-danger", ["danger"], 3],
+  ["on-danger", ["danger-strong"], 4.5],
   ["brand", ["canvas", "surface-sand"], 1.5],
   ["icon-dark", ["sand", "surface"], 4.5],
   ...["sage", "rose", "taupe", "blue", "amber", "mauve"].map((c) => [`cat-${c}-ink`, [`cat-${c}-soft`], 4.5]),
