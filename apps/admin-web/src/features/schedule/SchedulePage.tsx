@@ -23,6 +23,7 @@ import {
 import { clockTime } from "../../shared/utilities/times";
 import { errorMessage } from "../../api/errors";
 import { useStudio } from "../console/studio";
+import { AnnouncementDialog } from "./AnnouncementDialog";
 import { NewClassDialog } from "./NewClassDialog";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "./queries";
 
@@ -43,6 +44,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
   const sessions = useSessions(week, days[6]!);
   const [instructor, setInstructor] = useState(allInstructors);
   const [creating, setCreating] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
   const manage = studio.can("schedule.manage");
 
   const goTo = (sunday: IsoDate) => setParams(sunday === startOfWeek(today) ? {} : { week: sunday });
@@ -73,6 +75,11 @@ function WeekView({ timeZone }: { timeZone: string }) {
             היום
           </Button>
           <IconButton icon="chevron-left" label="השבוע הבא" onClick={() => goTo(addDays(week, 7))} />
+          {studio.can("bookings.manage") && (
+            <Button variant="secondary" icon="mail" onClick={() => setAnnouncing(true)}>
+              הודעה לכל הסטודיו
+            </Button>
+          )}
           {manage && (
             <Button icon="plus" onClick={() => setCreating(true)}>
               שיעור חדש
@@ -144,6 +151,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
         </section>
       )}
 
+      {announcing && <AnnouncementDialog onClose={() => setAnnouncing(false)} />}
       {creating && (
         <NewClassDialog
           day={week <= today && today <= days[6]! ? today : week}
