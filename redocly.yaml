@@ -1,0 +1,32 @@
+# Contract style rules for contracts/openapi (ADR-0025, Layer 1). The Contract
+# validation job runs `redocly lint`, which picks this file up from the root.
+extends:
+  - recommended
+
+rules:
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-summary: error
+  operation-4xx-response: error
+  operation-4xx-problem-details-rfc7807: error
+  security-defined: error
+  paths-kebab-case: error
+  no-ambiguous-paths: error
+  path-parameters-defined: error
+  no-server-trailing-slash: error
+  tags-alphabetical: off
+  rule/operation-id-camel-case:
+    subject:
+      type: Operation
+      property: operationId
+    assertions:
+      casing: camelCase
+    message: operationId must be camelCase (it becomes the generated client's method name).
+    severity: error
+  rule/property-camel-case:
+    subject:
+      type: SchemaProperties
+    assertions:
+      casing: camelCase
+    message: JSON property names are camelCase (System.Text.Json web defaults).
+    severity: error

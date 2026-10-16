@@ -43,6 +43,7 @@
 | ADR-0022 | Neon Serverless Postgres as the Primary Transactional Database | Accepted |
 | ADR-0023 | Studio Self-Onboarding and a Separate Operator Identity Pool | Accepted |
 | ADR-0024 | Frontend Toolchain for the Tempo Web Apps | Accepted |
+| ADR-0025 | Two-Layer Quality: Gates Block, Agents Advise | Proposed |
 
 ## Decision Summary
 
@@ -63,6 +64,7 @@ Email: SES
 Observability: CloudWatch + OpenTelemetry/X-Ray
 Cost: $0 fixed cost until revenue; tripwires need owner approval (ADR-0021)
 Web apps: Vite + React 19 + React Router 7 + TanStack Query; API client from OpenAPI (ADR-0024)
+Quality: deterministic CI gates block; Claude review agents run locally and advise (ADR-0025)
 IaC: AWS CDK TypeScript
 CI/CD: GitHub Actions + OIDC
 Primary Region: eu-central-1

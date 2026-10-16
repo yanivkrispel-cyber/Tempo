@@ -1,3 +1,13 @@
+# ADR Baseline v3.5 - Change Log (2026-10-15)
+
+The owner approved the two-layer quality model and made the repository public (board #89, Wave Q).
+
+## Added ADRs
+
+- ADR-0025: deterministic CI gates block the merge; Claude review agents in `.claude/agents/` run locally and only
+  advise; no Claude key or token in CI; a problem an agent flags twice becomes a gate; what may and may not be written
+  in the public repository. $0.
+
 # ADR Baseline v3.4 - Change Log (2026-10-14)
 
 The owner approved the frontend toolchain for the web apps (night board #44, decision 1).
