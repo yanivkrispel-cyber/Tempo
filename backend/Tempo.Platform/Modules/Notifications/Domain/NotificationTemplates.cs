@@ -130,7 +130,24 @@ public static partial class TemplateText
     {
         var first = Paragraph().Split(words.Body.Replace("\r\n", "\n", StringComparison.Ordinal).Trim())[0];
         var body = Plain(Fill(Unmark(first), values, Raw));
-        return new(Plain(Fill(words.Subject, values, Raw)), body.Length <= PushBodyMax ? body : string.Concat(body.AsSpan(0, PushBodyMax - 1).TrimEnd(), "…"));
+        return new(Plain(Fill(words.Subject, values, Raw)), Cut(body, PushBodyMax));
+    }
+
+    /// <summary>Cuts by code points, as the console's preview does, so an emoji is never split into a lone surrogate.</summary>
+    private static string Cut(string text, int max)
+    {
+        if (text.EnumerateRunes().Count() <= max)
+        {
+            return text;
+        }
+
+        var kept = new System.Text.StringBuilder();
+        foreach (var rune in text.EnumerateRunes().Take(max - 1))
+        {
+            kept.Append(rune.ToString());
+        }
+
+        return string.Concat(kept.ToString().TrimEnd(), "…");
     }
 
     private static void Check(string text, int max, string field, bool singleLine)

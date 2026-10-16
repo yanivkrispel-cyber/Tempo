@@ -91,6 +91,9 @@ public sealed class NotificationTemplatesTests
 
         var longBody = TemplateText.RenderPush(new("כותרת", new string('א', 200)), values).Body;
         longBody.Should().HaveLength(120).And.EndWith("…");
+
+        var emoji = TemplateText.RenderPush(new("כותרת", string.Concat(Enumerable.Repeat("🏃", 130))), values).Body;
+        emoji.Should().Be(string.Concat(string.Concat(Enumerable.Repeat("🏃", 119)), "…"), "an emoji is never split into a lone surrogate");
     }
 
     [Fact]
