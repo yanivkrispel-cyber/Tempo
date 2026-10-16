@@ -113,7 +113,12 @@ export class ApiStack extends Stack {
       parameter.grantRead(this.apiFunction.function);
     }
 
-    StringParameter.fromStringParameterName(this, "VapidPublicKeyParameter", pushParameterName(config, "publicKey")).grantRead(
+    // Grant by name only: fromStringParameterName would add a deploy-time SSM parameter, and the deploy
+    // would fail until someone had written the key (tools/scripts/vapid-keys.mjs).
+    StringParameter.fromStringParameterAttributes(this, "VapidPublicKeyParameter", {
+      parameterName: pushParameterName(config, "publicKey"),
+      forceDynamicReference: true
+    }).grantRead(
       this.apiFunction.function
     );
     this.apiFunction.function.addToRolePolicy(
