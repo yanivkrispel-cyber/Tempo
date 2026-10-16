@@ -4,6 +4,8 @@
     "module": "commonjs",
     "lib": ["ES2022"],
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "types": ["node"],
     "declaration": false,
     "strict": true,
     "noImplicitAny": true,
