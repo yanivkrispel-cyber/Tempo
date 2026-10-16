@@ -130,6 +130,10 @@ describe("push on this device", () => {
     await userEvent.click(toggle);
     expect(await screen.findByText(/ההתראות חסומות בדפדפן/)).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "התראות במכשיר הזה" })).toBeDisabled();
+    // Why it is disabled reaches a screen reader with the switch.
+    expect(screen.getByRole("switch", { name: "התראות במכשיר הזה" })).toHaveAccessibleDescription(
+      /ההתראות חסומות בדפדפן/,
+    );
   });
 
   it("removes this device and unsubscribes the browser when the member signs out", async () => {

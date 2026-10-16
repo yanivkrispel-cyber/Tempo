@@ -888,6 +888,10 @@ button.tp-chip {
   gap: 12px;
   min-height: 48px;
 }
+/* The switch keeps its size when the row's text wraps on a narrow phone. */
+.tp-setting > .tp-toggle {
+  flex-shrink: 0;
+}
 button.tp-setting {
   width: 100%;
   border: 0;

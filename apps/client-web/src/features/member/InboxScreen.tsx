@@ -97,7 +97,7 @@ function StudioInbox({ studio }: { studio: Studio }) {
   const items = inbox.data ? knownNotices(inbox.data.items) : [];
 
   return (
-    <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
+    <main className={`tp-page tp-page--tabbar ${styles.screen}`} aria-busy={inbox.isPending}>
       <header className={styles.header}>
         <IconButton icon="chevron-right" label="חזרה" onClick={() => navigate("/")} />
         <div className={styles.heading}>

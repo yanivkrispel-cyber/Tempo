@@ -145,13 +145,17 @@ function PreferencesForm({
         {(Object.keys(groupText) as NotificationGroup[]).map((group) => (
           <div key={group}>
             <div className="tp-setting">
+              {/* Read once, through the switch: its name is the label, its description the hint. */}
               <span className={styles.settingText} aria-hidden="true">
                 <span>{groupText[group].label}</span>
-                <span className="tp-caption">{groupText[group].hint}</span>
+                <span id={`push-hint-${group}`} className="tp-caption">
+                  {groupText[group].hint}
+                </span>
               </span>
               <Toggle
                 label={`${groupText[group].label}: התראה בטלפון`}
                 hideLabel
+                aria-describedby={`push-hint-${group}`}
                 checked={draft.push[group]}
                 onChange={(event) => setDraft({ ...draft, push: { ...draft.push, [group]: event.target.checked } })}
               />
