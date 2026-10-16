@@ -30,7 +30,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
@@ -47,7 +47,7 @@ jobs:
               - '.editorconfig'
               - '.github/workflows/pull-request.yml'
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         if: steps.changes.outputs.relevant == 'true'
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
@@ -74,7 +74,7 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet list Tempo.sln package --vulnerable --include-transitive
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.changes.outputs.relevant == 'true'
         with:
           name: dotnet-test-results
@@ -85,7 +85,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
@@ -98,10 +98,10 @@ jobs:
               - 'pnpm-workspace.yaml'
               - '.github/workflows/pull-request.yml'
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: steps.changes.outputs.relevant == 'true'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.changes.outputs.relevant == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -132,7 +132,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
@@ -153,10 +153,10 @@ jobs:
               - 'tsconfig*.json'
               - '.github/workflows/pull-request.yml'
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: steps.changes.outputs.relevant == 'true'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.changes.outputs.relevant == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -196,7 +196,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
@@ -242,12 +242,12 @@ jobs:
       # contents: read alone that call fails with "Resource not accessible by integration".
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
