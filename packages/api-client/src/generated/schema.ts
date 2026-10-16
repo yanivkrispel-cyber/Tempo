@@ -1593,6 +1593,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/notification-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Every kind a studio can word, by group, and whether it has its own words (`organization.settings.manage`)
+         * @description One row per templated kind of docs/30 section 5. `session.message` and `studio.announcement` carry the staff's own text and have no template.
+         */
+        get: operations["listNotificationTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/notification-templates/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                /** @description A templated kind, e.g. `booking.promoted`; any other answers 404 `template.kind_unknown`. */
+                kind: string;
+            };
+            cookie?: never;
+        };
+        /** The words in use for one kind, with its variables and a preview on the demo studio's data (`organization.settings.manage`) */
+        get: operations["getNotificationTemplate"];
+        /**
+         * Save the studio's words for one kind, or go back to the default (`organization.settings.manage`)
+         * @description Each channel saved becomes the studio's new active version (the previous one is kept as `retired`); `null` retires the studio's version so the platform default applies again. Audited as `template.changed` with the kind, locale, channel and version, never the text. 400 `template.unknown_variable` names the field (`inbox.subject`, `push.body`, ...) and the `variable`; 400 `template.invalid` for an empty or too long text. 409 `concurrency.conflict` when `If-Match` is stale. The next notification of the kind uses the new words.
+         */
+        put: operations["updateNotificationTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** Who an announcement would reach now and how many are left today (`bookings.manage`) */
+        get: operations["getAnnouncementAllowance"];
+        put?: never;
+        /**
+         * Send a studio announcement to every active member (`bookings.manage`)
+         * @description One `studio.announcement` inbox item per active member, through the members' preferences and quiet hours (docs/30 section 7). At most 3 a day per studio (429 `announcement.daily_limit` with `dailyLimit` and `Retry-After` until the studio's next midnight) and at most 500 recipients (409 `announcement.too_many_recipients` with `recipients` and `maxRecipients`; nothing is sent). The text is Markdown-light without variables; the inbox shows it as written, and push carries only the kind and ids. Audited as `announcement.sent` with the recipient count, never the text.
+         */
+        post: operations["sendAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A person's last 30 delivery lines, newest first (`people.view`)
+         * @description Kind, channel, status, reason and times only; never the text or the address (docs/30 D-6).
+         */
+        get: operations["listPersonDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/billing": {
         parameters: {
             query?: never;
@@ -2789,8 +2882,12 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             readAt?: string | null;
-            /** @description For `session.message`, the staff message (docs/29 section 16.2); null for every other kind. */
+            /** @description For `session.message`, the staff message (docs/29 section 16.2); for `studio.announcement` (planned, docs/30 step 7), the announcement's Markdown-light body. Null for every other kind. */
             text?: string | null;
+            /** @description Planned (docs/30 step 7): the subject rendered from the studio's template (or the default) when the item was written, or the announcement's subject. Absent or null on older items: show the app's own text for the kind. */
+            title?: string | null;
+            /** @description Planned (docs/30 step 7): the template's Markdown-light body with the variables filled when the item was written. Absent or null on older items and on `session.message` / `studio.announcement` (see `text`). */
+            body?: string | null;
             /** @description The class the notice is about, so a list needs no extra request; null when it has none. */
             session?: {
                 /** Format: uuid */
@@ -2911,6 +3008,107 @@ export interface components {
         NotificationSettingsInput: {
             quietHours: components["schemas"]["QuietHours"];
             reminders: components["schemas"]["ReminderTiming"];
+        };
+        /** @enum {string} */
+        NotificationGroup: "bookings" | "reminders" | "studio";
+        NotificationTemplateList: {
+            items: {
+                /** @example booking.promoted */
+                kind: string;
+                group: components["schemas"]["NotificationGroup"];
+                /** @description The channels (in the default locale) where the studio has its own words. */
+                customized: ("inbox" | "push")[];
+                /** Format: date-time */
+                updatedAt: string | null;
+            }[];
+        };
+        TemplateText: {
+            /** @description The inbox subject; the push title. */
+            subject: string;
+            /** @description Markdown-light (paragraphs split by a blank line, `**bold**`, `[text](https://...)`) with variables written `{{person.firstName}}`. Push shows the first paragraph, cut at 120 characters. */
+            body: string;
+            /** @enum {string} */
+            source: "default" | "studio";
+            /** @description The studio's active version; null on the default. */
+            studioVersion: number | null;
+            /** @description Rendered with `sampleValues`: `subject` is plain text; `body` is the Markdown-light text with the variables filled (inbox) or the plain push body of at most 120 characters (push). */
+            preview: {
+                subject: string;
+                body: string;
+            };
+        };
+        NotificationTemplate: {
+            kind: string;
+            group: components["schemas"]["NotificationGroup"];
+            /** @enum {string} */
+            locale: "he" | "en";
+            /** @description The closed list this kind may use (docs/30 section 6); anything else is refused on save. */
+            variables: string[];
+            /** @description The demo studio's value per variable, for a live preview while editing. */
+            sampleValues: {
+                [key: string]: string;
+            };
+            channels: {
+                inbox: components["schemas"]["TemplateText"];
+                push: components["schemas"]["TemplateText"];
+            };
+            /** @description Send back as If-Match. */
+            version: string;
+        };
+        TemplateTextInput: {
+            subject: string;
+            body: string;
+        };
+        NotificationTemplateInput: {
+            /** @enum {string} */
+            locale: "he" | "en";
+            /** @description The studio's inbox words, or null for the platform default. */
+            inbox: components["schemas"]["TemplateTextInput"] | null;
+            /** @description The studio's push words, or null for the platform default. */
+            push: components["schemas"]["TemplateTextInput"] | null;
+        };
+        AnnouncementAllowance: {
+            /** @description Active members right now. */
+            recipients: number;
+            /** @example 500 */
+            maxRecipients: number;
+            /** @description In the studio's day (its time zone). */
+            sentToday: number;
+            /** @example 3 */
+            dailyLimit: number;
+        };
+        AnnouncementInput: {
+            subject: string;
+            /** @description Markdown-light, no variables. */
+            body: string;
+        };
+        Announcement: {
+            /** Format: uuid */
+            id: string;
+            recipients: number;
+            /** Format: date-time */
+            sentAt: string;
+            sentToday: number;
+            dailyLimit: number;
+        };
+        Delivery: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            /** @enum {string} */
+            channel: "inbox" | "email" | "push";
+            /** @enum {string} */
+            status: "queued" | "sending" | "accepted" | "delivered" | "failed" | "retry_scheduled" | "dead" | "skipped";
+            /** @description The skip reason (`preference_off`, `quiet_hours`, `no_subscription`, `undeliverable`, `no_consent`, `channel_unavailable`) or the last error code (`http_403`, ...); null when there is none. */
+            reason: string | null;
+            attempts: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        DeliveryList: {
+            items: components["schemas"]["Delivery"][];
         };
         /** @enum {string} */
         SubscriptionState: "trialing" | "active" | "past_due" | "grace" | "restricted" | "canceled";
@@ -5973,6 +6171,181 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listNotificationTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplateList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getNotificationTemplate: {
+        parameters: {
+            query?: {
+                locale?: "he" | "en";
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                /** @description A templated kind, e.g. `booking.promoted`; any other answers 404 `template.kind_unknown`. */
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateNotificationTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                /** @description A templated kind, e.g. `booking.promoted`; any other answers 404 `template.kind_unknown`. */
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationTemplateInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationTemplate"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getAnnouncementAllowance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementAllowance"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    sendAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementInput"];
+            };
+        };
+        responses: {
+            /** @description Sent. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPersonDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getBilling: {
