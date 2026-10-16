@@ -174,7 +174,6 @@ test("client-web: an entries-low reminder from the hourly job reaches the inbox"
   // The hourly tick, as EventBridge Scheduler sends it (infrastructure: NotificationRemindersSchedule).
   const queueUrl = aws(["sqs", "get-queue-url", "--queue-name", "tempo-dev-work", "--query", "QueueUrl"]);
   if (!queueUrl) throw new Error("The AWS CLI could not find the dev work queue.");
-  const tickAt = Date.now();
   const sent = aws([
     "sqs",
     "send-message",
@@ -189,16 +188,13 @@ test("client-web: an entries-low reminder from the hourly job reaches the inbox"
   ]);
   if (!sent) throw new Error("The reminder tick was not sent.");
 
-  type Inbox = { items: { id: string; kind: string; createdAt: string }[] };
+  type Inbox = { items: { id: string; kind: string; data: { passId?: string } }[] };
   let itemId: string | undefined;
   await expect
     .poll(
       async () => {
         const inbox = await api.call<Inbox>("GET", "/me/notifications");
-        // By kind and time: the API does not return `passId` yet (REQUEST to [O1] on board #176).
-        itemId = inbox.items.find(
-          (item) => item.kind === "reminder.entries_low" && Date.parse(item.createdAt) >= tickAt - 60_000,
-        )?.id;
+        itemId = inbox.items.find((item) => item.kind === "reminder.entries_low" && item.data.passId === passId)?.id;
         return Boolean(itemId);
       },
       { timeout: 120_000, intervals: [5_000] },
