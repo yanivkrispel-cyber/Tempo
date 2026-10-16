@@ -296,6 +296,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         // Class messages reach the person through inbox items that point at the text (docs/29 section 16.2); the
         // pointers go, the studio's message row (ids only) stays.
         await ExecuteAsync(unitOfWork, "DELETE FROM notifications.inbox_items WHERE organization_id = $1 AND person_id = $2 AND kind = 'session.message'", cancellationToken, org, personId);
+        // Preferences, quiet hours, push subscriptions and delivery requests go (docs/30 section 7); deliveries go
+        // with their requests, and the remaining inbox items lose the link.
+        await DeleteNotificationRowsAsync(unitOfWork, org, personId, cancellationToken);
 
         // Consent rows stay as proof: they hold states, timestamps and text versions, never names or contacts.
         // The reason is required but not kept: free text can name the person, and person.* audit data never
@@ -489,6 +492,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.bookings SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        // The survivor keeps its own notification preferences and devices; the merged record's go, with its
+        // delivery history (the inbox items above moved and keep showing).
+        await DeleteNotificationRowsAsync(unitOfWork, org, merged, cancellationToken);
 
         // Invitations follow the survivor, so erasing it later scrubs their emails too (#101). A pending one was
         // meant to link a login to the merged record, which is gone: it is revoked, and staff invite the survivor.
@@ -576,4 +582,16 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
 
     private Task<UnitOfWork> BeginAsync(TenantContext tenant, CancellationToken cancellationToken) =>
         UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, tenant.UserAccountId, tenant.OrganizationId, cancellationToken);
+
+    private static async Task DeleteNotificationRowsAsync(UnitOfWork unitOfWork, Guid org, Guid personId, CancellationToken cancellationToken)
+    {
+        foreach (var table in new[]
+        {
+            "notifications.preferences", "notifications.quiet_hours", "notifications.reminder_switches",
+            "notifications.preference_versions", "notifications.push_subscriptions", "notifications.requests"
+        })
+        {
+            await ExecuteAsync(unitOfWork, $"DELETE FROM {table} WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
+        }
+    }
 }

@@ -7,6 +7,8 @@ using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.Identity.Application;
 using Tempo.Platform.Modules.Identity.Infrastructure;
+using Tempo.Platform.Modules.Notifications.Application;
+using Tempo.Platform.Modules.Notifications.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Billing;
 using Tempo.Platform.Modules.People.Application;
@@ -49,6 +51,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISessionMessageService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IBookingCalendarService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IStudioSettingsService, StudioSettingsService>();
+        services.AddSingleton<INotificationPreferencesService, NotificationPreferencesService>();
+        services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
+        services.AddSingleton(sp => new VapidKeySource(key => sp.GetRequiredService<IConfiguration>()[key], needsPrivateKey: false));
         services.AddSingleton<IConsentService, ConsentService>();
         services.AddSingleton<IPersonLifecycleService, PersonLifecycleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
