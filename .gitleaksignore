@@ -9,3 +9,6 @@
 # The same RFC 8291 example keys in the notifications live check (tools/scripts), PR #205, 2026-10-16.
 476e80894acc4b560859a8231f8f5a3b0a805dfe:tools/scripts/notifications-live-check.mjs:generic-api-key:36
 476e80894acc4b560859a8231f8f5a3b0a805dfe:tools/scripts/notifications-live-check.mjs:generic-api-key:37
+# The same RFC 8291 example keys in the communications live check (tools/scripts), PR #231, 2026-10-16.
+92522d4d2adce4593e1324536ac146ef8b513bd2:tools/scripts/communications-live-check.mjs:generic-api-key:45
+92522d4d2adce4593e1324536ac146ef8b513bd2:tools/scripts/communications-live-check.mjs:generic-api-key:46
