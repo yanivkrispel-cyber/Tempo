@@ -84,3 +84,12 @@ public sealed record TemplateTextInputDto(string? Subject, string? Body);
 
 /// <summary>`NotificationTemplateInput`: null for a channel goes back to the platform default.</summary>
 public sealed record NotificationTemplateInput(string? Locale, TemplateTextInputDto? Inbox, TemplateTextInputDto? Push);
+
+/// <summary>`AnnouncementAllowance`.</summary>
+public sealed record AnnouncementAllowanceResponse(int Recipients, int MaxRecipients, int SentToday, int DailyLimit);
+
+/// <summary>`AnnouncementInput`.</summary>
+public sealed record AnnouncementInput(string? Subject, string? Body);
+
+/// <summary>`Announcement`.</summary>
+public sealed record AnnouncementResponse(Guid Id, int Recipients, DateTimeOffset SentAt, int SentToday, int DailyLimit);

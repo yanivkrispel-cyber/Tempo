@@ -226,6 +226,9 @@ since P3 (day board #176); push subscriptions and the VAPID key come with P4.
 `template.changed` (with the version), `consent.marketing` through docs/27. Never the rendered text, never the
 address.
 
+`announcement.sent` keeps the recipient count, never the text. An announcement's own row (subject and body) is
+kept as long as the inbox items that show it: the retention job (B4) deletes both 180 days after they were sent.
+
 ## 11. Worker and infrastructure
 
 - Message types: `notifications.deliver`, `notifications.ses_event`, `notifications.reminders_hourly`.
@@ -312,7 +315,7 @@ address.
      keystroke.
    - **Announcements:** `POST .../announcements` (`bookings.manage`) sends one `studio.announcement` to every active
      member of the studio through `NotificationRequests`. Preferences (group `studio`), quiet hours and the dedupe
-     key `studio.announcement:{announcementId}:{personId}` apply. Limits: at most 3 per studio per local day (429
+     key (one per announcement and person) apply; the request's `subject_type` is `announcement`. Limits: at most 3 per studio per local day (429
      `announcement.daily_limit`) and at most 500 recipients (409 `announcement.too_many_recipients`), so one click
      cannot wake Neon or the push services at scale. Audited as `announcement.sent` with the count, never the text.
      `GET .../announcements` gives the dialog the recipient count and what is left today.

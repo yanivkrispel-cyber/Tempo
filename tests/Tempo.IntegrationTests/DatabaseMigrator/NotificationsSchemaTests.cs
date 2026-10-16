@@ -100,6 +100,40 @@ public sealed class NotificationsSchemaTests(PostgresFixture postgres) : IClassF
     }
 
     [Fact]
+    public async Task Announcements_AStudioSeesAndWritesOnlyItsOwn_AndNeverRewritesOne()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var a = await StudioAsync(db, "studio-a");
+        var b = await StudioAsync(db, "studio-b");
+        var staffA = await MembershipAsync(db, a.Id, "studio-a");
+        var staffB = await MembershipAsync(db, b.Id, "studio-b");
+        await db.AsMasterAsync(
+            "INSERT INTO notifications.announcements (organization_id, id, sent_by, subject, body, recipients, created_at) VALUES ($1, gen_random_uuid(), $2, 'שלום', 'גוף', 1, now())", b.Id, staffB);
+        const string Insert = "INSERT INTO notifications.announcements (organization_id, id, sent_by, subject, body, recipients, created_at) VALUES ('{0}', gen_random_uuid(), '{1}', 'שלום', 'גוף', 1, now())";
+
+        await AsAppAsync(db, a.Id, async connection =>
+        {
+            (await ExecuteAsync(connection, string.Format(CultureInfo.InvariantCulture, Insert, a.Id, staffA))).Should().Be(1);
+            (await ScalarAsync<long>(connection, "SELECT count(*) FROM notifications.announcements")).Should().Be(1, "studio b's announcement is not visible");
+        });
+
+        var foreign = () => AsAppAsync(db, a.Id, connection => ExecuteAsync(connection, string.Format(CultureInfo.InvariantCulture, Insert, b.Id, staffB)));
+        (await foreign.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(InsufficientPrivilege);
+        var rewrite = () => AsAppAsync(db, a.Id, connection => ExecuteAsync(connection, "UPDATE notifications.announcements SET body = 'x'"));
+        (await rewrite.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(InsufficientPrivilege, "a sent announcement never changes");
+    }
+
+    /// <summary>The studio's owner as an active staff membership, to sign an announcement.</summary>
+    private static async Task<Guid> MembershipAsync(MigratedDatabase db, Guid org, string slug)
+    {
+        var membership = Guid.CreateVersion7();
+        await db.AsMasterAsync(
+            "INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) SELECT $1, $2, id, 'owner', 'active', now(), now() FROM identity.user_accounts WHERE email = $3",
+            org, membership, $"{slug}@example.com");
+        return membership;
+    }
+
+    [Fact]
     public async Task OneActiveTemplate_PerStudioKindLocaleAndChannel()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

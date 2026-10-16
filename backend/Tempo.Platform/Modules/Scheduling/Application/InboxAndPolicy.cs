@@ -7,7 +7,7 @@ namespace Tempo.Platform.Modules.Scheduling.Application;
 
 public sealed record BookingPolicyView(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, long Version);
 
-/// <summary><paramref name="Text"/> is the staff message for a `session.message` item (docs/29 section 16.2); null for every other kind.</summary>
+/// <summary><paramref name="Text"/> is the staff message for a `session.message` item (docs/29 section 16.2) or the text of a `studio.announcement`; null for every other kind.</summary>
 public sealed record InboxItemView(Guid Id, string Kind, Guid? SessionId, Guid? BookingId, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, DateTimeOffset? SessionStartsAt = null, string? ClassTypeName = null, string? Text = null, Guid? PassId = null, string? Title = null, string? Body = null);
 
 public sealed record InboxPage(IReadOnlyList<InboxItemView> Items, int UnreadCount, Guid? NextBefore);
@@ -86,12 +86,13 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
         var items = new List<InboxItemView>();
         await using (var command = unitOfWork.Command(
             """
-            SELECT i.id, i.kind, (i.data ->> 'sessionId')::uuid, (i.data ->> 'bookingId')::uuid, i.created_at, i.read_at, s.starts_at, ct.name, m.body,
-                   (i.data ->> 'passId')::uuid, i.title, i.body
+            SELECT i.id, i.kind, (i.data ->> 'sessionId')::uuid, (i.data ->> 'bookingId')::uuid, i.created_at, i.read_at, s.starts_at, ct.name, coalesce(m.body, a.body),
+                   (i.data ->> 'passId')::uuid, coalesce(i.title, a.subject), i.body
             FROM notifications.inbox_items i
             LEFT JOIN scheduling.sessions s ON s.organization_id = i.organization_id AND s.id = (i.data ->> 'sessionId')::uuid
             LEFT JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
             LEFT JOIN notifications.session_messages m ON m.organization_id = i.organization_id AND m.id = (i.data ->> 'messageId')::uuid
+            LEFT JOIN notifications.announcements a ON a.organization_id = i.organization_id AND a.id = (i.data ->> 'announcementId')::uuid
             WHERE i.organization_id = $1 AND i.person_id = $2 AND ($3::uuid IS NULL OR i.id < $3)
             ORDER BY i.id DESC
             LIMIT $4

@@ -2299,7 +2299,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: getAnnouncementAllowance
-      x-tempo-planned: true
       summary: "Who an announcement would reach now and how many are left today (`bookings.manage`)"
       responses:
         "200":
@@ -2313,7 +2312,6 @@ paths:
     post:
       tags: [Notifications]
       operationId: sendAnnouncement
-      x-tempo-planned: true
       summary: "Send a studio announcement to every active member (`bookings.manage`)"
       description: >-
         One `studio.announcement` inbox item per active member, through the members' preferences and quiet hours
@@ -3989,13 +3987,13 @@ components:
         text:
           type: [string, "null"]
           description: >-
-            For `session.message`, the staff message (docs/29 section 16.2); for `studio.announcement` (planned,
-            docs/30 step 7), the announcement's Markdown-light body. Null for every other kind.
+            For `session.message`, the staff message (docs/29 section 16.2); for `studio.announcement` (docs/30
+            step 7), the announcement's Markdown-light body. Null for every other kind.
         title:
           type: [string, "null"]
           description: >-
             The subject rendered from the studio's template (or the default) when the item was written (docs/30
-            step 7); the announcement's subject once announcements ship. Absent or null on older items and on
+            step 7); the announcement's subject for `studio.announcement`. Absent or null on older items and on
             `session.message`: show the app's own text for the kind.
         body:
           type: [string, "null"]
