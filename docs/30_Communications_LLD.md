@@ -188,7 +188,8 @@ Staff kinds (`roster.changed`, `booking.late_cancel`, `tripwire` and friends) ar
 
 ## 9. API
 
-Section 9 of the contract, `x-tempo-planned` until built, as docs/29 did:
+Section 9 of the contract, `x-tempo-planned` until built, as docs/29 did. Preferences and studio settings are live
+since P3 (day board #176); push subscriptions and the VAPID key come with P4.
 
 | Route | Who |
 |---|---|
@@ -232,7 +233,12 @@ address.
    subscriptions, requests, deliveries; RLS, platform grants; deliveries join the retention job (B4) at 90 days
    (D-6).
 3. Requests and the `notifications.deliver` handler with the inbox-only router (nothing new leaves the app yet);
-   the dedupe key; tests through the real host.
+   the dedupe key; tests through the real host. **Built (P3):** every inbox writer goes through
+   `NotificationRequests` (request, inbox item and a delivered inbox line in one transaction); the
+   `notifications.deliver` job writes one push line per request (`preference_off`, `no_subscription`,
+   `channel_unavailable`, or queued until quiet hours end, D-4); preferences and studio settings are live; erase
+   and merge delete a person's notification rows. Nothing sends the `notifications.deliver` message yet: P4
+   (after a commit) and the hourly schedule of P5 will.
 4. Web push: VAPID keys, subscriptions, the adapter, the client-web settings page and service worker.
 5. Email: domain and SES (after D-1 and D-2), the HTML/RTL skeleton, bounces and complaints, the preferences link.
    **Waiting on D-1** (and D-2, D-7): not built on board #176.
