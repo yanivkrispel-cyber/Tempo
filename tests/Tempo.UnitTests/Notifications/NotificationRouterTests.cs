@@ -57,6 +57,14 @@ public sealed class NotificationRouterTests
     }
 
     [Fact]
+    public void AClassSoonReminderAt07_ForA0730Class_GoesOutAtOnce()
+    {
+        NotificationRouter.RoutePush(Input("reminder.class_soon", now: At(1, 7, 0), classStarts: At(1, 7, 30))).NotBeforeLocal.Should().BeNull("held until 08:00 it would come after the class began");
+        NotificationRouter.RoutePush(Input("reminder.class_soon", now: At(1, 7, 0), classStarts: At(1, 9, 0))).NotBeforeLocal.Should().Be(At(1, 8, 0), "a class after the window: the reminder waits for its end");
+        NotificationRouter.RoutePush(Input("reminder.pass_ending", now: At(1, 7, 0))).NotBeforeLocal.Should().Be(At(1, 8, 0));
+    }
+
+    [Fact]
     public void ABookingNoticeForALaterClass_WaitsForTheMorning()
     {
         NotificationRouter.RoutePush(Input("booking.promoted", now: At(0, 23, 0), classStarts: At(1, 18, 0))).NotBeforeLocal.Should().Be(At(1, 8, 0));
