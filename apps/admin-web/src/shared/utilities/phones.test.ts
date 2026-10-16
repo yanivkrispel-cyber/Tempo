@@ -6,7 +6,7 @@ describe("displayPhone", () => {
     ["+972501234567", "050-123-4567"],
     ["+97231234567", "03-123-4567"],
     ["+97721234567", "+97721234567"],
-    ["+14155550123", "+14155550123"]
+    ["+14155550123", "+14155550123"],
   ])("%s -> %s", (input, expected) => {
     expect(displayPhone(input)).toBe(expected);
   });
@@ -19,7 +19,7 @@ describe("looksLikePhone", () => {
     ["0501234567", true],
     ["נועה", false],
     ["noa@example.com", false],
-    ["12", false]
+    ["12", false],
   ])("%s -> %s", (input, expected) => {
     expect(looksLikePhone(input)).toBe(expected);
   });
@@ -30,7 +30,7 @@ describe("phoneSearchText", () => {
     ["050-123", "+97250123"],
     ["+972 50 123", "+97250123"],
     ["  נועה ", "נועה"],
-    ["noa@example", "noa@example"]
+    ["noa@example", "noa@example"],
   ])("%s -> %s", (input, expected) => {
     expect(phoneSearchText(input)).toBe(expected);
   });

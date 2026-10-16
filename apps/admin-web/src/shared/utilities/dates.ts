@@ -29,6 +29,19 @@ export function todayIso(): IsoDate {
   return toIsoDate(new Date());
 }
 
+/** The calendar date of an instant on a wall clock in `timeZone` (an IANA zone such as "Asia/Jerusalem"). */
+export function dateIn(instant: string | Date, timeZone: string): IsoDate {
+  // en-CA writes YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
+    new Date(instant),
+  );
+}
+
+/** Today's date on the studio's wall calendar, not the device's. */
+export function todayIn(timeZone: string, now: Date = new Date()): IsoDate {
+  return dateIn(now, timeZone);
+}
+
 // Calendar arithmetic on local dates (setDate / setMonth), so a DST change never shifts a day.
 export function addDays(iso: IsoDate, days: number): IsoDate {
   const date = requireDate(iso);
@@ -93,6 +106,11 @@ export function monthWeeks(iso: IsoDate): IsoDate[][] {
   return weeks;
 }
 
+/** "15.10", the day and month, for lists within the year. */
+export function formatDayMonth(iso: IsoDate): string {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+}
+
 /** "15.10.2026", the way dates are written in Israel. */
 export function formatDate(iso: IsoDate): string {
   return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
@@ -106,11 +124,16 @@ export function formatDate(iso: IsoDate): string {
  * "15.01.27" typed in October 2026 is next January). When `range` is given, the century that falls
  * inside it wins, so a birth date with max = today reads "15.10.30" as 1930.
  */
-export function parseDate(text: string, today: IsoDate = todayIso(), range: { min?: IsoDate; max?: IsoDate } = {}): IsoDate | null {
+export function parseDate(
+  text: string,
+  today: IsoDate = todayIso(),
+  range: { min?: IsoDate; max?: IsoDate } = {},
+): IsoDate | null {
   const value = text.trim();
   if (isoPattern.test(value)) return fromIsoDate(value) ? value : null;
 
-  const match = /^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2}|\d{4}))?$/.exec(value) ?? /^(\d{2})(\d{2})(\d{2}|\d{4})$/.exec(value);
+  const match =
+    /^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2}|\d{4}))?$/.exec(value) ?? /^(\d{2})(\d{2})(\d{2}|\d{4})$/.exec(value);
   if (!match) return null;
   const day = pad(Number(match[1]));
   const month = pad(Number(match[2]));

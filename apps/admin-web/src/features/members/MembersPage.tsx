@@ -1,15 +1,25 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState } from "react";
-import { roleName } from "../../account/account";
+import { rolesLabel } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Chip, DropdownMenu, Skeleton, useToast, type ChipTone, type MenuEntry } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Chip,
+  type ChipTone,
+  DropdownMenu,
+  type MenuEntry,
+  Skeleton,
+  TableScroll,
+  useToast,
+} from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { OutgoingTransferBanner, TransferDialog } from "../ownership/Ownership";
 import { RemoveDialog, RoleDialog, nameOfMember, useUpdateMember } from "./MemberDialogs";
-import { assignableRoles, canReactivate, canRemove, canSuspend } from "./rules";
+import { assignableRoles, canOfferOwnership, canReactivate, canRemove, canSuspend } from "./rules";
 
 type Member = Schemas["Member"];
 
@@ -19,11 +29,11 @@ const statusLabel: Record<Member["status"], { text: string; tone: ChipTone }> = 
   active: { text: "פעיל", tone: "success" },
   invited: { text: "הוזמן", tone: "info" },
   suspended: { text: "מושעה", tone: "warning" },
-  removed: { text: "הוסר", tone: "danger" }
+  removed: { text: "הוסר", tone: "danger" },
 };
 
-/** The member's role. Until the Phase 2 API is deployed (K5) dev sends only the deprecated `role`. */
-const memberRole = (member: Member) => (member.roles ?? [])[0]?.displayName ?? roleName(member.role);
+/** The member's roles, from `roles` (the deprecated `role` field is not read). */
+const memberRole = (member: Member) => rolesLabel(member.roles);
 
 export function useMembers() {
   const api = useApi();
@@ -33,11 +43,11 @@ export function useMembers() {
     queryFn: ({ pageParam }) =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/members", {
-          params: { path: { organizationId }, query: { limit: pageSize, before: pageParam ?? undefined } }
-        })
+          params: { path: { organizationId }, query: { limit: pageSize, before: pageParam ?? undefined } },
+        }),
       ),
     initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextBefore ?? null
+    getNextPageParam: (page) => page.nextBefore ?? null,
   });
 }
 
@@ -55,9 +65,17 @@ export function MembersPage() {
     update.mutate(
       { member, body: { status } },
       {
-        onSuccess: () => toast.show({ tone: "success", icon: "check", message: status === "suspended" ? `השעינו את ${nameOfMember(member)}` : `החזרנו את ${nameOfMember(member)} לפעילות` }),
-        onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) })
-      }
+        onSuccess: () =>
+          toast.show({
+            tone: "success",
+            icon: "check",
+            message:
+              status === "suspended"
+                ? `השעינו את ${nameOfMember(member)}`
+                : `החזרנו את ${nameOfMember(member)} לפעילות`,
+          }),
+        onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
+      },
     );
 
   const actionsFor = (member: Member): MenuEntry[] => {
@@ -66,11 +84,16 @@ export function MembersPage() {
     const entries: MenuEntry[] = [];
     if (roles.length > 0) entries.push({ label: "שינוי תפקיד", onSelect: () => setDialog({ kind: "role", member }) });
     if (canSuspend(actor, member)) entries.push({ label: "השעיה", onSelect: () => setStatus(member, "suspended") });
-    if (canReactivate(actor, member)) entries.push({ label: "החזרה לפעילות", onSelect: () => setStatus(member, "active") });
-    // Only the owner hands over the studio, to an active admin, one offer at a time (docs/27 section 3.5).
-    if (studio.can("ownership.transfer") && actor.role === "owner" && member.role === "admin" && member.status === "active" && !actor.pendingOwnershipTransfer)
+    if (canReactivate(actor, member))
+      entries.push({ label: "החזרה לפעילות", onSelect: () => setStatus(member, "active") });
+    if (studio.can("ownership.transfer") && canOfferOwnership(actor, member))
       entries.push({ label: "העברת הבעלות", onSelect: () => setDialog({ kind: "transfer", member }) });
-    if (canRemove(actor, member)) entries.push("separator", { label: "הסרה מהסטודיו", danger: true, onSelect: () => setDialog({ kind: "remove", member }) });
+    if (canRemove(actor, member))
+      entries.push("separator", {
+        label: "הסרה מהסטודיו",
+        danger: true,
+        onSelect: () => setDialog({ kind: "remove", member }),
+      });
     return entries;
   };
 
@@ -95,7 +118,7 @@ export function MembersPage() {
           <Skeleton height={48} />
         </div>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="חברי הסטודיו">
           <table className="tp-table">
             <caption className="tp-sr-only">חברי הסטודיו</caption>
             <thead>
@@ -128,8 +151,7 @@ export function MembersPage() {
                     <td>
                       {actionsFor(member).length > 0 && (
                         <DropdownMenu label="פעולות" variant="ghost" size="sm" items={actionsFor(member)}>
-                          {/* The space is a text node of its own: inside the hidden span it would be trimmed from the name. */}
-                          {" "}
+                          {/* The space is a text node of its own: inside the hidden span it would be trimmed from the name. */}{" "}
                           <span className="tp-sr-only">עבור {nameOfMember(member)}</span>
                         </DropdownMenu>
                       )}
@@ -139,12 +161,20 @@ export function MembersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
-      {dialog?.kind === "role" && <RoleDialog member={dialog.member} roles={assignableRoles(studio.membership, dialog.member)} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "role" && (
+        <RoleDialog
+          member={dialog.member}
+          roles={assignableRoles(studio.membership, dialog.member)}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === "remove" && <RemoveDialog member={dialog.member} onClose={() => setDialog(null)} />}
-      {dialog?.kind === "transfer" && <TransferDialog member={dialog.member} name={nameOfMember(dialog.member)} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "transfer" && (
+        <TransferDialog member={dialog.member} name={nameOfMember(dialog.member)} onClose={() => setDialog(null)} />
+      )}
 
       {members.hasNextPage && (
         <div>

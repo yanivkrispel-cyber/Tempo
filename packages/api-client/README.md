@@ -7,7 +7,7 @@ Typed client for the Tempo API (ADR-0024). Types are generated from `contracts/o
 import { createTempoClient, unwrap } from "@tempo/api-client";
 
 const api = createTempoClient({ baseUrl: import.meta.env.VITE_API_URL, getAccessToken: () => session.accessToken });
-const me = await unwrap(api.GET("/api/v1/me"));                       // typed data, or throws TempoApiError
+const me = await unwrap(api.GET("/api/v1/me")); // typed data, or throws TempoApiError
 await unwrap(api.POST("/api/v1/invitations/accept", { body: { token } })); // the token from location.hash
 ```
 

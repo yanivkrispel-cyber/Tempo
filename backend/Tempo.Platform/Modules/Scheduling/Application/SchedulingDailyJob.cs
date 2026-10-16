@@ -9,8 +9,12 @@ namespace Tempo.Platform.Modules.Scheduling.Application;
 /// </summary>
 public sealed class SchedulingDailyJob(IDataSourceProvider dataSources, TimeProvider clock)
 {
+    /// <summary>Time zones the last run could not resolve; the worker logs them.</summary>
+    public HashSet<string> SkippedTimeZones { get; } = new(StringComparer.Ordinal);
+
     public async Task<(int Sessions, int ExpiredWaitlist)> RunAsync(CancellationToken cancellationToken)
     {
+        SkippedTimeZones.Clear();
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Platform, null, null, cancellationToken);
         var templates = new List<(Guid OrganizationId, string TimeZone, TemplateView Template)>();
         await using (var command = unitOfWork.Command(
@@ -47,8 +51,26 @@ public sealed class SchedulingDailyJob(IDataSourceProvider dataSources, TimeProv
         var sessions = 0;
         foreach (var (organizationId, timeZone, template) in templates)
         {
-            var zone = TimeZoneInfo.FindSystemTimeZoneById(timeZone);
+            // One studio with a time zone this host does not know must not stop every other studio (#108).
+            if (!TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out var zone))
+            {
+                SkippedTimeZones.Add(timeZone);
+                continue;
+            }
+
             var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), zone).DateTime);
+            // Lock the template at the version read, so an edit cannot commit between this check and the inserts.
+            // An edit waiting on the lock then rebuilds the unbooked sessions itself (review on #117).
+            await using (var hold = unitOfWork.Command(
+                "SELECT 1 FROM scheduling.templates WHERE organization_id = $1 AND id = $2 AND version = $3 FOR UPDATE",
+                organizationId, template.Id, template.Version))
+            {
+                if (await hold.ExecuteScalarAsync(cancellationToken) is null)
+                {
+                    continue;
+                }
+            }
+
             sessions += await TimetableService.MaterializeAsync(unitOfWork, organizationId, template, zone, today, cancellationToken);
         }
 

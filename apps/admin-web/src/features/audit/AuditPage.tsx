@@ -2,7 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Skeleton } from "../../shared/design-system";
+import { Banner, Button, Skeleton, TableScroll } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { actionLabel } from "./actions";
@@ -26,11 +26,11 @@ export function AuditPage() {
     queryFn: ({ pageParam }) =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/audit-events", {
-          params: { path: { organizationId }, query: { limit: 50, before: pageParam ?? undefined } }
-        })
+          params: { path: { organizationId }, query: { limit: 50, before: pageParam ?? undefined } },
+        }),
       ),
     initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextBefore ?? null
+    getNextPageParam: (page) => page.nextBefore ?? null,
   });
   const rows = events.data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -55,7 +55,7 @@ export function AuditPage() {
       ) : rows.length === 0 ? (
         <p className="tp-muted">עוד אין פעולות ביומן.</p>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="יומן פעולות">
           <table className="tp-table tp-table--compact">
             <caption className="tp-sr-only">יומן פעולות</caption>
             <thead>
@@ -80,7 +80,7 @@ export function AuditPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {events.hasNextPage && (

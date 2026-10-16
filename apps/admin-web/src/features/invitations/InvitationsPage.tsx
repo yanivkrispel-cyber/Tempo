@@ -5,7 +5,21 @@ import { roleName } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
 import { CopyLink } from "../../shared/CopyLink";
-import { Banner, Button, Card, Chip, Dialog, Field, Input, Segmented, Select, Skeleton, useToast, type ChipTone } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Card,
+  Chip,
+  type ChipTone,
+  Dialog,
+  Field,
+  Input,
+  Segmented,
+  Select,
+  Skeleton,
+  TableScroll,
+  useToast,
+} from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 
@@ -16,7 +30,7 @@ const statusLabel: Record<Invitation["status"], { text: string; tone: ChipTone }
   pending: { text: "ממתינה", tone: "info" },
   accepted: { text: "התקבלה", tone: "success" },
   revoked: { text: "בוטלה", tone: "danger" },
-  expired: { text: "פג תוקף", tone: "warning" }
+  expired: { text: "פג תוקף", tone: "warning" },
 };
 
 const day = (iso: string) => formatDate(toIsoDate(new Date(iso)));
@@ -51,7 +65,7 @@ export function InvitationsPage() {
             onChange={setFilter}
             options={[
               { value: "pending", label: "ממתינות" },
-              { value: "all", label: "כולן" }
+              { value: "all", label: "כולן" },
             ]}
           />
         </div>
@@ -69,7 +83,7 @@ export function InvitationsPage() {
         ) : rows.length === 0 ? (
           <p className="tp-muted">{filter === "pending" ? "אין הזמנות שממתינות לתשובה." : "עוד לא נשלחו הזמנות."}</p>
         ) : (
-          <div className="tp-table-wrap">
+          <TableScroll label="הזמנות במייל">
             <table className="tp-table">
               <caption className="tp-sr-only">הזמנות במייל</caption>
               <thead>
@@ -90,12 +104,16 @@ export function InvitationsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
 
         {invitations.hasNextPage && (
           <div>
-            <Button variant="secondary" loading={invitations.isFetchingNextPage} onClick={() => void invitations.fetchNextPage()}>
+            <Button
+              variant="secondary"
+              loading={invitations.isFetchingNextPage}
+              onClick={() => void invitations.fetchNextPage()}
+            >
               עוד הזמנות
             </Button>
           </div>
@@ -120,11 +138,14 @@ function useInvitations(filter: "pending" | "all") {
     queryFn: ({ pageParam }) =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/invitations", {
-          params: { path: { organizationId }, query: { status: filter === "pending" ? "pending" : undefined, limit: 50, before: pageParam ?? undefined } }
-        })
+          params: {
+            path: { organizationId },
+            query: { status: filter === "pending" ? "pending" : undefined, limit: 50, before: pageParam ?? undefined },
+          },
+        }),
       ),
     initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextBefore ?? null
+    getNextPageParam: (page) => page.nextBefore ?? null,
   });
 }
 
@@ -135,11 +156,16 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
   const { organizationId } = useStudio();
   const key = useInvitationsKey();
   const revoke = useMutation({
+    mutationKey: [organizationId, "invitations.revoke"],
     mutationFn: () =>
-      unwrap(api.DELETE("/api/v1/organizations/{organizationId}/invitations/{invitationId}", { params: { path: { organizationId, invitationId: invitation.id } } })),
+      unwrap(
+        api.DELETE("/api/v1/organizations/{organizationId}/invitations/{invitationId}", {
+          params: { path: { organizationId, invitationId: invitation.id } },
+        }),
+      ),
     onSuccess: () => toast.show({ tone: "success", icon: "check", message: `ההזמנה ל־${invitation.email} בוטלה` }),
     onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
   return (
@@ -155,7 +181,13 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
       <td>{invitation.invitedBy?.displayName ?? "—"}</td>
       <td>
         {invitation.status === "pending" && (
-          <Button variant="ghost-danger" size="sm" loading={revoke.isPending} onClick={() => revoke.mutate()} aria-label={`ביטול ההזמנה ל־${invitation.email}`}>
+          <Button
+            variant="ghost-danger"
+            size="sm"
+            loading={revoke.isPending}
+            onClick={() => revoke.mutate()}
+            aria-label={`ביטול ההזמנה ל־${invitation.email}`}
+          >
             ביטול
           </Button>
         )}
@@ -170,14 +202,22 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
   const studio = useStudio();
   const key = useInvitationsKey();
   // Admins invite staff and clients; only someone with members.invite.admin (the owner) invites admins.
-  const roles: InvitableRole[] = studio.can("members.invite.admin") ? ["client", "staff", "admin"] : ["client", "staff"];
+  const roles: InvitableRole[] = studio.can("members.invite.admin")
+    ? ["client", "staff", "admin"]
+    : ["client", "staff"];
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InvitableRole>("staff");
   const [submitted, setSubmitted] = useState(false);
   const create = useMutation({
+    mutationKey: [studio.organizationId, "invitations.createInvitation"],
     mutationFn: (body: Schemas["CreateInvitationRequest"]) =>
-      unwrap(api.POST("/api/v1/organizations/{organizationId}/invitations", { params: { path: { organizationId: studio.organizationId } }, body })),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/invitations", {
+          params: { path: { organizationId: studio.organizationId } },
+          body,
+        }),
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
   const address = email.trim();
@@ -222,7 +262,14 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
     >
       <form id="invite" className="tp-stack" onSubmit={submit} noValidate>
         <Field label="מייל" required error={submitted ? invalid : undefined}>
-          <Input type="email" dir="ltr" className="tp-ltr" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="off" />
+          <Input
+            type="email"
+            dir="ltr"
+            className="tp-ltr"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="off"
+          />
         </Field>
         <Field label="תפקיד" help={role === "client" ? "מתאמנים מצטרפים בדרך כלל בקישור ההצטרפות." : undefined}>
           <Select value={role} onChange={(event) => setRole(event.target.value as InvitableRole)}>
@@ -251,22 +298,26 @@ function JoinLinkCard() {
   const organizationKey = ["studio", organizationId, "organization"] as const;
   const organization = useQuery({
     queryKey: organizationKey,
-    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } }))
+    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } })),
   });
   const [link, setLink] = useState<string | null>(null);
 
   const rotate = useMutation({
-    mutationFn: () => unwrap(api.PUT("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
+    mutationKey: [organizationId, "invitations.rotate"],
+    mutationFn: () =>
+      unwrap(api.PUT("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
     onSuccess: (joinLink) => setLink(joinLink.link),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: organizationKey })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: organizationKey }),
   });
   const disable = useMutation({
-    mutationFn: () => unwrap(api.DELETE("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
+    mutationKey: [organizationId, "invitations.disable"],
+    mutationFn: () =>
+      unwrap(api.DELETE("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
     onSuccess: () => {
       setLink(null);
       toast.show({ tone: "success", icon: "check", message: "קישור ההצטרפות כובה" });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: organizationKey })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: organizationKey }),
   });
 
   const enabled = organization.data?.joinLinkEnabled ?? false;
@@ -292,7 +343,11 @@ function JoinLinkCard() {
             </Banner>
           )}
           <div className="tp-row">
-            <Button variant={enabled ? "secondary" : "primary"} loading={rotate.isPending} onClick={() => rotate.mutate()}>
+            <Button
+              variant={enabled ? "secondary" : "primary"}
+              loading={rotate.isPending}
+              onClick={() => rotate.mutate()}
+            >
               {enabled ? "החלפת הקישור" : "יצירת קישור"}
             </Button>
             {enabled && (

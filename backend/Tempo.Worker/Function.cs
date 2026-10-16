@@ -9,7 +9,9 @@ using Tempo.Worker.Consumers.Outbox;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.Modules.PlatformAdmin;
 using Tempo.Worker.Consumers.SmokeTest;
+using Tempo.Platform.Modules.Retention.Application;
 using Tempo.Platform.Modules.Scheduling.Application;
+using Tempo.Worker.Consumers.Retention;
 using Tempo.Worker.Consumers.Scheduling;
 using Tempo.Worker.Consumers.Tripwire;
 
@@ -47,7 +49,8 @@ public class Function
                 Logger,
                 new HourlyBackupTripwire(DataSources),
                 Environment.GetEnvironmentVariable("ALARM_TOPIC_ARN") is { Length: > 0 } topic ? new SnsOwnerAlert(topic) : null),
-            [MessageTypes.SchedulingDaily] = new SchedulingDailyMessageHandler(Logger, new SchedulingDailyJob(DataSources, TimeProvider.System))
+            [MessageTypes.SchedulingDaily] = new SchedulingDailyMessageHandler(Logger, new SchedulingDailyJob(DataSources, TimeProvider.System)),
+            [MessageTypes.RetentionDaily] = new RetentionMessageHandler(Logger, new RetentionJob(DataSources, TimeProvider.System, RetentionPolicy.Default))
         });
 
     public Task<SQSBatchResponse> FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)

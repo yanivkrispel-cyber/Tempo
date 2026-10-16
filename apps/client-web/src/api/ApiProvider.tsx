@@ -23,9 +23,10 @@ export function ApiProvider({ baseUrl, auth, fetch, children }: ApiProviderProps
         // Not for a request that went without a token, and not when the API asks for a fresh sign-in for one
         // privileged action (auth.step_up_required, docs/27 section 3.6): that keeps the session.
         const sentToken = request.headers.has("Authorization") || request.headers.has("X-Tempo-Authorization");
-        if (response.status === 401 && sentToken && (await problemCode(response)) !== "auth.step_up_required") auth?.forget();
+        if (response.status === 401 && sentToken && (await problemCode(response)) !== "auth.step_up_required")
+          auth?.forget();
         return response;
-      }
+      },
     });
     return api;
   });

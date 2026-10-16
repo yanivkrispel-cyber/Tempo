@@ -1,12 +1,24 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
-import { Banner, Button, Chip, DateInput, Dialog, Field, Input, Segmented, Skeleton } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Chip,
+  DateInput,
+  Dialog,
+  Field,
+  Input,
+  Segmented,
+  Skeleton,
+  TableScroll,
+} from "../../shared/design-system";
 import { displayPhone, phoneSearchText } from "../../shared/utilities/phones";
 import { todayIso, type IsoDate } from "../../shared/utilities/dates";
+import { useDebounced } from "../../shared/useDebounced";
 import { useStudio } from "../console/studio";
 import { personStatus, sourceLabel } from "./labels";
 
@@ -37,14 +49,22 @@ export function PeoplePage() {
       </header>
 
       <div className="tp-row" style={{ justifyContent: "space-between" }}>
-        <Input search type="search" aria-label="חיפוש לפי שם, טלפון או מייל" placeholder="חיפוש לפי שם, טלפון או מייל" value={text} onChange={(event) => setText(event.target.value)} style={{ maxWidth: 360 }} />
+        <Input
+          search
+          type="search"
+          aria-label="חיפוש לפי שם, טלפון או מייל"
+          placeholder="חיפוש לפי שם, טלפון או מייל"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          style={{ maxWidth: 360 }}
+        />
         <Segmented
           label="אילו אנשים"
           value={status}
           onChange={setStatus}
           options={[
             { value: "current", label: "פעילים" },
-            { value: "archived", label: "בארכיון" }
+            { value: "archived", label: "בארכיון" },
           ]}
         />
       </div>
@@ -60,9 +80,15 @@ export function PeoplePage() {
           <Skeleton height={48} />
         </div>
       ) : rows.length === 0 ? (
-        <p className="tp-muted">{query.length >= 2 ? "לא נמצא אף אחד." : status === "archived" ? "אין אנשים בארכיון." : "עוד אין אנשים בסטודיו."}</p>
+        <p className="tp-muted">
+          {query.length >= 2
+            ? "לא נמצא אף אחד."
+            : status === "archived"
+              ? "אין אנשים בארכיון."
+              : "עוד אין אנשים בסטודיו."}
+        </p>
       ) : (
-        <div className="tp-table-wrap">
+        <TableScroll label="אנשים">
           <table className="tp-table">
             <caption className="tp-sr-only">אנשים</caption>
             <thead>
@@ -80,7 +106,7 @@ export function PeoplePage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {people.hasNextPage && (
@@ -125,23 +151,19 @@ function usePeople(query: string | undefined, status: "current" | "archived") {
           params: {
             path: { organizationId },
             // Without a status the API returns active and archived together; each tab asks for its own.
-            query: { query, status: status === "archived" ? "archived" : "active", limit: 50, before: pageParam ?? undefined }
-          }
-        })
+            query: {
+              query,
+              status: status === "archived" ? "archived" : "active",
+              limit: 50,
+              before: pageParam ?? undefined,
+            },
+          },
+        }),
       ),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextBefore ?? null,
-    placeholderData: keepPreviousData
+    placeholderData: keepPreviousData,
   });
-}
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return debounced;
 }
 
 /** A walk-in at the front desk (P-6: a display name and one phone or email). */
@@ -153,15 +175,17 @@ function NewPersonDialog({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({ displayName: "", givenName: "", familyName: "", phone: "", email: "" });
   const [birthDate, setBirthDate] = useState<IsoDate | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const set = (field: keyof typeof form) => (event: { target: { value: string } }) => setForm({ ...form, [field]: event.target.value });
+  const set = (field: keyof typeof form) => (event: { target: { value: string } }) =>
+    setForm({ ...form, [field]: event.target.value });
 
   const create = useMutation({
+    mutationKey: [organizationId, "people.create"],
     mutationFn: (body: Schemas["CreatePersonRequest"]) =>
       unwrap(api.POST("/api/v1/organizations/{organizationId}/people", { params: { path: { organizationId } }, body })),
     onSuccess: async (person) => {
       await queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] });
       void navigate(person.id);
-    }
+    },
   });
 
   const nameError = form.displayName.trim() === "" ? "צריך שם" : null;
@@ -180,7 +204,7 @@ function NewPersonDialog({ onClose }: { onClose: () => void }) {
       familyName: optional(form.familyName),
       birthDate: birthDate ?? undefined,
       phone: optional(form.phone),
-      email: optional(form.email)
+      email: optional(form.email),
     });
   };
 
@@ -214,7 +238,14 @@ function NewPersonDialog({ onClose }: { onClose: () => void }) {
           </Field>
         </div>
         <Field label="טלפון" error={(submitted && contactError) || phoneError}>
-          <Input type="tel" dir="ltr" className="tp-ltr" value={form.phone} onChange={set("phone")} placeholder="050-1234567" />
+          <Input
+            type="tel"
+            dir="ltr"
+            className="tp-ltr"
+            value={form.phone}
+            onChange={set("phone")}
+            placeholder="050-1234567"
+          />
         </Field>
         <Field label="מייל" error={emailError}>
           <Input type="email" dir="ltr" className="tp-ltr" value={form.email} onChange={set("email")} />

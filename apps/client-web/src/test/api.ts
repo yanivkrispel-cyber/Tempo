@@ -11,14 +11,20 @@ export const sampleMe: Me = {
   memberships: [
     {
       membershipId: "0199e5a1-0000-7000-8000-000000000002",
-      role: "client",
-      roles: [],
-      permissions: [],
+      // The deprecated `role` field disagrees on purpose: the app reads `roles`, and a screen that leans on `role` fails.
+      role: "staff",
+      roles: [{ id: "00000000-0000-7000-8000-000000000004", key: "client", displayName: "מתאמן", isSystem: true }],
+      permissions: ["organization.view"],
       pendingOwnershipTransfer: null,
       status: "active",
-      organization: { id: "0199e5a1-0000-7000-8000-000000000003", slug: "neshima", displayName: "סטודיו נשימה", status: "active" }
-    }
-  ]
+      organization: {
+        id: "0199e5a1-0000-7000-8000-000000000003",
+        slug: "neshima",
+        displayName: "סטודיו נשימה",
+        status: "active",
+      },
+    },
+  ],
 };
 
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -29,7 +35,7 @@ export function json(body: unknown, status = 200, headers: Record<string, string
 export function problem(status: number, code: string, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify({ type: "about:blank", title: code, status, code }), {
     status,
-    headers: { "Content-Type": "application/problem+json", ...headers }
+    headers: { "Content-Type": "application/problem+json", ...headers },
   });
 }
 
@@ -63,7 +69,7 @@ const consent = (purpose: string, channel: string, state: string) => ({
   state,
   method: "self",
   textVersion: "draft-2026-10-15",
-  occurredAt: "2026-10-14T08:00:00Z"
+  occurredAt: "2026-10-14T08:00:00Z",
 });
 
 /** The member's own record in the sample studio: reminders by push and email on, marketing never chosen. */
@@ -84,10 +90,10 @@ export const sampleProfile = {
   version: "2",
   contactPoints: [],
   consents: [consent("reminders", "push", "granted"), consent("reminders", "email", "granted")],
-  relationships: []
+  relationships: [],
 };
 
 export const signedInRoutes = {
   "POST /api/v1/session": sampleMe,
-  [`GET /api/v1/organizations/${sampleMe.memberships[0]!.organization.id}/me/profile`]: sampleProfile
+  [`GET /api/v1/organizations/${sampleMe.memberships[0]!.organization.id}/me/profile`]: sampleProfile,
 };

@@ -21,22 +21,25 @@ export function InvitePersonDialog({ person, onClose }: { person: PersonDetail; 
   const api = useApi();
   const queryClient = useQueryClient();
   const { organizationId } = useStudio();
-  const [email, setEmail] = useState(person.primaryEmail ?? person.contactPoints.find((contact) => contact.type === "email")?.value ?? "");
+  const [email, setEmail] = useState(
+    person.primaryEmail ?? person.contactPoints.find((contact) => contact.type === "email")?.value ?? "",
+  );
   const [submitted, setSubmitted] = useState(false);
   const invite = useMutation({
+    mutationKey: [organizationId, "people.invite"],
     mutationFn: (address: string) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/people/{personId}/invite", {
           params: { path: { organizationId, personId: person.id } },
-          body: { email: address }
-        })
+          body: { email: address },
+        }),
       ),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "person", person.id] }),
         queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] }),
-        queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "invitations"] })
-      ])
+        queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "invitations"] }),
+      ]),
   });
 
   const address = email.trim();
@@ -81,7 +84,12 @@ export function InvitePersonDialog({ person, onClose }: { person: PersonDetail; 
       }
     >
       <form id="invite-person" className="tp-stack" onSubmit={submit} noValidate>
-        <Field label="מייל" required help="הכתובת שאיתה יתחברו. כתובת חדשה תתווסף לפרטי הקשר." error={submitted ? invalid : undefined}>
+        <Field
+          label="מייל"
+          required
+          help="הכתובת שאיתה יתחברו. כתובת חדשה תתווסף לפרטי הקשר."
+          error={submitted ? invalid : undefined}
+        >
           <Input
             type="email"
             dir="ltr"

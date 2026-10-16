@@ -21,6 +21,7 @@ public static class HealthEndpoints
 
                 return Results.Ok(response);
             })
+            .AllowAnonymous()
             .WithName("getHealth")
             .Produces<HealthResponse>();
 

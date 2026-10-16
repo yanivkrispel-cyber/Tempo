@@ -11,9 +11,13 @@ public sealed record PassCandidate(
     int EntriesUsed,
     int? WeeklyCap,
     string? ClassCategory,
-    IReadOnlyList<DateOnly> HeldDates)
+    IReadOnlyList<DateOnly> HeldDates,
+    IReadOnlyList<(DateOnly From, DateOnly To)>? Freezes = null)
 {
     public int? EntriesLeft => Entries is { } entries ? entries - EntriesUsed : null;
+
+    /// <summary>A frozen membership books nothing inside the frozen days (docs/29 section 16.4).</summary>
+    public bool IsFrozenOn(DateOnly date) => Freezes?.Any(f => f.From <= date && date <= f.To) == true;
 }
 
 /// <summary>
@@ -22,9 +26,17 @@ public sealed record PassCandidate(
 /// </summary>
 public static class PassSelection
 {
+    /// <summary>The last frozen day covering <paramref name="sessionDate"/> on any of the person's memberships, or null.</summary>
+    public static DateOnly? FrozenUntil(IEnumerable<PassCandidate> passes, DateOnly sessionDate) =>
+        passes
+            .Where(p => p.StartsOn <= sessionDate && p.IsFrozenOn(sessionDate))
+            .SelectMany(p => p.Freezes!.Where(f => f.From <= sessionDate && sessionDate <= f.To).Select(f => (DateOnly?)f.To))
+            .Max();
+
     public static PassCandidate? Pick(IEnumerable<PassCandidate> passes, DateOnly sessionDate, string classCategory) =>
         passes
             .Where(p => p.StartsOn <= sessionDate && sessionDate <= p.EndsOn)
+            .Where(p => !p.IsFrozenOn(sessionDate))
             .Where(p => p.ClassCategory is null || p.ClassCategory == classCategory)
             .Where(p => p.EntriesLeft is null or > 0)
             .Where(p => p.WeeklyCap is not { } cap || HeldInWeek(p, sessionDate) < cap)

@@ -21,6 +21,8 @@ public static class BookingEndpoints
 
         tenant.MapPost("/sessions/{sessionId:guid}/bookings", BookAsync).RequirePermission(Permissions.ScheduleView).WithName("createBooking").Produces<BookingResponse>(StatusCodes.Status201Created);
         tenant.MapPost("/bookings/{bookingId:guid}/cancel", CancelAsync).RequirePermission(Permissions.ScheduleView).WithName("cancelBooking").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<BookingResponse>();
+        tenant.MapPost("/bookings/{bookingId:guid}/move", MoveAsync).RequirePermission(Permissions.BookingsManage).WithName("moveBooking").Produces<BookingResponse>();
+        tenant.MapGet("/me/bookings/{bookingId:guid}/calendar.ics", CalendarAsync).RequirePermission(Permissions.ScheduleView).WithName("getBookingCalendar").Produces<string>(StatusCodes.Status200OK, "text/calendar");
         tenant.MapGet("/me/bookings", ListMineAsync).RequirePermission(Permissions.ScheduleView).WithName("listMyBookings").Produces<MyBookingPageResponse>();
         tenant.MapGet("/people/{personId:guid}/bookings", ListForPersonAsync).RequirePermission(Permissions.BookingsManage).WithName("listPersonBookings").Produces<MyBookingPageResponse>();
 
@@ -44,6 +46,20 @@ public static class BookingEndpoints
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CancelBookingRequest? request,
         IBookingService bookings) =>
         Results.Ok(ToResponse(await bookings.CancelAsync(TenantRouteFilter.Current(httpContext), bookingId, request?.ReturnEntry == true, httpContext.RequestAborted)));
+
+    private static async Task<IResult> MoveAsync(HttpContext httpContext, Guid bookingId, MoveBookingRequest request, IBookingService bookings)
+    {
+        var target = request.SessionId ?? throw new DomainRuleViolationException(ViolationKind.Validation, "sessionId.required", "Say which class to move to.", "sessionId");
+        return Results.Ok(ToResponse(await bookings.MoveAsync(TenantRouteFilter.Current(httpContext), bookingId, target, httpContext.RequestAborted)));
+    }
+
+    /// <summary>"Add to calendar" (docs/29 section 16.3): one .ics file for the caller's own booked place.</summary>
+    private static async Task<IResult> CalendarAsync(HttpContext httpContext, Guid bookingId, IBookingCalendarService calendars)
+    {
+        var file = await calendars.CalendarAsync(TenantRouteFilter.Current(httpContext), bookingId, httpContext.RequestAborted);
+        httpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{file.FileName}\"";
+        return Results.Text(file.Content, "text/calendar; charset=utf-8");
+    }
 
     private static async Task<IResult> ListMineAsync(HttpContext httpContext, string? scope, Guid? before, int? limit, IBookingService bookings)
     {
@@ -69,7 +85,7 @@ public static class BookingEndpoints
             [.. page.Items.Select(i =>
             {
                 var b = ToResponse(i.Booking);
-                return new MyBookingResponse(b.Id, b.SessionId, b.Person, b.Status, b.WaitlistPosition, b.LateCancel, b.CancelReason, b.Pass, b.CreatedAt, b.Version, ScheduleEndpoints.ToResponse(i.Session));
+                return new MyBookingResponse(b.Id, b.SessionId, b.Person, b.Status, b.WaitlistPosition, b.LateCancel, b.CancelReason, b.Pass, b.CreatedAt, b.Version, ScheduleEndpoints.ToResponse(i.Session), b.CancelledFrom);
             })],
             page.NextBefore);
 
@@ -84,5 +100,6 @@ public static class BookingEndpoints
             b.CancelReason,
             b.Pass is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
             b.CreatedAt,
-            b.Version.ToString(CultureInfo.InvariantCulture));
+            b.Version.ToString(CultureInfo.InvariantCulture),
+            b.CancelledFrom);
 }

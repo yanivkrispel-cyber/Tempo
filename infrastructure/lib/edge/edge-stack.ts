@@ -3,9 +3,14 @@ import {
   AllowedMethods,
   CachePolicy,
   Distribution,
+  FunctionCode,
+  FunctionEventType,
+  Function as CloudFrontFunction,
+  FunctionRuntime,
   FunctionUrlOriginAccessControl,
   OriginProtocolPolicy,
   OriginRequestPolicy,
+  ResponseHeadersPolicy,
   Signing,
   ViewerProtocolPolicy
 } from "aws-cdk-lib/aws-cloudfront";
@@ -24,6 +29,39 @@ import { TempoEnvironmentConfig, resourceName } from "../../config/environment-c
 import { createLogGroup } from "../constructs/log-group-defaults";
 import { applyStandardTags } from "../constructs/tagging";
 
+/**
+ * The web apps' Content-Security-Policy (#133). The API is same-origin (/api/*); sign-in exchanges the code at the
+ * Cognito domain, two-step sign-in setup calls the Cognito user API (#127), and the design system loads Heebo and
+ * IBM Plex Mono from Google Fonts. Inline style attributes are allowed (React's `style`); inline scripts are not.
+ */
+export function appContentSecurityPolicy(config: TempoEnvironmentConfig): string {
+  const cognitoDomain = `https://tempo-${config.environmentName}-${config.accountId}.auth.${config.region}.amazoncognito.com`;
+  const cognitoApi = `https://cognito-idp.${config.region}.amazonaws.com`;
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    `connect-src 'self' ${cognitoDomain} ${cognitoApi}`,
+    `form-action 'self' ${cognitoDomain}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "upgrade-insecure-requests"
+  ].join("; ");
+}
+
+function cspFunctionSource(policy: string): string {
+  return [
+    "function handler(event) {",
+    "  var response = event.response;",
+    `  response.headers["content-security-policy"] = { value: ${JSON.stringify(policy)} };`,
+    "  return response;",
+    "}"
+  ].join("\n");
+}
+
 export interface EdgeStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
   /** Domain of the API function's Function URL, e.g. `abc123.lambda-url.eu-central-1.on.aws`. */
@@ -32,9 +70,13 @@ export interface EdgeStackProps extends StackProps {
 
 /** Requests per client IP in five minutes before WAF blocks it: all paths (rule 4). */
 export const GENERAL_RATE_LIMIT = 2000;
-/** The stricter limit on authentication endpoints (rule 5). */
+/** The stricter limit on the endpoints that take a guessable input (rule 5, #124). */
 export const AUTH_RATE_LIMIT = 100;
-export const AUTH_PATH_PREFIX = "/api/v1/auth/";
+/**
+ * Invitation tokens and join codes are the only inputs worth guessing (docs/26 section 10.3); sign-in itself goes
+ * through Cognito, not this API. `/api/v1/auth/` was named here before and has no routes.
+ */
+export const GUESSABLE_INPUT_PATHS = ["/api/v1/invitations/preview", "/api/v1/invitations/accept", "/api/v1/join", "/api/v1/join/preview"] as const;
 /** What the canary calls through CloudFront (ADR-0012 amendment). */
 export const HEALTH_PATH = "/api/v1/health";
 export const CANARY_INTERVAL_MINUTES = 5;
@@ -91,11 +133,15 @@ export class EdgeStack extends Stack {
               limit: AUTH_RATE_LIMIT,
               aggregateKeyType: "IP",
               scopeDownStatement: {
-                byteMatchStatement: {
-                  searchString: AUTH_PATH_PREFIX,
-                  fieldToMatch: { uriPath: {} },
-                  positionalConstraint: "STARTS_WITH",
-                  textTransformations: [{ priority: 0, type: "NONE" }]
+                orStatement: {
+                  statements: GUESSABLE_INPUT_PATHS.map((path) => ({
+                    byteMatchStatement: {
+                      searchString: path,
+                      fieldToMatch: { uriPath: {} },
+                      positionalConstraint: "EXACTLY",
+                      textTransformations: [{ priority: 0, type: "NONE" }]
+                    }
+                  }))
                 }
               }
             }
@@ -122,6 +168,16 @@ export class EdgeStack extends Stack {
       signing: Signing.SIGV4_ALWAYS
     });
 
+    // The Free plan allows managed response header policies and CloudFront Functions, but no custom response
+    // header policy, so the Content-Security-Policy comes from a viewer-response function (#133) and the other
+    // security headers (HSTS, nosniff, frame options, referrer policy) from the managed SecurityHeadersPolicy.
+    const contentSecurityPolicy = new CloudFrontFunction(this, "ContentSecurityPolicy", {
+      functionName: resourceName(config, "csp"),
+      comment: "Adds the apps' Content-Security-Policy (docs: issue #133)",
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromInline(cspFunctionSource(appContentSecurityPolicy(config)))
+    });
+
     // Only managed cache and origin request policies: the Free plan allows no others.
     this.distribution = new Distribution(this, "Distribution", {
       comment: `Tempo ${config.environmentName}: PWA and API`,
@@ -131,6 +187,8 @@ export class EdgeStack extends Stack {
         origin: S3BucketOrigin.withOriginAccessControl(pwaBucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+        functionAssociations: [{ function: contentSecurityPolicy, eventType: FunctionEventType.VIEWER_RESPONSE }],
         compress: true
       },
       additionalBehaviors: {
@@ -202,7 +260,7 @@ export class EdgeStack extends Stack {
     const canary = new LambdaFunction(this, "CanaryFunction", {
       functionName,
       description: "Calls the API health endpoint through CloudFront and logs the result",
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 128,
       timeout: Duration.seconds(15),
@@ -259,7 +317,7 @@ export class EdgeStack extends Stack {
     });
 
     if (config.observability.alarmNotificationsEnabled && config.observability.alarmEmail) {
-      const topic = new Topic(this, "AlarmTopic", { topicName: resourceName(config, "edge-alarms") });
+      const topic = new Topic(this, "AlarmTopic", { topicName: resourceName(config, "edge-alarms"), enforceSSL: true });
       topic.addSubscription(new EmailSubscription(config.observability.alarmEmail));
       for (const alarm of [cloudFront5xx, canaryFailure]) {
         alarm.addAlarmAction(new SnsAction(topic));

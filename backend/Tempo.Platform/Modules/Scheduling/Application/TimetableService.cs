@@ -23,7 +23,12 @@ public sealed record TemplateView(
     int Capacity,
     DateOnly ValidFrom,
     DateOnly? ValidUntil,
-    long Version);
+    long Version,
+    // What the console shows on a weekly class without a second request (A1, #136). The daily job reads
+    // templates without them, so they stay optional here and required on the API.
+    ClassTypeView? ClassType = null,
+    InstructorView? Instructor = null,
+    RoomView? Room = null);
 
 public sealed record InstructorView(Guid MembershipId, string DisplayName);
 
@@ -44,7 +49,8 @@ public sealed record SessionView(
     string Status,
     MyBookingStateView? MyBooking,
     long Version,
-    PassSummaryView? PassPreview = null);
+    PassSummaryView? PassPreview = null,
+    DateOnly? FrozenUntil = null);
 
 public sealed record TemplateChange(TemplateView Template, IReadOnlyList<SessionView> UntouchedSessions);
 
@@ -126,8 +132,17 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
     private const string RoomColumns = "id, name, default_capacity, status, version";
     private const string ClassTypeColumns = "id, name, category, color, default_minutes, description, status, version";
-    private const string TemplateColumns =
-        "id, class_type_id, weekday, local_start, minutes, instructor_membership_id, room_id, capacity, valid_from, valid_until, version";
+    // $1 organization. A template with its class type, instructor name and room, as the console lists it.
+    private const string TemplateSelect =
+        """
+        SELECT t.id, t.class_type_id, t.weekday, t.local_start, t.minutes, t.instructor_membership_id, t.room_id, t.capacity, t.valid_from, t.valid_until, t.version,
+               ct.id, ct.name, ct.category, ct.color, ct.default_minutes, ct.description, ct.status, ct.version,
+               (SELECT p.display_name FROM people.people p WHERE p.organization_id = t.organization_id AND p.membership_id = t.instructor_membership_id),
+               r.id, r.name, r.default_capacity, r.status, r.version
+        FROM scheduling.templates t
+        JOIN scheduling.class_types ct ON ct.organization_id = t.organization_id AND ct.id = t.class_type_id
+        LEFT JOIN scheduling.rooms r ON r.organization_id = t.organization_id AND r.id = t.room_id
+        """;
 
     // $1 organization, $2 caller's membership. The caller's own place counts only people still waiting ahead of them.
     private const string SessionSelect =
@@ -285,7 +300,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
     {
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await using var command = unitOfWork.Command(
-            $"SELECT {TemplateColumns} FROM scheduling.templates WHERE organization_id = $1 ORDER BY weekday, local_start",
+            $"{TemplateSelect} WHERE t.organization_id = $1 ORDER BY t.weekday, t.local_start",
             tenant.OrganizationId);
         return await ReadTemplatesAsync(command, cancellationToken);
     }
@@ -471,7 +486,9 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
     /// <summary>
     /// Creates the template's missing sessions from <paramref name="today"/> to the horizon. The occurrence key
-    /// (template, local date) is unique, so running it twice adds nothing (docs/29 section 4.1).
+    /// (template, local date) is unique, so running it twice adds nothing (docs/29 section 4.1). Rows are
+    /// created only while the template still has the version that was read, so a job working from an older
+    /// snapshot never adds sessions for a rule staff have since changed (#108).
     /// </summary>
     internal static async Task<int> MaterializeAsync(UnitOfWork unitOfWork, Guid organizationId, TemplateView template, TimeZoneInfo zone, DateOnly today, CancellationToken cancellationToken)
     {
@@ -485,16 +502,16 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 INSERT INTO scheduling.sessions (organization_id, id, template_id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, room_id, capacity, status, created_at, updated_at)
                 SELECT t.organization_id, $3, t.id, $4, t.class_type_id, $5, $6, t.instructor_membership_id, t.room_id, t.capacity, 'scheduled', now(), now()
                 FROM scheduling.templates t
-                WHERE t.organization_id = $1 AND t.id = $2
+                WHERE t.organization_id = $1 AND t.id = $2 AND t.version = $7
                 ON CONFLICT (organization_id, template_id, local_date) WHERE template_id IS NOT NULL DO NOTHING
                 """,
-                organizationId, template.Id, Guid.CreateVersion7(), date, startsAt, startsAt.AddMinutes(template.Minutes));
+                organizationId, template.Id, Guid.CreateVersion7(), date, startsAt, startsAt.AddMinutes(template.Minutes), template.Version);
             created += await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
         await using (var mark = unitOfWork.Command(
-            "UPDATE scheduling.templates SET materialized_until = $3 WHERE organization_id = $1 AND id = $2",
-            organizationId, template.Id, until))
+            "UPDATE scheduling.templates SET materialized_until = $3 WHERE organization_id = $1 AND id = $2 AND version = $4",
+            organizationId, template.Id, until, template.Version))
         {
             await mark.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -576,13 +593,13 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         await reader.CloseAsync();
         var bookable = sessions.Where(s => s.Status == "scheduled" && s.MyBooking is null).Select(s => (s.Id, s.LocalDate, s.ClassType.Category)).ToList();
         var previews = await BookingService.PreviewAsync(unitOfWork, tenant.OrganizationId, tenant.MembershipId, bookable, cancellationToken);
-        return [.. sessions.Select(s => previews.TryGetValue(s.Id, out var preview) ? s with { PassPreview = preview } : s)];
+        return [.. sessions.Select(s => previews.TryGetValue(s.Id, out var p) ? s with { PassPreview = p.Preview, FrozenUntil = p.FrozenUntil } : s)];
     }
 
     private static async Task<TemplateView?> TemplateAsync(UnitOfWork unitOfWork, Guid organizationId, Guid templateId, CancellationToken cancellationToken, bool forUpdate = false)
     {
         await using var command = unitOfWork.Command(
-            $"SELECT {TemplateColumns} FROM scheduling.templates WHERE organization_id = $1 AND id = $2{(forUpdate ? " FOR UPDATE" : "")}",
+            $"{TemplateSelect} WHERE t.organization_id = $1 AND t.id = $2{(forUpdate ? " FOR UPDATE OF t" : "")}",
             organizationId, templateId);
         return (await ReadTemplatesAsync(command, cancellationToken)).SingleOrDefault();
     }
@@ -675,7 +692,22 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 reader.GetInt32(7),
                 await reader.GetFieldValueAsync<DateOnly>(8, cancellationToken),
                 await reader.IsDBNullAsync(9, cancellationToken) ? null : await reader.GetFieldValueAsync<DateOnly>(9, cancellationToken),
-                reader.GetInt64(10)));
+                reader.GetInt64(10),
+                new ClassTypeView(
+                    reader.GetGuid(11),
+                    reader.GetString(12),
+                    reader.GetString(13),
+                    reader.GetString(14),
+                    reader.GetInt32(15),
+                    await reader.IsDBNullAsync(16, cancellationToken) ? null : reader.GetString(16),
+                    reader.GetString(17),
+                    reader.GetInt64(18)),
+                await reader.IsDBNullAsync(5, cancellationToken) || await reader.IsDBNullAsync(19, cancellationToken)
+                    ? null
+                    : new InstructorView(reader.GetGuid(5), reader.GetString(19)),
+                await reader.IsDBNullAsync(20, cancellationToken)
+                    ? null
+                    : new RoomView(reader.GetGuid(20), reader.GetString(21), reader.GetInt32(22), reader.GetString(23), reader.GetInt64(24))));
         }
 
         return templates;

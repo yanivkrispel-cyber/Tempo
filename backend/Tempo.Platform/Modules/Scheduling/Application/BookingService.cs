@@ -11,6 +11,9 @@ public sealed record PersonRefView(Guid Id, string DisplayName);
 
 public sealed record PassSummaryView(Guid Id, string Name, string Kind, DateOnly EndsOn, int? EntriesLeft);
 
+/// <summary>What the caller would book a session with: the pass, or the day their frozen membership thaws (docs/29 section 16.4).</summary>
+public sealed record SessionPassView(PassSummaryView? Preview, DateOnly? FrozenUntil);
+
 public sealed record BookingView(
     Guid Id,
     Guid SessionId,
@@ -21,7 +24,8 @@ public sealed record BookingView(
     string? CancelReason,
     PassSummaryView? Pass,
     DateTimeOffset CreatedAt,
-    long Version);
+    long Version,
+    string? CancelledFrom = null);
 
 public sealed record MyBookingView(BookingView Booking, SessionView Session);
 
@@ -37,6 +41,9 @@ public interface IBookingService
     Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken);
 
     Task<BookingView> CancelAsync(TenantContext tenant, Guid bookingId, bool returnEntry, CancellationToken cancellationToken);
+
+    /// <summary>Moves a booked place to another class (docs/29 section 16.1); staff only. Returns the new booking.</summary>
+    Task<BookingView> MoveAsync(TenantContext tenant, Guid bookingId, Guid sessionId, CancellationToken cancellationToken);
 
     Task<MyBookingPage> ListMineAsync(TenantContext tenant, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
 
@@ -83,7 +90,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         }
 
         var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, person, session, lockRows: true, cancellationToken)
-            ?? throw Conflict("booking.no_valid_pass", "No punch card or membership is valid for this class.");
+            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, person, session.LocalDate, "No punch card or membership is valid for this class.", cancellationToken);
         var bookingId = Guid.CreateVersion7();
         try
         {
@@ -195,6 +202,104 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         return cancelled;
     }
 
+    public async Task<BookingView> MoveAsync(TenantContext tenant, Guid bookingId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (!tenant.Has(Permissions.BookingsManage))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "permission.denied", "Only staff can move a booking.");
+        }
+
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        Guid fromSessionId;
+        Guid personId;
+        string status;
+        await using (var read = unitOfWork.Command(
+            "SELECT session_id, person_id, status FROM scheduling.bookings WHERE organization_id = $1 AND id = $2 FOR UPDATE",
+            tenant.OrganizationId, bookingId))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw BookingNotFound();
+            }
+
+            fromSessionId = reader.GetGuid(0);
+            personId = reader.GetGuid(1);
+            status = reader.GetString(2);
+        }
+
+        if (fromSessionId == sessionId)
+        {
+            throw Conflict("booking.duplicate", "The booking is already in this class.");
+        }
+
+        if (status != "booked")
+        {
+            throw Conflict("booking.not_cancellable", "Only a booked place can be moved.");
+        }
+
+        // Both classes are locked in id order, so two staff moving across each other cannot deadlock.
+        SessionFacts from;
+        SessionFacts to;
+        if (fromSessionId.CompareTo(sessionId) < 0)
+        {
+            from = await SessionAsync(unitOfWork, tenant.OrganizationId, fromSessionId, cancellationToken, forUpdate: true);
+            to = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+        }
+        else
+        {
+            to = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+            from = await SessionAsync(unitOfWork, tenant.OrganizationId, fromSessionId, cancellationToken, forUpdate: true);
+        }
+
+        var now = clock.GetUtcNow();
+        if (from.StartsAt <= now || to.StartsAt <= now)
+        {
+            throw Conflict("booking.closed", "This class has started.");
+        }
+
+        if (to.Status == "cancelled")
+        {
+            throw Conflict("session.cancelled", "This class was cancelled.");
+        }
+
+        // The entry comes back and is held again for the new class inside this transaction: once it commits
+        // nothing was spent or returned, and a pass that does not cover the new class rolls the whole move back.
+        await ReturnEntryAsync(unitOfWork, tenant.OrganizationId, bookingId, cancellationToken);
+        var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, personId, to, lockRows: true, cancellationToken)
+            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, personId, to.LocalDate, "No punch card or membership is valid for the new class.", cancellationToken);
+        if (!await TakePlaceAsync(unitOfWork, tenant.OrganizationId, to.Id, cancellationToken))
+        {
+            throw Conflict("session.full", "This class is full.");
+        }
+
+        var movedId = Guid.CreateVersion7();
+        try
+        {
+            await InsertBookingAsync(unitOfWork, tenant, movedId, to.Id, personId, "booked", null, cancellationToken);
+        }
+        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation && e.ConstraintName == "ux_bookings_one_live")
+        {
+            throw Conflict("booking.duplicate", "Already booked or waiting for this class.");
+        }
+
+        await HoldEntryAsync(unitOfWork, tenant.OrganizationId, pass, movedId, cancellationToken);
+        await SetStatusAsync(unitOfWork, tenant.OrganizationId, bookingId, "cancelled", "moved", cancellationToken);
+        await using (var free = unitOfWork.Command(
+            "UPDATE scheduling.sessions SET booked_count = booked_count - 1, version = version + 1 WHERE organization_id = $1 AND id = $2",
+            tenant.OrganizationId, from.Id))
+        {
+            await free.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await PromoteAsync(unitOfWork, tenant, from, await PolicyAsync(unitOfWork, tenant.OrganizationId, cancellationToken), now, cancellationToken);
+        await InboxAsync(unitOfWork, tenant.OrganizationId, personId, "booking.moved", to.Id, movedId, cancellationToken);
+        await AuditAsync(unitOfWork, tenant, "booking.moved", movedId, new { fromSessionId = from.Id, toSessionId = to.Id, previousBookingId = bookingId, personId, passId = pass.Id }, cancellationToken);
+        var moved = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, movedId)).Single();
+        await unitOfWork.CommitAsync(cancellationToken);
+        return moved;
+    }
+
     public async Task<MyBookingPage> ListMineAsync(TenantContext tenant, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken)
     {
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
@@ -207,6 +312,16 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await LivePersonAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken, anyStatus: true);
         return await PageAsync(unitOfWork, tenant, personId, upcoming, before, limit, cancellationToken);
+    }
+
+    /// <summary>Promotes from a session's waitlist after a seat was freed outside this service (a person merge).</summary>
+    internal static async Task PromoteSessionAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var session = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+        if (session.Status == "scheduled")
+        {
+            await PromoteAsync(unitOfWork, tenant, session, await PolicyAsync(unitOfWork, tenant.OrganizationId, cancellationToken), now, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -273,7 +388,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
     }
 
     /// <summary>The pass the next booking of the caller would use, for the booking sheet (`passPreview`).</summary>
-    internal static async Task<IReadOnlyDictionary<Guid, PassSummaryView>> PreviewAsync(
+    internal static async Task<IReadOnlyDictionary<Guid, SessionPassView>> PreviewAsync(
         UnitOfWork unitOfWork,
         Guid organizationId,
         Guid membershipId,
@@ -282,26 +397,49 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
     {
         if (sessions.Count == 0)
         {
-            return new Dictionary<Guid, PassSummaryView>();
+            return new Dictionary<Guid, SessionPassView>();
         }
 
         await using var me = unitOfWork.Command("SELECT id FROM people.people WHERE organization_id = $1 AND membership_id = $2", organizationId, membershipId);
         if (await me.ExecuteScalarAsync(cancellationToken) is not Guid person)
         {
-            return new Dictionary<Guid, PassSummaryView>();
+            return new Dictionary<Guid, SessionPassView>();
         }
 
         var candidates = await CandidatesAsync(unitOfWork, organizationId, person, sessions.Min(s => s.LocalDate), cancellationToken);
-        var previews = new Dictionary<Guid, PassSummaryView>();
+        var previews = new Dictionary<Guid, SessionPassView>();
         foreach (var (sessionId, date, category) in sessions)
         {
-            if (PassSelection.Pick(candidates, date, category) is { } pick)
+            var pick = PassSelection.Pick(candidates, date, category);
+            // The sheet warns before the 409 when the caller's membership is frozen on that day (docs/29 section 16.4).
+            var frozenUntil = pick is null ? PassSelection.FrozenUntil(candidates, date) : null;
+            if (pick is not null || frozenUntil is not null)
             {
-                previews[sessionId] = new PassSummaryView(pick.Id, pick.Name, pick.Kind, pick.EndsOn, pick.EntriesLeft);
+                previews[sessionId] = new SessionPassView(pick is null ? null : new PassSummaryView(pick.Id, pick.Name, pick.Kind, pick.EndsOn, pick.EntriesLeft), frozenUntil);
             }
         }
 
         return previews;
+    }
+
+    /// <summary>
+    /// 409 booking.no_valid_pass; when the person's membership is frozen on that day the Problem says until when
+    /// (`frozenUntil`), so the apps can explain instead of guessing.
+    /// </summary>
+    private static async Task<DomainRuleViolationException> NoValidPassAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, DateOnly date, string message, CancellationToken cancellationToken)
+    {
+        await using var frozen = unitOfWork.Command(
+            """
+            SELECT max(f.ends_on) FROM scheduling.pass_freezes f
+            JOIN scheduling.passes ps ON ps.organization_id = f.organization_id AND ps.id = f.pass_id
+            WHERE f.organization_id = $1 AND ps.person_id = $2 AND ps.status = 'active' AND f.starts_on <= $3 AND f.ends_on >= $3
+            """,
+            organizationId, personId, date);
+        var until = await frozen.ExecuteScalarAsync(cancellationToken) as DateOnly?;
+        return new DomainRuleViolationException(ViolationKind.Conflict, "booking.no_valid_pass", message)
+        {
+            Extensions = until is { } u ? new Dictionary<string, object?> { ["frozenUntil"] = u } : null
+        };
     }
 
     private static async Task<PassCandidate?> PickPassAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, SessionFacts session, bool lockRows, CancellationToken cancellationToken)
@@ -331,7 +469,9 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                        SELECT s.local_date FROM scheduling.pass_uses u
                        JOIN scheduling.bookings b ON b.organization_id = u.organization_id AND b.id = u.booking_id
                        JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
-                       WHERE u.organization_id = ps.organization_id AND u.pass_id = ps.id AND u.status = 'held'), '{}')
+                       WHERE u.organization_id = ps.organization_id AND u.pass_id = ps.id AND u.status = 'held'), '{}'),
+                   coalesce(ARRAY(SELECT f.starts_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
+                   coalesce(ARRAY(SELECT f.ends_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}')
             FROM scheduling.passes ps
             JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
             WHERE ps.organization_id = $1 AND ps.person_id = $2 AND ps.status = 'active' AND ps.ends_on >= $3
@@ -351,7 +491,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 reader.GetInt32(6),
                 await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetInt32(7),
                 await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8),
-                await reader.GetFieldValueAsync<DateOnly[]>(9, cancellationToken)));
+                await reader.GetFieldValueAsync<DateOnly[]>(9, cancellationToken),
+                [.. (await reader.GetFieldValueAsync<DateOnly[]>(10, cancellationToken)).Zip(await reader.GetFieldValueAsync<DateOnly[]>(11, cancellationToken))]));
         }
 
         return candidates;
@@ -439,7 +580,16 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         var bookings = await BookingsAsync(
             unitOfWork,
             tenant.OrganizationId,
-            $"JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id WHERE b.organization_id = $1 AND b.person_id = $2 AND ($3::uuid IS NULL OR b.id < $3) AND {filter} ORDER BY b.id DESC LIMIT $5",
+            $"""
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE b.organization_id = $1 AND b.person_id = $2 AND {filter}
+              AND ($3::uuid IS NULL OR (s.starts_at, b.id) {(upcoming ? ">" : "<")} (
+                  SELECT s2.starts_at, b2.id FROM scheduling.bookings b2
+                  JOIN scheduling.sessions s2 ON s2.organization_id = b2.organization_id AND s2.id = b2.session_id
+                  WHERE b2.organization_id = $1 AND b2.id = $3))
+            ORDER BY s.starts_at {(upcoming ? "ASC" : "DESC")}, b.id {(upcoming ? "ASC" : "DESC")}
+            LIMIT $5
+            """,
             cancellationToken,
             personId, before, clock.GetUtcNow(), limit + 1);
         var page = bookings.Take(limit).ToList();
@@ -447,11 +597,6 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = ANY($3)", cancellationToken, page.Select(b => b.SessionId).Distinct().ToArray()))
             .ToDictionary(s => s.Id);
         var items = page.Select(b => new MyBookingView(b, sessions[b.SessionId])).ToList();
-        if (upcoming)
-        {
-            items = [.. items.OrderBy(i => i.Session.StartsAt)];
-        }
-
         return new MyBookingPage(items, bookings.Count > limit ? page[^1].Id : null);
     }
 
@@ -466,10 +611,11 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                    END,
                    b.late_cancel, b.cancel_reason,
                    ps.id, pp.name, pp.kind, ps.ends_on, ps.entries - ps.entries_used,
-                   b.created_at, b.version
+                   b.created_at, b.version,
+                   CASE WHEN b.status = 'cancelled' THEN CASE WHEN u.pass_id IS NULL THEN 'waitlisted' ELSE 'booked' END END
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
-            LEFT JOIN scheduling.pass_uses u ON u.organization_id = b.organization_id AND u.booking_id = b.id AND u.status = 'held'
+            LEFT JOIN scheduling.pass_uses u ON u.organization_id = b.organization_id AND u.booking_id = b.id
             LEFT JOIN scheduling.passes ps ON ps.organization_id = u.organization_id AND ps.id = u.pass_id
             LEFT JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
             {where}
@@ -500,7 +646,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetString(7),
                 pass,
                 await reader.GetFieldValueAsync<DateTimeOffset>(13, cancellationToken),
-                reader.GetInt64(14)));
+                reader.GetInt64(14),
+                await reader.IsDBNullAsync(15, cancellationToken) ? null : reader.GetString(15)));
         }
 
         return bookings;

@@ -27,6 +27,11 @@ public sealed class TimetableServiceTests(PostgresFixture postgres) : IClassFixt
         var count = Convert.ToInt64(await db.AsMasterAsync("SELECT count(*) FROM scheduling.sessions WHERE template_id = $1", change.Template.Id), System.Globalization.CultureInfo.InvariantCulture);
         count.Should().BeInRange(8, 9, "every Tuesday from today to 56 days ahead");
         change.Template.Minutes.Should().Be(50, "the class type's default");
+        // The console lists a weekly class with its class type, instructor and room in one read (A1).
+        change.Template.ClassType!.Name.Should().Be("פילאטיס מכשירים");
+        change.Template.Room!.Name.Should().Be("חדר המכשירים");
+        change.Template.Instructor!.MembershipId.Should().Be(owner.MembershipId);
+        (await timetable.ListTemplatesAsync(owner, CancellationToken.None)).Should().ContainSingle().Which.Should().BeEquivalentTo(change.Template);
 
         var again = await timetable.UpdateTemplateAsync(owner, change.Template.Id, new TemplateChanges(null, null, null, default, default, null, default), null, CancellationToken.None);
         again.UntouchedSessions.Should().BeEmpty();

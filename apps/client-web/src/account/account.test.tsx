@@ -20,7 +20,8 @@ describe("the account step after sign-in", () => {
     expect(screen.getByText("טוענים את החשבון…")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 1, name: "היי נגה" })).toBeInTheDocument();
 
-    expect(api.requests).toHaveLength(1);
+    // The session comes first and once; the home screen then reads the studio.
+    expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session"))).toHaveLength(1);
     expect(api.requests[0]!.method).toBe("POST");
     expect(api.requests[0]!.url).toBe("https://api.test/api/v1/session");
     expect(api.requests[0]!.headers.get("Authorization")).toBe("Bearer access-1");
@@ -44,7 +45,9 @@ describe("home on the real account", () => {
 
 describe("profile on the real account", () => {
   it("shows the account's name, email, studio and role", async () => {
-    renderAt("/profile", { "POST /api/v1/session": { ...sampleMe, displayName: "דנה כהן", email: "dana@example.com" } });
+    renderAt("/profile", {
+      "POST /api/v1/session": { ...sampleMe, displayName: "דנה כהן", email: "dana@example.com" },
+    });
     expect(await screen.findByRole("heading", { level: 1, name: "דנה כהן" })).toBeInTheDocument();
     expect(screen.getByText("dana@example.com")).toBeInTheDocument();
     const studio = screen.getByRole("region", { name: "הסטודיו שלך" });
@@ -54,7 +57,9 @@ describe("profile on the real account", () => {
   });
 
   it("falls back to the email's name and says when there is no studio yet", async () => {
-    renderAt("/profile", { "POST /api/v1/session": { ...sampleMe, displayName: null, email: "new.member@example.com", memberships: [] } });
+    renderAt("/profile", {
+      "POST /api/v1/session": { ...sampleMe, displayName: null, email: "new.member@example.com", memberships: [] },
+    });
     expect(await screen.findByRole("heading", { level: 1, name: "new.member" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "הסטודיו שלך" })).toHaveTextContent("עוד לא הצטרפת לסטודיו");
   });
@@ -62,7 +67,7 @@ describe("profile on the real account", () => {
   it("changes the display name with PATCH /me", async () => {
     const { api } = renderAt("/profile", {
       "POST /api/v1/session": sampleMe,
-      "PATCH /api/v1/me": () => json({ ...sampleMe, displayName: "נגה ר." })
+      "PATCH /api/v1/me": () => json({ ...sampleMe, displayName: "נגה ר." }),
     });
     await userEvent.click(await screen.findByRole("button", { name: "עריכת פרטים" }));
     const dialog = screen.getByRole("dialog", { name: "עריכת פרטים" });

@@ -36,10 +36,13 @@ describe("client-web routes", () => {
     expect(router.state.location.hash).toBe("");
   });
 
-  it.each(["/invite", "/join", "/invite#", "/invite#tok_123", "/join#short"])("shows an invalid-link message at %s", (url) => {
-    renderAt(url);
-    expect(screen.getByRole("alert")).toHaveTextContent("הקישור לא תקין");
-  });
+  it.each(["/invite", "/join", "/invite#", "/invite#tok_123", "/join#short"])(
+    "shows an invalid-link message at %s",
+    (url) => {
+      renderAt(url);
+      expect(screen.getByRole("alert")).toHaveTextContent("הקישור לא תקין");
+    },
+  );
 
   it("does not take the token from a path segment", () => {
     renderAt(`/invite/${token}`);

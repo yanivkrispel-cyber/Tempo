@@ -20,7 +20,16 @@ export interface AuthConfig {
   redirectUri: string;
   /** Must be one of the client's exact logout URLs. */
   logoutUri: string;
+  /**
+   * Scopes the app client allows beyond `openid email profile`, asked for only by a sign-in that names them
+   * (`signIn(returnTo, screen, { scopes })`), never by every sign-in. Two-step sign-in setup needs
+   * `aws.cognito.signin.user.admin`, which lets the token change the account in Cognito, so only the sign-in that
+   * the setup page starts carries it. A scope the client does not allow makes the Hosted UI refuse (`invalid_scope`).
+   */
+  optionalScopes?: readonly string[];
 }
+
+export const defaultScopes: readonly string[] = ["openid", "email", "profile"];
 
 export interface Session {
   accessToken: string;
@@ -42,7 +51,10 @@ export interface AuthClientOptions {
 }
 
 export class SignInError extends Error {
-  constructor(readonly code: "state_mismatch" | "missing_code" | "denied" | "token_exchange_failed", message: string) {
+  constructor(
+    readonly code: "state_mismatch" | "missing_code" | "denied" | "token_exchange_failed",
+    message: string,
+  ) {
     super(message);
     this.name = "SignInError";
   }
@@ -64,7 +76,8 @@ interface TokenResponse {
 }
 
 export class AuthClient {
-  private readonly config: AuthConfig;
+  /** Where the app signs in; read by the two-step sign-in setup (Cognito's region and the optional scopes). */
+  readonly config: AuthConfig;
   private readonly sessionKey: string;
   private readonly flowKey: string;
   private readonly storage: Storage;
@@ -105,7 +118,13 @@ export class AuthClient {
    * `auth_time` old, so it goes through `/logout` with `response_type=code`, which ends that session and opens
    * the sign-in form with the same PKCE parameters (checked against dev, 2026-10-15).
    */
-  async signIn(returnTo = "/", screen: "login" | "signup" | "reauthenticate" = "login"): Promise<void> {
+  async signIn(
+    returnTo = "/",
+    screen: "login" | "signup" | "reauthenticate" = "login",
+    options: { scopes?: readonly string[] } = {},
+  ): Promise<void> {
+    // Only scopes the config declares as optional: anything else would make the Hosted UI refuse the sign-in.
+    const extra = (options.scopes ?? []).filter((scope) => (this.config.optionalScopes ?? []).includes(scope));
     const flow: Flow = { state: randomUrlSafe(), verifier: randomUrlSafe(), returnTo: safeReturnTo(returnTo) };
     this.flowStorage.setItem(this.flowKey, JSON.stringify(flow));
     const path = { login: "oauth2/authorize", signup: "signup", reauthenticate: "logout" }[screen];
@@ -114,10 +133,10 @@ export class AuthClient {
       response_type: "code",
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
-      scope: "openid email profile",
+      scope: [...defaultScopes, ...extra].join(" "),
       state: flow.state,
       code_challenge_method: "S256",
-      code_challenge: await codeChallenge(flow.verifier)
+      code_challenge: await codeChallenge(flow.verifier),
     }).toString();
     this.redirect(url.toString());
   }
@@ -135,8 +154,10 @@ export class AuthClient {
   private async exchange(search: string): Promise<string> {
     const params = new URLSearchParams(search);
     const flow = this.takeFlow();
-    if (params.get("error")) throw new SignInError("denied", params.get("error_description") ?? params.get("error") ?? "");
-    if (!flow || params.get("state") !== flow.state) throw new SignInError("state_mismatch", "The sign-in state does not match.");
+    if (params.get("error"))
+      throw new SignInError("denied", params.get("error_description") ?? params.get("error") ?? "");
+    if (!flow || params.get("state") !== flow.state)
+      throw new SignInError("state_mismatch", "The sign-in state does not match.");
     const code = params.get("code");
     if (!code) throw new SignInError("missing_code", "The callback has no authorization code.");
 
@@ -145,7 +166,7 @@ export class AuthClient {
       client_id: this.config.clientId,
       code,
       redirect_uri: this.config.redirectUri,
-      code_verifier: flow.verifier
+      code_verifier: flow.verifier,
     });
     if (!response.ok) throw new SignInError("token_exchange_failed", `Cognito answered ${response.status}.`);
     const tokens = (await response.json()) as TokenResponse;
@@ -189,7 +210,11 @@ export class AuthClient {
   private async refresh(session: Session): Promise<string | null> {
     let response: Response;
     try {
-      response = await this.postToken({ grant_type: "refresh_token", client_id: this.config.clientId, refresh_token: session.refreshToken });
+      response = await this.postToken({
+        grant_type: "refresh_token",
+        client_id: this.config.clientId,
+        refresh_token: session.refreshToken,
+      });
     } catch {
       // Offline or a dropped connection: keep the session and send this request without a token.
       return null;
@@ -214,7 +239,7 @@ export class AuthClient {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ token: refreshToken, client_id: this.config.clientId }).toString(),
-        keepalive: true
+        keepalive: true,
       }).catch(() => undefined);
     } catch {
       // A fetch that throws synchronously must not stop the sign-out.
@@ -225,7 +250,7 @@ export class AuthClient {
     return this.fetchFn(`${this.config.cognitoDomain}/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(body).toString()
+      body: new URLSearchParams(body).toString(),
     });
   }
 
@@ -242,7 +267,10 @@ export class AuthClient {
   private readSession(): Session | null {
     return parse<Session>(
       this.storage.getItem(this.sessionKey),
-      (value) => typeof value.accessToken === "string" && typeof value.refreshToken === "string" && typeof value.expiresAt === "number"
+      (value) =>
+        typeof value.accessToken === "string" &&
+        typeof value.refreshToken === "string" &&
+        typeof value.expiresAt === "number",
     );
   }
 
@@ -259,7 +287,9 @@ function parse<T>(raw: string | null, isValid: (value: Record<string, unknown>) 
   if (!raw) return null;
   try {
     const value: unknown = JSON.parse(raw);
-    return typeof value === "object" && value !== null && isValid(value as Record<string, unknown>) ? (value as T) : null;
+    return typeof value === "object" && value !== null && isValid(value as Record<string, unknown>)
+      ? (value as T)
+      : null;
   } catch {
     return null;
   }
@@ -267,5 +297,7 @@ function parse<T>(raw: string | null, isValid: (value: Record<string, unknown>) 
 
 /** Only same-app paths: an open redirect through `returnTo` would let a link send a signed-in user anywhere. */
 export function safeReturnTo(path: string): string {
-  return path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") && !path.startsWith("/auth/") ? path : "/";
+  return path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") && !path.startsWith("/auth/")
+    ? path
+    : "/";
 }

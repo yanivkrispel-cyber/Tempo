@@ -7,7 +7,8 @@ namespace Tempo.Platform.Modules.Scheduling.Application;
 
 public sealed record BookingPolicyView(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, long Version);
 
-public sealed record InboxItemView(Guid Id, string Kind, Guid? SessionId, Guid? BookingId, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);
+/// <summary><paramref name="Text"/> is the staff message for a `session.message` item (docs/29 section 16.2); null for every other kind.</summary>
+public sealed record InboxItemView(Guid Id, string Kind, Guid? SessionId, Guid? BookingId, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, DateTimeOffset? SessionStartsAt = null, string? ClassTypeName = null, string? Text = null);
 
 public sealed record InboxPage(IReadOnlyList<InboxItemView> Items, int UnreadCount, Guid? NextBefore);
 
@@ -24,6 +25,8 @@ public interface IStudioSettingsService
     Task<InboxPage> ListInboxAsync(TenantContext tenant, Guid? before, int limit, CancellationToken cancellationToken);
 
     Task MarkReadAsync(TenantContext tenant, Guid itemId, CancellationToken cancellationToken);
+
+    Task MarkAllReadAsync(TenantContext tenant, CancellationToken cancellationToken);
 }
 
 public sealed class StudioSettingsService(IDataSourceProvider dataSources) : IStudioSettingsService
@@ -83,10 +86,13 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
         var items = new List<InboxItemView>();
         await using (var command = unitOfWork.Command(
             """
-            SELECT id, kind, (data ->> 'sessionId')::uuid, (data ->> 'bookingId')::uuid, created_at, read_at
-            FROM notifications.inbox_items
-            WHERE organization_id = $1 AND person_id = $2 AND ($3::uuid IS NULL OR id < $3)
-            ORDER BY id DESC
+            SELECT i.id, i.kind, (i.data ->> 'sessionId')::uuid, (i.data ->> 'bookingId')::uuid, i.created_at, i.read_at, s.starts_at, ct.name, m.body
+            FROM notifications.inbox_items i
+            LEFT JOIN scheduling.sessions s ON s.organization_id = i.organization_id AND s.id = (i.data ->> 'sessionId')::uuid
+            LEFT JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
+            LEFT JOIN notifications.session_messages m ON m.organization_id = i.organization_id AND m.id = (i.data ->> 'messageId')::uuid
+            WHERE i.organization_id = $1 AND i.person_id = $2 AND ($3::uuid IS NULL OR i.id < $3)
+            ORDER BY i.id DESC
             LIMIT $4
             """,
             tenant.OrganizationId, person, before, limit + 1))
@@ -100,7 +106,10 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
                     await reader.IsDBNullAsync(2, cancellationToken) ? null : reader.GetGuid(2),
                     await reader.IsDBNullAsync(3, cancellationToken) ? null : reader.GetGuid(3),
                     await reader.GetFieldValueAsync<DateTimeOffset>(4, cancellationToken),
-                    await reader.IsDBNullAsync(5, cancellationToken) ? null : await reader.GetFieldValueAsync<DateTimeOffset>(5, cancellationToken)));
+                    await reader.IsDBNullAsync(5, cancellationToken) ? null : await reader.GetFieldValueAsync<DateTimeOffset>(5, cancellationToken),
+                    await reader.IsDBNullAsync(6, cancellationToken) ? null : await reader.GetFieldValueAsync<DateTimeOffset>(6, cancellationToken),
+                    await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetString(7),
+                    await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetString(8)));
             }
         }
 
@@ -122,6 +131,20 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
         if (await update.ExecuteNonQueryAsync(cancellationToken) == 0)
         {
             throw new DomainRuleViolationException(ViolationKind.NotFound, "notification.not_found", "Notification not found.");
+        }
+
+        await unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    public async Task MarkAllReadAsync(TenantContext tenant, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var person = await MyPersonAsync(unitOfWork, tenant, cancellationToken);
+        await using (var update = unitOfWork.Command(
+            "UPDATE notifications.inbox_items SET read_at = now() WHERE organization_id = $1 AND person_id = $2 AND read_at IS NULL",
+            tenant.OrganizationId, person))
+        {
+            await update.ExecuteNonQueryAsync(cancellationToken);
         }
 
         await unitOfWork.CommitAsync(cancellationToken);

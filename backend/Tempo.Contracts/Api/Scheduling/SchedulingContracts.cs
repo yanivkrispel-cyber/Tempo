@@ -28,7 +28,10 @@ public sealed record ScheduleTemplateResponse(
     int Capacity,
     DateOnly ValidFrom,
     DateOnly? ValidUntil,
-    string Version);
+    string Version,
+    SessionClassTypeResponse ClassType,
+    InstructorResponse? Instructor,
+    SessionRoomResponse? Room);
 
 public sealed record ScheduleTemplateListResponse(IReadOnlyList<ScheduleTemplateResponse> Items);
 
@@ -45,7 +48,7 @@ public sealed record CreateScheduleTemplateRequest(
 
 public sealed record ScheduleTemplateChangeResponse(ScheduleTemplateResponse Template, IReadOnlyList<SessionResponse> UntouchedSessions);
 
-public sealed record SessionClassTypeResponse(Guid Id, string Name, string Category, string Color);
+public sealed record SessionClassTypeResponse(Guid Id, string Name, string Category, string Color, string? Description = null);
 
 public sealed record InstructorResponse(Guid MembershipId, string DisplayName);
 
@@ -71,7 +74,8 @@ public sealed record SessionResponse(
     string Status,
     MyBookingStateResponse? MyBooking,
     PassSummaryResponse? PassPreview,
-    string Version);
+    string Version,
+    DateOnly? FrozenUntil = null);
 
 public sealed record SessionListResponse(IReadOnlyList<SessionResponse> Items);
 
@@ -116,7 +120,14 @@ public sealed record PassResponse(
     string? Note,
     string Status,
     DateTimeOffset CreatedAt,
-    string Version);
+    string Version,
+    IReadOnlyList<PassFreezeResponse> Freezes);
+
+/// <summary>`PassFreeze`: days a membership is frozen, studio dates, inclusive.</summary>
+public sealed record PassFreezeResponse(Guid Id, DateOnly StartsOn, DateOnly EndsOn);
+
+/// <summary>`FreezePassRequest` (docs/29 section 16.4).</summary>
+public sealed record FreezePassRequest(DateOnly? StartsOn, DateOnly? EndsOn);
 
 public sealed record PassListResponse(IReadOnlyList<PassResponse> Items);
 
@@ -135,7 +146,8 @@ public sealed record BookingResponse(
     string? CancelReason,
     PassSummaryResponse? Pass,
     DateTimeOffset CreatedAt,
-    string Version);
+    string Version,
+    string? CancelledFrom = null);
 
 /// <summary>`MyBooking`: a booking with its session.</summary>
 public sealed record MyBookingResponse(
@@ -149,7 +161,8 @@ public sealed record MyBookingResponse(
     PassSummaryResponse? Pass,
     DateTimeOffset CreatedAt,
     string Version,
-    SessionResponse Session);
+    SessionResponse Session,
+    string? CancelledFrom = null);
 
 public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Items, Guid? NextBefore);
 
@@ -157,7 +170,10 @@ public sealed record CreateBookingRequest(Guid? PersonId);
 
 public sealed record CancelBookingRequest(bool? ReturnEntry);
 
-public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, DateTimeOffset BookedAt);
+/// <summary>`MoveBookingRequest`: the class the booked place moves to (docs/29 section 16.1).</summary>
+public sealed record MoveBookingRequest(Guid? SessionId);
+
+public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>
 public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<RosterEntryResponse> Booked, IReadOnlyList<RosterEntryResponse> Waitlisted);
@@ -172,6 +188,14 @@ public sealed record BookingPolicyInput(int? FreeCancelHours, int? WaitlistCutof
 public sealed record InboxItemDataResponse(Guid? SessionId, Guid? BookingId);
 
 /// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
-public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);
+public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);
+
+public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null, string? Text = null);
+
+/// <summary>`SendSessionMessageRequest`: a short text to everyone registered on a class (docs/29 section 16.2).</summary>
+public sealed record SendSessionMessageRequest(string? Text);
+
+/// <summary>`SessionMessage`: what went out, to how many people; never the text back.</summary>
+public sealed record SessionMessageResponse(Guid Id, Guid SessionId, int Recipients, DateTimeOffset CreatedAt);
 
 public sealed record InboxPageResponse(IReadOnlyList<InboxItemResponse> Items, int UnreadCount, Guid? NextBefore);

@@ -34,8 +34,8 @@ function EditNameForm({ onClose, name }: Omit<EditNameDialogProps, "open">) {
         onSuccess: () => {
           toast.show({ tone: "success", icon: "check", message: "השם עודכן" });
           onClose();
-        }
-      }
+        },
+      },
     );
   };
 
@@ -57,7 +57,14 @@ function EditNameForm({ onClose, name }: Omit<EditNameDialogProps, "open">) {
       }
     >
       <form id="edit-name" onSubmit={submit} noValidate>
-        <Field label="שם לתצוגה" required error={(touched && invalid) || (update.isError ? errorMessage(update.error, "לא הצלחנו לשמור. נסו שוב.") : undefined)}>
+        <Field
+          label="שם לתצוגה"
+          required
+          error={
+            (touched && invalid) ||
+            (update.isError ? errorMessage(update.error, "לא הצלחנו לשמור. נסו שוב.") : undefined)
+          }
+        >
           <Input value={value} onChange={(event) => setValue(event.target.value)} maxLength={100} autoComplete="name" />
         </Field>
       </form>

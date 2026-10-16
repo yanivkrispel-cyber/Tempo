@@ -23,14 +23,20 @@ export function EraseDialog({ personId, name, onClose }: { personId: string; nam
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const erase = useMutation({
+    mutationKey: [organizationId, "people.erase"],
     mutationFn: () =>
-      unwrap(api.POST("/api/v1/organizations/{organizationId}/people/{personId}/erase", { params: { path: { organizationId, personId } }, body: { reason: reason.trim() } })),
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/people/{personId}/erase", {
+          params: { path: { organizationId, personId } },
+          body: { reason: reason.trim() },
+        }),
+      ),
     onSuccess: async (erased) => {
       queryClient.setQueryData(["studio", organizationId, "person", personId], erased);
       await queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "people"] });
       toast.show({ tone: "success", icon: "check", message: "הנתונים נמחקו" });
       onClose();
-    }
+    },
   });
   const length = reason.trim().length;
   const invalid = length < 5 ? "כתבו סיבה, 5 תווים לפחות" : length > 500 ? "עד 500 תווים" : null;

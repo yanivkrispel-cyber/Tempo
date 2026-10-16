@@ -44,6 +44,7 @@ jobs:
               - 'Directory.Build.props'
               - 'Directory.Packages.props'
               - 'global.json'
+              - '.editorconfig'
               - '.github/workflows/pull-request.yml'
 
       - uses: actions/setup-dotnet@v4
@@ -54,6 +55,12 @@ jobs:
       - name: dotnet restore
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet restore Tempo.sln
+
+      - name: dotnet format (verify, no changes)
+        if: steps.changes.outputs.relevant == 'true'
+        # Layer 1 (ADR-0025). The checkout is LF, as .editorconfig requires; on a Windows
+        # checkout with core.autocrlf run it in the sdk:10.0 container instead.
+        run: dotnet format Tempo.sln --verify-no-changes --no-restore
 
       - name: dotnet build
         if: steps.changes.outputs.relevant == 'true'
@@ -134,11 +141,16 @@ jobs:
             relevant:
               - 'apps/**'
               - 'packages/**'
+              - 'tests/e2e/**'
               - 'contracts/openapi/**'
               - 'infrastructure/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - '.prettierrc.json'
+              - '.prettierignore'
+              - 'tsconfig*.json'
               - '.github/workflows/pull-request.yml'
 
       - uses: pnpm/action-setup@v4

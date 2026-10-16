@@ -12,7 +12,8 @@ export function RolesPage() {
   const { organizationId, membership } = useStudio();
   const roles = useQuery({
     queryKey: ["studio", organizationId, "roles"],
-    queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}/roles", { params: { path: { organizationId } } }))
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/organizations/{organizationId}/roles", { params: { path: { organizationId } } })),
   });
   const mine = new Set((membership.roles ?? []).map((role) => role.id));
 
@@ -35,14 +36,21 @@ export function RolesPage() {
           <Skeleton height={120} />
         </div>
       ) : (
-        <div className="tp-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: "var(--space-5)" }}>
+        <div
+          className="tp-grid"
+          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: "var(--space-5)" }}
+        >
           {roles.data.items.map((role) => (
             <Card as="section" key={role.id} aria-labelledby={`role-${role.key}`} className="tp-stack">
               <div className="tp-row" style={{ justifyContent: "space-between" }}>
                 <h2 id={`role-${role.key}`}>{role.displayName}</h2>
                 {mine.has(role.id) && <Chip tone="brand">התפקיד שלך</Chip>}
               </div>
-              <ul className="tp-stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }} aria-label={`ההרשאות של ${role.displayName}`}>
+              <ul
+                className="tp-stack"
+                style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }}
+                aria-label={`ההרשאות של ${role.displayName}`}
+              >
                 {inCatalogOrder(role.permissions).map((key) => (
                   <li key={key} className="tp-row" style={{ gap: 8, flexWrap: "nowrap" }}>
                     <Icon name="check" />

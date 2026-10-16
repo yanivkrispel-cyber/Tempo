@@ -119,11 +119,13 @@ export interface EventCardProps {
   /** The corner label, e.g. "3 מקומות" or "מלא · המתנה". */
   badge: string;
   to?: string;
+  /** Struck through, on a sunken tile. */
+  cancelled?: boolean;
 }
 
 /** A class tile with its category stripe, a fill bar and a corner label. */
-export function EventCard({ title, meta, color, fill, badge, to }: EventCardProps) {
-  const className = cx("tp-event", `tp-event--${color}`);
+export function EventCard({ title, meta, color, fill, badge, to, cancelled = false }: EventCardProps) {
+  const className = cx("tp-event", cancelled ? "tp-event--cancelled" : `tp-event--${color}`);
   const style = { "--tp-fill": `${Math.round(Math.min(Math.max(fill, 0), 1) * 100)}%` } as CSSProperties;
   const content = (
     <>
@@ -153,17 +155,28 @@ export interface ClassRowProps {
   /** Buttons or a status chip at the end of the row. */
   actions?: ReactNode;
   as?: "div" | "li";
+  /** Makes the title and meta a link to the class, as in the mockup (AppBook → AppClass). */
+  to?: string;
 }
 
 /** A class card: time slot, title and meta, and actions. */
-export function ClassRow({ slot, title, meta, actions, as: Tag = "div" }: ClassRowProps) {
+export function ClassRow({ slot, title, meta, actions, as: Tag = "div", to }: ClassRowProps) {
+  const body = (
+    <>
+      <span className="tp-class__title">{title}</span>
+      <span className="tp-class__meta">{meta}</span>
+    </>
+  );
   return (
     <Tag className="tp-class">
       {slot}
-      <span className="tp-class__body">
-        <span className="tp-class__title">{title}</span>
-        <span className="tp-class__meta">{meta}</span>
-      </span>
+      {to ? (
+        <Link to={to} className="tp-class__body">
+          {body}
+        </Link>
+      ) : (
+        <span className="tp-class__body">{body}</span>
+      )}
       {actions && <div className="tp-class__actions">{actions}</div>}
     </Tag>
   );

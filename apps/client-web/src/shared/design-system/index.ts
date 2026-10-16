@@ -4,7 +4,7 @@ export { Avatar, initials } from "./Avatar";
 export type { AvatarProps } from "./Avatar";
 export { Banner } from "./Banner";
 export type { BannerProps, BannerTone } from "./Banner";
-export { Button, ButtonLink, IconButton } from "./Button";
+export { Button, ButtonLink, IconButton, IconButtonLink } from "./Button";
 export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant, IconButtonProps } from "./Button";
 export { Card, CardTitle } from "./Card";
 export type { CardProps, CardTitleProps, CardTone } from "./Card";
@@ -26,11 +26,20 @@ export type { IconName, IconProps } from "./Icon";
 export { ProgressBar, ProgressRing } from "./Progress";
 export type { ProgressBarProps, ProgressRingProps } from "./Progress";
 export { ClassRow, EventCard, FilterChips, shortDate, TabBar, TimeSlot, WeekStrip } from "./Schedule";
-export type { ClassColor, ClassRowProps, EventCardProps, FilterChipsProps, TabBarLink, TabBarProps, WeekStripProps } from "./Schedule";
+export type {
+  ClassColor,
+  ClassRowProps,
+  EventCardProps,
+  FilterChipsProps,
+  TabBarLink,
+  TabBarProps,
+  WeekStripProps,
+} from "./Schedule";
 export { Segmented } from "./Segmented";
 export type { SegmentedOption, SegmentedProps } from "./Segmented";
 export { Skeleton } from "./Skeleton";
 export type { SkeletonProps } from "./Skeleton";
+export { TableScroll } from "./TableScroll";
 export { Tabs } from "./Tabs";
 export type { TabItem, TabsProps } from "./Tabs";
 export { ToastProvider, useToast } from "./Toast";

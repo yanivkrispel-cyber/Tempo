@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState } from "react";
 import { useLocation } from "react-router";
-import { roleName } from "../../account/account";
+import { roleName, rolesLabel } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
@@ -13,7 +13,8 @@ import { systemRoleIds } from "../roles/catalog";
 type Member = Schemas["Member"];
 type InvitableRole = Schemas["InvitableRole"];
 
-export const nameOfMember = (member: Member) => member.displayName?.trim() || member.email.split("@")[0] || member.email;
+export const nameOfMember = (member: Member) =>
+  member.displayName?.trim() || member.email.split("@")[0] || member.email;
 
 function useMembersKey() {
   const { organizationId } = useStudio();
@@ -27,14 +28,15 @@ export function useUpdateMember() {
   const { organizationId } = useStudio();
   const key = useMembersKey();
   return useMutation({
+    mutationKey: [organizationId, "members.updateMember"],
     mutationFn: ({ member, body }: { member: Member; body: Schemas["UpdateMemberRequest"] }) =>
       unwrap(
         api.PATCH("/api/v1/organizations/{organizationId}/members/{membershipId}", {
           params: { path: { organizationId, membershipId: member.id }, header: { "If-Match": member.version } },
-          body
-        })
+          body,
+        }),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 }
 
@@ -48,18 +50,27 @@ export function useSetMemberRole() {
   const { organizationId } = useStudio();
   const key = useMembersKey();
   return useMutation({
+    mutationKey: [organizationId, "members.setMemberRole"],
     mutationFn: ({ member, role }: { member: Member; role: InvitableRole }) =>
       unwrap(
         api.PUT("/api/v1/organizations/{organizationId}/members/{membershipId}/roles", {
           params: { path: { organizationId, membershipId: member.id }, header: { "If-Match": member.version } },
-          body: { roleIds: [systemRoleIds[role]] }
-        })
+          body: { roleIds: [systemRoleIds[role]] },
+        }),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 }
 
-export function RoleDialog({ member, roles, onClose }: { member: Member; roles: InvitableRole[]; onClose: () => void }) {
+export function RoleDialog({
+  member,
+  roles,
+  onClose,
+}: {
+  member: Member;
+  roles: InvitableRole[];
+  onClose: () => void;
+}) {
   const [role, setRole] = useState<InvitableRole>(roles[0]!);
   const update = useSetMemberRole();
   const toast = useToast();
@@ -74,8 +85,8 @@ export function RoleDialog({ member, roles, onClose }: { member: Member; roles: 
         onSuccess: () => {
           toast.show({ tone: "success", icon: "check", message: `${nameOfMember(member)}: ${roleName(role)}` });
           onClose();
-        }
-      }
+        },
+      },
     );
 
   return (
@@ -83,7 +94,7 @@ export function RoleDialog({ member, roles, onClose }: { member: Member; roles: 
       open
       onClose={onClose}
       title="שינוי תפקיד"
-      description={`התפקיד הנוכחי של ${nameOfMember(member)}: ${roleName(member.role)}.`}
+      description={`התפקיד הנוכחי של ${nameOfMember(member)}: ${rolesLabel(member.roles)}.`}
       actions={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -127,13 +138,18 @@ export function RemoveDialog({ member, onClose }: { member: Member; onClose: () 
   const { organizationId, displayName } = useStudio();
   const key = useMembersKey();
   const remove = useMutation({
+    mutationKey: [organizationId, "members.remove"],
     mutationFn: () =>
-      unwrap(api.DELETE("/api/v1/organizations/{organizationId}/members/{membershipId}", { params: { path: { organizationId, membershipId: member.id } } })),
+      unwrap(
+        api.DELETE("/api/v1/organizations/{organizationId}/members/{membershipId}", {
+          params: { path: { organizationId, membershipId: member.id } },
+        }),
+      ),
     onSuccess: () => {
       toast.show({ tone: "success", icon: "check", message: `הסרנו את ${nameOfMember(member)} מהסטודיו` });
       onClose();
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
   return (

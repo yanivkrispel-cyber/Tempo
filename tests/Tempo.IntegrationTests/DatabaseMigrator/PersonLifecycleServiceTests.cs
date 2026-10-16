@@ -5,6 +5,7 @@ using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 using Tempo.Platform.Modules.People.Application;
+using Tempo.Platform.Modules.Scheduling.Application;
 using Xunit;
 
 namespace Tempo.IntegrationTests.DatabaseMigrator;
@@ -138,6 +139,76 @@ public sealed class PersonLifecycleServiceTests(PostgresFixture postgres) : ICla
         (await db.AsMasterAsync("SELECT string_agg(data::text, ' ') FROM audit.audit_events WHERE organization_id = $1", owner.OrganizationId) as string)
             .Should().NotContain("dana@example.com", "audit keeps ids only");
         (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'invitation.revoked' AND target_id = $1", invite.Invitation.Id)).Should().Be(1L);
+    }
+
+    [Fact]
+    public async Task Erase_ScrubsAnInvitationSentByEmailOnly_OnceItWasAccepted()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var invitations = new InvitationService(db, new AccountProfiles(db), new AttemptLimiter(db));
+        var invite = await invitations.CreateAsync(owner, "gal@example.com", MembershipRole.Client, CancellationToken.None);
+        var account = await AccountAsync(db, "gal@example.com");
+        await invitations.AcceptAsync(new AccountSnapshot(account, AccountStatus.Active, true), invite.Token, "c", CancellationToken.None);
+        var people = new PeopleService(db);
+        var record = (await people.ListAsync(owner, new PeopleQuery("gal@example.com", null, null, 10), CancellationToken.None)).Items.Single();
+        (await db.AsMasterAsync("SELECT person_id FROM organizations.invitations WHERE id = $1", invite.Invitation.Id)).Should().Be(record.Id, "accepting links the invitation to the person");
+
+        await new PersonLifecycleService(db, TimeProvider.System).EraseAsync(owner, record.Id, "Asked to be forgotten", CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT count(*) FROM organizations.invitations WHERE organization_id = $1 AND email = 'gal@example.com'", owner.OrganizationId)).Should().Be(0L);
+    }
+
+    [Fact]
+    public async Task Merge_MovesInvitationsToTheSurvivor_RevokesPendingOnes_AndEraseScrubsThem()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var people = new PeopleService(db);
+        var keep = await people.CreateAsync(owner, new NewPerson("Noa Levi", null, null, null, null, "050-2345678"), CancellationToken.None);
+        var drop = await people.CreateAsync(owner, new NewPerson("Noa L", null, null, null, null, "0502345678"), CancellationToken.None);
+        var invitations = new InvitationService(db, new AccountProfiles(db), new AttemptLimiter(db));
+        var invite = await invitations.CreateAsync(owner, "noa@example.com", MembershipRole.Client, CancellationToken.None, drop.Person.Id);
+        var lifecycle = new PersonLifecycleService(db, TimeProvider.System);
+        var candidate = (await lifecycle.ListCandidatesAsync(owner, null, null, 10, CancellationToken.None)).Items.Single();
+
+        await lifecycle.ResolveAsync(owner, candidate.Id, "merge", keep.Person.Id, CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT person_id FROM organizations.invitations WHERE id = $1", invite.Invitation.Id)).Should().Be(keep.Person.Id);
+        (await db.AsMasterAsync("SELECT status FROM organizations.invitations WHERE id = $1", invite.Invitation.Id)).Should().Be("revoked");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'invitation.revoked' AND target_id = $1 AND data->>'reason' = 'person_merged'", invite.Invitation.Id))
+            .Should().Be(1L);
+
+        await lifecycle.EraseAsync(owner, keep.Person.Id, "Asked to be forgotten", CancellationToken.None);
+
+        (await db.AsMasterAsync("SELECT email FROM organizations.invitations WHERE id = $1", invite.Invitation.Id) as string).Should().EndWith("@invalid");
+    }
+
+    [Fact]
+    public async Task Export_HoldsThePersonsBookingsAndPasses_WithoutTheStaffNote()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var people = new PeopleService(db);
+        var dana = (await people.CreateAsync(owner, new NewPerson("Dana", null, null, null, null, "050-2345678"), CancellationToken.None)).Person.Id;
+        var timetable = new TimetableService(db, TimeProvider.System);
+        var passes = new PassService(db, TimeProvider.System);
+        var classType = await timetable.CreateClassTypeAsync(owner, new NewClassType("פילאטיס", "pilates", "rose", 50, null), CancellationToken.None);
+        var card = await passes.CreateProductAsync(owner, new NewPassProduct("punch_card", "כרטיסיית 10", 10, 90, null, null, null), CancellationToken.None);
+        await passes.GrantAsync(owner, dana, new NewPass(card.Id, null, "paid cash at the desk"), CancellationToken.None);
+        var session = Guid.CreateVersion7();
+        var startsAt = DateTimeOffset.UtcNow.AddDays(1);
+        await db.AsMasterAsync(
+            "INSERT INTO scheduling.sessions (organization_id, id, local_date, class_type_id, starts_at, ends_at, capacity, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, 8, 'scheduled', now(), now())",
+            owner.OrganizationId, session, DateOnly.FromDateTime(startsAt.UtcDateTime), classType.Id, startsAt, startsAt.AddMinutes(50));
+        var booking = await new BookingService(db, TimeProvider.System).BookAsync(owner, session, dana, CancellationToken.None);
+
+        var export = await new PersonLifecycleService(db, TimeProvider.System).ExportAsync(owner, dana, CancellationToken.None);
+
+        export.Bookings.Should().ContainSingle().Which.Should().BeEquivalentTo(new { booking.Id, SessionId = session, ClassName = "פילאטיס", Status = "booked", LateCancel = false });
+        var pass = export.Passes.Should().ContainSingle().Subject;
+        pass.Should().BeEquivalentTo(new { ProductName = "כרטיסיית 10", Kind = "punch_card", Entries = 10, EntriesUsed = 1, Status = "active" });
+        pass.GetType().GetProperty("Note").Should().BeNull("the staff note is not the person's data");
     }
 
     [Fact]

@@ -3,7 +3,9 @@ import { consoleStudios, membershipRoleName, permissionsOf, useAccount } from ".
 import { useAuth } from "../../auth/AuthProvider";
 import { Button, ButtonLink, EmptyState, Icon, type IconName } from "../../shared/design-system";
 import { IncomingTransferBanner } from "../ownership/Ownership";
+import { securityPath } from "../security/SecurityPage";
 import styles from "./console.module.css";
+import { ConsoleNotices } from "./ConsoleNotices";
 import { StudioContext, type Studio } from "./studio";
 
 interface Section {
@@ -16,12 +18,17 @@ interface Section {
 
 const sections: Section[] = [
   { to: "", label: "חברי הסטודיו", icon: "users", permission: "members.view" },
+  { to: "schedule", label: "מערכת שבועית", icon: "calendar", permission: "schedule.view" },
+  { to: "weekly-classes", label: "שיעורים קבועים", icon: "clock", permission: "schedule.manage" },
+  { to: "class-types", label: "סוגי שיעורים", icon: "list", permission: "schedule.view" },
+  { to: "rooms", label: "חדרים", icon: "home", permission: "schedule.view" },
+  { to: "passes", label: "כרטיסיות ומנויים", icon: "credit-card", permission: "passes.view" },
   { to: "people", label: "אנשים", icon: "user", permission: "people.view" },
   { to: "duplicates", label: "כפילויות", icon: "users", permission: "people.merge" },
   { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
   { to: "roles", label: "תפקידים", icon: "shield", permission: "members.view" },
   { to: "audit", label: "יומן פעולות", icon: "list", permission: "audit.view" },
-  { to: "settings", label: "הגדרות", icon: "settings", permission: "organization.settings.manage" }
+  { to: "settings", label: "הגדרות", icon: "settings", permission: "organization.settings.manage" },
 ];
 
 /** `/o/:slug/*`: the studio from the URL, its navigation, and the page. */
@@ -57,7 +64,7 @@ export function ConsoleLayout() {
     slug: membership.organization.slug,
     displayName: membership.organization.displayName,
     membership,
-    can: (permission) => permissions.has(permission)
+    can: (permission) => permissions.has(permission),
   };
 
   return (
@@ -77,7 +84,8 @@ export function ConsoleLayout() {
             {sections
               .filter((section) => studio.can(section.permission))
               .map((section) => (
-                <NavLink key={section.to} to={section.to} end className="tp-nav__item">
+                // The timetable stays current on a class's own page (schedule/sessions/...).
+                <NavLink key={section.to} to={section.to} end={section.to !== "schedule"} className="tp-nav__item">
                   <Icon name={section.icon} />
                   {section.label}
                 </NavLink>
@@ -89,12 +97,16 @@ export function ConsoleLayout() {
                 החלפת סטודיו
               </ButtonLink>
             )}
+            <ButtonLink to={securityPath} variant="ghost" size="sm" icon="shield">
+              אבטחת החשבון
+            </ButtonLink>
             <Button variant="ghost" size="sm" icon="log-out" onClick={() => client?.signOut()}>
               התנתקות
             </Button>
           </div>
         </aside>
         <div className={styles.content}>
+          <ConsoleNotices />
           <IncomingTransferBanner />
           <Outlet />
         </div>

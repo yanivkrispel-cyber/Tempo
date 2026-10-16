@@ -66,13 +66,21 @@ export function ToastProvider({ children, duration = 5000, label = "הודעות
             <ToastView key={toast.id} toast={toast} duration={duration} dismiss={dismiss} />
           ))}
         </section>,
-        document.body
+        document.body,
       )}
     </ToastContext.Provider>
   );
 }
 
-function ToastView({ toast, duration, dismiss }: { toast: ToastEntry; duration: number; dismiss: (id: number) => void }) {
+function ToastView({
+  toast,
+  duration,
+  dismiss,
+}: {
+  toast: ToastEntry;
+  duration: number;
+  dismiss: (id: number) => void;
+}) {
   const tone = toast.tone ?? "neutral";
 
   useEffect(() => {

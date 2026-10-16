@@ -19,7 +19,13 @@ export function ExportButton({ personId, name }: { personId: string; name: strin
   const { pathname } = useLocation();
   const { organizationId } = useStudio();
   const exportData = useMutation({
-    mutationFn: () => unwrap(api.POST("/api/v1/organizations/{organizationId}/people/{personId}/export", { params: { path: { organizationId, personId } } })),
+    mutationKey: [organizationId, "people.exportData"],
+    mutationFn: () =>
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/people/{personId}/export", {
+          params: { path: { organizationId, personId } },
+        }),
+      ),
     onSuccess: (data) => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
       const link = document.createElement("a");
@@ -35,9 +41,9 @@ export function ExportButton({ personId, name }: { personId: string; name: strin
             tone: "neutral",
             icon: "info",
             message: errorMessage(error),
-            action: { label: "התחברות מחדש", onClick: () => void client?.signIn(pathname, "reauthenticate") }
+            action: { label: "התחברות מחדש", onClick: () => void client?.signIn(pathname, "reauthenticate") },
           })
-        : toast.show({ tone: "danger", icon: "info", message: errorMessage(error, "לא הצלחנו לייצא. נסו שוב.") })
+        : toast.show({ tone: "danger", icon: "info", message: errorMessage(error, "לא הצלחנו לייצא. נסו שוב.") }),
   });
 
   return (

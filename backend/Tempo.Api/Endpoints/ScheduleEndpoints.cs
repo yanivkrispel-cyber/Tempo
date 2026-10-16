@@ -178,8 +178,25 @@ public static class ScheduleEndpoints
     internal static ClassTypeResponse ToResponse(ClassTypeView c) =>
         new(c.Id, c.Name, c.Category, c.Color, c.DefaultMinutes, c.Description, c.Status, c.Version.ToString(CultureInfo.InvariantCulture));
 
-    internal static ScheduleTemplateResponse ToResponse(TemplateView t) =>
-        new(t.Id, t.ClassTypeId, t.Weekday, t.LocalStart.ToString("HH:mm", CultureInfo.InvariantCulture), t.Minutes, t.InstructorMembershipId, t.RoomId, t.Capacity, t.ValidFrom, t.ValidUntil, t.Version.ToString(CultureInfo.InvariantCulture));
+    internal static ScheduleTemplateResponse ToResponse(TemplateView t)
+    {
+        var classType = t.ClassType ?? throw new InvalidOperationException("A template reaches the API with its class type.");
+        return new(
+            t.Id,
+            t.ClassTypeId,
+            t.Weekday,
+            t.LocalStart.ToString("HH:mm", CultureInfo.InvariantCulture),
+            t.Minutes,
+            t.InstructorMembershipId,
+            t.RoomId,
+            t.Capacity,
+            t.ValidFrom,
+            t.ValidUntil,
+            t.Version.ToString(CultureInfo.InvariantCulture),
+            new SessionClassTypeResponse(classType.Id, classType.Name, classType.Category, classType.Color, classType.Description),
+            t.Instructor is { } i ? new InstructorResponse(i.MembershipId, i.DisplayName) : null,
+            t.Room is { } r ? new SessionRoomResponse(r.Id, r.Name) : null);
+    }
 
     internal static ScheduleTemplateChangeResponse ToResponse(TemplateChange change) => new(ToResponse(change.Template), [.. change.UntouchedSessions.Select(ToResponse)]);
 
@@ -190,7 +207,7 @@ public static class ScheduleEndpoints
             s.LocalDate,
             s.StartsAt,
             s.EndsAt,
-            new SessionClassTypeResponse(s.ClassType.Id, s.ClassType.Name, s.ClassType.Category, s.ClassType.Color),
+            new SessionClassTypeResponse(s.ClassType.Id, s.ClassType.Name, s.ClassType.Category, s.ClassType.Color, s.ClassType.Description),
             s.Instructor is { } i ? new InstructorResponse(i.MembershipId, i.DisplayName) : null,
             s.Room is { } r ? new SessionRoomResponse(r.Id, r.Name) : null,
             s.Capacity,
@@ -199,7 +216,8 @@ public static class ScheduleEndpoints
             s.Status,
             s.MyBooking is { } m ? new MyBookingStateResponse(m.BookingId, m.Status, m.WaitlistPosition, m.FreeCancelUntil) : null,
             s.PassPreview is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
-            s.Version.ToString(CultureInfo.InvariantCulture));
+            s.Version.ToString(CultureInfo.InvariantCulture),
+            s.FrozenUntil);
 
     private static TimeOnly ParseTime(string value, string field) =>
         TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)

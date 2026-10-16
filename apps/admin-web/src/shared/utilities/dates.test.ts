@@ -1,6 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, endOfWeek, formatDate, fromIsoDate, monthWeeks, parseDate, startOfWeek } from "./dates";
-import { matchTimes, parseTime, timeOptions } from "./times";
+import {
+  addDays,
+  addMonths,
+  dateIn,
+  endOfWeek,
+  formatDate,
+  formatDayMonth,
+  fromIsoDate,
+  monthWeeks,
+  parseDate,
+  startOfWeek,
+  todayIn,
+} from "./dates";
+import { clockTime, matchTimes, parseTime, timeOptions } from "./times";
+
+describe("the studio's time zone", () => {
+  it("reads today and clock times on the studio's clock, across the October DST change", () => {
+    // 22:30 UTC on 14 October is already 15 October in Israel (UTC+3).
+    expect(todayIn("Asia/Jerusalem", new Date("2026-10-14T22:30:00Z"))).toBe("2026-10-15");
+    expect(clockTime("2026-10-15T14:30:00Z", "Asia/Jerusalem")).toBe("17:30");
+    // After the change on 25 October Israel is UTC+2.
+    expect(clockTime("2026-10-27T15:30:00Z", "Asia/Jerusalem")).toBe("17:30");
+    // An instant's own date, and the short day and month for lists.
+    expect(dateIn("2026-10-10T21:30:00Z", "Asia/Jerusalem")).toBe("2026-10-11");
+    expect(formatDayMonth("2026-10-11")).toBe("11.10");
+  });
+});
 
 describe("dates", () => {
   it("rejects dates that do not exist", () => {
@@ -16,7 +41,7 @@ describe("dates", () => {
     ["151026", "2026-10-15"],
     ["15102026", "2026-10-15"],
     ["15.10", "2026-10-15"],
-    [" 2026-10-15 ", "2026-10-15"]
+    [" 2026-10-15 ", "2026-10-15"],
   ])("reads %j day first", (text, iso) => {
     expect(parseDate(text, "2026-06-01")).toBe(iso);
   });
@@ -86,7 +111,7 @@ describe("times", () => {
     ["1830", "18:30"],
     ["930", "09:30"],
     ["9:05", "09:05"],
-    ["18", "18:00"]
+    ["18", "18:00"],
   ])("reads %j", (text, time) => {
     expect(parseTime(text)).toBe(time);
   });

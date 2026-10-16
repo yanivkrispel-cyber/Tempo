@@ -22,7 +22,7 @@ export function useMe() {
     enabled: isSignedIn,
     staleTime: Infinity,
     // A 4xx (disabled account, rejected token) will not change on a retry; a network error or a 5xx might.
-    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500)
+    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500),
   });
 }
 
@@ -38,13 +38,23 @@ export function useUpdateMe() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: Schemas["UpdateMeRequest"]) => unwrap(api.PATCH("/api/v1/me", { body })),
-    onSuccess: (me) => queryClient.setQueryData(meKey, me)
+    onSuccess: (me) => queryClient.setQueryData(meKey, me),
   });
+}
+
+/**
+ * The studio's subscription state from GET /me (docs/28 section 4). The field is optional: dev sends it once the
+ * billing API is deployed; until then, and for a studio without a subscription, this is null.
+ */
+export function subscriptionStateOf(membership: MyMembership | undefined): Schemas["SubscriptionState"] | null {
+  return membership?.subscriptionState ?? null;
 }
 
 /** The studios the caller can use now: active memberships in active studios. */
 export function activeMemberships(me: Me): MyMembership[] {
-  return me.memberships.filter((membership) => membership.status === "active" && membership.organization.status === "active");
+  return me.memberships.filter(
+    (membership) => membership.status === "active" && membership.organization.status === "active",
+  );
 }
 
 /** The name to show: the display name, else the part of the email before `@`. */
@@ -59,33 +69,32 @@ export function roleName(role: Schemas["Role"]): string {
   return roleNames[role];
 }
 
-/** The caller's role in a studio. Until the Phase 2 API is deployed (K5) dev sends only the deprecated `role`. */
-export function membershipRoleName(membership: MyMembership): string {
-  return (membership.roles ?? [])[0]?.displayName ?? roleName(membership.role);
-}
+type RoleSummary = Schemas["RoleSummary"];
 
-/** The Phase 1 matrix as permissions (docs/27 section 3.1), for a membership the API sent without them. */
-const rolePermissions: Record<Schemas["Role"], readonly string[]> = {
-  owner: [
-    "organization.view", "organization.settings.manage", "members.view", "members.invite.staff", "members.invite.admin",
-    "members.manage", "roles.manage", "audit.view", "people.view", "people.manage", "people.merge", "people.export",
-    "people.erase", "consent.manage", "ownership.transfer"
-  ],
-  admin: [
-    "organization.view", "organization.settings.manage", "members.view", "members.invite.staff", "members.manage",
-    "audit.view", "people.view", "people.manage", "people.merge", "people.export", "consent.manage"
-  ],
-  staff: ["organization.view", "members.view", "people.view", "people.manage"],
-  client: ["organization.view"]
-};
+/** The system roles, highest first. */
+const systemRoles: readonly Schemas["Role"][] = ["owner", "admin", "staff", "client"];
 
 /**
- * What the caller may do in a studio: `permissions` from GET /me. Until the Phase 2 API is deployed (K5) dev sends
- * none, so the role's Phase 1 set stands in. The apps only show or hide actions with it; the API decides.
+ * The highest system role among a membership's `roles` (Phase 2 gives each membership exactly one); null when none of
+ * them is a system role. Replaces the deprecated `role` field (contract, `MyMembership` and `Member`).
  */
+export function systemRoleOf(roles: readonly RoleSummary[] | undefined): Schemas["Role"] | null {
+  return systemRoles.find((key) => (roles ?? []).some((role) => role.isSystem && role.key === key)) ?? null;
+}
+
+/** The names of a membership's roles, as the studio sees them: "מנהל", or "מנהל · מדריך". */
+export function rolesLabel(roles: readonly RoleSummary[] | undefined): string {
+  return (roles ?? []).map((role) => role.displayName).join(" · ") || "ללא תפקיד";
+}
+
+/** The caller's roles in a studio. */
+export function membershipRoleName(membership: MyMembership): string {
+  return rolesLabel(membership.roles);
+}
+
+/** What the caller may do in a studio: `permissions` from GET /me. The apps only show or hide actions; the API decides. */
 export function permissionsOf(membership: MyMembership): ReadonlySet<string> {
-  const sent = membership.permissions ?? [];
-  return new Set(sent.length > 0 ? sent : rolePermissions[membership.role]);
+  return new Set(membership.permissions ?? []);
 }
 
 /** The studios this console serves: live memberships whose roles can see the member list (owner, admin, staff). */
