@@ -24,7 +24,7 @@ public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory) 
         var body = await response.Content.ReadFromJsonAsync<HealthResponse>();
 
         body.Should().NotBeNull();
-        body!.Status.Should().Be("healthy");
+        body.Status.Should().Be("healthy");
         body.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
         body.Version.Should().NotBeNullOrWhiteSpace();
         body.Environment.Should().NotBeNullOrWhiteSpace();

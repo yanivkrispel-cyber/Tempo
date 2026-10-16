@@ -98,7 +98,7 @@ public sealed class PermissionTests : IDisposable
         {
             var declared = endpoint.Metadata.GetMetadata<RequirePermissionAttribute>();
             declared.Should().NotBeNull($"{endpoint.DisplayName} is a tenant route");
-            Permissions.Catalog.Should().ContainKey(declared!.Permission);
+            Permissions.Catalog.Should().ContainKey(declared.Permission);
         }
     }
 
