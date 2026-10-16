@@ -202,15 +202,17 @@ try {
       deviceLabel: "Live check",
     })
   ).json;
+  // A four-day card ends before the cards earlier checks left on the smoke user, so the booking uses it.
   product = (
-    await call("POST", `${s}/pass-products`, { kind: "punch_card", name: `${PREFIX}כרטיסייה`, entries: 2, validDays: 10, priceAgorot: 0 })
+    await call("POST", `${s}/pass-products`, { kind: "punch_card", name: `${PREFIX}כרטיסייה`, entries: 2, validDays: 4, priceAgorot: 0 })
   ).json;
-  await call("POST", `${s}/people/${person.id}/passes`, { productId: product.id, note: "communications live check" });
-  const earliest = new Date(Date.now() + 2 * 86_400_000).toISOString();
+  const pass = (await call("POST", `${s}/people/${person.id}/passes`, { productId: product.id, note: "communications live check" })).json;
+  const earliest = new Date(Date.now() + 26 * 3_600_000).toISOString();
   const session = (await call("GET", `${s}/sessions?from=${today()}&to=${addDays(today(), 30)}`)).json.items
-    .filter((x) => x.status === "scheduled" && x.startsAt > earliest && x.localDate < addDays(today(), 9) && x.bookedCount < x.capacity)
+    .filter((x) => x.status === "scheduled" && x.startsAt > earliest && x.localDate < addDays(today(), 3) && x.bookedCount < x.capacity)
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
   booking = (await call("POST", `${s}/sessions/${session.id}/bookings`, { personId: person.id })).json;
+  check(booking?.pass?.id === pass?.id, "the booking used the new card, so it has one entry left");
   const queueUrl = JSON.parse(aws(["sqs", "get-queue-url", "--queue-name", "tempo-dev-work"])).QueueUrl;
   awsWithInput(["sqs", "send-message"], {
     QueueUrl: queueUrl,
