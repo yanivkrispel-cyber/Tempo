@@ -44,6 +44,13 @@ export default defineConfig({
       dependencies: ["sign-in"],
       use: { ...devices["Pixel 7"], storageState: sessionStatePath },
     },
+    {
+      // SYNC 3, notifications (day board #176): both apps at phone width, absolute URLs.
+      name: "sync3",
+      testDir: "./specs/sync3",
+      dependencies: ["sign-in"],
+      use: { ...devices["Pixel 7"], storageState: sessionStatePath },
+    },
   ],
   webServer: [
     {
