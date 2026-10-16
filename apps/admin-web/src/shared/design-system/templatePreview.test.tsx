@@ -37,13 +37,20 @@ describe("TemplatePreview", () => {
       <TemplatePreview
         channel="inbox"
         subject="<b>x</b>"
-        body={'<img src=x onerror="alert(1)"> [לחצו](javascript:alert(1)) [בית](/home)'}
+        body={
+          '<img src=x onerror="alert(1)"> [לחצו](javascript:alert(1)) [בית](/home) [חוץ](/\\evil.example) [טאב]({{link}})'
+        }
+        values={{ link: "/\t/evil.example" }}
       />,
     );
     expect(container.querySelector("img, b")).toBeNull();
     expect(screen.getByText("<b>x</b>")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "לחצו" })).toBeNull();
     expect(screen.getByRole("link", { name: "בית" })).toHaveAttribute("href", "/home");
+    expect(screen.getByRole("link", { name: "בית" })).not.toHaveAttribute("target");
+    // The URL parser reads "\" as "/" and drops a tab: both would leave the site.
+    expect(screen.queryByRole("link", { name: "חוץ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "טאב" })).toBeNull();
   });
 
   it("shows push as the subject and the first paragraph, cut at 120 characters", () => {

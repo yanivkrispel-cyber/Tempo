@@ -30,11 +30,16 @@ const paragraphs = (body: string) =>
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
 
-/** Only a web link or an app path becomes a link; anything else (javascript:, data:) stays text. */
+/**
+ * Only a web link or an app path becomes a link; anything else (javascript:, data:) stays text. The URL parser reads
+ * `\` as `/` and drops tabs and newlines, so `/\evil.example` or `/<tab>/evil.example` would leave the site: a link
+ * with a backslash, whitespace or a control character stays text too.
+ */
 function safeHref(raw: string, values: Readonly<Record<string, string>>): string | null {
   const match = variable.exec(raw);
   const href = match ? values[match[1] ?? ""] : raw;
-  return href && /^(https:\/\/|\/(?!\/))/i.test(href) ? href : null;
+  // eslint-disable-next-line no-control-regex
+  return href && /^(https:\/\/|\/(?![/\\]))/i.test(href) && !/[\s\\\u0000-\u001f\u007f]/.test(href) ? href : null;
 }
 
 /** React elements only, never HTML: a studio's text cannot inject markup (docs/30 section 6). */
@@ -52,7 +57,8 @@ function renderInline(text: string, values: Readonly<Record<string, string>>, ke
       const href = safeHref(linkHref ?? "", values);
       nodes.push(
         href ? (
-          <a key={at} href={href} target="_blank" rel="noreferrer">
+          // An app path stays in this tab; a web link opens a new one.
+          <a key={at} href={href} {...(href.startsWith("/") ? {} : { target: "_blank", rel: "noreferrer" })}>
             {renderInline(linkText, values, at)}
           </a>
         ) : (
