@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Avatar, Button, Card, Chip, Icon, IconButton, Select, Skeleton, useToast } from "../../shared/design-system";
+import { Link } from "react-router";
+import { Avatar, Button, Card, Chip, Icon, IconButton, Skeleton, useToast } from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useProfile } from "./data";
@@ -80,17 +81,13 @@ export function ProfileScreen() {
           התראות
         </h2>
         <ConsentRows organizationId={studio?.organization.id} studioName={studio?.organization.displayName} />
-        <div className="tp-setting">
+        <Link to="/profile/notifications" className="tp-setting">
           <span className={styles.settingText}>
-            <span>תזכורת לפני שיעור</span>
-            <span className="tp-caption">כמה זמן לפני</span>
+            <span>העדפות התראות</span>
+            <span className="tp-caption">תזכורות, התראות בטלפון ושעות שקטות</span>
           </span>
-          <Select aria-label="תזכורת לפני שיעור" className={styles.settingSelect} defaultValue="2h">
-            <option value="2h">שעתיים</option>
-            <option value="1h">שעה</option>
-            <option value="1d">יום לפני</option>
-          </Select>
-        </div>
+          <Icon name="chevron-left" />
+        </Link>
       </Card>
 
       <Card as="section" tone="cream" className={styles.settings} aria-labelledby="account">
