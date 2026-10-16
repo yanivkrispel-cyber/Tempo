@@ -46,4 +46,6 @@ export { ToastProvider, useToast } from "./Toast";
 export type { ToastApi, ToastOptions, ToastProviderProps, ToastTone } from "./Toast";
 export { TimeInput } from "./TimeInput";
 export type { TimeInputProps } from "./TimeInput";
+export { isTimeWindowValid, TimeRange } from "./TimeRange";
+export type { TimeRangeProps, TimeWindow } from "./TimeRange";
 export { Checkbox, Radio, Toggle } from "./Toggle";

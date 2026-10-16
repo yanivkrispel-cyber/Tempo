@@ -3,7 +3,18 @@ import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Card, Field, Select, Skeleton, TimeInput, Toggle, useToast } from "../../shared/design-system";
+import {
+  Banner,
+  Button,
+  Card,
+  Field,
+  isTimeWindowValid,
+  Select,
+  Skeleton,
+  TimeRange,
+  Toggle,
+  useToast,
+} from "../../shared/design-system";
 import { useStudio } from "../console/studio";
 
 type NotificationSettings = Schemas["NotificationSettings"];
@@ -70,7 +81,7 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
     },
   });
 
-  const quietValid = quietHours.startsLocal !== quietHours.endsLocal;
+  const quietValid = isTimeWindowValid(quietHours);
   const changed =
     JSON.stringify({ quietHours, reminders }) !==
     JSON.stringify({ quietHours: settings.quietHours, reminders: settings.reminders });
@@ -113,28 +124,7 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
             בשעות האלה תזכורות והודעות מהסטודיו מחכות לסוף החלון. הודעה על שיעור שמתחיל בתוך החלון יוצאת מיד. כל מתאמן
             יכול לקבוע שעות משלו. השעות לפי אזור הזמן של הסטודיו (<bdi className="tp-ltr">{settings.timeZone}</bdi>).
           </p>
-          <div className="tp-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 12rem))", gap: 16 }}>
-            <Field label="מ־">
-              <TimeInput
-                value={quietHours.startsLocal}
-                from="00:00"
-                to="23:30"
-                step={30}
-                disabled={!editable}
-                onChange={(value) => value && setQuietHours({ ...quietHours, startsLocal: value })}
-              />
-            </Field>
-            <Field label="עד" error={quietValid ? undefined : "שעת הסיום צריכה להיות שונה משעת ההתחלה."}>
-              <TimeInput
-                value={quietHours.endsLocal}
-                from="00:00"
-                to="23:30"
-                step={30}
-                disabled={!editable}
-                onChange={(value) => value && setQuietHours({ ...quietHours, endsLocal: value })}
-              />
-            </Field>
-          </div>
+          <TimeRange label="שעות שקטות" value={quietHours} disabled={!editable} onChange={setQuietHours} />
         </fieldset>
 
         <fieldset className="tp-stack" style={{ border: 0, padding: 0, margin: 0 }}>
