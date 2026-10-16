@@ -31,7 +31,7 @@ public sealed class RequestLoggingTests
         var completion = await events.WaitForAsync(RequestLoggingSource);
 
         completion.Should().NotBeNull("the request completion event must go through the host logger");
-        completion!.Properties["StatusCode"].Should().Be(new ScalarValue(200));
+        completion.Properties["StatusCode"].Should().Be(new ScalarValue(200));
     }
 
     private sealed class CapturingSink : ILogEventSink

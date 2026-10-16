@@ -62,7 +62,7 @@ public sealed class BillingService(IDataSourceProvider dataSources) : IBillingSe
             throw Invalid("legalName", "Use 1 to 120 characters.");
         }
 
-        if (changes.BusinessId is not null && !System.Text.RegularExpressions.Regex.IsMatch(changes.BusinessId, "^[0-9]{9}$"))
+        if (changes.BusinessId is not null && !System.Text.RegularExpressions.Regex.IsMatch(changes.BusinessId, "^[0-9]{9}$", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100)))
         {
             throw Invalid("businessId", "Use the 9-digit company or licensed-dealer number.");
         }

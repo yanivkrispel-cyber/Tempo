@@ -472,6 +472,24 @@ describe("promotion and the inbox", () => {
     expect(within(entriesLow!).queryByRole("link")).not.toBeInTheDocument();
   });
 
+  it("tells a member the studio froze their pass (the push points here)", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a08",
+          kind: "pass.frozen",
+          data: { passId: "0199e5a1-0000-7000-8000-0000000000f1" },
+          createdAt: "2026-10-13T08:30:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [frozen] = within(list).getAllByRole("listitem");
+    expect(frozen).toHaveTextContent("הסטודיו הקפיא את המנוי שלך");
+    expect(within(frozen!).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("tells a member the studio moved the place, linking the new class", async () => {
     renderAt("/inbox", {
       inbox: [

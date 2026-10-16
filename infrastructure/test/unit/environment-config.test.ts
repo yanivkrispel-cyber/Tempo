@@ -84,6 +84,10 @@ describe("validateEnvironmentConfig", () => {
     expect(() => validateEnvironmentConfig(staging({}))).not.toThrow();
     expect(() => validateEnvironmentConfig(staging({ corsAllowedOrigins: ["http://app.tempo.example"] }))).toThrow(/only https/);
     expect(() => validateEnvironmentConfig(staging({ cognitoLogoutUrls: { ...logout, clientWeb: ["https://localhost:5174/"] } }))).toThrow(/never localhost/);
+    // Any case, any loopback or unspecified address (#180).
+    for (const local of ["https://LOCALHOST:5173", "HTTP://app.tempo.example", "https://[::1]", "https://0.0.0.0", "https://127.0.0.2", "https://app.localhost"]) {
+      expect(() => validateEnvironmentConfig(staging({ corsAllowedOrigins: [local] })), local).toThrow(/only https/);
+    }
     expect(() => validateEnvironmentConfig(baseConfig())).not.toThrow();
   });
 

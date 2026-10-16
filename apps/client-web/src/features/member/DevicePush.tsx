@@ -74,7 +74,7 @@ export function DevicePush({ organizationId }: { organizationId: string }) {
       <div className="tp-setting">
         <span className={styles.settingText} aria-hidden="true">
           <span>התראות במכשיר הזה</span>
-          <span className="tp-caption">
+          <span id="device-push-hint" className="tp-caption">
             {permission === "denied"
               ? "ההתראות חסומות בדפדפן. כדי לקבל אותן, אפשרו התראות לאתר הזה בהגדרות הדפדפן."
               : "בלי זה, ההודעות מגיעות רק לתיבת ההודעות באפליקציה."}
@@ -83,6 +83,8 @@ export function DevicePush({ organizationId }: { organizationId: string }) {
         <Toggle
           label="התראות במכשיר הזה"
           hideLabel
+          // Why the switch is off or disabled (blocked in the browser) must reach a screen reader too.
+          aria-describedby="device-push-hint"
           checked={thisDeviceOn}
           disabled={busy || devices.isPending || permission === "denied"}
           onChange={(event) => toggle(event.target.checked)}
@@ -94,7 +96,7 @@ export function DevicePush({ organizationId }: { organizationId: string }) {
           <ul className={styles.devices} aria-label="מכשירים עם התראות">
             {items.map((device) => (
               <li key={device.id} className="tp-setting">
-                <span>
+                <span className={styles.deviceLabel}>
                   {device.deviceLabel}
                   {device.id === ownId && <span className="tp-caption tp-muted"> (המכשיר הזה)</span>}
                 </span>

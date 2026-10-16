@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { Api, e2eName } from "../../support/api";
 import { expectNoSeriousA11yViolations } from "../../support/axe";
+import { expectFitsNarrowPhone } from "../../support/phone";
 import {
   adminUrl,
   aws,
@@ -83,6 +84,7 @@ test("client-web: the member turns off studio push and sets own quiet hours", as
   const studioPush = page.getByRole("switch", { name: "הודעות מהסטודיו: התראה בטלפון" });
   await expect(studioPush).toBeChecked();
   await expectNoSeriousA11yViolations(page, testInfo, "client-web notification preferences");
+  await expectFitsNarrowPhone(page, testInfo, "client-web notification preferences");
 
   await flip(studioPush);
   await page.getByRole("radio", { name: "שעות משלי" }).check();
@@ -111,6 +113,7 @@ test("console: the owner changes the class-soon reminder timing", async ({ page 
     "console notification settings",
     "section[aria-label='התראות ותזכורות']",
   );
+  await expectFitsNarrowPhone(page, testInfo, "console notification settings", "section[aria-label='התראות ותזכורות']");
 
   const classSoon = card.getByRole("switch", { name: "זמן קצר לפני שיעור" });
   if (!(await classSoon.isChecked())) await flip(classSoon);
@@ -205,6 +208,7 @@ test("client-web: an entries-low reminder from the hourly job reaches the inbox"
   await expect(page.getByRole("heading", { level: 1, name: "התראות" })).toBeVisible();
   await expect(page.getByText("נשארו מעט כניסות בכרטיסייה").first()).toBeVisible();
   await expectNoSeriousA11yViolations(page, testInfo, "client-web inbox with a reminder");
+  await expectFitsNarrowPhone(page, testInfo, "client-web inbox with a reminder");
   await api.call("POST", `/me/notifications/${itemId}/read`);
 });
 
