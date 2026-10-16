@@ -173,9 +173,13 @@
 .settingsTitle {
   padding-top: 10px;
 }
+/* At 320px the text wraps and the switch keeps its size. */
 .settingText {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .quietHours {
   padding-block: 8px;
@@ -207,4 +211,10 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+/* A browser's device label can be one long word. */
+.deviceLabel {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
