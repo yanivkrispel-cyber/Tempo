@@ -11,6 +11,12 @@ type ReminderTiming = Schemas["ReminderTiming"];
 
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => from + index);
 
+/** The reminder job ticks hourly from 07:00 to 21:00 studio time (#199), so the evening reminder goes on the hour. */
+const sendTimes = (current: string) => {
+  const hours = range(12, 21).map((hour) => `${String(hour).padStart(2, "0")}:00`);
+  return hours.includes(current) ? hours : [...hours, current].sort();
+};
+
 /**
  * The studio's quiet hours and reminder timing (docs/30 D-4, D-5). Everyone with `organization.view` sees them;
  * `organization.settings.manage` changes them.
@@ -143,15 +149,18 @@ function NotificationSettingsForm({ settings }: { settings: NotificationSettings
             disabled={!editable}
             onChange={(event) => setReminder("classTomorrow", { enabled: event.target.checked })}
           />
-          <Field label="שעת השליחה">
-            <TimeInput
+          <Field label="שעת השליחה" help="התזכורות יוצאות בשעות עגולות, בין 12:00 ל־21:00.">
+            <Select
               value={reminders.classTomorrow.sendAtLocal}
-              from="12:00"
-              to="22:00"
-              step={30}
+              onChange={(event) => setReminder("classTomorrow", { sendAtLocal: event.target.value })}
               disabled={!editable || !reminders.classTomorrow.enabled}
-              onChange={(value) => value && setReminder("classTomorrow", { sendAtLocal: value })}
-            />
+            >
+              {sendTimes(reminders.classTomorrow.sendAtLocal).map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </Select>
           </Field>
 
           <Toggle

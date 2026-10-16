@@ -53,6 +53,13 @@ describe("studio notification settings", () => {
     const save = within(card).getByRole("button", { name: "שמירת הגדרות ההתראות" });
     expect(save).toBeDisabled();
 
+    const sendAt = within(card).getByRole("combobox", { name: "שעת השליחה" });
+    expect(
+      within(sendAt)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"]);
+    await userEvent.selectOptions(sendAt, "19:00");
     await userEvent.selectOptions(within(card).getByRole("combobox", { name: "כמה זמן לפני" }), "3");
     await userEvent.click(within(card).getByRole("switch", { name: "כשנשארות מעט כניסות בכרטיסייה" }));
     expect(within(card).getByRole("combobox", { name: "כשנשארות" })).toBeDisabled();
@@ -64,7 +71,7 @@ describe("studio notification settings", () => {
     expect(api.bodies[put]).toEqual({
       quietHours: { startsLocal: "22:00", endsLocal: "08:00" },
       reminders: {
-        classTomorrow: { enabled: true, sendAtLocal: "18:00" },
+        classTomorrow: { enabled: true, sendAtLocal: "19:00" },
         classSoon: { enabled: true, hoursBefore: 3 },
         passEnding: { enabled: true, daysBefore: 7 },
         entriesLow: { enabled: false, entriesLeft: 1 },
