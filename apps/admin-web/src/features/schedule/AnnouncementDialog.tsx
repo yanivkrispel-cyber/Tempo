@@ -23,7 +23,8 @@ type Announcement = Schemas["Announcement"];
 const subjectMax = 80;
 const bodyMax = 1000;
 
-const people = (count: number) => (count === 1 ? "מתאמן פעיל אחד" : `${count} מתאמנים פעילים`);
+/** Owners and staff with an active membership get it too (T3 on board #208). */
+const people = (count: number) => (count === 1 ? "אדם אחד" : `${count} אנשים`);
 
 const allowanceKey = (organizationId: string) => ["studio", organizationId, "announcements"];
 
@@ -66,7 +67,7 @@ export function AnnouncementDialog({ onClose }: { onClose: () => void }) {
         icon: "check",
         message:
           sent.recipients === 0
-            ? "אין כרגע מתאמנים פעילים, ולכן ההודעה לא הגיעה לאף אחד."
+            ? "אין כרגע חברים פעילים בסטודיו, ולכן ההודעה לא הגיעה לאף אחד."
             : `ההודעה נשלחה ל־${people(sent.recipients)}.`,
       });
       onClose();
@@ -86,7 +87,7 @@ export function AnnouncementDialog({ onClose }: { onClose: () => void }) {
       open
       onClose={onClose}
       title="הודעה לכל הסטודיו"
-      description="ההודעה מגיעה לתיבת ההודעות של כל המתאמנים הפעילים, ובפוש לפי ההעדפות ושעות השקט של כל אחד."
+      description="ההודעה מגיעה לתיבת ההודעות של כל חברי הסטודיו הפעילים, מתאמנים וצוות, ובפוש לפי ההעדפות ושעות השקט של כל אחד."
       actions={
         <>
           <Button variant="secondary" onClick={onClose} disabled={send.isPending}>
@@ -139,7 +140,7 @@ export function AnnouncementDialog({ onClose }: { onClose: () => void }) {
           label="ההודעה"
           required
           help={`${body.length} מתוך ${bodyMax} תווים. **מודגש**, [קישור](https://...) ושורה ריקה בין פסקאות.`}
-          error={touched && !draft.body ? "כתבו מה תרצו לספר למתאמנים." : undefined}
+          error={touched && !draft.body ? "כתבו מה תרצו לספר לסטודיו." : undefined}
         >
           <Textarea
             value={body}
@@ -165,13 +166,14 @@ function blockedReason(allowance: Allowance): string | null {
   if (allowance.sentToday >= allowance.dailyLimit)
     return `כבר נשלחו היום ${allowance.dailyLimit} הודעות לכל הסטודיו. אפשר לשלוח שוב מחר.`;
   if (allowance.recipients > allowance.maxRecipients)
-    return `לסטודיו ${allowance.recipients} מתאמנים פעילים, ואפשר לשלוח הודעה כזו לעד ${allowance.maxRecipients}.`;
+    return `בסטודיו ${allowance.recipients} חברים פעילים, ואפשר לשלוח הודעה כזו לעד ${allowance.maxRecipients}.`;
   return null;
 }
 
 function sendError(error: unknown): string {
   if (hasCode(error, "announcement.daily_limit")) return "כבר נשלחו היום כל ההודעות האפשריות. אפשר לשלוח שוב מחר.";
   if (hasCode(error, "announcement.too_many_recipients"))
-    return "יש בסטודיו יותר מתאמנים פעילים ממה שהודעה כזו יכולה להגיע אליהם, ולכן היא לא נשלחה.";
+    return "יש בסטודיו יותר חברים פעילים ממה שהודעה כזו יכולה להגיע אליהם, ולכן היא לא נשלחה.";
+  if (hasCode(error, "announcement.invalid")) return "הנושא צריך להיות שורה אחת, וההודעה לא ריקה.";
   return errorMessage(error, "לא הצלחנו לשלוח. נסו שוב.");
 }

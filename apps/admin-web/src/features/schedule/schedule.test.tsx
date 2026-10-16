@@ -421,15 +421,15 @@ describe("a studio announcement", () => {
       "staff",
     );
     const dialog = await open();
-    expect(await within(dialog).findByText(/ההודעה תגיע ל־42 מתאמנים פעילים. נשלחו היום 1 מתוך 3/)).toBeInTheDocument();
+    expect(await within(dialog).findByText(/ההודעה תגיע ל־42 אנשים. נשלחו היום 1 מתוך 3/)).toBeInTheDocument();
 
     await userEvent.type(within(dialog).getByRole("textbox", { name: /נושא/ }), "סגור בחג");
     await userEvent.type(within(dialog).getByRole("textbox", { name: /ההודעה/ }), "הסטודיו **סגור** ביום חמישי.");
     const preview = within(dialog).getByRole("group", { name: "תצוגה מקדימה של הודעה בתיבה" });
     expect(within(preview).getByText("סגור", { selector: "strong" })).toBeInTheDocument();
 
-    await userEvent.click(within(dialog).getByRole("button", { name: "שליחה ל־42 מתאמנים פעילים" }));
-    expect(await screen.findByText("ההודעה נשלחה ל־42 מתאמנים פעילים.")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "שליחה ל־42 אנשים" }));
+    expect(await screen.findByText("ההודעה נשלחה ל־42 אנשים.")).toBeInTheDocument();
     expect(api.bodies[lastIndex(api, "POST", "/announcements")]).toEqual({
       subject: "סגור בחג",
       body: "הסטודיו **סגור** ביום חמישי.",
