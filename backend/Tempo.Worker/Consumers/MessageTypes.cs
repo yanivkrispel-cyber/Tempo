@@ -23,4 +23,7 @@ public static class MessageTypes
 
     /// <summary>Route the push line of recent notification requests (docs/30 section 8; day board #176, P3).</summary>
     public const string NotificationsDeliver = "notifications.deliver";
+
+    /// <summary>Write the due reminders and deliver them, sent hourly in the daytime by EventBridge Scheduler (day board #176, P5).</summary>
+    public const string NotificationsReminders = "notifications.reminders_hourly";
 }

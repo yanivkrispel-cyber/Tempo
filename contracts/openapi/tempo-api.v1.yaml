@@ -3829,7 +3829,7 @@ components:
         kind:
           type: string
           description: Clients must ignore kinds they do not know.
-          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen]
+          examples: [booking.promoted, booking.promotion_failed, booking.moved, session.message, session.cancelled, waitlist.expired, pass.frozen, reminder.class_tomorrow, reminder.class_soon, reminder.pass_ending, reminder.entries_low]
         data:
           type: object
           description: Ids only.
