@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INotificationPreferencesService, NotificationPreferencesService>();
         services.AddSingleton<INotificationTemplateService, NotificationTemplateService>();
         services.AddSingleton<IAnnouncementService, AnnouncementService>();
+        services.AddSingleton<IDeliveryLogService, DeliveryLogService>();
         services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
         services.AddSingleton(sp => new VapidKeySource(key => sp.GetRequiredService<IConfiguration>()[key], needsPrivateKey: false));
         services.AddSingleton<IConsentService, ConsentService>();

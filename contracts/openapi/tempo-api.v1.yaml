@@ -2346,7 +2346,6 @@ paths:
     get:
       tags: [Notifications]
       operationId: listPersonDeliveries
-      x-tempo-planned: true
       summary: "A person's last 30 delivery lines, newest first (`people.view`)"
       description: Kind, channel, status, reason and times only; never the text or the address (docs/30 D-6).
       responses:
