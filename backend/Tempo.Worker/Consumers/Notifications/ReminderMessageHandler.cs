@@ -33,5 +33,9 @@ public sealed class ReminderMessageHandler(ILogger logger, ReminderJob reminders
             run.Dead,
             run.SubscriptionsRemoved,
             correlationId);
+        foreach (var zone in delivery.UnknownTimeZones)
+        {
+            logger.Warning("Notification delivery routed studios with unknown time zone {TimeZone} in UTC. CorrelationId={CorrelationId}", zone, correlationId);
+        }
     }
 }

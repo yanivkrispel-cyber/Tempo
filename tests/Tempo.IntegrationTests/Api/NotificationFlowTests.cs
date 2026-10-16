@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using Tempo.Api.DependencyInjection;
 using Tempo.IntegrationTests.DatabaseMigrator;
 using Tempo.Platform.BuildingBlocks.Persistence;
@@ -78,6 +79,10 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         saved.GetProperty("reminders").GetProperty("classSoon").GetBoolean().Should().BeFalse();
         saved.GetProperty("quietHours").GetProperty("endsLocal").GetString().Should().Be("07:00");
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/me/notification-preferences", Customer("rina"), choice, ifMatch: "0")).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // Another save of version 1 is still in flight when this one, also from version 1, arrives: this one waits
+        // and is then refused, rather than overwriting it (review on #195).
+        (await RacingSaveAsync(db, "UPDATE notifications.preference_versions SET version = version + 1 WHERE version = 1",
+            () => RawAsync(client, HttpMethod.Put, $"{studioPath}/me/notification-preferences", Customer("rina"), choice, ifMatch: "1"))).Should().Be(HttpStatusCode.Conflict);
         await ProblemAsync(client, $"{studioPath}/me/notification-preferences", "rina", new
         {
             groups = new[] { new { group = "studio", channels = new { inbox = false, push = true } } },
@@ -109,6 +114,11 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("noga"), studioChoice)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var changed = await SendAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), studioChoice, ifMatch: "0");
         changed.GetProperty("version").GetString().Should().Be("1");
+        (await RacingSaveAsync(db, "UPDATE notifications.studio_settings SET version = version + 1 WHERE version = 1",
+            () => RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), studioChoice, ifMatch: "1"))).Should().Be(HttpStatusCode.Conflict);
+        changed = await SendAsync(client, HttpMethod.Get, $"{studioPath}/notification-settings", Customer("owner"));
+        changed.GetProperty("version").GetString().Should().Be("2");
+        (await RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), studioChoice, ifMatch: "0")).StatusCode.Should().Be(HttpStatusCode.Conflict, "the row exists");
         changed.GetProperty("quietHours").GetProperty("startsLocal").GetString().Should().Be("21:30");
         (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notification-preferences", Customer("noga"))).GetProperty("studioReminders").GetProperty("passEnding").GetBoolean().Should().BeFalse();
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/notification-settings", Customer("owner"), new
@@ -368,6 +378,26 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         // 6. Reminders go through the router like every other notice (no device here, so push is skipped).
         (await new NotificationDeliveryJob(db, TimeProvider.System).RunAsync(CancellationToken.None)).Routed.Should().Be(8);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.deliveries d JOIN notifications.requests r ON r.id = d.request_id WHERE r.kind LIKE 'reminder.%' AND d.channel = 'push' AND d.skip_reason = 'no_subscription'")).Should().Be(8L);
+    }
+
+    /// <summary>
+    /// Holds <paramref name="otherSave"/> open in a second connection while <paramref name="save"/> runs, then commits
+    /// it: what a second save sent with the same If-Match meets.
+    /// </summary>
+    private async Task<HttpStatusCode> RacingSaveAsync(MigratedDatabase db, string otherSave, Func<Task<HttpResponseMessage>> save)
+    {
+        await using var other = postgres.ConnectAsMaster(db.Name);
+        await other.OpenAsync();
+        await using var transaction = await other.BeginTransactionAsync();
+        await using (var command = new NpgsqlCommand(otherSave, other, transaction))
+        {
+            (await command.ExecuteNonQueryAsync()).Should().Be(1);
+        }
+
+        var inFlight = save();
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        await transaction.CommitAsync();
+        return (await inFlight).StatusCode;
     }
 
     private static readonly string[] Groups = ["bookings", "reminders", "studio"];
