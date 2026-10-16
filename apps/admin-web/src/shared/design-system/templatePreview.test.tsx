@@ -32,6 +32,19 @@ describe("TemplatePreview", () => {
     expect(screen.getByText("{{pass.entriesLeft}}")).toHaveClass("tp-template-preview__var");
   });
 
+  it("shows the subject as plain text with its variables filled, like the API sends it", () => {
+    const { container } = render(
+      <TemplatePreview
+        channel="inbox"
+        subject="**{{studio.name}}** [כאן](/home)"
+        body="גוף"
+        values={{ "studio.name": "נשימה" }}
+      />,
+    );
+    expect(container.querySelector(".tp-template-preview__title")).toHaveTextContent("**נשימה** [כאן](/home)");
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
   it("never renders the studio's text as markup, and links only to https or an app path", () => {
     const { container } = render(
       <TemplatePreview
