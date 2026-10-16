@@ -1,0 +1,45 @@
+# Dependency updates (ADR-0025, Layer 1). Security updates come from the
+# repository's Dependabot security updates setting, whatever the schedule here,
+# and the cooldown does not delay them. Version updates are monthly and grouped,
+# at most two open PRs per ecosystem. Every Dependabot PR goes through the same
+# CI and review as ours.
+version: 2
+updates:
+  - package-ecosystem: npm # pnpm workspace: root, apps/*, packages/*, infrastructure
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7 # let a new release age a week before proposing it
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7 # let a new release age a week before proposing it
+    groups:
+      nuget-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7 # let a new release age a week before proposing it
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore(ci)
