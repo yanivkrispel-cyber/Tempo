@@ -23,6 +23,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { demoMemberEmail, isDemoMember } from "./lib/demo-members.mjs";
+
 const PREFIX = "דמו: ";
 const REGION = "eu-central-1";
 const DEFAULT_API = "https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com";
@@ -211,14 +213,15 @@ async function seed() {
     const created = await call("POST", `${s}/rooms`, { ...room, name: PREFIX + room.name });
     rooms[room.name] = created.id;
     manifest.rooms.push(created.id);
+    save();
   }
   const types = {};
   for (const { key, ...type } of CLASS_TYPES) {
     const created = await call("POST", `${s}/class-types`, { ...type, name: PREFIX + type.name });
     types[key] = created.id;
     manifest.classTypes.push(created.id);
+    save();
   }
-  save();
   console.log(`✓ ${ROOMS.length} rooms, ${CLASS_TYPES.length} class types`);
 
   for (const t of TEMPLATES) {
@@ -231,8 +234,8 @@ async function seed() {
     });
     // A template change answers with the template and the sessions it could not touch.
     manifest.templates.push({ id: created.template.id, classTypeId: types[t.type] });
+    save();
   }
-  save();
   const sessions = (await call("GET", `${s}/sessions?from=${today()}&to=${addDays(today(), 61)}`)).items.filter((x) =>
     manifest.templates.some((t) => t.id === x.templateId),
   );
@@ -243,20 +246,20 @@ async function seed() {
     const created = await call("POST", `${s}/pass-products`, { ...product, name: PREFIX + product.name });
     products[key] = created.id;
     manifest.products.push(created.id);
+    save();
   }
-  save();
 
   const people = [];
   for (const [index, member] of MEMBERS.entries()) {
     const person = await call("POST", `${s}/people`, {
       displayName: member.displayName,
-      email: `demo-member-${String(index + 1).padStart(2, "0")}@example.com`,
+      email: demoMemberEmail(index),
     });
     manifest.people.push(person.id);
+    save();
     await call("POST", `${s}/people/${person.id}/passes`, { productId: products[member.product], note: "דמו" });
     people.push(person.id);
   }
-  save();
   console.log(`✓ ${PRODUCTS.length} pass products, ${MEMBERS.length} members with passes`);
 
   // Bookings: the next reformer class fills (4 places, 6 bookings → 2 waiting); a mat class and a yoga class get a few.
@@ -306,7 +309,7 @@ async function discover() {
     .map((t) => ({ id: t.id, classTypeId: t.classTypeId }));
   manifest.products = byPrefix((await call("GET", `${s}/pass-products`)).items);
   const people = (await call("GET", `${s}/people?limit=100`)).items;
-  manifest.people = people.filter((p) => MEMBERS.some((m) => m.displayName === p.displayName)).map((p) => p.id);
+  manifest.people = people.filter((p) => isDemoMember(p, MEMBERS)).map((p) => p.id);
   return manifest;
 }
 
