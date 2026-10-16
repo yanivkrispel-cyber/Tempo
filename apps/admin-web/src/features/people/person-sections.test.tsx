@@ -199,3 +199,49 @@ describe("relationships on the person card", () => {
     expect(api.requests.some((request) => request.method === "DELETE")).toBe(true);
   });
 });
+
+describe("deliveries on the person card", () => {
+  const organization = `/api/v1/organizations/${studio.organization.id}`;
+  const delivery = (n: number, overrides: Record<string, unknown>) => ({
+    id: `0199e5a1-0000-7000-8000-0000000f000${n}`,
+    kind: "reminder.class_soon",
+    channel: "push",
+    status: "delivered",
+    reason: null,
+    attempts: 1,
+    createdAt: "2026-10-16T05:00:00Z",
+    updatedAt: "2026-10-16T05:00:00Z",
+    ...overrides,
+  });
+
+  it("lists each notification with its channel, status and why it was skipped, on the studio's clock", async () => {
+    renderAt({
+      [`GET ${base}/${childId}`]: child(),
+      [`GET ${organization}`]: { ...studio.organization, timeZone: "Asia/Jerusalem", version: "1" },
+      [`GET ${base}/${childId}/deliveries`]: {
+        items: [
+          delivery(1, {}),
+          delivery(2, { kind: "studio.announcement", channel: "inbox", status: "skipped", reason: "quiet_hours" }),
+          delivery(3, { kind: "booking.promoted", status: "dead", reason: "http_410", attempts: 3 }),
+        ],
+      },
+    });
+    const section = await screen.findByRole("region", { name: "התראות אחרונות" });
+    const rows = await within(section).findAllByRole("row");
+    expect(rows).toHaveLength(4);
+    // 05:00Z is 08:00 in Israel (UTC+3 until 25 October).
+    expect(rows[1]).toHaveTextContent(/08:00/);
+    expect(rows[1]).toHaveTextContent("תזכורת זמן קצר לפני שיעור");
+    expect(rows[1]).toHaveTextContent("התראה בטלפון");
+    expect(rows[1]).toHaveTextContent("הגיעה");
+    expect(rows[2]).toHaveTextContent("הודעה לכל הסטודיו");
+    expect(rows[2]).toHaveTextContent("לא נשלחה בשעות השקט");
+    expect(rows[3]).toHaveTextContent("נכשלה סופית http_410 (3 ניסיונות)");
+  });
+
+  it("says when nothing was sent yet", async () => {
+    renderAt({ [`GET ${base}/${childId}`]: child(), [`GET ${base}/${childId}/deliveries`]: { items: [] } });
+    const section = await screen.findByRole("region", { name: "התראות אחרונות" });
+    expect(await within(section).findByText("עוד לא נשלחו התראות.")).toBeInTheDocument();
+  });
+});

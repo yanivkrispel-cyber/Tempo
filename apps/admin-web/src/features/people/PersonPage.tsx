@@ -24,6 +24,7 @@ import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
 import { PassesSection } from "../passes/PassesSection";
 import { ConsentSection } from "./ConsentSection";
+import { DeliveriesSection } from "./DeliveriesSection";
 import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
 import { InvitePersonDialog } from "./InvitePersonDialog";
@@ -166,6 +167,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
       {studio.can("passes.view") && <PassesSection person={person} />}
       <ConsentSection person={person} />
       <RelationshipsSection person={person} writable={writable} />
+      {studio.can("people.view") && <DeliveriesSection personId={person.id} />}
 
       {/* Owner only (people.erase); never one's own record. */}
       {studio.can("people.erase") && writable && person.membershipId !== studio.membership.membershipId && (
