@@ -610,7 +610,7 @@ describe("profile", () => {
     );
 
     expect(await screen.findByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
-    expect(screen.getByRole("combobox", { name: "תזכורת לפני שיעור" })).toHaveValue("2h");
+    expect(screen.getByRole("link", { name: /העדפות התראות/ })).toHaveAttribute("href", "/profile/notifications");
     expect(screen.getByText("נחתמה")).toHaveClass("tp-chip--success");
   });
 
