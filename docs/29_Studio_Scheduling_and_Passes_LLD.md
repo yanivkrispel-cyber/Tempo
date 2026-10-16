@@ -399,7 +399,10 @@ CREATE INDEX ix_inbox_person ON notifications.inbox_items (organization_id, pers
 - Data migration: every existing studio gets a `booking_policies` row with the defaults; new studios get one in
   `OrganizationService.CreateAsync`.
 - Erasure (docs/27 section 4.7): bookings, passes and inbox items keep their ids and point at the anonymized person;
-  the only free text is `passes.note`, which erase clears. Export adds the person's bookings and passes.
+  the only free text is `passes.note`, which erase clears. Erase also cancels the person's booked and waiting places
+  in classes that have not started (staff cancel, no late charge, the entry returned, the next waiter promoted; audit
+  reason `person_erased`, no notification to the erased person, #191); past bookings and attendance stay for the
+  counts. Export adds the person's bookings and passes.
 - Merge (docs/27 section 4.6): bookings, passes and inbox items move to the survivor; a session where both records
   hold a live booking keeps the survivor's and cancels the other with its entry returned.
 
