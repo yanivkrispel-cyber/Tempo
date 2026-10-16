@@ -366,6 +366,84 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
     }
 
     [Fact]
+    public async Task Announcements_ReachEveryActiveMember_ThreeADay_AndNeverOverFiveHundred()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db, BrowserKey);
+        var client = factory.CreateClient();
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו חוף", slug = "studio-hof" }, HttpStatusCode.Created);
+        var studioPath = $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}";
+        var announcements = $"{studioPath}/announcements";
+        foreach (var member in new[] { "noga", "rina" })
+        {
+            await JoinByInvitationAsync(client, studioPath, member, "client");
+        }
+
+        // 1. The owner and two members would get it; a member may neither look nor send.
+        var allowance = await SendAsync(client, HttpMethod.Get, announcements, Customer("owner"));
+        allowance.GetProperty("recipients").GetInt32().Should().Be(3);
+        allowance.GetProperty("maxRecipients").GetInt32().Should().Be(500);
+        allowance.GetProperty("sentToday").GetInt32().Should().Be(0);
+        allowance.GetProperty("dailyLimit").GetInt32().Should().Be(3);
+        (await RawAsync(client, HttpMethod.Get, announcements, Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await RawAsync(client, HttpMethod.Post, announcements, Customer("rina"), new { subject = "שלום", body = "גוף" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var invalid = await RawAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "שורה\nשנייה", body = "גוף" });
+        invalid.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await invalid.Content.ReadAsStringAsync()).Should().Contain("announcement.invalid").And.Contain("subject");
+
+        // 2. Sent: Rina's inbox shows the subject and the text; her push carries only the kind and ids.
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", Customer("rina"),
+            new { endpoint = "https://fcm.googleapis.com/fcm/send/rina-phone", keys = new { p256dh = BrowserKey, auth = BrowserAuth }, deviceLabel = "Chrome, Android" }, HttpStatusCode.Created);
+        var sent = await SendAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "שיעור פתוח בשישי", body = "**בואו** לנסות [את הלוח](/classes)" }, HttpStatusCode.Created);
+        sent.GetProperty("recipients").GetInt32().Should().Be(3);
+        sent.GetProperty("sentToday").GetInt32().Should().Be(1);
+        var item = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notifications", Customer("rina"))).GetProperty("items").EnumerateArray().Single();
+        item.GetProperty("kind").GetString().Should().Be("studio.announcement");
+        item.GetProperty("title").GetString().Should().Be("שיעור פתוח בשישי");
+        item.GetProperty("text").GetString().Should().Be("**בואו** לנסות [את הלוח](/classes)");
+        var noon = new FakeClock(new DateTimeOffset(DateTime.SpecifyKind(DateTime.UtcNow.Date.AddHours(10), DateTimeKind.Utc)));
+        var push = new ScriptedPush(PushOutcome.Accepted);
+        await new NotificationDeliveryJob(db, noon, _ => Task.FromResult<IPushSender?>(push)).RunAsync(CancellationToken.None);
+        var payload = System.Text.Encoding.UTF8.GetString(push.Sent.Single().Payload);
+        JsonSerializer.Deserialize<JsonElement>(payload).GetProperty("kind").GetString().Should().Be("studio.announcement");
+        payload.Should().NotContain("שיעור פתוח").And.NotContain("בואו", "push carries no announcement text");
+
+        // 3. Three a day: the fourth waits for the studio's next midnight.
+        await SendAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "שני", body = "גוף" }, HttpStatusCode.Created);
+        (await SendAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "שלישי", body = "גוף" }, HttpStatusCode.Created))
+            .GetProperty("sentToday").GetInt32().Should().Be(3);
+        var fourth = await RawAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "רביעי", body = "גוף" });
+        fourth.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        fourth.Headers.RetryAfter!.Delta!.Value.Should().BePositive().And.BeLessThanOrEqualTo(TimeSpan.FromHours(25));
+        (await fourth.Content.ReadAsStringAsync()).Should().Contain("announcement.daily_limit").And.Contain("\"dailyLimit\":3");
+        (await SendAsync(client, HttpMethod.Get, announcements, Customer("owner"))).GetProperty("sentToday").GetInt32().Should().Be(3);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE kind = 'studio.announcement'")).Should().Be(9L);
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'announcement.sent'")).Should().Be(3L);
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'announcement.sent' AND data::text LIKE '%שיעור%'")).Should().Be(0L, "the audit never keeps the text");
+
+        // 4. A studio with 501 active members sends nothing.
+        var big = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו גדול", slug = "studio-big" }, HttpStatusCode.Created);
+        var bigId = big.GetProperty("id").GetGuid();
+        await db.AsMasterAsync(
+            """
+            WITH n AS (SELECT g, gen_random_uuid() AS account, gen_random_uuid() AS membership FROM generate_series(1, 500) g),
+            a AS (INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at)
+                  SELECT account, 'active', 'e2e-' || g || '@example.com', true, now(), now(), now() FROM n),
+            m AS (INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at)
+                  SELECT $1, membership, account, 'client', 'active', now(), now() FROM n)
+            INSERT INTO people.people (organization_id, id, display_name, status, user_account_id, membership_id, source, created_at, updated_at)
+            SELECT $1, gen_random_uuid(), 'member ' || g, 'active', account, membership, 'join_link', now(), now() FROM n
+            """,
+            bigId);
+        var tooMany = await RawAsync(client, HttpMethod.Post, $"/api/v1/organizations/{bigId}/announcements", Customer("owner"), new { subject = "לכולם", body = "גוף" });
+        tooMany.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await tooMany.Content.ReadAsStringAsync()).Should().Contain("announcement.too_many_recipients").And.Contain("\"recipients\":501").And.Contain("\"maxRecipients\":500");
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.announcements WHERE organization_id = $1", bigId)).Should().Be(0L);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE organization_id = $1", bigId)).Should().Be(0L);
+    }
+
+    [Fact]
     public async Task Reminders_AreDueOnce_ForActiveMembers_WhoKeepThemOn()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

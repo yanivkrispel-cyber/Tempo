@@ -30,6 +30,8 @@ public static class NotificationEndpoints
         tenant.MapGet("/notification-templates", ListTemplatesAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("listNotificationTemplates").Produces<NotificationTemplateListResponse>();
         tenant.MapGet("/notification-templates/{kind}", GetTemplateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("getNotificationTemplate").Produces<NotificationTemplateResponse>();
         tenant.MapPut("/notification-templates/{kind}", UpdateTemplateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("updateNotificationTemplate").Produces<NotificationTemplateResponse>();
+        tenant.MapGet("/announcements", GetAnnouncementAllowanceAsync).RequirePermission(Permissions.BookingsManage).WithName("getAnnouncementAllowance").Produces<AnnouncementAllowanceResponse>();
+        tenant.MapPost("/announcements", SendAnnouncementAsync).RequirePermission(Permissions.BookingsManage).WithName("sendAnnouncement").Produces<AnnouncementResponse>(StatusCodes.Status201Created);
         endpoints.MapAccountGroup().MapGet("/push/vapid-public-key", VapidPublicKeyAsync).WithName("getVapidPublicKey").Produces<VapidPublicKeyResponse>();
 
         return endpoints;
@@ -133,6 +135,18 @@ public static class NotificationEndpoints
 
     private static TemplateTextResponse ToTextResponse(TemplateChannelView c) =>
         new(c.Words.Subject, c.Words.Body, c.Studio ? "studio" : "default", c.StudioVersion, new TemplatePreviewDto(c.Preview.Subject, c.Preview.Body));
+
+    private static async Task<IResult> GetAnnouncementAllowanceAsync(HttpContext httpContext, IAnnouncementService announcements)
+    {
+        var a = await announcements.GetAllowanceAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted);
+        return Results.Ok(new AnnouncementAllowanceResponse(a.Recipients, a.MaxRecipients, a.SentToday, a.DailyLimit));
+    }
+
+    private static async Task<IResult> SendAnnouncementAsync(HttpContext httpContext, AnnouncementInput request, IAnnouncementService announcements)
+    {
+        var sent = await announcements.SendAsync(TenantRouteFilter.Current(httpContext), request.Subject, request.Body, httpContext.RequestAborted);
+        return Results.Created((string?)null, new AnnouncementResponse(sent.Id, sent.Recipients, sent.SentAt, sent.SentToday, sent.DailyLimit));
+    }
 
     private static async Task<IResult> ListDevicesAsync(HttpContext httpContext, IPushSubscriptionService devices) =>
         Results.Ok(new PushSubscriptionListResponse([.. (await devices.ListMineAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted)).Select(ToResponse)]));

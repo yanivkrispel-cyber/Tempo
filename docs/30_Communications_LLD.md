@@ -312,7 +312,7 @@ address.
      keystroke.
    - **Announcements:** `POST .../announcements` (`bookings.manage`) sends one `studio.announcement` to every active
      member of the studio through `NotificationRequests`. Preferences (group `studio`), quiet hours and the dedupe
-     key `studio.announcement:{announcementId}:{personId}` apply. Limits: at most 3 per studio per local day (429
+     key (one per announcement and person) apply; the request's `subject_type` is `announcement`. Limits: at most 3 per studio per local day (429
      `announcement.daily_limit`) and at most 500 recipients (409 `announcement.too_many_recipients`), so one click
      cannot wake Neon or the push services at scale. Audited as `announcement.sent` with the count, never the text.
      `GET .../announcements` gives the dialog the recipient count and what is left today.
