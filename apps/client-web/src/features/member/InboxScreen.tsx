@@ -3,13 +3,17 @@ import { Card, Chip, EmptyState, Icon, IconButton, type ChipTone, type IconName 
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import { metaLine } from "./passText";
+import { RichText } from "./richText";
 import { useInbox, useMarkRead, useSession, useStudio, useStudioClock, type InboxItem, type Studio } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
 import { clockTime, momentText } from "./studioTime";
 
 const title = "התראות";
 
-/** What each kind of in-app notification says (docs/29 sections 4.2, 6.3, 11, 16.1 and 16.2). Unknown kinds are not shown. */
+/**
+ * What each kind of in-app notification says (docs/29 sections 4.2, 6.3, 11, 16.1 and 16.2), when the item does not
+ * carry the studio's words (`title`/`body`, docs/30 step 7; absent on older items). Unknown kinds are not shown.
+ */
 const kinds: Record<string, { title: string; body: string; icon: IconName; tone: ChipTone }> = {
   "booking.promoted": {
     title: "התפנה מקום ונרשמת",
@@ -80,6 +84,13 @@ const kinds: Record<string, { title: string; body: string; icon: IconName; tone:
     icon: "credit-card",
     tone: "warning",
   },
+  // A message to the whole studio (docs/30 step 7): its subject comes as `title` and its text as `text`.
+  "studio.announcement": {
+    title: "הודעה מהסטודיו",
+    body: "",
+    icon: "info",
+    tone: "info",
+  },
 };
 
 export function knownNotices(items: readonly InboxItem[]): InboxItem[] {
@@ -146,11 +157,18 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
         <Icon name={kind.icon} />
       </span>
       <span className={styles.noticeBody}>
-        <span className={styles.noticeTitle}>{kind.title}</span>
+        <span dir="auto" className={styles.noticeTitle}>
+          {item.title || kind.title}
+        </span>
         {when && <span>{when}</span>}
         {item.kind === "session.message" ? (
           <span dir="auto" className={styles.noticeText}>
             {item.text}
+          </span>
+        ) : item.kind === "studio.announcement" || item.body ? (
+          <span dir="auto" className={styles.noticeText}>
+            {/* A card that is itself a link cannot hold another one. */}
+            <RichText text={(item.kind === "studio.announcement" ? item.text : item.body) ?? ""} links={!sessionId} />
           </span>
         ) : (
           <span className="tp-caption">{kind.body}</span>
