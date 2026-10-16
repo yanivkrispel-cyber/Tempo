@@ -11,7 +11,7 @@ namespace Tempo.IntegrationTests.DatabaseMigrator;
 public sealed class RetentionJobTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     [Fact]
-    public async Task TheJob_DeletesOldInvitationsAndInboxItems_KeepsLiveOnes_Idempotently()
+    public async Task TheJob_DeletesOldInvitationsInboxItemsAndAnnouncements_KeepsLiveOnes_Idempotently()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         var owner = await StudioAsync(db);
@@ -43,16 +43,25 @@ public sealed class RetentionJobTests(PostgresFixture postgres) : IClassFixture<
             "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, request_id, created_at) VALUES ($1, $2, $3, 'booking.promoted', '{}', $4, now() - interval '100 days')",
             owner.OrganizationId, linkedItem, person, oldRequest);
 
+        // Announcements: one sent 200 days ago (goes, with its inbox items), one from yesterday (stays).
+        foreach (var sentAt in new[] { "now() - interval '200 days'", "now() - interval '1 day'" })
+        {
+            await db.AsMasterAsync(
+                $"INSERT INTO notifications.announcements (organization_id, id, subject, body, recipients, sent_by, created_at) VALUES ($1, $2, 'Closed', 'Closed on Friday.', 1, $3, {sentAt})",
+                owner.OrganizationId, Guid.CreateVersion7(), owner.MembershipId);
+        }
+
         var job = new RetentionJob(db, TimeProvider.System, RetentionPolicy.Default);
         var first = await job.RunAsync(CancellationToken.None);
         var second = await job.RunAsync(CancellationToken.None);
 
-        first.Should().Be((3, 1, 2));
-        second.Should().Be((0, 0, 0), "running twice changes nothing");
+        first.Should().Be((3, 1, 2, 1));
+        second.Should().Be((0, 0, 0, 0), "running twice changes nothing");
         (await db.AsMasterAsync("SELECT count(*) FROM organizations.invitations WHERE organization_id = $1", owner.OrganizationId)).Should().Be(3L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE organization_id = $1", owner.OrganizationId)).Should().Be(2L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests WHERE organization_id = $1", owner.OrganizationId)).Should().Be(1L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.deliveries WHERE organization_id = $1", owner.OrganizationId)).Should().Be(1L);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.announcements WHERE organization_id = $1", owner.OrganizationId)).Should().Be(1L);
         (await db.AsMasterAsync("SELECT request_id IS NULL FROM notifications.inbox_items WHERE id = $1", linkedItem)).Should().Be(true);
     }
 

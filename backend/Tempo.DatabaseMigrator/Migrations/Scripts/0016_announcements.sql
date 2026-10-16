@@ -22,7 +22,7 @@ WITH CHECK (organization_id = nullif(current_setting('app.organization_id', true
 CREATE POLICY announcements_platform ON notifications.announcements TO $platform_role$ USING (true);
 
 GRANT SELECT, INSERT ON notifications.announcements TO $app_role$;
-GRANT SELECT ON notifications.announcements TO $platform_role$;
+GRANT SELECT, DELETE ON notifications.announcements TO $platform_role$;   -- the retention job (B4), with the inbox items
 
 -- Each member's request points at the announcement.
 ALTER TABLE notifications.requests DROP CONSTRAINT requests_subject_type_check;
