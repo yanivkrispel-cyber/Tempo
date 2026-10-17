@@ -1,6 +1,7 @@
 # Runbook: pilot readiness
 
-Written on 2026-10-17 (day board #232, R1) and updated the same afternoon (board #253, U6). It lists every step a
+Written on 2026-10-17 (day board #232, R1) and updated the same afternoon (board #253, U6) and evening (board #321,
+U7). It lists every step a
 real studio goes through on Tempo. Each step is
 marked **done on dev**, with the PR that shipped it, or **blocked on Kris**, with the item that blocks it. The how-to
 for each step is in `docs/runbooks/pilot-onboarding.md`. This page answers a different question: can a studio
@@ -14,6 +15,9 @@ A studio can run end to end on dev today, and since #310 the apps are on the int
 https://tempo-studio-console.pages.dev and https://tempo-members.pages.dev (Cloudflare Pages, ADR-0027; AWS refused
 CloudFront). Two things stop a real pilot, and both need Kris: the health form's wording with the lawyer (P-2), and
 the consent texts (P-4).
+
+Since board #321 every console works on a phone and on a computer (D15, #318 and #320, with K2's after-merge
+review and #328), the owner can import the member list from a CSV file, and staff keep notes and tags on a person.
 
 Since board #253 the console has owner reports, a person can delete their own login, and the operator can remove
 a suspended studio. The last two close P2 F6 and F4 once Kris registers as operator (Kris's list, step 1).
@@ -38,6 +42,9 @@ a suspended studio. The last two close P2 F6 and F4 once Kris registers as opera
 | 13a | Owner reports: weekly figures, per class type, active and new members; passes ending soon and members at risk (`reports.view`, migration 0021) | done on dev, API and console page | R2 #259; Y0 #256, Y1 #257 |
 | 13b | A person deletes their own login; each studio keeps the person record and its history (migration 0022) | done on dev, API (live check 5/5) and both apps; Playwright `sync6` 6/6 | A1 #262, #267; Y2 #258; Y3 #261 |
 | 13c | The operator removes a suspended studio and every row it owns (migration 0023) | built; **needs the operator** (Kris's step 1) | A2 #263 |
+| 13d | The owner imports the member list from a CSV file: a check first, then the import; people already in the studio are left alone; an optional tag for the batch (migration 0024) | done on dev, API; the console page is K2's Z1 | I1 #323, I2 #325, I3 #329 |
+| 13e | Staff notes and the studio's tags on a person; the people list filters by tag; erase, merge and export carry them (migration 0025) | done on dev, API; the console screens are K2's Z2 | N1 #327 |
+| 13f | Every console on a phone, a tablet and a computer, and the coach's "today" screen (D15) | done on dev; merged without a review at 18:10, then reviewed after the merge | #318, #320, #328 |
 | 14 | Consent texts shown to members | **blocked on Kris**: P-4 | docs/27 section 15 |
 | 15 | The apps on the internet (Cloudflare Pages, ADR-0027; AWS refused CloudFront on 2026-10-17) | done on dev: `deploy-web` publishes and smoke-tests both apps on every deploy since the secrets were set | #310 |
 
@@ -69,6 +76,11 @@ smoke user's own declaration, answered "yes" on the generic draft questions, and
 member is erased after its run. Neither is real health data.
 
 ## Open follow-ups (not blocking a pilot)
+
+- Staff notes go into a person's export (docs/34 section 9, a **(reading)**): confirm with the lawyer under P-2.
+- A future CSV export must escape values that start with `=`, `+`, `-` or `@` (docs/34 section 6).
+- #322, #324 and #326 (the design session's Studio Experience plan, docs/33) were opened outside board #321 and
+  claimed migrations 0024 and 0025, which the board used; their migrations move to 0026 and up.
 
 | Item | Where |
 |---|---|

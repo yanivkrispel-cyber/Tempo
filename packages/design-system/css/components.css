@@ -1793,7 +1793,12 @@ button.tp-setting {
 .tp-event {
   --ev: var(--cat-sage);
   --ev-ink: var(--cat-sage-ink);
-  display: block;
+  /* The title and the label share the first line; on a tile too narrow for both, the label moves under the title
+     (#319: a 120px column at 1280px). The title comes first whatever the markup's order. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
   width: 100%;
   text-align: start;
   position: relative;
@@ -1832,14 +1837,18 @@ button.tp-setting {
   box-shadow: var(--shadow-sunken);
 }
 .tp-event__title {
+  order: 1;
+  flex: 1 1 4.5em;
+  min-width: 0;
   font-weight: 700;
   font-size: 14px;
-  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .tp-event__meta {
+  order: 3;
+  flex-basis: 100%;
   display: block;
   font-size: 12px;
   line-height: 16px;
@@ -1847,6 +1856,8 @@ button.tp-setting {
   margin-top: 1px;
 }
 .tp-event__fill {
+  order: 4;
+  flex-basis: 100%;
   display: block;
   height: 6px;
   border-radius: 3px;
@@ -1864,9 +1875,10 @@ button.tp-setting {
   width: var(--tp-fill, 0%);
 }
 .tp-event__count {
-  position: absolute;
-  top: 9px;
-  inset-inline-end: 10px;
+  order: 2;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-inline-start: auto;
   font-size: 11px;
   font-weight: 700;
   color: var(--ev-ink);
