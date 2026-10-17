@@ -28,6 +28,13 @@ describe("KpiTile", () => {
     expect(change.textContent).not.toMatch(/[-−]/);
   });
 
+  it("says what the caller asks when there is nothing to compare", () => {
+    const { container } = render(
+      <KpiTile label="שיעור תפוסה" value="—" change={null} noChange="לא התקיימו שיעורים בתקופה" />,
+    );
+    expect(container.querySelector(".tp-kpi__change")!.textContent).toBe("לא התקיימו שיעורים בתקופה");
+  });
+
   it("treats a fall as good news when down is good (no-shows)", () => {
     const { container } = render(<KpiTile label="לא הגיעו" value="2" change={{ delta: -4 }} goodWhen="down" />);
     expect(container.querySelector(".tp-kpi__change")).toHaveClass("tp-kpi__change--good");
@@ -49,7 +56,10 @@ describe("WeeklyBarChart", () => {
     expect(container.querySelector(".tp-bars__plot")).toHaveAttribute("aria-hidden", "true");
     expect(container.querySelector(".tp-bars__plot")).toHaveAttribute("dir", "ltr");
     const table = within(figure).getByRole("table", { name: "ביקורים לפי שבוע" });
-    expect(table).toHaveClass("tp-sr-only");
+    // Hidden by a wrapper: on the table itself .tp-sr-only loses its 1px width to .tp-table's 100% (a 320px page
+    // scrolled sideways by the table's width).
+    expect(table).not.toHaveClass("tp-sr-only");
+    expect(table.parentElement).toHaveClass("tp-sr-only");
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(5);
     expect(within(rows[3]!).getByRole("rowheader")).toHaveTextContent("השבוע של 4.10");
@@ -78,7 +88,7 @@ describe("WeeklyBarChart", () => {
     const { rerender, container } = render(
       <WeeklyBarChart title="ביקורים" weeks={weeks} valueLabel="ביקורים" showTable />,
     );
-    expect(container.querySelector("table")).not.toHaveClass("tp-sr-only");
+    expect(container.querySelector("table")!.parentElement).not.toHaveClass("tp-sr-only");
     rerender(<WeeklyBarChart title="ביקורים" weeks={[]} valueLabel="ביקורים" />);
     expect(screen.getByText("אין נתונים בתקופה הזאת")).toBeInTheDocument();
     expect(container.querySelector("svg")).toBeNull();

@@ -235,7 +235,11 @@ describe("the summary", () => {
     });
     expect(await screen.findByText("לא התקיימו שיעורים בתקופה הזאת.")).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "הנתונים לפי סוג שיעור" })).toBeNull();
-    expect(within(screen.getByRole("group", { name: "מדדי התקופה" })).getByText("—")).toBeInTheDocument();
+    const fill = within(screen.getByRole("group", { name: "מדדי התקופה" }))
+      .getByText("—")
+      .closest(".tp-kpi");
+    // Nothing held, so there is no rate to compare: the tile says why, not that there is no previous period.
+    expect(fill).toHaveTextContent("לא התקיימו שיעורים בתקופה");
   });
 
   it("asks for the last 8 full weeks on the studio's calendar", async () => {
@@ -249,11 +253,30 @@ describe("the summary", () => {
     expect(request.searchParams.get("to")).toBe("2026-10-10");
   });
 
+  it("offers three presets that fit a phone, and the custom dates as a toggle of their own", async () => {
+    const user = userEvent.setup();
+    renderAt("/o/neshima/reports");
+    await screen.findByRole("group", { name: "מדדי התקופה" });
+    const presets = screen.getByRole("group", { name: "תקופה" });
+    expect(
+      within(presets)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["4 שבועות", "8 שבועות", "12 שבועות"]);
+    expect(within(presets).getByRole("button", { name: "4 שבועות" })).toHaveAttribute("aria-pressed", "true");
+    const custom = screen.getByRole("button", { name: "תאריכים אחרים" });
+    expect(custom).toHaveAttribute("aria-pressed", "false");
+    await user.click(custom);
+    expect(custom).toHaveAttribute("aria-pressed", "true");
+    for (const button of within(presets).getAllByRole("button"))
+      expect(button).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("starts custom dates from the period on screen and refuses more than 92 days without asking", async () => {
     const user = userEvent.setup();
     const api = renderAt("/o/neshima/reports");
     await screen.findByRole("group", { name: "מדדי התקופה" });
-    await user.click(screen.getByRole("button", { name: "תאריכים" }));
+    await user.click(screen.getByRole("button", { name: "תאריכים אחרים" }));
     const from = screen.getByRole("textbox", { name: /מתאריך/ });
     expect(from).toHaveValue("13.09.2026");
     expect(screen.getByRole("textbox", { name: /עד תאריך/ })).toHaveValue("10.10.2026");
@@ -271,7 +294,7 @@ describe("the summary", () => {
     const user = userEvent.setup();
     const api = renderAt("/o/neshima/reports");
     await screen.findByRole("group", { name: "מדדי התקופה" });
-    await user.click(screen.getByRole("button", { name: "תאריכים" }));
+    await user.click(screen.getByRole("button", { name: "תאריכים אחרים" }));
     // The inputs start at 13.09 to 10.10 (the period on screen); move the whole period past 10.10.
     const from = screen.getByRole("textbox", { name: /מתאריך/ });
     await user.clear(from);

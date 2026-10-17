@@ -8,9 +8,17 @@
   gap: var(--space-4);
   max-width: 480px;
 }
+/* The presets and the custom-dates toggle: one row when they fit, the toggle under the presets when not. */
+.periodRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+/* Two tiles across on a 320px phone (2 x 136 + gap fits its 288px), four on the console. */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(136px, 100%), 1fr));
   gap: var(--space-4);
 }
 .lists {

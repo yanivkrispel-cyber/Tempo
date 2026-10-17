@@ -19,6 +19,8 @@ export interface KpiTileProps {
   goodWhen?: "up" | "down";
   /** How the comparison is named, after the change. */
   comparedTo?: string;
+  /** What to say when `change` is null; by default, that there is no previous period. */
+  noChange?: string;
 }
 
 function formatDelta(delta: number, unit: "%" | "") {
@@ -31,10 +33,17 @@ function formatDelta(delta: number, unit: "%" | "") {
  * A report figure (docs/32 R-3). The change is written in words with an arrow, never as a signed number
  * (a minus flips in RTL) and never by hue alone.
  */
-export function KpiTile({ label, value, change, goodWhen = "up", comparedTo = "לעומת התקופה הקודמת" }: KpiTileProps) {
+export function KpiTile({
+  label,
+  value,
+  change,
+  goodWhen = "up",
+  comparedTo = "לעומת התקופה הקודמת",
+  noChange = "אין תקופה קודמת להשוואה",
+}: KpiTileProps) {
   let changeLine;
   if (!change) {
-    changeLine = <p className="tp-kpi__change">אין תקופה קודמת להשוואה</p>;
+    changeLine = <p className="tp-kpi__change">{noChange}</p>;
   } else if (change.delta === 0) {
     changeLine = <p className="tp-kpi__change">ללא שינוי {comparedTo}</p>;
   } else {

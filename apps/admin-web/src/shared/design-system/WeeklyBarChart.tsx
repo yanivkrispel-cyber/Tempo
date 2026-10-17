@@ -143,27 +143,31 @@ export function WeeklyBarChart({
           })}
         </svg>
       </div>
-      <table className={cx("tp-table", "tp-table--compact", !showTable && "tp-sr-only")}>
-        <caption className="tp-sr-only">{title}</caption>
-        <thead>
-          <tr>
-            <th scope="col">שבוע</th>
-            <th scope="col" className="tp-num">
-              {valueLabel}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week) => (
-            <tr key={week.key}>
-              <th scope="row">{week.longLabel ?? week.label}</th>
-              <td className="tp-num">
-                <bdi>{format(week.value)}</bdi>
-              </td>
+      {/* The figures as a table, for screen readers or on screen. When hidden, a wrapper hides it: on the table
+          itself .tp-sr-only would lose its 1px width to .tp-table's 100%, and the page would scroll sideways. */}
+      <div className={showTable ? undefined : "tp-sr-only"}>
+        <table className="tp-table tp-table--compact">
+          <caption className="tp-sr-only">{title}</caption>
+          <thead>
+            <tr>
+              <th scope="col">שבוע</th>
+              <th scope="col" className="tp-num">
+                {valueLabel}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {weeks.map((week) => (
+              <tr key={week.key}>
+                <th scope="row">{week.longLabel ?? week.label}</th>
+                <td className="tp-num">
+                  <bdi>{format(week.value)}</bdi>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

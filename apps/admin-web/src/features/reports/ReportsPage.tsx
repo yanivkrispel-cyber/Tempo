@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { errorMessage } from "../../api/errors";
 import {
   Banner,
+  Button,
   Card,
   CardTitle,
   Chip,
@@ -31,11 +32,11 @@ import {
 } from "./queries";
 import styles from "./reports.module.css";
 
+// Three presets fit a 320px phone in one row; the custom dates are a toggle of their own beside them.
 const presets: { value: PeriodPreset; label: string }[] = [
   { value: "4", label: "4 שבועות" },
   { value: "8", label: "8 שבועות" },
   { value: "12", label: "12 שבועות" },
-  { value: "custom", label: "תאריכים" },
 ];
 
 const percent = (rate: number) => `${Math.round(rate * 100)}%`;
@@ -98,7 +99,18 @@ export function ReportsPage() {
       </header>
 
       <section className={`tp-stack ${styles.period}`} aria-label="תקופת הדוח">
-        <Segmented label="תקופה" options={presets} value={preset} onChange={choosePreset} />
+        <div className={styles.periodRow}>
+          <Segmented label="תקופה" options={presets} value={preset} onChange={choosePreset} />
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="calendar"
+            aria-pressed={preset === "custom"}
+            onClick={() => choosePreset("custom")}
+          >
+            תאריכים אחרים
+          </Button>
+        </div>
         {preset === "custom" && (
           // No min or max between the two inputs: moving the period forward types a start after the old end first,
           // and periodProblem explains a backwards or too-long period in words instead.
@@ -167,6 +179,7 @@ function Summary({ report }: { report: ReportSummary }) {
           label="שיעור תפוסה"
           value={totals.fillRate === null ? "—" : percent(totals.fillRate)}
           change={rateChange(totals.fillRate, previous.fillRate)}
+          noChange={totals.fillRate === null ? "לא התקיימו שיעורים בתקופה" : "לא התקיימו שיעורים בתקופה הקודמת"}
         />
         <KpiTile
           label="חברים פעילים"
