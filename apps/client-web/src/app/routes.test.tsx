@@ -20,7 +20,7 @@ function renderAt(url: string, auth: AuthClient = signedInAuth()) {
 describe("client-web routes", () => {
   it("renders the member home at /", async () => {
     renderAt("/");
-    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("היי נגה");
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(/(בוקר טוב|צהריים טובים|ערב טוב), נגה/);
   });
 
   it("asks a signed-out visitor to sign in for an invitation, then drops the fragment", async () => {

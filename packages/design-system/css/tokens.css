@@ -3,34 +3,34 @@
   color-scheme: light;
   /* color */
   --canvas: #f5f4f2;
-  --surface: #ece9e4;
-  --surface-sand: #e4dbd4;
-  --surface-sunken: #e4ddd6;
-  --surface-hover: #e0d8cf;
+  --surface: #fbfaf8;
+  --surface-sand: #fbfaf8;
+  --surface-sunken: #ece9e4;
+  --surface-hover: #f2eee9;
   --surface-deep: #d0cac3;
   --surface-overlay: #3c383580;
   --highlight: #ffffff;
   --shade: #5a4637;
-  --ink: #2b2724;
-  --ink-muted: #5f5a54;
+  --ink: #2b2420;
+  --ink-muted: #5e544c;
   --ink-faint: #8a827a;
   --ink-inverse: #fffef4;
-  --line: #d9d3cb;
+  --line: #e6e0d9;
   --line-strong: #8f8275;
   --focus: #8fc4ee;
   --focus-glow: #bfe0fb;
   --selected: #cae1ef;
   --selected-line: #b6d3e5;
   --selected-ink: #245d87;
-  --brand: #98ae98;
-  --brand-light: #a8bda7;
-  --brand-hover: #a3bba3;
+  --brand: #56735b;
+  --brand-light: #67856c;
+  --brand-hover: #4e6953;
   --brand-glow: #cfe1d4;
-  --brand-pressed: #869986;
-  --on-brand: #fffef4;
-  --brand-soft: #c8d5c6;
-  --brand-ink: #3f5644;
-  --brand-deep: #7f957f;
+  --brand-pressed: #4a6350;
+  --on-brand: #ffffff;
+  --brand-soft: #e3ebe1;
+  --brand-ink: #46604b;
+  --brand-deep: #3f5644;
   --rose: #bd998d;
   --rose-deep: #ad8b7f;
   --rose-soft: #e8d6cf;
@@ -77,15 +77,22 @@
   --cat-mauve: #b39aa8;
   --cat-mauve-soft: #e9dfe4;
   --cat-mauve-ink: #6e5262;
+  --paper: #fbfaf8;
+  --sage: #98ae98;
+  --sage-light: #b9cbb7;
+  --glass: #fbfaf8b3;
+  --glass-dark: #1c161357;
+  --scrim-photo: #18130fcc;
   /* shadow */
   --shadow-flat: none;
-  --shadow-sunken: inset 4px 4px 10px #5a463738, inset -4px -4px 10px #ffffffcc;
-  --shadow-raise: 0 14px 30px -12px #5a463740, 0 3px 8px #5a46371f, inset 0 1px 0 #ffffff, inset 0 0 0 1px #ffffff66;
-  --shadow-raise-sm: 0 6px 14px -6px #5a463740, 0 1px 3px #5a46371f, inset 0 1px 0 #ffffffcc;
-  --shadow-float: 0 30px 50px -18px #5a463766, 0 10px 20px -8px #5a463733, inset 0 1px 0 #ffffff, 0 0 0 2px #ffffffb3;
-  --shadow-brand: 0 8px 18px -6px #6d8a6d8c, 0 2px 4px #5a46371f, inset 0 1px 0 #ffffff80;
-  --shadow-glow: 0 0 0 4px #cfe1d4, 0 10px 22px -6px #6d8a6d99, inset 0 1px 0 #ffffffb3;
+  --shadow-sunken: inset 0 2px 6px #2b24201c, inset 0 -1px 0 #ffffffbf;
+  --shadow-raise: 0 1px 1px #2b24200a, 0 10px 26px -14px #2b24203d, inset 0 1px 0 #ffffffe6, 0 0 0 1px #2b242014;
+  --shadow-raise-sm: 0 1px 1px #2b24200a, 0 6px 14px -8px #2b242059, inset 0 1px 0 #ffffffe6, 0 0 0 1px #2b242014;
+  --shadow-float: 0 2px 6px #2b24200f, 0 28px 56px -24px #2b24206b, inset 0 1px 0 #ffffff;
+  --shadow-brand: 0 12px 26px -12px #46604bcc, inset 0 1px 0 #ffffff4d, 0 0 0 0.5px #1e2a2059;
+  --shadow-glow: 0 0 0 5px #cfe1d4cc, 0 14px 28px -12px #46604bd9, inset 0 1px 0 #ffffff4d;
   --shadow-focus: 0 0 0 3px #bfe0fb, 0 0 14px #8fc4ee99;
+  --shadow-glass: inset 0 1px 0 #fffffff2, inset 0 0 0 1px #ffffff80, 0 0 0 0.5px #2b24203d, 0 16px 40px -16px #2b242073;
   /* spacing */
   --space-0\.5: 2px;
   --space-1: 4px;
@@ -138,7 +145,8 @@
   --bp-lg: 1024px;
   --bp-xl: 1280px;
   /* type */
-  --font-sans: "Heebo", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-sans: "IBM Plex Sans Hebrew", "Heebo", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Frank Ruhl Libre", "David Libre", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 [data-theme="dark"] {
@@ -163,12 +171,12 @@
   --selected: #243a4a;
   --selected-line: #3d6a8a;
   --selected-ink: #9fd0f5;
-  --brand: #98ae98;
-  --brand-light: #a8bda7;
-  --brand-hover: #a3bba3;
+  --brand: #8fae93;
+  --brand-light: #9cb89f;
+  --brand-hover: #a3bfa6;
   --brand-glow: #3f5a46;
-  --brand-pressed: #869986;
-  --on-brand: #1a211a;
+  --brand-pressed: #7d9c81;
+  --on-brand: #0f1a11;
   --brand-soft: #2f3d30;
   --brand-ink: #b9cbb8;
   --brand-deep: #7f957f;
@@ -218,6 +226,12 @@
   --cat-mauve: #b39aa8;
   --cat-mauve-soft: #43343c;
   --cat-mauve-ink: #e4c6d6;
+  --paper: #2d2925;
+  --sage: #98ae98;
+  --sage-light: #5b6f5c;
+  --glass: #2d2925b3;
+  --glass-dark: #00000066;
+  --scrim-photo: #000000cc;
   --shadow-flat: none;
   --shadow-sunken: inset 4px 4px 10px #000000a6, inset -3px -3px 8px #4a443e;
   --shadow-raise: 0 14px 30px -12px #000000cc, 0 3px 8px #00000080, inset 0 1px 0 #4a443e;
@@ -226,10 +240,12 @@
   --shadow-brand: 0 8px 18px -6px #000000cc, inset 0 1px 0 #ffffff33;
   --shadow-glow: 0 0 0 4px #3f5a46, 0 10px 22px -6px #000000cc;
   --shadow-focus: 0 0 0 3px #2b4a63, 0 0 14px #8fc4ee99;
+  --shadow-glass: inset 0 1px 0 #ffffff26, 0 0 0 0.5px #00000099, 0 16px 40px -16px #000000cc;
 }
 /* type styles */
-.text-display-lg { font-family: var(--font-sans); font-size: 44px; line-height: 52px; font-weight: 800; letter-spacing: -0.02em; }
-.text-display-sm { font-family: var(--font-sans); font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: -0.02em; }
+.text-display-xl { font-family: var(--font-display); font-size: 44px; line-height: 48px; font-weight: 400; }
+.text-display-lg { font-family: var(--font-display); font-size: 34px; line-height: 40px; font-weight: 300; }
+.text-display-sm { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 400; }
 .text-h1 { font-family: var(--font-sans); font-size: 28px; line-height: 36px; font-weight: 700; letter-spacing: -0.01em; }
 .text-h2 { font-family: var(--font-sans); font-size: 20px; line-height: 28px; font-weight: 700; }
 .text-h3 { font-family: var(--font-sans); font-size: 16px; line-height: 24px; font-weight: 700; }

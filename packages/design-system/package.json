@@ -1,6 +1,6 @@
 {
   "name": "@tempo/design-system",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Tempo design tokens and CSS primitives shared by admin-web, client-web and platform-admin-web.",
   "type": "module",

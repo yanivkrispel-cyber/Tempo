@@ -7,7 +7,8 @@ import { freeCancelDeadline, freeSpots, noPassText, waitText } from "./bookingSt
 import { relativeDay } from "./format";
 import styles from "./member.module.css";
 import { passTakenText, passUseText, waitPassText } from "./passText";
-import { useBook, type Booking, type BookingPolicy, type Session } from "./studio";
+import { targetSessionId, useBook, type Booking, type BookingPolicy, type Session } from "./studio";
+import { SlideToConfirm } from "./Premium";
 import { clockTime, minutesBetween, momentText } from "./studioTime";
 
 /**
@@ -18,8 +19,8 @@ export function useBookingFlow(organizationId: string) {
   const book = useBook(organizationId);
   const toast = useToast();
 
-  function run(session: Session, onDone?: (booking: Booking) => void) {
-    book.mutate(session.id, {
+  function run(session: Session, onDone?: (booking: Booking) => void, spotId?: string | null) {
+    book.mutate(spotId ? { sessionId: session.id, spotId } : session.id, {
       onSuccess: (booking: Booking) => {
         onDone?.(booking);
         if (booking.status === "waitlisted") {
@@ -27,7 +28,7 @@ export function useBookingFlow(organizationId: string) {
             tone: "success",
             message: `נכנסת לרשימת ההמתנה, ${waitText(booking.waitlistPosition)}. אם יתפנה מקום נרשום אותך ונודיע לך.`,
           });
-        } else {
+        } else if (!booking.spot) {
           toast.show({
             tone: "success",
             message: <>נרשמת לשיעור. {passTakenText(booking.pass)}</>,
@@ -39,7 +40,7 @@ export function useBookingFlow(organizationId: string) {
 
   return {
     run,
-    pendingId: book.isPending ? book.variables : undefined,
+    pendingId: book.isPending && book.variables !== undefined ? targetSessionId(book.variables) : undefined,
     /** The last refusal, for the sheet; cleared by `reset` when the sheet opens or closes. */
     error: book.isError ? book.error : null,
     reset: book.reset,
@@ -55,6 +56,10 @@ export interface BookingSheetProps {
   pending: boolean;
   /** Why the server refused the last try; the sheet stays open to say so. */
   error?: unknown;
+  /** The spot chosen on the room map, when the room has spots. */
+  spot?: { label: string; note?: string } | null;
+  /** The room has spots and the member chose none: the server picks the usual or first free one. */
+  spotsAuto?: boolean;
   onConfirm: (session: Session) => void;
   onClose: () => void;
 }
@@ -71,6 +76,8 @@ export function BookingSheet({
   now,
   pending,
   error = null,
+  spot = null,
+  spotsAuto = false,
   onConfirm,
   onClose,
 }: BookingSheetProps) {
@@ -91,6 +98,23 @@ export function BookingSheet({
       {session && (
         <>
           <SessionDetails session={session} timeZone={timeZone} today={today}>
+            {!waitlist && (spot || spotsAuto) && (
+              <div className={styles.sheetDetail}>
+                <span className="tp-icon-tile tp-icon-tile--sm">
+                  <Icon name="star" />
+                </span>
+                <span>
+                  {spot ? (
+                    <>
+                      <strong>מכשיר {spot.label}</strong>
+                      {spot.note && <> · {spot.note}</>}
+                    </>
+                  ) : (
+                    "נשריין לך את המכשיר הקבוע שלך, או את הראשון שפנוי"
+                  )}
+                </span>
+              </div>
+            )}
             {pass && (
               <div className={styles.sheetDetail}>
                 <span className="tp-icon-tile tp-icon-tile--sm">
@@ -138,11 +162,19 @@ export function BookingSheet({
             </p>
           )}
           <div className={styles.sheetActions}>
-            {pass && (
-              <Button size="lg" block loading={pending} onClick={() => onConfirm(session)}>
-                {waitlist ? "הצטרפות לרשימת ההמתנה" : "אישור ההרשמה"}
-              </Button>
-            )}
+            {pass &&
+              (waitlist ? (
+                <Button size="lg" block loading={pending} onClick={() => onConfirm(session)}>
+                  הצטרפות לרשימת ההמתנה
+                </Button>
+              ) : (
+                <SlideToConfirm
+                  label={spot ? `החליקו כדי לשריין את מכשיר ${spot.label}` : "החליקו כדי לשריין"}
+                  actionLabel={spot ? `אישור ההרשמה, מכשיר ${spot.label}` : "אישור ההרשמה"}
+                  pending={pending}
+                  onConfirm={() => onConfirm(session)}
+                />
+              ))}
             <Button variant="ghost" block onClick={onClose} disabled={pending}>
               {pass ? "לא עכשיו" : "סגירה"}
             </Button>
