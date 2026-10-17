@@ -59,5 +59,8 @@ No Lambda trigger is added. Fits ADR-0021.
   writes, like the other two.
 - The self sign-up path needs abuse limits in Tempo (verified email before creating a studio, a cap on studios per
   account) and, once the edge is on, the WAF rate rule.
+- Amendment (2026-10-17, Kris): operator MFA is set per environment (`operatorMfa`). Dev has it optional for the
+  testing phase, so the team signs in with a password; staging and production keep it required, and config
+  validation refuses production without it. Switch dev back to `required` before real studio data reaches dev.
 - MFA for studio owners stays optional at launch; making it mandatory before the pilot is an open question in the
   Phase 1 LLD.

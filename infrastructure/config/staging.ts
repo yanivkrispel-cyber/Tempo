@@ -20,6 +20,8 @@ const stagingConfig: TempoEnvironmentConfig = {
 
   enableDeletionProtection: true,
 
+  operatorMfa: "required",
+
   // Placeholder until the project exists (ADR-0022: one Neon project per environment).
   neon: { projectId: "not-created-yet" },
 

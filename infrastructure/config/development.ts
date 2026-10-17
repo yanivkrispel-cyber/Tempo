@@ -22,6 +22,9 @@ const developmentConfig: TempoEnvironmentConfig = {
 
   enableDeletionProtection: false,
 
+  // Testing phase (Kris, 2026-10-17): operators sign in with a password; TOTP stays available to whoever sets it up.
+  operatorMfa: "optional",
+
   // tempo-dev in Frankfurt, created 2026-10-14 (ADR-0022).
   neon: {
     projectId: "wild-darkness-22822656",
