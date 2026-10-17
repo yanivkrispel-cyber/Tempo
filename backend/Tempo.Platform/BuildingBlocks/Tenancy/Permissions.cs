@@ -35,6 +35,9 @@ public static class Permissions
     public const string BillingView = "billing.view";
     public const string BillingManage = "billing.manage";
 
+    // The health declaration (docs/31 section 5), seeded by migration 0018 for the owner role only.
+    public const string HealthView = "health.view";
+
     /// <summary>Every key with what it allows, for the role screen (`GET /permissions`).</summary>
     public static readonly IReadOnlyDictionary<string, string> Catalog = new Dictionary<string, string>
     {
@@ -60,7 +63,8 @@ public static class Permissions
         [PassesView] = "See pass products and anyone's passes",
         [PassesManage] = "Create pass products, grant and void passes",
         [BillingView] = "See the studio's plan and billing details",
-        [BillingManage] = "Change the studio's billing details"
+        [BillingManage] = "Change the studio's billing details",
+        [HealthView] = "Read health declaration answers and record medical approval"
     };
 }
 

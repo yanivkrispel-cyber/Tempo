@@ -175,7 +175,7 @@ public sealed record CancelBookingRequest(bool? ReturnEntry);
 /// <summary>`MoveBookingRequest`: the class the booked place moves to (docs/29 section 16.1).</summary>
 public sealed record MoveBookingRequest(Guid? SessionId);
 
-public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
+public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt, string? HealthStatus = null);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>
 public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<RosterEntryResponse> Booked, IReadOnlyList<RosterEntryResponse> Waitlisted);
@@ -183,9 +183,9 @@ public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<Roste
 public sealed record AttendanceRequest(string? State);
 
 /// <summary>`BookingPolicy`.</summary>
-public sealed record BookingPolicyResponse(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, string Version);
+public sealed record BookingPolicyResponse(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, string Version, bool RequireHealthDeclaration = false);
 
-public sealed record BookingPolicyInput(int? FreeCancelHours, int? WaitlistCutoffHours, int? BookingHorizonDays, bool? WaitlistEnabled);
+public sealed record BookingPolicyInput(int? FreeCancelHours, int? WaitlistCutoffHours, int? BookingHorizonDays, bool? WaitlistEnabled, bool? RequireHealthDeclaration = null);
 
 /// <summary>`InboxItem.data`: ids only, and only the ones the kind carries (a key that does not apply is left out).</summary>
 public sealed record InboxItemDataResponse(

@@ -80,7 +80,8 @@ public static class ClassEndpoints
             request.WaitlistCutoffHours ?? throw Required("waitlistCutoffHours"),
             request.BookingHorizonDays ?? throw Required("bookingHorizonDays"),
             request.WaitlistEnabled ?? throw Required("waitlistEnabled"),
-            0);
+            0,
+            request.RequireHealthDeclaration);
         var updated = await settings.UpdatePolicyAsync(TenantRouteFilter.Current(httpContext), policy, OrganizationEndpoints.ParseVersion(ifMatch), httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
     }
@@ -122,10 +123,10 @@ public static class ClassEndpoints
     }
 
     private static RosterEntryResponse ToResponse(RosterEntryView e) =>
-        new(e.BookingId, new PersonRefResponse(e.Person.Id, e.Person.DisplayName), e.Status, e.WaitlistPosition, e.PassName, e.EntriesLeft, e.BookedAt);
+        new(e.BookingId, new PersonRefResponse(e.Person.Id, e.Person.DisplayName), e.Status, e.WaitlistPosition, e.PassName, e.EntriesLeft, e.BookedAt, e.HealthStatus);
 
     private static BookingPolicyResponse ToResponse(BookingPolicyView p) =>
-        new(p.FreeCancelHours, p.WaitlistCutoffHours, p.BookingHorizonDays, p.WaitlistEnabled, p.Version.ToString(CultureInfo.InvariantCulture));
+        new(p.FreeCancelHours, p.WaitlistCutoffHours, p.BookingHorizonDays, p.WaitlistEnabled, p.Version.ToString(CultureInfo.InvariantCulture), p.RequireHealthDeclaration ?? false);
 
     private static Change<Guid?> NullableGuid(JsonElement body, string name)
     {

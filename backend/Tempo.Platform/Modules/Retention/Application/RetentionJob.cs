@@ -10,9 +10,10 @@ namespace Tempo.Platform.Modules.Retention.Application;
 /// announcement goes with the inbox items it fills, <see cref="InboxItemDays"/> days after it was sent (docs/30 section 10).
 /// Archived people are not touched here: docs/27 keeps them seven years (P-2).
 /// </summary>
-public sealed record RetentionPolicy(int InvitationDays, int InboxItemDays, int DeliveryDays)
+/// <summary><paramref name="ReplacedHealthDeclarationDays"/> counts from the successor's signing (docs/31 H-8, provisional until P-2).</summary>
+public sealed record RetentionPolicy(int InvitationDays, int InboxItemDays, int DeliveryDays, int ReplacedHealthDeclarationDays = 90)
 {
-    public static RetentionPolicy Default { get; } = new(90, 180, 90);
+    public static RetentionPolicy Default { get; } = new(90, 180, 90, 90);
 }
 
 /// <summary>
@@ -22,7 +23,7 @@ public sealed record RetentionPolicy(int InvitationDays, int InboxItemDays, int 
 /// </summary>
 public sealed class RetentionJob(IDataSourceProvider dataSources, TimeProvider clock, RetentionPolicy policy)
 {
-    public async Task<(int Invitations, int InboxItems, int Deliveries, int Announcements)> RunAsync(CancellationToken cancellationToken)
+    public async Task<(int Invitations, int InboxItems, int Deliveries, int Announcements, int HealthDeclarations)> RunAsync(CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Platform, null, null, cancellationToken);
@@ -65,7 +66,14 @@ public sealed class RetentionJob(IDataSourceProvider dataSources, TimeProvider c
             deliveryCutoff);
         await requests.ExecuteNonQueryAsync(cancellationToken);
 
+        // A replaced health declaration (H-8): superseded_at is its successor's signing time. The current one stays
+        // until the person is erased.
+        await using var health = unitOfWork.Command(
+            "DELETE FROM people.health_declarations WHERE superseded_at IS NOT NULL AND superseded_at <= $1",
+            now.AddDays(-policy.ReplacedHealthDeclarationDays));
+        var deletedHealthDeclarations = await health.ExecuteNonQueryAsync(cancellationToken);
+
         await unitOfWork.CommitAsync(cancellationToken);
-        return (deletedInvitations, deletedInboxItems, deletedDeliveries, deletedAnnouncements);
+        return (deletedInvitations, deletedInboxItems, deletedDeliveries, deletedAnnouncements, deletedHealthDeclarations);
     }
 }

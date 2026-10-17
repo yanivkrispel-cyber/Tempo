@@ -9,7 +9,10 @@ public enum ViolationKind
     NotFound,
     Conflict,
     Gone,
-    TooManyRequests
+    TooManyRequests,
+
+    /// <summary>A dependency the rule needs is not there and the API fails closed (503), e.g. the health data key.</summary>
+    ServiceUnavailable
 }
 
 /// <summary>

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Tempo.Api.Tenancy;
+using Tempo.Contracts.Api.Health;
 using Tempo.Contracts.Api.People;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.People.Application;
@@ -46,7 +47,20 @@ public static class PersonLifecycleEndpoints
             PeopleEndpoints.ToResponse(export.Person),
             [.. export.ConsentHistory.Select(PeopleEndpoints.ToResponse)],
             [.. export.Bookings.Select(b => new ExportBookingResponse(b.Id, b.SessionId, b.ClassName, b.StartsAt, b.Status, b.LateCancel, b.CancelReason, b.CreatedAt))],
-            [.. export.Passes.Select(p => new ExportPassResponse(p.Id, p.ProductName, p.Kind, p.StartsOn, p.EndsOn, p.Entries, p.EntriesUsed, p.Status, p.CreatedAt))]));
+            [.. export.Passes.Select(p => new ExportPassResponse(p.Id, p.ProductName, p.Kind, p.StartsOn, p.EndsOn, p.Entries, p.EntriesUsed, p.Status, p.CreatedAt))],
+            [.. export.HealthDeclarations.Select(h => new ExportHealthDeclarationResponse(
+                h.DeclarationId,
+                h.FormVersion,
+                h.Status,
+                h.SignerRole,
+                h.SignedAt,
+                h.ExpiresAt,
+                h.SupersededAt,
+                h.MedicalApprovalOn,
+                h.Answers is null ? null : [.. h.Answers.Select(a => new HealthAnswerResponse(a.QuestionId, a.Answer))],
+                h.SignedName,
+                h.GuardianName))],
+            export.HealthAnswersWithheld));
     }
 
     private static async Task<IResult> EraseAsync(HttpContext httpContext, Guid personId, ErasePersonRequest request, IPersonLifecycleService lifecycle, TimeProvider clock)

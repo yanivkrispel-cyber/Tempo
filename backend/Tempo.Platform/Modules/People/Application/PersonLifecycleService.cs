@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Scheduling.Application;
 
 namespace Tempo.Platform.Modules.People.Application;
@@ -24,7 +25,23 @@ public sealed record PersonExportView(
     PersonDetailView Person,
     IReadOnlyList<ConsentView> ConsentHistory,
     IReadOnlyList<ExportBookingView> Bookings,
-    IReadOnlyList<ExportPassView> Passes);
+    IReadOnlyList<ExportPassView> Passes,
+    IReadOnlyList<ExportHealthDeclarationView> HealthDeclarations,
+    bool HealthAnswersWithheld);
+
+/// <summary>One health declaration in the export; answers and names are null when the exporter lacks `health.view`.</summary>
+public sealed record ExportHealthDeclarationView(
+    Guid DeclarationId,
+    int FormVersion,
+    string Status,
+    string SignerRole,
+    DateTimeOffset SignedAt,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset? SupersededAt,
+    DateOnly? MedicalApprovalOn,
+    IReadOnlyList<HealthAnswerView>? Answers,
+    string? SignedName,
+    string? GuardianName);
 
 /// <summary>
 /// Duplicate candidates and merge, export and erasure (docs/27 sections 4.6
@@ -44,7 +61,7 @@ public interface IPersonLifecycleService
     Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken);
 }
 
-public sealed class PersonLifecycleService(IDataSourceProvider dataSources, TimeProvider clock) : IPersonLifecycleService
+public sealed class PersonLifecycleService(IDataSourceProvider dataSources, TimeProvider clock, IHealthDataKeys? healthKeys = null) : IPersonLifecycleService
 {
     /// <summary>The name an anonymized record shows (`display_name` is required).</summary>
     public const string ErasedName = "נמחק";
@@ -217,9 +234,37 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             organizationName = (string)(await org.ExecuteScalarAsync(cancellationToken))!;
         }
 
+        // Health declarations (docs/31 section 11): decrypted only for an exporter who holds health.view, each
+        // decrypted one audited as a view with purpose export; otherwise listed without answers or names.
+        var now = clock.GetUtcNow();
+        var withheld = !tenant.Has(Permissions.HealthView);
+        var declarations = new List<ExportHealthDeclarationView>();
+        foreach (var row in await HealthDeclarationService.AllAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken))
+        {
+            HealthAnswersView? opened = null;
+            if (!withheld)
+            {
+                opened = await HealthDeclarationService.OpenAsync(healthKeys ?? throw HealthDataKeys.Unavailable(), tenant.OrganizationId, row, now, cancellationToken);
+                await AuditAsync(unitOfWork, tenant, "health.declaration.viewed", "health_declaration", row.Id, new { declarationId = row.Id, purpose = "export" }, cancellationToken);
+            }
+
+            declarations.Add(new ExportHealthDeclarationView(
+                row.Id,
+                row.FormVersion,
+                row.Status(now).Status,
+                row.SignerRole,
+                row.SignedAt,
+                row.ExpiresAt,
+                row.SupersededAt,
+                row.MedicalApprovalOn,
+                opened?.Answers,
+                opened?.SignedName,
+                opened?.GuardianName));
+        }
+
         await AuditAsync(unitOfWork, tenant, "person.exported", "person", personId, new { }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return new PersonExportView(clock.GetUtcNow(), tenant.OrganizationId, organizationName, detail, history, bookings, passes);
+        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, withheld);
     }
 
     public async Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken)
@@ -296,6 +341,12 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET note = NULL WHERE organization_id = $1 AND person_id = $2 AND note IS NOT NULL", cancellationToken, org, personId);
         // The member's own monthly goal goes (docs/31 section 12).
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
+        // Every health declaration goes, current and replaced (docs/31 section 11); the audit keeps the count only.
+        int healthDeclarations;
+        await using (var deleteHealth = unitOfWork.Command("DELETE FROM people.health_declarations WHERE organization_id = $1 AND person_id = $2", org, personId))
+        {
+            healthDeclarations = await deleteHealth.ExecuteNonQueryAsync(cancellationToken);
+        }
         // Class messages reach the person through inbox items that point at the text (docs/29 section 16.2); the
         // pointers go, the studio's message row (ids only) stays.
         await ExecuteAsync(unitOfWork, "DELETE FROM notifications.inbox_items WHERE organization_id = $1 AND person_id = $2 AND kind = 'session.message'", cancellationToken, org, personId);
@@ -306,7 +357,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         // Consent rows stay as proof: they hold states, timestamps and text versions, never names or contacts.
         // The reason is required but not kept: free text can name the person, and person.* audit data never
         // holds names (section 7; review on #77).
-        await AuditAsync(unitOfWork, tenant, "person.erased", "person", personId, new { reasonGiven = true }, cancellationToken);
+        await AuditAsync(unitOfWork, tenant, "person.erased", "person", personId, new { reasonGiven = true, healthDeclarations }, cancellationToken);
         var erased = await PeopleService.DetailAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return erased;
@@ -485,6 +536,20 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         // The survivor keeps its own monthly goal (docs/31 section 12); the merged record's goes.
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
+        // Health declarations follow the survivor (their ciphertext is bound to the declaration, not the person). Of
+        // two current ones, the newer signature stays current and the older is replaced (docs/31 section 11).
+        await ExecuteAsync(
+            unitOfWork,
+            """
+            UPDATE people.health_declarations d SET superseded_at = $4
+            WHERE d.organization_id = $1 AND d.superseded_at IS NULL AND d.person_id IN ($2, $3)
+              AND d.id <> (SELECT c.id FROM people.health_declarations c
+                           WHERE c.organization_id = $1 AND c.superseded_at IS NULL AND c.person_id IN ($2, $3)
+                           ORDER BY c.signed_at DESC, c.id DESC LIMIT 1)
+            """,
+            cancellationToken,
+            org, survivor, merged, now);
+        await ExecuteAsync(unitOfWork, "UPDATE people.health_declarations SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         // The survivor keeps its own notification preferences and devices; the merged record's go, with its
         // delivery history (the inbox items above moved and keep showing).
         await DeleteNotificationRowsAsync(unitOfWork, org, merged, cancellationToken);

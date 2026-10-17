@@ -20,6 +20,7 @@ import { createLogGroup } from "../constructs/log-group-defaults";
 import { TempoFunction } from "../constructs/lambda-defaults";
 import { applyStandardTags } from "../constructs/tagging";
 import { pushParameterName } from "../async/push-parameters";
+import { HEALTH_DATA_KEY_CURRENT_VERSION, HEALTH_DATA_KEY_READABLE_VERSIONS, healthDataKeyPrefix } from "./health-parameters";
 import { databaseParameterName } from "../data/database-stack";
 
 export interface ApiStackProps extends StackProps {
@@ -105,6 +106,10 @@ export class ApiStack extends Stack {
         // Messaging. The API reads only the public VAPID key.
         WORK_QUEUE_URL: `https://sqs.${config.region}.amazonaws.com/${config.accountId}/${resourceName(config, "work")}`,
         VAPID_PUBLIC_KEY_PARAMETER: pushParameterName(config, "publicKey"),
+        // The health declaration (docs/31 section 7): the API alone reads the
+        // data key, by name; the value never passes through a template.
+        HEALTH_DATA_KEY_PARAMETER_PREFIX: healthDataKeyPrefix(config),
+        HEALTH_DATA_KEY_CURRENT_VERSION: HEALTH_DATA_KEY_CURRENT_VERSION,
         ...database.environment
       }
     });
@@ -120,6 +125,17 @@ export class ApiStack extends Stack {
       forceDynamicReference: true
     }).grantRead(
       this.apiFunction.function
+    );
+    // The health data key: GetParameter on its exact versions only. The aws/ssm
+    // key policy lets the account's principals decrypt through SSM, so no kms:*
+    // statement is added (ADR-0026).
+    this.apiFunction.function.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["ssm:GetParameter"],
+        resources: HEALTH_DATA_KEY_READABLE_VERSIONS.map(
+          (version) => `arn:aws:ssm:${config.region}:${config.accountId}:parameter${healthDataKeyPrefix(config)}${version}`
+        )
+      })
     );
     this.apiFunction.function.addToRolePolicy(
       new PolicyStatement({

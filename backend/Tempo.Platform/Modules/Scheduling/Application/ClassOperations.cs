@@ -2,11 +2,13 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.People.Application;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
 /// <summary><paramref name="EntriesLeft"/> is the held punch card's remaining entries after this place; null for a membership or no pass.</summary>
-public sealed record RosterEntryView(Guid BookingId, PersonRefView Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt);
+/// <paramref name="HealthStatus"/> is the person's declaration status (docs/31 section 5); null when the caller lacks `people.view`.
+public sealed record RosterEntryView(Guid BookingId, PersonRefView Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt, string? HealthStatus = null);
 
 public sealed record RosterView(SessionView Session, IReadOnlyList<RosterEntryView> Booked, IReadOnlyList<RosterEntryView> Waitlisted);
 
@@ -47,9 +49,11 @@ public sealed partial class BookingService : IClassService
                        (SELECT count(*)::int FROM scheduling.bookings w WHERE w.organization_id = b.organization_id AND w.session_id = b.session_id
                           AND w.status = 'waitlisted' AND w.waitlist_position <= b.waitlist_position)
                    END,
-                   pp.name, ps.entries - ps.entries_used, b.created_at
+                   pp.name, ps.entries - ps.entries_used, b.created_at,
+                   hd.id IS NOT NULL, hd.expires_at, hd.has_yes, hd.medical_approval_on
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
+            LEFT JOIN people.health_declarations hd ON hd.organization_id = b.organization_id AND hd.person_id = b.person_id AND hd.superseded_at IS NULL
             LEFT JOIN scheduling.pass_uses u ON u.organization_id = b.organization_id AND u.booking_id = b.id AND u.status = 'held'
             LEFT JOIN scheduling.passes ps ON ps.organization_id = u.organization_id AND ps.id = u.pass_id
             LEFT JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
@@ -59,8 +63,21 @@ public sealed partial class BookingService : IClassService
             tenant.OrganizationId, sessionId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var entries = new List<RosterEntryView>();
+        var showHealth = tenant.Has(Permissions.PeopleView);
+        var now = clock.GetUtcNow();
         while (await reader.ReadAsync(cancellationToken))
         {
+            string? health = null;
+            if (showHealth && !reader.GetBoolean(8))
+            {
+                health = HealthStatus.Missing;
+            }
+            else if (showHealth)
+            {
+                DateOnly? approval = await reader.IsDBNullAsync(11, cancellationToken) ? null : await reader.GetFieldValueAsync<DateOnly>(11, cancellationToken);
+                health = HealthStatus.Of(await reader.GetFieldValueAsync<DateTimeOffset>(9, cancellationToken), reader.GetBoolean(10), approval, now);
+            }
+
             entries.Add(new RosterEntryView(
                 reader.GetGuid(0),
                 new PersonRefView(reader.GetGuid(1), reader.GetString(2)),
@@ -68,7 +85,8 @@ public sealed partial class BookingService : IClassService
                 await reader.IsDBNullAsync(4, cancellationToken) ? null : reader.GetInt32(4),
                 await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5),
                 await reader.IsDBNullAsync(6, cancellationToken) ? null : reader.GetInt32(6),
-                await reader.GetFieldValueAsync<DateTimeOffset>(7, cancellationToken)));
+                await reader.GetFieldValueAsync<DateTimeOffset>(7, cancellationToken),
+                health));
         }
 
         return new RosterView(session, [.. entries.Where(e => e.Status != "waitlisted")], [.. entries.Where(e => e.Status == "waitlisted")]);
