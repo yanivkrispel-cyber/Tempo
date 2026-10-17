@@ -1,6 +1,7 @@
 # Project status
 
-Updated 2026-10-17, evening (day board #232, DAY-PLAN-5: pilot readiness).
+Updated 2026-10-17, evening (day boards #232, DAY-PLAN-5: pilot readiness, and #253, DAY-PLAN-6: owner reports
+and removing logins and studios).
 
 ## In one paragraph
 
@@ -91,8 +92,23 @@ standard parameters, the reminder job inside the existing Scheduler pattern, no 
 
 - The dev health key exists (created 2026-10-17 with `tools/scripts/health-data-key.mjs`). A version is never
   overwritten; rotation is a new version (docs/31 section 7.1).
-- Migrations on dev: up to 0018; 0019 is the next free number.
-- #186 (Actions bump) is not merged: Semgrep wants SHA-pinned actions, a workflow change for Kris.
+- Migrations on dev: up to 0023 since board #253; 0024 is the next free number.
+
+## Owner reports and removal (2026-10-17 afternoon, board #253)
+
+`docs/32_Reports_LLD.md` (R1 #255) holds R-1 to R-6 and A-1 to A-5, every report query with its RLS reasoning, and
+what is never in a report.
+
+| Piece | PR |
+|---|---|
+| Every GitHub Action pinned to a commit SHA, #186's bumps folded in (#186 closed), `tools/scripts/lib/*.test.mjs` in the Infrastructure job | W1 #254 |
+| Owner reports: summary per week and class type with the previous period, passes ending soon, members at risk; `reports.view` for owner and admin (migration 0021); no index (a local `EXPLAIN` on 10 000 bookings: 3.9 ms and 7.7 ms) | R2 #259; Y0 #256, Y1 #257 |
+| `DELETE /me`: step-up, the email typed, 409 for a sole owner; the person record stays with the studio; Cognito `AdminDeleteUser` on the customer pool only (migration 0022: `ON DELETE` rules on the five keys to `identity.user_accounts`) | A1 #262, #267; Y2 #258 |
+| The operator removes a suspended studio: a `SECURITY DEFINER` function walks the catalog (migration 0023); the platform role still has no `DELETE`; 0 days suspended on dev, 30 elsewhere | A2 #263 |
+| The export answers 200 with every health answer withheld when the key can't be read (`healthAnswersWithheldReason`) | A3 #264 |
+| pnpm `minimumReleaseAge` and `blockExoticSubdeps`, compose `no-new-privileges`; `trustPolicy` left for Kris (#115 stays open for it) | W2 #265 |
+| `tools/scripts/e2e-cleanup.mjs`: dry run lists e2e logins, studios and orphaned account rows; `--apply` needs the operator token | A4 #266 |
+| Playwright `sync6` on dev at phone width (6/6: one visit and 25% on the report, 403 without `reports.view`, the member deletes their login and stays on the roster) | Y3 #261 |
 
 ## Apps
 
@@ -114,10 +130,14 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `docs/30` D-1, D-2, D-7, and a look at the provisional defaults | Email waits for D-1 (the domain first) |
 | `docs/29` C-9 to C-13 | Defaults apply unless Kris objects |
 | #97 dev self sign-up and a Neon usage alarm | It gated the full load test (B5) |
-| #96, #123, #122, #115 | Kris decides; nobody else touches them |
+| #96, #123, #122 | Kris decides; nobody else touches them |
+| #115: pnpm `trustPolicy` | The frozen install fails on `semver@6.3.1` and `undici-types@6.20.0`; every other row of #115 is done |
 | Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot; P-2 now also covers the health form's wording and its retention (docs/31) |
 | A production copy of the health data key | docs/31 section 15 |
-| #186: SHA-pin the GitHub Actions, or accept Semgrep's finding | Workflow change |
+| Run `tools/scripts/e2e-cleanup.mjs --apply` with an operator token | Removes the seven e2e studios on dev (six `e2e-p2-…`, one `e2e-sync6-…`; P2 F4) |
+| 14 orphaned e2e account rows on dev | Their Cognito users are gone (one more per sync6 run); an operator route or a one-off SQL |
+| The two **(reading)** report rules in docs/32 section 6 | A renewed pass is not "ending"; nobody is "at risk" in their first 30 days |
+| `TEMPO_STUDIO_REMOVAL_MIN_DAYS` and Neon's point-in-time history | 30 days by default outside dev; a removed studio stays in Neon's history until it ages out |
 | Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
 
 ## Who works on what
