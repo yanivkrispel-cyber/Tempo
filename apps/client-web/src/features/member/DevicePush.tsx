@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   ownSubscriptionId,
   PushPermissionDenied,
@@ -17,6 +17,7 @@ import styles from "./member.module.css";
  * permission is asked only here, from the switch. Hidden while push is not set up in the environment.
  */
 export function DevicePush({ organizationId }: { organizationId: string }) {
+  const hintId = useId();
   const key = useVapidKey();
   const support = pushSupport();
   const [permission, setPermission] = useState(() =>
@@ -74,7 +75,7 @@ export function DevicePush({ organizationId }: { organizationId: string }) {
       <div className="tp-setting">
         <span className={styles.settingText} aria-hidden="true">
           <span>התראות במכשיר הזה</span>
-          <span id="device-push-hint" className="tp-caption">
+          <span id={hintId} className="tp-caption">
             {permission === "denied"
               ? "ההתראות חסומות בדפדפן. כדי לקבל אותן, אפשרו התראות לאתר הזה בהגדרות הדפדפן."
               : "בלי זה, ההודעות מגיעות רק לתיבת ההודעות באפליקציה."}
@@ -84,7 +85,7 @@ export function DevicePush({ organizationId }: { organizationId: string }) {
           label="התראות במכשיר הזה"
           hideLabel
           // Why the switch is off or disabled (blocked in the browser) must reach a screen reader too.
-          aria-describedby="device-push-hint"
+          aria-describedby={hintId}
           checked={thisDeviceOn}
           disabled={busy || devices.isPending || permission === "denied"}
           onChange={(event) => toggle(event.target.checked)}

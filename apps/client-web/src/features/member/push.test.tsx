@@ -136,6 +136,18 @@ describe("push on this device", () => {
     );
   });
 
+  it("ties each switch to its own hint, even with two on one page (#217)", async () => {
+    fakePushBrowser("denied");
+    renderAt("/profile/notifications", { [`GET ${base}/me/push-subscriptions`]: { items: [] } });
+    renderAt("/profile/notifications", { [`GET ${base}/me/push-subscriptions`]: { items: [] } });
+    await waitFor(() => expect(screen.getAllByRole("switch", { name: "התראות במכשיר הזה" })).toHaveLength(2));
+    const hints = screen
+      .getAllByRole("switch", { name: "התראות במכשיר הזה" })
+      .map((toggle) => toggle.getAttribute("aria-describedby"));
+    expect(new Set(hints).size).toBe(2);
+    for (const hint of hints) expect(document.querySelectorAll(`[id="${hint}"]`)).toHaveLength(1);
+  });
+
   it("removes this device and unsubscribes the browser when the member signs out", async () => {
     const browser = fakePushBrowser();
     await browser.subscribe();
