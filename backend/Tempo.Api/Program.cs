@@ -61,6 +61,8 @@ try
     app.MapRoleEndpoints();
     app.MapOwnershipEndpoints();
     app.MapPeopleEndpoints();
+    app.MapPeopleImportEndpoints();
+    app.MapTagsAndNotesEndpoints();
     app.MapConsentEndpoints();
     app.MapPersonLifecycleEndpoints();
     app.MapScheduleEndpoints();

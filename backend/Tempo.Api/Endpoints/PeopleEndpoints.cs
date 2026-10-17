@@ -34,9 +34,9 @@ public static class PeopleEndpoints
         return endpoints;
     }
 
-    private static async Task<IResult> ListAsync(HttpContext httpContext, string? query, string? status, Guid? before, int? limit, IPeopleService people)
+    private static async Task<IResult> ListAsync(HttpContext httpContext, string? query, string? status, Guid? before, int? limit, Guid? tag, IPeopleService people)
     {
-        var page = await people.ListAsync(TenantRouteFilter.Current(httpContext), new PeopleQuery(query, status, before, limit ?? 50), httpContext.RequestAborted);
+        var page = await people.ListAsync(TenantRouteFilter.Current(httpContext), new PeopleQuery(query, status, before, limit ?? 50, tag), httpContext.RequestAborted);
         return Results.Ok(new PersonPageResponse([.. page.Items.Select(ToResponse)], page.NextBefore));
     }
 
@@ -166,7 +166,7 @@ public static class PeopleEndpoints
             : throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", $"{field} must be a string.", field);
 
     internal static PersonResponse ToResponse(PersonView p) =>
-        new(p.Id, p.DisplayName, p.GivenName, p.FamilyName, p.BirthDate, p.Status, p.Source, p.HasLogin, p.MembershipId, p.PrimaryEmail, p.PrimaryPhone, p.MergedIntoId, p.CreatedAt, p.Version.ToString(CultureInfo.InvariantCulture));
+        new(p.Id, p.DisplayName, p.GivenName, p.FamilyName, p.BirthDate, p.Status, p.Source, p.HasLogin, p.MembershipId, p.PrimaryEmail, p.PrimaryPhone, p.MergedIntoId, p.CreatedAt, p.Version.ToString(CultureInfo.InvariantCulture), Tags(p));
 
     internal static PersonDetailResponse ToResponse(PersonDetailView d)
     {
@@ -176,7 +176,8 @@ public static class PeopleEndpoints
             p.Version.ToString(CultureInfo.InvariantCulture),
             [.. d.ContactPoints.Select(ToResponse)],
             [.. d.Consents.Select(ToResponse)],
-            [.. d.Relationships.Select(r => new RelationshipResponse(r.Id, r.Type, r.FromPersonId, r.ToPersonId, r.OtherDisplayName, r.CreatedAt))]);
+            [.. d.Relationships.Select(r => new RelationshipResponse(r.Id, r.Type, r.FromPersonId, r.ToPersonId, r.OtherDisplayName, r.CreatedAt))],
+            Tags(p));
     }
 
     internal static ContactPointResponse ToResponse(ContactPointView c) =>
@@ -184,4 +185,6 @@ public static class PeopleEndpoints
 
     internal static ConsentResponse ToResponse(ConsentView c) =>
         new(c.Id, c.Purpose, c.Channel, c.State, c.Method, c.TextVersion, c.RecordedByMembershipId is { } m ? new MemberRefResponse(m, null) : null, c.OccurredAt);
+
+    internal static IReadOnlyList<PersonTagResponse> Tags(PersonView p) => [.. (p.Tags ?? []).Select(t => new PersonTagResponse(t.Id, t.Name, t.Color))];
 }
