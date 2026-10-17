@@ -100,7 +100,8 @@ public sealed record PersonExportResponse(
     IReadOnlyList<ExportBookingResponse> Bookings,
     IReadOnlyList<ExportPassResponse> Passes,
     IReadOnlyList<ExportHealthDeclarationResponse> HealthDeclarations,
-    bool HealthAnswersWithheld);
+    bool HealthAnswersWithheld,
+    string? HealthAnswersWithheldReason);
 
 /// <summary>`ExportHealthDeclaration`: answers and names only when the exporting member holds `health.view` (docs/31 section 11).</summary>
 public sealed record ExportHealthDeclarationResponse(

@@ -237,6 +237,7 @@ public sealed class HealthDeclarationServiceTests(PostgresFixture postgres) : IC
 
         var byOwner = await lifecycle.ExportAsync(studio.Owner, studio.Person, CancellationToken.None);
         byOwner.HealthAnswersWithheld.Should().BeFalse();
+        byOwner.HealthAnswersWithheldReason.Should().BeNull();
         byOwner.HealthDeclarations.Single().SignedName.Should().Be(MemberName);
         byOwner.HealthDeclarations.Single().Answers!.Single(a => a.QuestionId == "q5").Answer.Should().BeTrue();
         (await db.AsMasterAsync("SELECT count(*)::int FROM audit.audit_events WHERE action = 'health.declaration.viewed' AND data->>'purpose' = 'export'")).Should().Be(1);
@@ -244,9 +245,30 @@ public sealed class HealthDeclarationServiceTests(PostgresFixture postgres) : IC
         var admin = studio.Owner with { Permissions = SystemRoles.Admin.Permissions };
         var byAdmin = await lifecycle.ExportAsync(admin, studio.Person, CancellationToken.None);
         byAdmin.HealthAnswersWithheld.Should().BeTrue();
+        byAdmin.HealthAnswersWithheldReason.Should().Be("no_health_view");
         byAdmin.HealthDeclarations.Single().Status.Should().Be(HealthStatus.NeedsMedicalApproval);
         byAdmin.HealthDeclarations.Single().Answers.Should().BeNull();
         byAdmin.HealthDeclarations.Single().SignedName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Export_WithAnUnreadableKey_StillSucceeds_WithEveryAnswerWithheld()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var studio = await StudioAsync(db);
+        await Service(db).SignMineAsync(studio.Member, Declaration(yesOn: "q2"), CancellationToken.None);
+
+        // No HEALTH_DATA_KEY_V1 and no SSM prefix: the key cannot be read, as when SSM is down (A-5).
+        var export = await new PersonLifecycleService(db, TimeProvider.System, new HealthDataKeys(_ => null)).ExportAsync(studio.Owner, studio.Person, CancellationToken.None);
+
+        export.HealthAnswersWithheld.Should().BeTrue();
+        export.HealthAnswersWithheldReason.Should().Be("health_key_unavailable");
+        export.HealthDeclarations.Single().Status.Should().Be(HealthStatus.NeedsMedicalApproval);
+        export.HealthDeclarations.Single().Answers.Should().BeNull();
+        export.HealthDeclarations.Single().SignedName.Should().BeNull();
+        export.Person.Person.Id.Should().Be(studio.Person);
+        (await db.AsMasterAsync("SELECT count(*)::int FROM audit.audit_events WHERE action = 'health.declaration.viewed'")).Should().Be(0);
+        (await db.AsMasterAsync("SELECT count(*)::int FROM audit.audit_events WHERE action = 'person.exported'")).Should().Be(1);
     }
 
     [Fact]

@@ -27,7 +27,15 @@ public sealed record PersonExportView(
     IReadOnlyList<ExportBookingView> Bookings,
     IReadOnlyList<ExportPassView> Passes,
     IReadOnlyList<ExportHealthDeclarationView> HealthDeclarations,
-    bool HealthAnswersWithheld);
+    bool HealthAnswersWithheld,
+    string? HealthAnswersWithheldReason = null)
+{
+    /// <summary>The exporter lacks `health.view`.</summary>
+    public const string NoHealthView = "no_health_view";
+
+    /// <summary>The health data key could not be read (A-5): the rest of the export still goes out.</summary>
+    public const string HealthKeyUnavailable = "health_key_unavailable";
+}
 
 /// <summary>One health declaration in the export; answers and names are null when the exporter lacks `health.view`.</summary>
 public sealed record ExportHealthDeclarationView(
@@ -235,16 +243,35 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         }
 
         // Health declarations (docs/31 section 11): decrypted only for an exporter who holds health.view, each
-        // decrypted one audited as a view with purpose export; otherwise listed without answers or names.
+        // decrypted one audited as a view with purpose export; otherwise listed without answers or names. When the
+        // key can't be read (A-5, docs/32 section 11) every answer is withheld, nothing is audited as viewed, and the
+        // rest of the export still goes out.
         var now = clock.GetUtcNow();
-        var withheld = !tenant.Has(Permissions.HealthView);
-        var declarations = new List<ExportHealthDeclarationView>();
-        foreach (var row in await HealthDeclarationService.AllAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken))
+        var reason = tenant.Has(Permissions.HealthView) ? null : PersonExportView.NoHealthView;
+        var rows = await HealthDeclarationService.AllAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken);
+        var opened = new Dictionary<Guid, HealthAnswersView>();
+        if (reason is null)
         {
-            HealthAnswersView? opened = null;
-            if (!withheld)
+            try
             {
-                opened = await HealthDeclarationService.OpenAsync(healthKeys ?? throw HealthDataKeys.Unavailable(), tenant.OrganizationId, row, now, cancellationToken);
+                foreach (var row in rows)
+                {
+                    opened[row.Id] = await HealthDeclarationService.OpenAsync(healthKeys ?? throw HealthDataKeys.Unavailable(), tenant.OrganizationId, row, now, cancellationToken);
+                }
+            }
+            catch (DomainRuleViolationException e) when (e.Code == HealthDataKeys.Unavailable().Code)
+            {
+                opened.Clear();
+                reason = PersonExportView.HealthKeyUnavailable;
+            }
+        }
+
+        var declarations = new List<ExportHealthDeclarationView>();
+        foreach (var row in rows)
+        {
+            var answers = opened.GetValueOrDefault(row.Id);
+            if (answers is not null)
+            {
                 await AuditAsync(unitOfWork, tenant, "health.declaration.viewed", "health_declaration", row.Id, new { declarationId = row.Id, purpose = "export" }, cancellationToken);
             }
 
@@ -257,14 +284,14 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
                 row.ExpiresAt,
                 row.SupersededAt,
                 row.MedicalApprovalOn,
-                opened?.Answers,
-                opened?.SignedName,
-                opened?.GuardianName));
+                answers?.Answers,
+                answers?.SignedName,
+                answers?.GuardianName));
         }
 
         await AuditAsync(unitOfWork, tenant, "person.exported", "person", personId, new { }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, withheld);
+        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, reason is not null, reason);
     }
 
     public async Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken)
