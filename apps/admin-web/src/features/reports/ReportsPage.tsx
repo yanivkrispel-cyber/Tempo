@@ -100,9 +100,11 @@ export function ReportsPage() {
       <section className={`tp-stack ${styles.period}`} aria-label="תקופת הדוח">
         <Segmented label="תקופה" options={presets} value={preset} onChange={choosePreset} />
         {preset === "custom" && (
+          // No min or max between the two inputs: moving the period forward types a start after the old end first,
+          // and periodProblem explains a backwards or too-long period in words instead.
           <div className={styles.dates}>
             <Field label="מתאריך" required>
-              <DateInput value={from} onChange={setFrom} max={to ?? undefined} today={today ?? undefined} />
+              <DateInput value={from} onChange={setFrom} today={today ?? undefined} />
             </Field>
             <Field
               label="עד תאריך"
@@ -110,7 +112,7 @@ export function ReportsPage() {
               help={problem ? undefined : `עד ${maxReportDays} ימים.`}
               error={from && to ? (problem ?? undefined) : undefined}
             >
-              <DateInput value={to} onChange={setTo} min={from ?? undefined} today={today ?? undefined} />
+              <DateInput value={to} onChange={setTo} today={today ?? undefined} />
             </Field>
           </div>
         )}

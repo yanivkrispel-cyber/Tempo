@@ -267,6 +267,30 @@ describe("the summary", () => {
     );
   });
 
+  it("lets either end be typed first: a start after the old end is kept, and the report follows once the end moves", async () => {
+    const user = userEvent.setup();
+    const api = renderAt("/o/neshima/reports");
+    await screen.findByRole("group", { name: "מדדי התקופה" });
+    await user.click(screen.getByRole("button", { name: "תאריכים" }));
+    // The inputs start at 13.09 to 10.10 (the period on screen); move the whole period past 10.10.
+    const from = screen.getByRole("textbox", { name: /מתאריך/ });
+    await user.clear(from);
+    await user.type(from, "11.10.2026");
+    await user.tab();
+    expect(await screen.findByText("תאריך הסיום לפני תאריך ההתחלה.")).toBeInTheDocument();
+    const to = screen.getByRole("textbox", { name: /עד תאריך/ });
+    await user.clear(to);
+    await user.type(to, "14.10.2026");
+    await user.tab();
+    await vi.waitFor(() =>
+      expect(
+        reportRequests(api, "/reports/summary").some(
+          (url) => url.searchParams.get("from") === "2026-10-11" && url.searchParams.get("to") === "2026-10-14",
+        ),
+      ).toBe(true),
+    );
+  });
+
   it("shows the server's words when it refuses the period", async () => {
     renderAt("/o/neshima/reports", owner, {
       [`GET ${base}/reports/summary`]: problem(400, "report.period_too_long"),
