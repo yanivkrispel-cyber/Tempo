@@ -71,4 +71,20 @@ public sealed class ProgressTests
     {
         Progress.Since(Today).Should().Be(new DateOnly(2026, 10, 18).AddDays(-7 * Progress.MaxStreakWeeks));
     }
+
+    [Fact]
+    public void Weeks_AreTheLastTwelve_OldestFirst_WithThisWeeksBookedPlaces()
+    {
+        var today = new DateOnly(2026, 10, 20); // a Tuesday
+        var attended = new[] { new DateOnly(2026, 10, 18), new DateOnly(2026, 10, 13), new DateOnly(2026, 10, 15), new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 21) };
+        var booked = new[] { new DateOnly(2026, 10, 22), new DateOnly(2026, 10, 29) };
+
+        var weeks = Progress.Weeks(attended, booked, today);
+
+        weeks.Should().HaveCount(12);
+        weeks[^1].Should().Be((new DateOnly(2026, 10, 18), 1, 1), "this week: Sunday's class, and Thursday still booked; next week's booking and a future attended date are ignored");
+        weeks[^2].Should().Be((new DateOnly(2026, 10, 11), 2, 0));
+        weeks[0].WeekStart.Should().Be(new DateOnly(2026, 8, 2));
+        weeks.Sum(w => w.Attended).Should().Be(3, "1 August is before the twelve weeks");
+    }
 }

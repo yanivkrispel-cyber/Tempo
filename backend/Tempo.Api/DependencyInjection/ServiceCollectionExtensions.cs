@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IBuddyService, BuddyService>();
         services.AddSingleton<IMediaService, MediaService>();
         services.AddSingleton<IInstructorService, InstructorService>();
+        services.AddSingleton<IInsightService, InsightService>();
         services.AddSingleton<ISessionMessageService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IBookingCalendarService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IStudioSettingsService, StudioSettingsService>();

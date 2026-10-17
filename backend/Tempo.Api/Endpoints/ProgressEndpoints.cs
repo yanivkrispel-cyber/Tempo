@@ -28,5 +28,6 @@ public static class ProgressEndpoints
         Results.Ok(ToResponse(await progress.SetMyGoalAsync(TenantRouteFilter.Current(httpContext), request.MonthlyGoal, httpContext.RequestAborted)));
 
     private static MyProgressResponse ToResponse(ProgressView view) =>
-        new(view.Month, view.TimeZone, view.VisitsThisMonth, view.MonthlyGoal, view.StreakWeeks);
+        new(view.Month, view.TimeZone, view.VisitsThisMonth, view.MonthlyGoal, view.StreakWeeks,
+            view.Weeks is null ? null : [.. view.Weeks.Select(w => new ProgressWeekResponse(w.WeekStart, w.Attended, w.Booked))]);
 }

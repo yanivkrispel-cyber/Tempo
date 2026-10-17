@@ -35,6 +35,20 @@ public static class Progress
         return streak;
     }
 
+    /// <summary>
+    /// The last <paramref name="count"/> Sunday-to-Saturday weeks, oldest first: classes attended, and for the current
+    /// week the places still booked ahead (docs/33 section 10).
+    /// </summary>
+    public static IReadOnlyList<(DateOnly WeekStart, int Attended, int Booked)> Weeks(IEnumerable<DateOnly> attended, IEnumerable<DateOnly> booked, DateOnly today, int count = 12)
+    {
+        var current = WeekStart(today);
+        var attendedByWeek = attended.Where(date => date <= today).GroupBy(WeekStart).ToDictionary(g => g.Key, g => g.Count());
+        var bookedThisWeek = booked.Count(date => date >= today && WeekStart(date) == current);
+        return [.. Enumerable.Range(0, count)
+            .Select(i => current.AddDays(-7 * (count - 1 - i)))
+            .Select(week => (week, attendedByWeek.GetValueOrDefault(week), week == current ? bookedThisWeek : 0))];
+    }
+
     /// <summary>The Sunday that starts the week of <paramref name="date"/>.</summary>
     public static DateOnly WeekStart(DateOnly date) => date.AddDays(-(int)date.DayOfWeek);
 
