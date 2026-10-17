@@ -40,6 +40,17 @@ const messages: Record<string, string> = {
   "consent.invalid": "הבחירה לא תקינה. בדקו את המטרה, הערוץ והגרסה.",
   // Member import from a file (docs/34 section 4).
   "import.too_many_rows": "אפשר לייבא עד 1,000 שורות בכל פעם. פצלו את הקובץ לכמה קבצים.",
+  // Tags and staff notes (docs/34 sections 7 and 8).
+  "tag.name_taken": "כבר יש תגית בשם הזה.",
+  "tag.name_required": "צריך שם לתגית.",
+  "tag.name_too_long": "שם של תגית יכול להיות עד 30 תווים.",
+  "tag.color_invalid": "בחרו אחד מששת הצבעים.",
+  "tag.limit_reached": "אפשר עד 100 תגיות בסטודיו.",
+  "tag.not_found": "התגית לא נמצאה. ייתכן שמישהו מחק אותה בינתיים.",
+  "person.tag_limit_reached": "אפשר עד 20 תגיות לאדם אחד.",
+  "note.body_required": "כתבו את ההערה.",
+  "note.too_long": "הערה יכולה להיות עד 1,000 תווים.",
+  "note.not_found": "ההערה לא נמצאה. ייתכן שנמחקה בינתיים.",
   // Scheduling and passes (docs/29 section 9).
   "person.not_found": "האדם לא נמצא.",
   "room.not_found": "החדר לא נמצא.",

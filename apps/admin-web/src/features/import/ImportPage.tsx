@@ -21,6 +21,8 @@ import {
   type ChipTone,
 } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
+import { TagDialog } from "../tags/TagDialog";
+import { tagTone, useTags, type Tag } from "../tags/tags";
 import {
   IMPORT_FIELDS,
   MAX_ROWS,
@@ -78,13 +80,17 @@ function Importer() {
   const [problem, setProblem] = useState<ReadProblem | null>(null);
   const [reading, setReading] = useState(false);
   const [incomplete, setIncomplete] = useState(false);
+  // I-8: one of the studio's tags on everyone the import creates (validated by the dry run too).
+  const [tagId, setTagId] = useState("");
+  const tags = useTags();
+  const batchTag = tags.data?.find((tag) => tag.id === tagId);
   const rows = useMemo(() => (picked ? toImportRows(picked.file.rows, picked.mapping) : []), [picked]);
 
   const send = (dryRun: boolean) =>
     unwrap(
       api.POST("/api/v1/organizations/{organizationId}/people/import", {
         params: { path: { organizationId: studio.organizationId } },
-        body: { dryRun, rows },
+        body: { dryRun, rows, ...(tagId ? { tagId } : {}) },
       }),
     );
   const check = useMutation({ mutationFn: () => send(true) });
@@ -126,6 +132,11 @@ function Importer() {
     );
   };
 
+  const chooseTag = (id: string) => {
+    restart();
+    setTagId(id);
+  };
+
   const runCheck = () => {
     if (!picked || !hasName(picked.mapping) || !hasContact(picked.mapping)) {
       setIncomplete(true);
@@ -154,7 +165,7 @@ function Importer() {
       </header>
 
       {commit.data ? (
-        <Done result={commit.data} rows={rows} onAgain={startOver} />
+        <Done result={commit.data} rows={rows} tag={batchTag} onAgain={startOver} />
       ) : (
         <>
           <FileCard picked={picked} problem={problem} reading={reading} onChoose={(file) => void choose(file)} />
@@ -167,7 +178,9 @@ function Importer() {
               checking={check.isPending}
               checkError={check.isError ? errorMessage(check.error, "הבדיקה לא הצליחה. נסו שוב.") : null}
               onCheck={runCheck}
-            />
+            >
+              <BatchTag tags={tags.data ?? []} tagId={tagId} onTag={chooseTag} />
+            </ColumnsCard>
           )}
           {picked && check.data && (
             <CheckCard
@@ -181,6 +194,41 @@ function Importer() {
         </>
       )}
     </>
+  );
+}
+
+/** I-8: an optional tag on everyone the import creates; whoever manages tags can make one here first. */
+function BatchTag({ tags, tagId, onTag }: { tags: Tag[]; tagId: string; onTag: (id: string) => void }) {
+  const studio = useStudio();
+  const [creating, setCreating] = useState(false);
+  const now = new Date();
+  const suggestion = `ייבוא ${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return (
+    <div className={styles.batch}>
+      <Field label="תגית לכל מי שייווסף" help="רשות. כך אפשר למצוא אחר כך את כל מי שהגיע מהקובץ.">
+        <Select value={tagId} onChange={(event) => onTag(event.target.value)}>
+          <option value="">בלי תגית</option>
+          {tags.map((tag) => (
+            <option key={tag.id} value={tag.id}>
+              {tag.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      {studio.can("people.tags.manage") && (
+        <Button variant="secondary" icon="plus" onClick={() => setCreating(true)}>
+          תגית חדשה
+        </Button>
+      )}
+      {creating && (
+        <TagDialog
+          tag={null}
+          initialName={suggestion}
+          onClose={() => setCreating(false)}
+          onSaved={(tag) => onTag(tag.id)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -323,6 +371,7 @@ function ColumnsCard({
   checking,
   checkError,
   onCheck,
+  children,
 }: {
   picked: Picked;
   rows: ImportRow[];
@@ -331,6 +380,8 @@ function ColumnsCard({
   checking: boolean;
   checkError: string | null;
   onCheck: () => void;
+  /** The batch tag's picker, above the check. */
+  children?: ReactNode;
 }) {
   const titleId = useId();
   // Columns with a name or a value; Excel's trailing separators leave empty ones behind.
@@ -397,6 +448,7 @@ function ColumnsCard({
         </table>
       </TableScroll>
 
+      {children}
       {incomplete && (
         <Banner tone="warning" icon="info">
           בחרו עמודה לשם, ולפחות עמודה אחת לטלפון או למייל.
@@ -577,7 +629,18 @@ function CheckCard({
   );
 }
 
-function Done({ result, rows, onAgain }: { result: ImportResult; rows: ImportRow[]; onAgain: () => void }) {
+function Done({
+  result,
+  rows,
+  tag,
+  onAgain,
+}: {
+  result: ImportResult;
+  rows: ImportRow[];
+  tag: Tag | undefined;
+  onAgain: () => void;
+}) {
+  const studio = useStudio();
   const titleId = useId();
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => title.current?.focus(), []);
@@ -595,6 +658,15 @@ function Done({ result, rows, onAgain }: { result: ImportResult; rows: ImportRow
       <p className="tp-caption tp-muted">
         לא נשלחו הזמנות או הודעות, ולא נרשמה הסכמה לדיוור. הזמנה לאפליקציה נשלחת מכרטיס האדם.
       </p>
+      {tag && created > 0 && (
+        <p className="tp-row" style={{ gap: 8 }}>
+          <span>כל מי שנוסף קיבל את התגית</span>
+          <Chip tone={tagTone(tag.color)}>{tag.name}</Chip>
+          <Link to={`/o/${studio.slug}/people?tag=${tag.id}`} className="tp-hit">
+            לרשימה המסוננת לפי התגית
+          </Link>
+        </p>
+      )}
       <Totals totals={result.totals} done />
       <Results result={result} rows={rows} />
       <div className="tp-row" style={{ gap: 8 }}>

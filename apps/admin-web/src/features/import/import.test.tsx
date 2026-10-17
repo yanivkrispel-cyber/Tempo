@@ -182,6 +182,51 @@ describe("importing a file", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("זה קובץ של אקסל או של גיליון אחר.");
   });
 
+  it("puts a batch tag on everyone it creates, and links to the list filtered by it (I-8)", async () => {
+    const tagId = "0199e5a1-0000-7000-8000-000000000911";
+    const { api } = renderAt("/o/neshima/people/import", {
+      [`GET ${base}/tags`]: {
+        items: [{ id: tagId, name: "ייבוא 17.10", color: 2, peopleCount: 0, createdAt: "2026-10-17T08:00:00Z", version: "1" }],
+      },
+      [`POST ${base}/people/import`]: async (request: Request) =>
+        json(((await request.json()) as { dryRun: boolean }).dryRun ? dryRun : committed),
+    });
+    await userEvent.upload(await screen.findByLabelText("בחירת קובץ"), file(csv));
+    await userEvent.selectOptions(await screen.findByRole("combobox", { name: "תגית לכל מי שייווסף" }), "ייבוא 17.10");
+    await userEvent.click(screen.getByRole("button", { name: "בדיקת 3 השורות" }));
+    await userEvent.click(await screen.findByRole("button", { name: "ייבוא אדם אחד" }));
+    expect(await screen.findByRole("heading", { name: "אדם אחד נוסף לסטודיו" })).toBeInTheDocument();
+    expect(importCalls(api).map((call) => (call as { tagId?: string }).tagId)).toEqual([tagId, tagId]);
+    expect(screen.getByText("כל מי שנוסף קיבל את התגית")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "לרשימה המסוננת לפי התגית" })).toHaveAttribute(
+      "href",
+      `/o/neshima/people?tag=${tagId}`,
+    );
+  });
+
+  it("lets whoever manages tags make the batch tag first, and picks it", async () => {
+    const created = { id: "0199e5a1-0000-7000-8000-000000000913", name: "ייבוא אוקטובר", color: 1 };
+    const saved = { ...created, peopleCount: 0, createdAt: "2026-10-17T08:00:00Z", version: "1" };
+    let tags: unknown[] = [];
+    const { api } = renderAt("/o/neshima/people/import", {
+      [`GET ${base}/tags`]: () => json({ items: tags }),
+      [`POST ${base}/tags`]: () => {
+        tags = [saved];
+        return json(saved, 201);
+      },
+    });
+    await userEvent.upload(await screen.findByLabelText("בחירת קובץ"), file(csv));
+    await userEvent.click(await screen.findByRole("button", { name: "תגית חדשה" }));
+    const dialog = screen.getByRole("dialog", { name: "תגית חדשה" });
+    const name = within(dialog).getByRole("textbox", { name: /שם/ });
+    expect((name as HTMLInputElement).value).toMatch(/^ייבוא \d{2}\.\d{2}$/);
+    await userEvent.clear(name);
+    await userEvent.type(name, created.name);
+    await userEvent.click(within(dialog).getByRole("button", { name: "שמירה" }));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "תגית לכל מי שייווסף" })).toHaveValue(created.id));
+    expect(api.requests.some((request) => request.method === "POST" && request.url.endsWith("/tags"))).toBe(true);
+  });
+
   it("shows the API's refusal of a check in words", async () => {
     renderAt("/o/neshima/people/import", { [`POST ${base}/people/import`]: problem(402, "billing.restricted") });
     await userEvent.upload(await screen.findByLabelText("בחירת קובץ"), file(csv));
