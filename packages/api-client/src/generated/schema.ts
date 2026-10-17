@@ -2561,7 +2561,7 @@ export interface components {
             primaryPhone?: string | null;
             /** Format: uuid */
             mergedIntoId?: string | null;
-            /** @description The person's tags, by name (docs/34 section 7). Sent once N1 is live; absent before. */
+            /** @description The person's tags, by name (docs/34 section 7). */
             tags?: components["schemas"]["PersonTag"][];
             /** Format: date-time */
             createdAt: string;
@@ -2710,9 +2710,9 @@ export interface components {
             healthDeclarations?: components["schemas"]["ExportHealthDeclaration"][];
             /** @description True when answers and names are null; `healthAnswersWithheldReason` says why. */
             healthAnswersWithheld?: boolean;
-            /** @description The names of the person's tags (docs/34 section 9). Sent once N1 is live. */
+            /** @description The names of the person's tags (docs/34 section 9). */
             tags?: string[];
-            /** @description Staff notes on the person, oldest first, the author by role only (docs/34 section 9). Sent once N1 is live. */
+            /** @description Staff notes on the person, oldest first, the author by role only (docs/34 section 9). */
             notes?: components["schemas"]["ExportNote"][];
             /**
              * @description `no_health_view` when the exporting member lacks `health.view`; `health_key_unavailable` when the health
@@ -2740,10 +2740,10 @@ export interface components {
             displayName?: string | null;
             givenName?: string | null;
             familyName?: string | null;
-            /** @example 050-0000001 */
+            /** @description Israeli local or with a country code, as `createPerson` reads it. */
             phone?: string | null;
             email?: string | null;
-            /** @description `dd/mm/yyyy`, `d.m.yyyy` or `yyyy-mm-dd`, as the file has it. */
+            /** @description `dd/mm/yyyy` (or `d/m/yyyy`), `d.m.yyyy` or `yyyy-mm-dd`, as the file has it. */
             birthDate?: string | null;
         };
         ImportPeopleResult: {
@@ -5216,7 +5216,7 @@ export interface operations {
             query?: {
                 /** @description Matches name, email or phone (any part). */
                 query?: string;
-                /** @description Only people with this tag (docs/34 section 7). Honoured once N1 is live. */
+                /** @description Only people with this tag (docs/34 section 7). */
                 tag?: string;
                 status?: components["schemas"]["PersonStatus"];
                 /** @description The `id` of the last item on the previous page. */
