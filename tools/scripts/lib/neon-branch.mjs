@@ -23,15 +23,28 @@ export async function waitForOperations(getOperation, operations, { tries = 60, 
 }
 
 /**
- * Creates the branch, waits for it and runs `body` with it, deleting it in `finally` unless `keep`. The wait is
- * inside the `try`, so a failed or timed-out create still deletes the branch.
+ * Creates the branch, waits for it and runs `body` with it, deleting it afterwards unless `keep`. The wait is inside
+ * the same guard, so a failed or timed-out create still deletes the branch. When the body failed and the delete
+ * fails too, the body's error stays the one thrown and the delete's travels with it (#208): a cleanup error must
+ * never hide why the drill failed.
  */
 export async function withBranch({ create, wait, remove, keep = false }, body) {
   const created = await create();
+  let result;
   try {
     await wait(created.operations);
-    return await body(created);
-  } finally {
-    if (!keep) await remove(created.branch.id);
+    result = await body(created);
+  } catch (error) {
+    if (!keep) {
+      try {
+        await remove(created.branch.id);
+      } catch (removeError) {
+        error.cleanupError = removeError;
+        error.message = `${error.message} (and deleting branch ${created.branch.id} failed: ${removeError.message})`;
+      }
+    }
+    throw error;
   }
+  if (!keep) await remove(created.branch.id);
+  return result;
 }

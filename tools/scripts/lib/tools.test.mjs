@@ -44,6 +44,46 @@ test("the drill branch is deleted when waiting for its creation fails", async ()
   assert.deepEqual(deleted, ["br-1"]);
 });
 
+test("a failing delete does not hide the drill's own error", async () => {
+  const drillError = new Error("journal differs");
+  await assert.rejects(
+    withBranch(
+      {
+        create: async () => ({ branch: { id: "br-3" }, operations: [] }),
+        wait: async () => {},
+        remove: async () => {
+          throw new Error("neon unavailable");
+        },
+      },
+      async () => {
+        throw drillError;
+      },
+    ),
+    (error) => {
+      assert.equal(error, drillError);
+      assert.match(error.message, /^journal differs \(and deleting branch br-3 failed: neon unavailable\)$/);
+      assert.equal(error.cleanupError.message, "neon unavailable");
+      return true;
+    },
+  );
+});
+
+test("a failing delete after a good drill is still an error", async () => {
+  await assert.rejects(
+    withBranch(
+      {
+        create: async () => ({ branch: { id: "br-4" }, operations: [] }),
+        wait: async () => {},
+        remove: async () => {
+          throw new Error("neon unavailable");
+        },
+      },
+      async () => "ok",
+    ),
+    /neon unavailable/,
+  );
+});
+
 test("--keep keeps the branch", async () => {
   const deleted = [];
   const result = await withBranch(

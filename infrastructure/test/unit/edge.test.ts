@@ -63,6 +63,9 @@ describe.each([
     // The API routes ignore case (#180): every match lowercases the path first, so /API/v1/Join is limited too.
     expect(scope).not.toContain('"Type":"NONE"');
     expect(scope.match(/"Type":"LOWERCASE"/g)).toHaveLength(GUESSABLE_INPUT_PATHS.length * 2);
+    // ... and URL-decodes it before that (#208), so /api/v1/%6Aoin is limited as /api/v1/join.
+    const decodeThenLowercase = /\{"Priority":0,"Type":"URL_DECODE"\},\{"Priority":1,"Type":"LOWERCASE"\}/g;
+    expect(scope.match(decodeThenLowercase)).toHaveLength(GUESSABLE_INPUT_PATHS.length * 2);
     expect(scope).not.toContain("/api/v1/auth/");
   });
 

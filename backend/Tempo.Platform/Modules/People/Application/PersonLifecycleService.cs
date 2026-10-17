@@ -527,7 +527,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             }
 
             // One person, one class, one entry: the weaker place's entry always returns.
-            await ReturnHeldEntryAsync(unitOfWork, org, loser, cancellationToken);
+            await BookingService.ReturnEntryAsync(unitOfWork, org, loser, cancellationToken);
             await AuditAsync(unitOfWork, tenant, loserStatus is "attended" or "no_show" ? "booking.removed" : "booking.cancelled", "booking", loser, new { sessionId = session, reason = "person_merged" }, cancellationToken);
         }
 
@@ -627,7 +627,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
                 freedSessions.Add(session);
             }
 
-            await ReturnHeldEntryAsync(unitOfWork, org, booking, cancellationToken);
+            await BookingService.ReturnEntryAsync(unitOfWork, org, booking, cancellationToken);
             await AuditAsync(unitOfWork, tenant, "booking.cancelled", "booking", booking, new { sessionId = session, reason = "person_erased" }, cancellationToken);
         }
 
@@ -636,21 +636,6 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             await BookingService.PromoteSessionAsync(unitOfWork, tenant, session, now, cancellationToken);
         }
     }
-
-    private static Task ReturnHeldEntryAsync(UnitOfWork unitOfWork, Guid org, Guid bookingId, CancellationToken cancellationToken) =>
-        ExecuteAsync(
-            unitOfWork,
-            """
-            WITH used AS (
-                UPDATE scheduling.pass_uses SET status = 'returned', updated_at = now(), version = version + 1
-                WHERE organization_id = $1 AND booking_id = $2 AND status = 'held'
-                RETURNING pass_id
-            )
-            UPDATE scheduling.passes p SET entries_used = p.entries_used - 1, updated_at = now(), version = p.version + 1
-            FROM used WHERE p.organization_id = $1 AND p.id = used.pass_id AND p.entries IS NOT NULL
-            """,
-            cancellationToken,
-            org, bookingId);
 
     private static int Rank(string status) => status switch
     {

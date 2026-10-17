@@ -1,7 +1,8 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { App, Validations } from "aws-cdk-lib";
+import { App, Stack, Validations } from "aws-cdk-lib";
+import { Queue } from "aws-cdk-lib/aws-sqs";
 import { AwsSolutionsChecks } from "cdk-nag";
 import { describe, expect, it } from "vitest";
 import cdkJson from "../../cdk.json";
@@ -23,7 +24,14 @@ interface Violation {
  * policy-validation-report.json (with the validationReportJson flag), which
  * this test reads.
  */
-function validate(): { violations: Violation[]; unmatched: string[] } {
+/**
+ * A queue without SSL enforcement or a dead-letter queue, put in every stack of both stages: cdk-nag must report it
+ * in each one, which proves the gate walks every stack (#208 U3: until aws-cdk-lib 2.273 it did not see the dev
+ * Canary stack). Its findings are left out of the "no unacknowledged finding" check.
+ */
+const COVERAGE_PROBE = "NagCoverageProbe";
+
+function validate(): { violations: Violation[]; unmatched: string[]; stacks: string[] } {
   const outdir = mkdtempSync(join(tmpdir(), "tempo-nag-"));
   const app = new App({ context: { ...cdkJson.context, "@aws-cdk/core:validationReportJson": true }, outdir });
   const devWithEdge = new TempoStage(app, "NagTempoDev", {
@@ -34,6 +42,8 @@ function validate(): { violations: Violation[]; unmatched: string[] } {
     buildVersion: "test-sha"
   });
   const prod = new TempoStage(app, "NagTempoProd", { config: productionConfig, buildVersion: "test-sha" });
+  const stacks = [devWithEdge, prod].flatMap((stage) => stage.node.findAll().filter(Stack.isStack));
+  for (const stack of stacks) new Queue(stack, COVERAGE_PROBE);
   const unmatched = new Set(NAG_ACKNOWLEDGMENTS.flatMap((a) => a.paths));
   for (const stage of [devWithEdge, prod]) {
     for (const { id, reason, paths } of NAG_ACKNOWLEDGMENTS) {
@@ -57,7 +67,7 @@ function validate(): { violations: Violation[]; unmatched: string[] } {
     const report = JSON.parse(readFileSync(join(outdir, "policy-validation-report.json"), "utf8"));
     violations = report.pluginReports.flatMap((plugin: { violations: Violation[] }) => plugin.violations);
   }
-  return { violations, unmatched: [...unmatched] };
+  return { violations, unmatched: [...unmatched], stacks: stacks.map((stack) => stack.node.path) };
 }
 
 const result = validate();
@@ -68,7 +78,22 @@ describe("cdk-nag AwsSolutions (ADR-0025)", () => {
       result.violations.flatMap((v) => v.violatingResources.map((r) => `${v.ruleName} at ${r.constructPath ?? r.resourceLogicalId}`))
     );
 
-    expect([...findings]).toEqual([]);
+    expect([...findings].filter((finding) => !finding.includes(`/${COVERAGE_PROBE}/`))).toEqual([]);
+  });
+
+  it("checks every stack of both stages", () => {
+    const probe = `/${COVERAGE_PROBE}/`;
+    const probed = new Set(
+      result.violations.flatMap((v) =>
+        v.violatingResources
+          .map((r) => r.constructPath ?? "")
+          .filter((path) => path.includes(probe))
+          .map((path) => path.slice(0, path.indexOf(probe)))
+      )
+    );
+
+    expect(result.stacks).toContain("NagTempoDev/Canary");
+    expect(result.stacks.filter((stack) => !probed.has(stack))).toEqual([]);
   });
 
   it("every acknowledged path still exists", () => {
