@@ -17,6 +17,9 @@ info:
     Pilot readiness (docs/31_Health_Declaration_LLD.md) adds the health declaration (answers encrypted in the
     application, every read of answers audited) and the member's progress (visits, goal, streak).
 
+    Owner reports (docs/32_Reports_LLD.md) add the studio's weekly figures and two lists, and removing a login
+    (`DELETE /me`) and, for the operator, a suspended studio.
+
     **Planned operations.** An operation marked `x-tempo-planned: true` is agreed but not deployed yet; the
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
@@ -90,6 +93,8 @@ tags:
     description: A person's health declaration in one studio; answers encrypted, every read audited (docs/31).
   - name: Progress
     description: The member's visits, monthly goal and streak in one studio (docs/31 section 12).
+  - name: Reports
+    description: The studio's weekly figures and the two follow-up lists (docs/32). Aggregates computed live.
   - name: Billing
     description: Tempo's plan and subscription for the studio (docs/28).
   - name: Platform
@@ -164,6 +169,36 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Account]
+      operationId: deleteMe
+      x-tempo-planned: true
+      summary: Delete my login (recent sign-in, typed confirmation)
+      description: |
+        docs/32 section 9 (A-1, A-2). In one transaction every membership ends, the account row is removed and each
+        studio's person record is detached from the login and kept: its bookings, passes and attendance are the
+        studio's record (the person can ask the studio to erase it). Then the sign-in user is deleted. The audit
+        records `account.deleted` without the email. While the caller is the only active owner of a studio the
+        answer is 409 `account.sole_owner`, with that studio's id in `organizationIds`: transfer ownership first.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeleteMeRequest" }
+      responses:
+        "204": { description: Deleted. The tokens stop working; the app signs out. }
+        "400":
+          description: "`account.confirmation_mismatch`: `confirmEmail` is not the account's email."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`account.sole_owner`: the caller is the only owner of the studios in `organizationIds`."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /api/v1/organizations:
     post:
@@ -541,6 +576,37 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Platform]
+      operationId: platformDeleteOrganization
+      x-tempo-planned: true
+      summary: Remove a suspended studio and every row it owns (audited, recent sign-in)
+      description: |
+        docs/32 section 10 (A-3). Only a studio suspended for at least the configured days (0 on dev, 30 on prod).
+        Every tenant row goes in one transaction, health declarations and push subscriptions included; the audit
+        keeps `platform.organization.deleted` with the id and name only.
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeleteOrganizationRequest" }
+      responses:
+        "204": { description: Removed. }
+        "400":
+          description: "`organization.name_mismatch`: `confirmName` is not the studio's name."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`organization.not_suspended`, or `organization.suspended_too_recently` (with `deletableFrom`)."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /api/v1/platform/organizations/{organizationId}/suspend:
     parameters:
@@ -2521,6 +2587,82 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/reports/summary:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Reports]
+      operationId: getReportSummary
+      x-tempo-planned: true
+      summary: "Weekly figures, per class type and members for a period (`reports.view`)"
+      description: |
+        docs/32 sections 4 and 5. `from` and `to` are dates in the studio's time zone, both included, at most 92
+        days. Without both, the last 4 full Sunday-to-Saturday weeks before today. Only sessions that have started
+        count. No names and no health data.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: First day, in the studio's time zone. Send with `to`, or neither.
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Last day, included.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportSummary" }
+        "400":
+          description: "`report.period_invalid` (one date without the other, or `to` before `from`), `report.period_too_long` (over 92 days)."
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/reports/passes-ending:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Reports]
+      operationId: listPassesEnding
+      x-tempo-planned: true
+      summary: "Passes that end within 14 days or have one entry left (`reports.view` and `people.view`)"
+      description: docs/32 section 6. At most 50 rows, the soonest first; `truncated` says more exist.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PassesEndingReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/reports/members-at-risk:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Reports]
+      operationId: listMembersAtRisk
+      x-tempo-planned: true
+      summary: "Members with a valid pass and no attended class for 30 days (`reports.view` and `people.view`)"
+      description: docs/32 section 6. At most 50 rows, the longest absence first; `truncated` says more exist.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MembersAtRiskReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/billing:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -2861,6 +3003,14 @@ components:
           type: string
           format: date
           description: On `booking.no_valid_pass` only, when the person's membership is frozen on that day (docs/29 section 16.4).
+        organizationIds:
+          type: array
+          items: { type: string, format: uuid }
+          description: On `account.sole_owner` only, the studios where the caller is the only owner (docs/32 section 9).
+        deletableFrom:
+          type: string
+          format: date-time
+          description: On `organization.suspended_too_recently` only, when the studio can be removed (docs/32 section 10).
 
     Health:
       type: object
@@ -4736,3 +4886,139 @@ components:
       required: [monthlyGoal]
       properties:
         monthlyGoal: { type: [integer, "null"], minimum: 1, maximum: 31, description: Null clears the goal. }
+
+    DeleteMeRequest:
+      type: object
+      required: [confirmEmail]
+      properties:
+        confirmEmail:
+          type: string
+          maxLength: 320
+          description: The account's email, typed by the person. Compared without case.
+
+    DeleteOrganizationRequest:
+      type: object
+      required: [confirmName]
+      properties:
+        confirmName:
+          type: string
+          maxLength: 120
+          description: The studio's name, typed by the operator. Compared exactly, after trimming.
+
+    ReportFigures:
+      type: object
+      required: [sessionsHeld, capacity, placesBooked, attended, noShow, lateCancellations, fillRate]
+      properties:
+        sessionsHeld: { type: integer, minimum: 0, description: Sessions not cancelled that have started. }
+        capacity: { type: integer, minimum: 0, description: The places those sessions offered. }
+        placesBooked: { type: integer, minimum: 0, description: "Bookings on them that held a place: booked, attended or no_show." }
+        attended: { type: integer, minimum: 0 }
+        noShow: { type: integer, minimum: 0 }
+        lateCancellations: { type: integer, minimum: 0, description: Cancelled by the member after the free-cancel window. }
+        fillRate:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+          description: attended / capacity, rounded to 3 places; null when no session was held.
+
+    ReportTotals:
+      allOf:
+        - $ref: "#/components/schemas/ReportFigures"
+        - type: object
+          required: [activeMembers, newMembers]
+          properties:
+            activeMembers: { type: integer, minimum: 0, description: People with at least one attended class in the period. }
+            newMembers: { type: integer, minimum: 0, description: People whose record was created in the period. }
+
+    ReportWeek:
+      allOf:
+        - $ref: "#/components/schemas/ReportFigures"
+        - type: object
+          required: [weekStart, from, to]
+          properties:
+            weekStart: { type: string, format: date, description: The Sunday that starts the week. }
+            from: { type: string, format: date, description: The first day of this week inside the period. }
+            to: { type: string, format: date, description: The last day of this week inside the period. }
+
+    ReportClassType:
+      allOf:
+        - $ref: "#/components/schemas/ReportFigures"
+        - type: object
+          required: [classTypeId, name, color]
+          properties:
+            classTypeId: { type: string, format: uuid }
+            name: { type: string }
+            color: { type: string, enum: [sage, rose, taupe, amber, mauve, blue] }
+
+    ReportSummary:
+      type: object
+      required: [from, to, timeZone, totals, previous, weeks, classTypes]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        timeZone: { type: string, examples: [Asia/Jerusalem] }
+        totals: { $ref: "#/components/schemas/ReportTotals" }
+        previous:
+          description: The same figures for the period of the same length that ends the day before `from`, for the change on each tile.
+          allOf:
+            - $ref: "#/components/schemas/ReportTotals"
+            - type: object
+              required: [from, to]
+              properties:
+                from: { type: string, format: date }
+                to: { type: string, format: date }
+        weeks:
+          type: array
+          description: Every Sunday-to-Saturday week that overlaps the period, oldest first, including weeks with nothing held.
+          items: { $ref: "#/components/schemas/ReportWeek" }
+        classTypes:
+          type: array
+          description: Class types with at least one session held in the period, by attended, most first.
+          items: { $ref: "#/components/schemas/ReportClassType" }
+
+    PassEndingRow:
+      type: object
+      required: [personId, displayName, passId, productName, kind, endsOn, entriesLeft, reason]
+      properties:
+        personId: { type: string, format: uuid }
+        displayName: { type: string }
+        passId: { type: string, format: uuid }
+        productName: { type: string }
+        kind: { type: string, enum: [punch_card, membership] }
+        endsOn: { type: string, format: date }
+        entriesLeft: { type: [integer, "null"], minimum: 0, description: Null for a membership. }
+        reason:
+          type: string
+          enum: [ends_soon, last_entry]
+          description: "`ends_soon` when it ends within 14 days (that wins when both apply), otherwise `last_entry`."
+
+    PassesEndingReport:
+      type: object
+      required: [today, items, truncated]
+      properties:
+        today: { type: string, format: date, description: Today in the studio's time zone. }
+        items:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/PassEndingRow" }
+        truncated: { type: boolean, description: True when more than 50 passes match. }
+
+    MemberAtRiskRow:
+      type: object
+      required: [personId, displayName, lastAttendedOn, passEndsOn]
+      properties:
+        personId: { type: string, format: uuid }
+        displayName: { type: string }
+        lastAttendedOn: { type: [string, "null"], format: date, description: Null when the person never attended. }
+        passEndsOn: { type: string, format: date, description: The latest end among the person's valid passes. }
+
+    MembersAtRiskReport:
+      type: object
+      required: [today, items, truncated]
+      properties:
+        today: { type: string, format: date, description: Today in the studio's time zone. }
+        items:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/MemberAtRiskRow" }
+        truncated: { type: boolean, description: True when more than 50 people match. }

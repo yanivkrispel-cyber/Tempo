@@ -51,7 +51,15 @@ export interface paths {
         get: operations["getMe"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete my login (recent sign-in, typed confirmation)
+         * @description docs/32 section 9 (A-1, A-2). In one transaction every membership ends, the account row is removed and each
+         *     studio's person record is detached from the login and kept: its bookings, passes and attendance are the
+         *     studio's record (the person can ask the studio to erase it). Then the sign-in user is deleted. The audit
+         *     records `account.deleted` without the email. While the caller is the only active owner of a studio the
+         *     answer is 409 `account.sole_owner`, with that studio's id in `organizationIds`: transfer ownership first.
+         */
+        delete: operations["deleteMe"];
         options?: never;
         head?: never;
         /** Update display name or locale */
@@ -333,7 +341,13 @@ export interface paths {
         get: operations["platformGetOrganization"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Remove a suspended studio and every row it owns (audited, recent sign-in)
+         * @description docs/32 section 10 (A-3). Only a studio suspended for at least the configured days (0 on dev, 30 on prod).
+         *     Every tenant row goes in one transaction, health declarations and push subscriptions included; the audit
+         *     keeps `platform.organization.deleted` with the id and name only.
+         */
+        delete: operations["platformDeleteOrganization"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1823,6 +1837,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/reports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Weekly figures, per class type and members for a period (`reports.view`)
+         * @description docs/32 sections 4 and 5. `from` and `to` are dates in the studio's time zone, both included, at most 92
+         *     days. Without both, the last 4 full Sunday-to-Saturday weeks before today. Only sessions that have started
+         *     count. No names and no health data.
+         */
+        get: operations["getReportSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/reports/passes-ending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Passes that end within 14 days or have one entry left (`reports.view` and `people.view`)
+         * @description docs/32 section 6. At most 50 rows, the soonest first; `truncated` says more exist.
+         */
+        get: operations["listPassesEnding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/reports/members-at-risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Members with a valid pass and no attended class for 30 days (`reports.view` and `people.view`)
+         * @description docs/32 section 6. At most 50 rows, the longest absence first; `truncated` says more exist.
+         */
+        get: operations["listMembersAtRisk"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/billing": {
         parameters: {
             query?: never;
@@ -1961,6 +2043,13 @@ export interface components {
              * @description On `booking.no_valid_pass` only, when the person's membership is frozen on that day (docs/29 section 16.4).
              */
             frozenUntil?: string;
+            /** @description On `account.sole_owner` only, the studios where the caller is the only owner (docs/32 section 9). */
+            organizationIds?: string[];
+            /**
+             * Format: date-time
+             * @description On `organization.suspended_too_recently` only, when the studio can be removed (docs/32 section 10).
+             */
+            deletableFrom?: string;
         };
         Health: {
             /** @example healthy */
@@ -3462,6 +3551,132 @@ export interface components {
             /** @description Null clears the goal. */
             monthlyGoal: number | null;
         };
+        DeleteMeRequest: {
+            /** @description The account's email, typed by the person. Compared without case. */
+            confirmEmail: string;
+        };
+        DeleteOrganizationRequest: {
+            /** @description The studio's name, typed by the operator. Compared exactly, after trimming. */
+            confirmName: string;
+        };
+        ReportFigures: {
+            /** @description Sessions not cancelled that have started. */
+            sessionsHeld: number;
+            /** @description The places those sessions offered. */
+            capacity: number;
+            /** @description Bookings on them that held a place: booked, attended or no_show. */
+            placesBooked: number;
+            attended: number;
+            noShow: number;
+            /** @description Cancelled by the member after the free-cancel window. */
+            lateCancellations: number;
+            /** @description attended / capacity, rounded to 3 places; null when no session was held. */
+            fillRate: number | null;
+        };
+        ReportTotals: components["schemas"]["ReportFigures"] & {
+            /** @description People with at least one attended class in the period. */
+            activeMembers: number;
+            /** @description People whose record was created in the period. */
+            newMembers: number;
+        };
+        ReportWeek: components["schemas"]["ReportFigures"] & {
+            /**
+             * Format: date
+             * @description The Sunday that starts the week.
+             */
+            weekStart: string;
+            /**
+             * Format: date
+             * @description The first day of this week inside the period.
+             */
+            from: string;
+            /**
+             * Format: date
+             * @description The last day of this week inside the period.
+             */
+            to: string;
+        };
+        ReportClassType: components["schemas"]["ReportFigures"] & {
+            /** Format: uuid */
+            classTypeId: string;
+            name: string;
+            /** @enum {string} */
+            color: "sage" | "rose" | "taupe" | "amber" | "mauve" | "blue";
+        };
+        ReportSummary: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @example Asia/Jerusalem */
+            timeZone: string;
+            totals: components["schemas"]["ReportTotals"];
+            /** @description The same figures for the period of the same length that ends the day before `from`, for the change on each tile. */
+            previous: components["schemas"]["ReportTotals"] & {
+                /** Format: date */
+                from: string;
+                /** Format: date */
+                to: string;
+            };
+            /** @description Every Sunday-to-Saturday week that overlaps the period, oldest first, including weeks with nothing held. */
+            weeks: components["schemas"]["ReportWeek"][];
+            /** @description Class types with at least one session held in the period, by attended, most first. */
+            classTypes: components["schemas"]["ReportClassType"][];
+        };
+        PassEndingRow: {
+            /** Format: uuid */
+            personId: string;
+            displayName: string;
+            /** Format: uuid */
+            passId: string;
+            productName: string;
+            /** @enum {string} */
+            kind: "punch_card" | "membership";
+            /** Format: date */
+            endsOn: string;
+            /** @description Null for a membership. */
+            entriesLeft: number | null;
+            /**
+             * @description `ends_soon` when it ends within 14 days (that wins when both apply), otherwise `last_entry`.
+             * @enum {string}
+             */
+            reason: "ends_soon" | "last_entry";
+        };
+        PassesEndingReport: {
+            /**
+             * Format: date
+             * @description Today in the studio's time zone.
+             */
+            today: string;
+            items: components["schemas"]["PassEndingRow"][];
+            /** @description True when more than 50 passes match. */
+            truncated: boolean;
+        };
+        MemberAtRiskRow: {
+            /** Format: uuid */
+            personId: string;
+            displayName: string;
+            /**
+             * Format: date
+             * @description Null when the person never attended.
+             */
+            lastAttendedOn: string | null;
+            /**
+             * Format: date
+             * @description The latest end among the person's valid passes.
+             */
+            passEndsOn: string;
+        };
+        MembersAtRiskReport: {
+            /**
+             * Format: date
+             * @description Today in the studio's time zone.
+             */
+            today: string;
+            items: components["schemas"]["MemberAtRiskRow"][];
+            /** @description True when more than 50 people match. */
+            truncated: boolean;
+        };
     };
     responses: {
         /** @description Unexpected error. */
@@ -3673,6 +3888,48 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description `account.not_provisioned`: call `POST /api/v1/session` first. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteMeRequest"];
+            };
+        };
+        responses: {
+            /** @description Deleted. The tokens stop working; the app signs out. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `account.confirmation_mismatch`: `confirmEmail` is not the account's email. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["StepUpOrUnauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description `account.sole_owner`: the caller is the only owner of the studios in `organizationIds`. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4219,6 +4476,51 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    platformDeleteOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `organization.name_mismatch`: `confirmName` is not the studio's name. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["StepUpOrUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `organization.not_suspended`, or `organization.suspended_too_recently` (with `deletableFrom`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     platformSuspendOrganization: {
@@ -6834,6 +7136,95 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getReportSummary: {
+        parameters: {
+            query?: {
+                /** @description First day, in the studio's time zone. Send with `to`, or neither. */
+                from?: string;
+                /** @description Last day, included. */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummary"];
+                };
+            };
+            /** @description `report.period_invalid` (one date without the other, or `to` before `from`), `report.period_too_long` (over 92 days). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPassesEnding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PassesEndingReport"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMembersAtRisk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembersAtRiskReport"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
