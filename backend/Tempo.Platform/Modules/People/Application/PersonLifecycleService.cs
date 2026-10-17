@@ -294,6 +294,8 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
 
         // A pass note is the only free text in scheduling (docs/29 section 7).
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET note = NULL WHERE organization_id = $1 AND person_id = $2 AND note IS NOT NULL", cancellationToken, org, personId);
+        // The member's own monthly goal goes (docs/31 section 12).
+        await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
         // Class messages reach the person through inbox items that point at the text (docs/29 section 16.2); the
         // pointers go, the studio's message row (ids only) stays.
         await ExecuteAsync(unitOfWork, "DELETE FROM notifications.inbox_items WHERE organization_id = $1 AND person_id = $2 AND kind = 'session.message'", cancellationToken, org, personId);
@@ -481,6 +483,8 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.bookings SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET person_id = $2, updated_at = now(), version = version + 1 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        // The survivor keeps its own monthly goal (docs/31 section 12); the merged record's goes.
+        await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
         // The survivor keeps its own notification preferences and devices; the merged record's go, with its
         // delivery history (the inbox items above moved and keep showing).
         await DeleteNotificationRowsAsync(unitOfWork, org, merged, cancellationToken);

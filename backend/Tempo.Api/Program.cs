@@ -66,6 +66,7 @@ try
     app.MapScheduleEndpoints();
     app.MapPassEndpoints();
     app.MapBookingEndpoints();
+    app.MapProgressEndpoints();
     app.MapClassEndpoints();
     app.MapNotificationEndpoints();
     app.MapBillingEndpoints();
