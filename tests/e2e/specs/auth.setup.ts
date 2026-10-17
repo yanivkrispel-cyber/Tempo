@@ -70,7 +70,13 @@ setup(
 /** Fills the classic Hosted UI form. It renders two copies (desktop and mobile); only one is visible. */
 async function signInOnHostedUi(page: Page, user: SmokeUser): Promise<void> {
   await page.waitForURL((url) => url.hostname.endsWith(".amazoncognito.com"));
-  await page.locator('input[name="username"]:visible').fill(user.email);
-  await page.locator('input[name="password"]:visible').fill(user.password);
-  await page.locator('input[name="signInSubmitButton"]:visible').click();
+  // The classic Hosted UI holds two copies of the form (phone and desktop) and lets its CSS hide one; when that CSS is
+  // late, both show and a `:visible` locator matches two. Either posts the same sign-in: use the first one shown.
+  const form = page
+    .locator("form")
+    .filter({ has: page.locator('input[name="username"]:visible') })
+    .first();
+  await form.locator('input[name="username"]').fill(user.email);
+  await form.locator('input[name="password"]').fill(user.password);
+  await form.locator('input[name="signInSubmitButton"]').click();
 }

@@ -53,6 +53,20 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
    sessions, products and passes it creates are all `e2e-` and are removed afterwards. Both apps run on the Pixel 7:
    the console at the studio door is a phone too (#163).
 
+5. **SYNC 6, reports and deleting a login** (`specs/sync6/`, project `sync6`, Pixel 7 for both apps): run it
+   alone (`pnpm e2e --project=sync6`). It needs no smoke user. It creates two fresh Cognito users,
+   `e2e-sync6-owner-…@example.com` and `e2e-sync6-member-…@example.com`, with random passwords that live only in
+   memory.
+   - The owner opens an `e2e-sync6` studio and adds a class a few minutes ahead. The member joins, books it and is
+     marked attended.
+   - The owner can't delete their login while they are the studio's only owner.
+   - As staff, the member finds no reports, and the route and the API refuse them.
+   - Once the class has started, the reports page shows the one visit and the fill rate.
+   - The member deletes their login (A-1), and the person stays on the roster with no login.
+
+   The run takes about eight minutes, most of it waiting for the class to start. Afterwards the owner's Cognito user is
+   deleted and the studio stays for the operator's cleanup (A-4).
+
 **axe on every screen.** `support/axe.ts` audits each screen against WCAG 2.2 A and AA. A serious or critical
 violation fails the test; minor and moderate ones are attached to the report as annotations. The audit runs with the
 pointer moved off the page, so it checks the resting screen and not a hover state.
