@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using Amazon.Runtime;
+using Amazon.SimpleSystemsManagement;
 using FluentAssertions;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.Modules.People.Infrastructure;
@@ -93,6 +95,44 @@ public sealed class HealthCipherTests
         using var keys = new HealthDataKeys(name => name == "HEALTH_DATA_KEY_V1" ? Convert.ToBase64String(new byte[16]) : null);
 
         await keys.Invoking(k => k.GetAsync(1, CancellationToken.None)).Should().ThrowAsync<DomainRuleViolationException>();
+    }
+
+    public static TheoryData<Exception> SsmFailures() => new()
+    {
+        new AmazonSimpleSystemsManagementException("not found"),
+        new AmazonClientException("no credentials"),
+        new HttpRequestException("no network")
+    };
+
+    [Theory]
+    [MemberData(nameof(SsmFailures))]
+    public async Task Keys_AnSsmFailure_Is503KeyUnavailable_Not500(Exception failure)
+    {
+        using var keys = new HealthDataKeys(
+            name => name == "HEALTH_DATA_KEY_PARAMETER_PREFIX" ? "/tempo/test/health/data-key/" : null,
+            (_, _) => throw failure);
+
+        var read = await keys.Invoking(k => k.GetAsync(1, CancellationToken.None)).Should().ThrowAsync<DomainRuleViolationException>();
+
+        read.Which.Code.Should().Be("health.key_unavailable");
+        read.Which.Kind.Should().Be(ViolationKind.ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task Keys_ReadTheVersionedParameterName_FromSsm()
+    {
+        var asked = new List<string>();
+        using var keys = new HealthDataKeys(
+            name => name == "HEALTH_DATA_KEY_PARAMETER_PREFIX" ? "/tempo/test/health/data-key/" : null,
+            (name, _) =>
+            {
+                asked.Add(name);
+                return Task.FromResult(Convert.ToBase64String(Key));
+            });
+
+        (await keys.GetAsync(1, CancellationToken.None)).Should().Equal(Key);
+        (await keys.GetAsync(1, CancellationToken.None)).Should().Equal(Key);
+        asked.Should().Equal("/tempo/test/health/data-key/1");
     }
 
     private static bool Contains(byte[] haystack, byte[] needle) =>
