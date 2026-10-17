@@ -1,0 +1,105 @@
+/* The import page. Placement only; the look is the design system's (tp-card, tp-btn, tp-table--stack, tp-chip).
+   One column everywhere; the field pickers sit two or three to a row where there is room. */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 960px;
+}
+.privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+}
+.privacy :global(.tp-icon) {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* The drop zone: on a computer a file can be dropped anywhere in it; on a touch screen it is the button alone. */
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-xl);
+  text-align: center;
+}
+.drop[data-dragging] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.dropHint {
+  display: none;
+  color: var(--ink-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dropHint {
+    display: inline;
+  }
+}
+/* The file input is hidden inside its label (tp-btn); the label shows the input's focus. */
+.pick {
+  cursor: pointer;
+}
+.pick:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.help summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+/* A finger-sized line on a touch screen, keeping the disclosure triangle (display stays list-item). */
+@media (pointer: coarse) {
+  .help summary {
+    padding-block: 10px;
+    line-height: 24px;
+  }
+}
+.help ul {
+  margin-block: var(--space-2) 0;
+  padding-inline-start: var(--space-5);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+.subtitle {
+  margin: 0;
+  font-size: 15px;
+}
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}

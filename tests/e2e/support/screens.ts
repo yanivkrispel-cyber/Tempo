@@ -5,21 +5,23 @@ import { e2eRoot } from "./env";
 
 /**
  * The screens every console must fit (D15 in docs/claude-memory/decisions.md, #317): phones, tablets both ways and
- * computers. `touch` screens also get the touch-target check.
+ * computers. `touch` screens also get the touch-target check; `audit` screens, the two widths D15 names (360 and
+ * 1280px), also get axe.
  */
 export interface Screen {
   name: string;
   width: number;
   height: number;
   touch: boolean;
+  audit?: boolean;
 }
 
 export const SCREENS: Screen[] = [
-  { name: "phone-360", width: 360, height: 780, touch: true },
+  { name: "phone-360", width: 360, height: 780, touch: true, audit: true },
   { name: "phone-430", width: 430, height: 932, touch: true },
   { name: "tablet-768", width: 768, height: 1024, touch: true },
   { name: "tablet-1180", width: 1180, height: 820, touch: true },
-  { name: "laptop-1440", width: 1440, height: 900, touch: false },
+  { name: "laptop-1280", width: 1280, height: 800, touch: false, audit: true },
   { name: "desktop-1920", width: 1920, height: 1080, touch: false },
 ];
 

@@ -19,6 +19,7 @@ public sealed record PersonResponse(
     Guid? MergedIntoId,
     DateTimeOffset CreatedAt,
     string Version,
+    IReadOnlyList<PersonTagResponse> Tags,
     Uri? AvatarUrl = null);
 
 /// <summary>`PersonDetail`: the person with contacts, current consent and relationships.</summary>
@@ -40,6 +41,7 @@ public sealed record PersonDetailResponse(
     IReadOnlyList<ContactPointResponse> ContactPoints,
     IReadOnlyList<ConsentResponse> Consents,
     IReadOnlyList<RelationshipResponse> Relationships,
+    IReadOnlyList<PersonTagResponse> Tags,
     Uri? AvatarUrl = null);
 
 public sealed record PersonPageResponse(IReadOnlyList<PersonResponse> Items, Guid? NextBefore);
@@ -104,6 +106,8 @@ public sealed record PersonExportResponse(
     IReadOnlyList<ExportHealthDeclarationResponse> HealthDeclarations,
     bool HealthAnswersWithheld,
     string? HealthAnswersWithheldReason,
+    IReadOnlyList<string> Tags,
+    IReadOnlyList<ExportNoteResponse> Notes,
     IReadOnlyList<BuddyResponse>? Buddies = null);
 
 /// <summary>`Buddy`: a member linked by mutual consent (docs/33 section 4).</summary>
