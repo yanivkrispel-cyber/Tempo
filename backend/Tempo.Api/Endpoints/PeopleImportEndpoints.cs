@@ -31,16 +31,10 @@ public static class PeopleImportEndpoints
             throw new DomainRuleViolationException(ViolationKind.Validation, "dry_run.required", "Say whether this is a dry run.", "dryRun");
         }
 
-        // A batch tag arrives with tags (docs/34 I-8, task I3); until then a tag id is refused, not ignored.
-        if (request.TagId is not null)
-        {
-            throw new DomainRuleViolationException(ViolationKind.Validation, "import.tag_unavailable", "Tags are not available yet.", "tagId");
-        }
-
         var rows = (request.Rows ?? [])
             .Select(r => new ImportRowInput(r.Line, r.DisplayName, r.GivenName, r.FamilyName, r.Phone, r.Email, r.BirthDate))
             .ToList();
-        var result = await imports.ImportAsync(TenantRouteFilter.Current(httpContext), dryRun, rows, httpContext.RequestAborted);
+        var result = await imports.ImportAsync(TenantRouteFilter.Current(httpContext), dryRun, rows, httpContext.RequestAborted, request.TagId);
 
         return Results.Ok(new ImportPeopleResultResponse(
             result.DryRun,

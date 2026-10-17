@@ -3917,7 +3917,7 @@ components:
         tagId:
           type: [string, "null"]
           format: uuid
-          description: "Every person the import creates gets this tag (I-8, from I3). Must exist in the studio."
+          description: "Every person the import creates gets this tag (I-8). It must be one of the studio's tags (404 `tag.not_found`)."
         rows:
           type: array
           minItems: 1

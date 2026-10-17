@@ -210,6 +210,41 @@ public sealed class PeopleImportServiceTests(PostgresFixture postgres, ITestOutp
         (await db.AsMasterAsync("SELECT count(*) FROM people.contact_points WHERE organization_id = $1", owner.OrganizationId)).Should().Be(2001L, "two contacts each, and the owner's email");
     }
 
+    [Fact]
+    public async Task ABatchTag_GoesOnEveryCreatedPerson_AndNotOnOnesAlreadyThere()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db, "studio-a");
+        var known = await new PeopleService(db).CreateAsync(owner, new NewPerson("רוני", null, null, null, null, "050-2345699"), CancellationToken.None);
+        var batch = await new PeopleTagsAndNotesService(db).CreateTagAsync(owner, "ייבוא 17.10", 2, CancellationToken.None);
+        ImportRowInput[] rows =
+        [
+            new(2, "רוני", null, null, "050-2345699", null, null),
+            new(3, "חדשה", null, null, null, "new@example.com", null),
+            new(4, "עוד אחת", null, null, null, "another@example.com", null),
+        ];
+
+        var result = await Import(db).ImportAsync(owner, dryRun: false, rows, CancellationToken.None, batch.Id);
+
+        var tagged = (await new PeopleService(db).ListAsync(owner, new PeopleQuery(null, null, null, 50, batch.Id), CancellationToken.None)).Items;
+        tagged.Select(p => p.Id).Should().BeEquivalentTo(result.Rows.Where(r => r.Outcome == "created").Select(r => r.PersonId!.Value));
+        tagged.Should().NotContain(p => p.Id == known.Person.Id);
+        ((string)(await db.AsMasterAsync("SELECT data::text FROM audit.audit_events WHERE action = 'people.imported'"))!).Should().Contain("\"tagged\": 2");
+    }
+
+    [Fact]
+    public async Task ATagFromAnotherStudio_IsNotFound()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var studioA = await StudioAsync(db, "studio-a");
+        var studioB = await StudioAsync(db, "studio-b");
+        var tagB = await new PeopleTagsAndNotesService(db).CreateTagAsync(studioB, "VIP", 1, CancellationToken.None);
+
+        var import = () => Import(db).ImportAsync(studioA, dryRun: true, [new(2, "Noa", null, null, null, "noa@example.com", null)], CancellationToken.None, tagB.Id);
+
+        (await import.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("tag.not_found");
+    }
+
     /// <summary>Line 2 Noa, line 3 Dana by given and family names, line 4 repeats Noa's phone, line 5 a bad phone,
     /// line 6 Yossi, line 7 no contact.</summary>
     private static IReadOnlyList<ImportRowInput> SixRows() =>
