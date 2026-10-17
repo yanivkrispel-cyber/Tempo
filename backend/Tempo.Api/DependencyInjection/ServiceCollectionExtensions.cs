@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IBookingService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IClassService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<ISpotService>(provider => provider.GetRequiredService<BookingService>());
+        services.AddSingleton<ICheckinService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IBuddyService, BuddyService>();
         services.AddSingleton<IMediaService, MediaService>();
         services.AddSingleton<IInstructorService, InstructorService>();

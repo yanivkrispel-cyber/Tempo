@@ -281,3 +281,14 @@ public sealed record MediaUploadTicketResponse(Guid MediaId, Uri UploadUrl, stri
 
 /// <summary>`Media`: a ready picture.</summary>
 public sealed record MediaResponse(Guid Id, string Purpose, Guid OwnerId, Uri Url, Uri SmallUrl, int Width, int Height);
+
+/// <summary>`CheckinClass`: a booked class and when its check-in opens (30 minutes before the start).</summary>
+public sealed record CheckinClassResponse(Guid SessionId, Guid BookingId, string ClassName, DateTimeOffset StartsAt, DateTimeOffset OpensAt, string? SpotLabel);
+
+/// <summary>`CheckinCode`: the caller's rotating code (docs/33 section 8); redraw the QR after `validForSeconds`.</summary>
+public sealed record CheckinCodeResponse(string Code, int ValidForSeconds, CheckinClassResponse? OpenClass, CheckinClassResponse? NextClass);
+
+public sealed record CheckinRequest(string? Code, Guid? SessionId);
+
+/// <summary>`Checkin`: what the scanner shows.</summary>
+public sealed record CheckinResponse(Guid BookingId, Guid SessionId, PersonRefResponse Person, string? SpotLabel, string HealthStatus, bool AlreadyCheckedIn);
