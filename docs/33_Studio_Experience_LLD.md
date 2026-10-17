@@ -70,7 +70,7 @@ A room gets an optional **layout**: a grid of rows and columns, the side the win
 wall at the front, and where the instructor stands. Each **spot** has a label ("6"), a cell (row, column), a kind
 (`reformer`, `mat`, `bike`, `tower`, `chair`, `place`) and a status (`active`, `maintenance`, `archived`).
 
-### 3.2 Database (migration 0024)
+### 3.2 Database (migration 0026)
 
 ```sql
 ALTER TABLE scheduling.rooms
@@ -152,7 +152,7 @@ the window side and the mirror. The live class screen (owner phone mockup) uses 
 
 ## 4. Buddies (C8)
 
-### 4.1 Database (migration 0025)
+### 4.1 Database (migration 0027)
 
 ```sql
 CREATE TABLE people.buddy_codes (
@@ -186,7 +186,7 @@ CREATE TABLE people.buddy_links (
 
 ## 5. Instructor profiles (C9)
 
-### 5.1 Database (migration 0026)
+### 5.1 Database (migration 0028)
 
 ```sql
 CREATE TABLE organizations.staff_profiles (
@@ -232,7 +232,7 @@ served with presigned GET URLs that live 6 hours and are cached by the browser.
 the first 100 GB of transfer out each month are free. Owner approved S3 on 2026-10-17. The fixed-cost guard is not
 affected (no fixed-price resource).
 
-### 6.2 Database (migration 0026)
+### 6.2 Database (migration 0028)
 
 ```sql
 CREATE TABLE media.media_objects (
@@ -277,13 +277,13 @@ Audit: `media.uploaded`, `media.removed` with purpose and owner id.
 `sessions.member_note text CHECK (length(member_note) <= 200)` and the same column on `templates` (copied to new
 sessions at materialization; editing the template does not touch sessions already created, as with the instructor).
 Edited by `schedule.manage` or the session's own instructor (`PUT /sessions/{id}/member-note`). Shown to booked and
-waitlisted members on the class screen and in the home card. Migration 0026. Audit `session.note_updated`.
+waitlisted members on the class screen and in the home card. Migration 0028. Audit `session.note_updated`.
 
 ## 8. Check-in at the door (C12, C14)
 
 ### 8.1 The code
 
-- Migration 0027: `people.people` gets `checkin_secret bytea` (32 random bytes), created on first use, cleared on
+- Migration 0029: `people.people` gets `checkin_secret bytea` (32 random bytes), created on first use, cleared on
   erase.
 - `GET /me/checkin-code` returns `{ code, validForSeconds }`. The code is `TCI1.<personId short>.<6 digits>` where
   the digits are HOTP(secret, floor(unix time / 30)) (RFC 4226 truncation). The app redraws the QR when it rotates.
@@ -390,10 +390,10 @@ One PR each; migrations in this order, one writer at a time (CLAUDE.md):
 |---|---|---|
 | E0 | This LLD, D16 to D19, design-system doc v1.0, the mockups in `docs/design/` | |
 | E1 | Contract: every endpoint above in `contracts/openapi/tempo-api.v1.yaml` | |
-| E2 | Rooms with spots, booking with a spot, spot preferences, `/sessions/{id}/spots` | 0024 |
-| E3 | Buddies | 0025 |
-| E4 | Storage stack + media upload + covers, instructor photos, avatars; staff profiles; member note | 0026 |
-| E5 | Check-in code and scan | 0027 |
+| E2 | Rooms with spots, booking with a spot, spot preferences, `/sessions/{id}/spots` | 0026 |
+| E3 | Buddies | 0027 |
+| E4 | Storage stack + media upload + covers, instructor photos, avatars; staff profiles; member note | 0028 |
+| E5 | Check-in code and scan | 0029 |
 | E6 | Insights: sales, occupancy, suggestions, activity, search; progress weeks | |
 | E7 | Design system v1.0 "Warm Glass" in `packages/design-system` (tokens, fonts, glass, paper, room map, slide) | |
 | E8 | Member app redesign (home, schedule, booking with map, booking done, profile with buddies) | |

@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-10-17, evening (day boards #232, DAY-PLAN-5: pilot readiness, and #253, DAY-PLAN-6: owner reports
-and removing logins and studios).
+Updated 2026-10-17, night (day boards #232, DAY-PLAN-5: pilot readiness; #253, DAY-PLAN-6: owner reports and
+removing logins and studios; and #321, DAY-PLAN-7: D15 on every screen, member import, staff notes and tags).
 
 ## In one paragraph
 
@@ -92,7 +92,8 @@ standard parameters, the reminder job inside the existing Scheduler pattern, no 
 
 - The dev health key exists (created 2026-10-17 with `tools/scripts/health-data-key.mjs`). A version is never
   overwritten; rotation is a new version (docs/31 section 7.1).
-- Migrations on dev: up to 0023 since board #253; 0024 is the next free number.
+- Migrations on dev: up to 0025 since board #321 (0024 `people.import`, 0025 tags and notes); 0026 is the next free
+  number. The design session's #322, #324 and #326 planned 0024 to 0027 and must move to 0026 and up.
 
 ## Owner reports and removal (2026-10-17 afternoon, board #253)
 
@@ -110,11 +111,29 @@ what is never in a report.
 | `tools/scripts/e2e-cleanup.mjs`: dry run lists e2e logins, studios and orphaned account rows; `--apply` needs the operator token | A4 #266 |
 | Playwright `sync6` on dev at phone width (6/6: one visit and 25% on the report, 403 without `reports.view`, the member deletes their login and stays on the roster) | Y3 #261 |
 
+## D15, member import, notes and tags (2026-10-17 night, board #321)
+
+`docs/34_Member_Import_Notes_and_Tags_LLD.md` (I1 #323) holds I-1 to I-8 and N-1 to N-7. `docs/33` is the design
+session's Studio Experience LLD (#322, open).
+
+| Piece | PR |
+|---|---|
+| D15: every console on a phone, a tablet and a computer; the coach's `/o/:slug/today`; `tp-table--stack`, drawer and bottom bar; the `screens` e2e project. Merged at 18:10 by the screens session **without a lane's review**; K2 reviewed it after the merge | #318, #320; fixes #328 |
+| The status snapshot script and runbook (`tools/scripts/status-snapshot.mjs`, `docs/runbooks/status-page.md`); the main guard now imports safely, with tests | C1 #309; U7 |
+| Member import: the console reads the CSV in the browser; `POST …/people/import` dry run and commit, `exists` / `duplicate_in_file` / `invalid` per row, set-based SQL (1,000 rows in about 1.1 s locally), `people.import` for owner and admin (migration 0024), an optional batch tag | I2 #325, I3 #329 |
+| Tags and staff notes: 100 tags a studio, 20 a person, notes up to 1,000 characters, `people.tags.manage`, `people.notes.view` / `manage` / `moderate` (migration 0025); erase, merge, export and studio removal cover them; the audit keeps ids only | N1 #327 |
+| Live checks on dev (smoke owner): the import's dry run, and a tag-note-export-erase round trip on one fictional e2e person | board #321 |
+
+- The export now carries a person's tags and staff notes (author by role): a **(reading)** for Kris and the lawyer
+  (P-2), docs/34 section 9.
+- Fictional phones in tests: libphonenumber rejects `050-00000xx` and `050-1234567`; tests that need a valid number use
+  a few `050-23456xx` values.
+
 ## Premium redesign (approved 2026-10-17, D16 to D19)
 
 Kris approved the "Warm Glass" mockups and the redesign, and asked that every capability they show exists first.
-Plan and design: `docs/33_Studio_Experience_LLD.md` (capability matrix C1 to C25, steps E0 to E10, migrations 0024
-to 0027): rooms with spots and the usual spot, buddies, instructor profiles (bio, Instagram, playlist), pictures on
+Plan and design: `docs/33_Studio_Experience_LLD.md` (capability matrix C1 to C25, steps E0 to E10, migrations 0026
+to 0029): rooms with spots and the usual spot, buddies, instructor profiles (bio, Instagram, playlist), pictures on
 S3, the instructor's note, the check-in QR, owner insights (sales and forecast, occupancy, suggestions, activity,
 search), progress weeks. Then the design system v1.0 and the two apps.
 

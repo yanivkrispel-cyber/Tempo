@@ -154,14 +154,15 @@ export interface EventCardProps {
   cancelled?: boolean;
 }
 
-/** A class tile with its category stripe, a fill bar and a corner label. */
+/** A class tile with its category stripe, a fill bar, and a label at the end of the title's line (under it on a narrow tile). */
 export function EventCard({ title, meta, color, fill, badge, to, cancelled = false }: EventCardProps) {
   const className = cx("tp-event", cancelled ? "tp-event--cancelled" : `tp-event--${color}`);
   const style = { "--tp-fill": `${Math.round(Math.min(Math.max(fill, 0), 1) * 100)}%` } as CSSProperties;
   const content = (
     <>
-      <span className="tp-event__count">{badge}</span>
+      {/* The name first, for a screen reader; the CSS keeps the label at the line's end either way (#319). */}
       <span className="tp-event__title">{title}</span>
+      <span className="tp-event__count">{badge}</span>
       <span className="tp-event__meta">{meta}</span>
       <span className="tp-event__fill" aria-hidden="true">
         <i />

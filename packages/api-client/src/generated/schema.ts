@@ -810,6 +810,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/people/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check or import people from a file the console has read (`people.import`)
+         * @description docs/34 sections 3 to 6. The console reads the CSV file in the browser and sends its rows; the file never
+         *     reaches the server. At most 1,000 rows (more is 400 `import.too_many_rows`). Every row gets one outcome:
+         *     `valid` (dry run) or `created`; `exists` (a person in this studio already has that email or phone, nothing
+         *     changes); `duplicate_in_file` (an earlier row has the same email or phone); `invalid` (with `field` and
+         *     `code`). `dryRun: true` writes nothing. `dryRun: false` creates every `created` row in one transaction with
+         *     `source = import`; an invalid row never blocks the others. No consent is recorded and nothing is sent.
+         */
+        post: operations["importPeople"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The studio's tags, by name, with how many people have each (`people.view`) */
+        get: operations["listTags"];
+        put?: never;
+        /**
+         * Add a tag (`people.tags.manage`)
+         * @description A name already used in the studio, ignoring case, is 409 `tag.name_taken`; a 101st tag is 409 `tag.limit_reached`.
+         */
+        post: operations["createTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                tagId: components["parameters"]["TagId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a tag and take it off everyone (`people.tags.manage`) */
+        delete: operations["deleteTag"];
+        options?: never;
+        head?: never;
+        /** Rename or recolour a tag (`people.tags.manage`) */
+        patch: operations["updateTag"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+                tagId: components["parameters"]["TagId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put a tag on a person (`people.manage`)
+         * @description Putting a tag the person already has changes nothing (200). A 21st tag on one person is 409 `person.tag_limit_reached`.
+         */
+        post: operations["tagPerson"];
+        /** Take a tag off a person (`people.manage`) */
+        delete: operations["untagPerson"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        /** Staff notes on a person, newest first (`people.notes.view`) */
+        get: operations["listPersonNotes"];
+        put?: never;
+        /**
+         * Add a staff note (`people.notes.manage`)
+         * @description Plain text, 1 to 1,000 characters. Not for health information (docs/34 section 8). The person gets notes in their export.
+         */
+        post: operations["addPersonNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/notes/{noteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+                noteId: components["parameters"]["NoteId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a note: your own (`people.notes.manage`) or anyone's (`people.notes.moderate`) */
+        delete: operations["deletePersonNote"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/duplicate-candidates": {
         parameters: {
             query?: never;
@@ -2420,6 +2561,8 @@ export interface components {
             primaryPhone?: string | null;
             /** Format: uuid */
             mergedIntoId?: string | null;
+            /** @description The person's tags, by name (docs/34 section 7). */
+            tags?: components["schemas"]["PersonTag"][];
             /** Format: date-time */
             createdAt: string;
             /** @description Send back in `If-Match` when updating. */
@@ -2567,6 +2710,10 @@ export interface components {
             healthDeclarations?: components["schemas"]["ExportHealthDeclaration"][];
             /** @description True when answers and names are null; `healthAnswersWithheldReason` says why. */
             healthAnswersWithheld?: boolean;
+            /** @description The names of the person's tags (docs/34 section 9). */
+            tags?: string[];
+            /** @description Staff notes on the person, oldest first, the author by role only (docs/34 section 9). */
+            notes?: components["schemas"]["ExportNote"][];
             /**
              * @description `no_health_view` when the exporting member lacks `health.view`; `health_key_unavailable` when the health
              *     data key could not be read (docs/32 section 11, A-5): the rest of the export is complete. Null when the
@@ -2574,6 +2721,138 @@ export interface components {
              * @enum {string|null}
              */
             healthAnswersWithheldReason?: "no_health_view" | "health_key_unavailable" | null;
+        };
+        /** @description docs/34 section 4. Cells are sent as the file has them, trimmed; the API validates and normalizes. */
+        ImportPeopleRequest: {
+            /** @description True checks every row and writes nothing. */
+            dryRun: boolean;
+            /**
+             * Format: uuid
+             * @description Every person the import creates gets this tag (I-8). It must be one of the studio's tags (404 `tag.not_found`).
+             */
+            tagId?: string | null;
+            rows: components["schemas"]["ImportRow"][];
+        };
+        ImportRow: {
+            /** @description The row's line in the file, echoed in the result. */
+            line: number;
+            /** @description Empty means given and family names joined. */
+            displayName?: string | null;
+            givenName?: string | null;
+            familyName?: string | null;
+            /** @description Israeli local or with a country code, as `createPerson` reads it. */
+            phone?: string | null;
+            email?: string | null;
+            /** @description `dd/mm/yyyy` (or `d/m/yyyy`), `d.m.yyyy` or `yyyy-mm-dd`, as the file has it. */
+            birthDate?: string | null;
+        };
+        ImportPeopleResult: {
+            dryRun: boolean;
+            /**
+             * Format: uuid
+             * @description Null on a dry run; the id in the `people.imported` audit entry.
+             */
+            importId?: string | null;
+            totals: components["schemas"]["ImportTotals"];
+            /** @description One outcome per row, in the order sent. */
+            rows: components["schemas"]["ImportRowResult"][];
+        };
+        ImportTotals: {
+            rows: number;
+            /** @description Rows that would be created (dry run) or were created. */
+            valid: number;
+            /** @description Zero on a dry run. */
+            created: number;
+            exists: number;
+            duplicateInFile: number;
+            invalid: number;
+        };
+        ImportRowResult: {
+            line: number;
+            /** @enum {string} */
+            outcome: "valid" | "created" | "exists" | "duplicate_in_file" | "invalid";
+            /**
+             * Format: uuid
+             * @description The created person (`created`) or the one already in the studio (`exists`).
+             */
+            personId?: string | null;
+            /** @description `duplicate_in_file`: the earlier line. */
+            duplicateOfLine?: number | null;
+            /** @description `valid` or `created`, but another person has the same name and birth date: flagged for the duplicates page, not merged. */
+            possibleDuplicate?: boolean;
+            /**
+             * @description `invalid`: the field at fault (`contact` when there is neither phone nor email).
+             * @enum {string|null}
+             */
+            field?: "display_name" | "phone" | "email" | "birth_date" | "contact" | null;
+            /** @description `invalid`: `required`, `too_long`, `phone.invalid`, `email.invalid`, `birth_date.invalid` or `contact.required`. */
+            code?: string | null;
+        };
+        Tag: {
+            /** Format: uuid */
+            id: string;
+            /** @example ייבוא 17.10 */
+            name: string;
+            /** @description One of six tones the design system draws. */
+            color: number;
+            /** @description People who have the tag now. */
+            peopleCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            version: string;
+        };
+        TagList: {
+            items: components["schemas"]["Tag"][];
+        };
+        CreateTagRequest: {
+            name: string;
+            color: number;
+        };
+        UpdateTagRequest: {
+            name?: string;
+            color?: number;
+        };
+        PersonTag: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            color: number;
+        };
+        PersonTagList: {
+            items: components["schemas"]["PersonTag"][];
+        };
+        PersonNote: {
+            /** Format: uuid */
+            id: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description Null once the author's membership is gone.
+             */
+            authorMembershipId?: string | null;
+            /** @description The author's display name in this studio; null once their membership is gone. */
+            authorName?: string | null;
+            /** @description The author's system role when they wrote it: owner, admin or staff (a custom role shows as staff). */
+            authorRole: string;
+            /** @description The caller wrote it. */
+            mine: boolean;
+        };
+        PersonNotePage: {
+            items: components["schemas"]["PersonNote"][];
+            /** Format: uuid */
+            nextBefore?: string | null;
+        };
+        CreatePersonNoteRequest: {
+            body: string;
+        };
+        ExportNote: {
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The author by role, never by name (docs/34 section 9). */
+            authorRole: string;
         };
         ExportBooking: {
             /** Format: uuid */
@@ -3811,6 +4090,8 @@ export interface components {
         Before: string;
         Limit: number;
         PersonId: string;
+        TagId: string;
+        NoteId: string;
         /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
         IfMatch: string;
         SubscriptionId: string;
@@ -4935,6 +5216,8 @@ export interface operations {
             query?: {
                 /** @description Matches name, email or phone (any part). */
                 query?: string;
+                /** @description Only people with this tag (docs/34 section 7). */
+                tag?: string;
                 status?: components["schemas"]["PersonStatus"];
                 /** @description The `id` of the last item on the previous page. */
                 before?: components["parameters"]["Before"];
@@ -5345,6 +5628,292 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["StepUpOrUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    importPeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPeopleRequest"];
+            };
+        };
+        responses: {
+            /** @description The outcome of every row and the totals. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPeopleResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every tag (at most 100). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTagRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                tagId: components["parameters"]["TagId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateTag: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                tagId: components["parameters"]["TagId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTagRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    tagPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+                tagId: components["parameters"]["TagId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person's tags now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonTagList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    untagPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+                tagId: components["parameters"]["TagId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person's tags now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonTagList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPersonNotes: {
+        parameters: {
+            query?: {
+                /** @description The `id` of the last item on the previous page. */
+                before?: components["parameters"]["Before"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of notes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonNotePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    addPersonNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePersonNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonNote"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deletePersonNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+                noteId: components["parameters"]["NoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
