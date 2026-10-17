@@ -1081,6 +1081,176 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/media/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start uploading a picture (who may depends on the purpose)
+         * @description docs/33 section 6.3. A class cover needs `schedule.manage`, the studio cover `organization.settings.manage`,
+         *     an instructor photo is the instructor's own or `schedule.manage`, an avatar is the person's own or
+         *     `people.manage`. Returns a presigned PUT that lives 10 minutes. 503 `media.unavailable` where no bucket is
+         *     configured.
+         */
+        post: operations["startMediaUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/media/uploads/{mediaId}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish an upload: re-encode the picture and put it in place (the uploader)
+         * @description The API reads the uploaded file, checks it is a JPEG, PNG or WebP of at most 40 megapixels, re-encodes it
+         *     to WebP at 1600 and 400 pixels with no metadata (D17), and replaces the owner's previous picture. 400
+         *     `media.not_an_image` for anything else; 409 `media.not_uploaded` when nothing was uploaded.
+         */
+        post: operations["finalizeMediaUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a picture (the same rule as uploading it) */
+        delete: operations["removeMedia"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/instructors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's instructors (`schedule.view`)
+         * @description Visible profiles of active staff who teach a weekly class or a future session, or wrote a profile.
+         */
+        get: operations["listInstructors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/instructors/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                membershipId: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        /** One instructor with their next classes (`schedule.view`) */
+        get: operations["getInstructor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/instructors/{membershipId}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                membershipId: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Edit an instructor's profile (`schedule.manage`, or the instructor) */
+        put: operations["saveInstructorProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/staff-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Edit one's own instructor profile (staff) */
+        put: operations["saveMyStaffProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}/member-note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** The instructor's note to a class (`schedule.manage`, or the class's instructor) */
+        put: operations["setSessionMemberNote"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/class-types": {
         parameters: {
             query?: never;
@@ -2568,6 +2738,11 @@ export interface components {
          */
         PersonSource: "organization_created" | "join_link" | "invitation" | "staff_created" | "import";
         Person: {
+            /**
+             * Format: uri
+             * @description The person's picture, a presigned link (docs/33 section 6).
+             */
+            avatarUrl?: string | null;
             /** Format: uuid */
             id: string;
             /** @example נועה לוי */
@@ -2856,6 +3031,16 @@ export interface components {
             /** @enum {string} */
             status: "active" | "archived";
             version: string;
+            /**
+             * Format: uri
+             * @description A presigned link that works for 6 hours (docs/33 section 6).
+             */
+            coverUrl?: string | null;
+            /**
+             * Format: uri
+             * @description A presigned link that works for 6 hours (docs/33 section 6).
+             */
+            coverSmallUrl?: string | null;
         };
         ClassTypeList: {
             items: components["schemas"]["ClassType"][];
@@ -2991,12 +3176,24 @@ export interface components {
                 color: components["schemas"]["ClassColor"];
                 /** @description About the class (AppClass). */
                 description?: string | null;
+                /**
+                 * Format: uri
+                 * @description A presigned link that works for 6 hours (docs/33 section 6).
+                 */
+                coverUrl?: string | null;
+                /**
+                 * Format: uri
+                 * @description A presigned link that works for 6 hours (docs/33 section 6).
+                 */
+                coverSmallUrl?: string | null;
             };
             instructor?: components["schemas"]["InstructorRef"] | null;
             room?: {
                 /** Format: uuid */
                 id: string;
                 name: string;
+                /** @description Members pick a spot when they book (docs/33 section 3). */
+                spotSelection?: boolean;
             } | null;
             capacity: number;
             bookedCount: number;
@@ -3012,6 +3209,8 @@ export interface components {
              *     16.4): the last frozen day, so the booking sheet can say so before the 409. Null otherwise.
              */
             frozenUntil?: string | null;
+            /** @description The instructor's note to the class (docs/33 section 7), e.g. what to bring. */
+            memberNote?: string | null;
             version: string;
         };
         SessionList: {
@@ -3043,6 +3242,11 @@ export interface components {
             /** Format: uuid */
             id: string;
             displayName: string;
+            /**
+             * Format: uri
+             * @description A presigned link that works for 6 hours (docs/33 section 6).
+             */
+            avatarUrl?: string | null;
         };
         Booking: {
             /** Format: uuid */
@@ -3210,6 +3414,86 @@ export interface components {
         LinkBuddyRequest: {
             /** @description The 8 letters and digits; spaces, dashes and case are ignored. */
             code: string;
+        };
+        Instructor: {
+            /** Format: uuid */
+            membershipId: string;
+            displayName: string;
+            /** @example מורה לפילאטיס מכשירים */
+            headline?: string | null;
+            bio?: string | null;
+            /** @description The handle without @. */
+            instagramHandle?: string | null;
+            /**
+             * Format: uri
+             * @description Spotify, Apple Music or YouTube Music only (docs/33 X-6).
+             */
+            playlistUrl?: string | null;
+            /** Format: uri */
+            photoUrl?: string | null;
+            /** Format: uri */
+            photoSmallUrl?: string | null;
+            /** @description Shown to members. */
+            visible: boolean;
+            /** @description The next five classes; only on `getInstructor`. */
+            nextSessions?: components["schemas"]["Session"][] | null;
+        };
+        InstructorList: {
+            items: components["schemas"]["Instructor"][];
+        };
+        StaffProfileRequest: {
+            headline?: string | null;
+            bio?: string | null;
+            /** @description A handle, @handle or an instagram.com link. */
+            instagramHandle?: string | null;
+            /** @description An https link to Spotify, Apple Music or YouTube Music. */
+            playlistUrl?: string | null;
+            /** @default true */
+            visible: boolean;
+        };
+        MemberNoteRequest: {
+            /** @description Null or empty clears it. */
+            note?: string | null;
+            /** @description Also the weekly class's note and its future sessions. */
+            applyToWeekly?: boolean;
+        };
+        /** @enum {string} */
+        MediaPurpose: "class_cover" | "instructor_photo" | "studio_cover" | "avatar";
+        MediaUploadRequest: {
+            purpose: components["schemas"]["MediaPurpose"];
+            /**
+             * Format: uuid
+             * @description The class type, the instructor's membership, the studio or the person the picture belongs to.
+             */
+            ownerId: string;
+            /** @enum {string} */
+            contentType: "image/jpeg" | "image/png" | "image/webp";
+            bytes: number;
+        };
+        MediaUploadTicket: {
+            /** Format: uuid */
+            mediaId: string;
+            /**
+             * Format: uri
+             * @description PUT the file here with the same Content-Type, within 10 minutes.
+             */
+            uploadUrl: string;
+            contentType: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        Media: {
+            /** Format: uuid */
+            id: string;
+            purpose: components["schemas"]["MediaPurpose"];
+            /** Format: uuid */
+            ownerId: string;
+            /** Format: uri */
+            url: string;
+            /** Format: uri */
+            smallUrl: string;
+            width: number;
+            height: number;
         };
         ChangeSpotRequest: {
             /** Format: uuid */
@@ -6102,6 +6386,239 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startMediaUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload here, then finalize. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaUploadTicket"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    finalizeMediaUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The picture is in place. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Media"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    removeMedia: {
+        parameters: {
+            query: {
+                purpose: components["schemas"]["MediaPurpose"];
+                ownerId: string;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed, or there was none. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listInstructors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructorList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getInstructor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                membershipId: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instructor"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveInstructorProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                membershipId: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instructor"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveMyStaffProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instructor"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setSessionMemberNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };

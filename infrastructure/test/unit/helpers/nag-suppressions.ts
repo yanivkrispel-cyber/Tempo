@@ -45,6 +45,16 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
     paths: LAMBDA_ROLES.filter((path) => !path.startsWith("Edge/"))
   },
   {
+    id: "AwsSolutions-IAM5[Resource::<MediaBucketBCBB02BA.Arn>/incoming/*]",
+    reason: "Each upload has its own key (its media id); the API presigns, reads and deletes only under incoming/ (docs/33 section 6).",
+    paths: ["Api/ApiFunction/Function/ServiceRole/DefaultPolicy"]
+  },
+  {
+    id: "AwsSolutions-IAM5[Resource::<MediaBucketBCBB02BA.Arn>/media/*]",
+    reason: "Each picture has its own keys (its media id); the API writes, reads and deletes only under media/ (docs/33 section 6).",
+    paths: ["Api/ApiFunction/Function/ServiceRole/DefaultPolicy"]
+  },
+  {
     id: "AwsSolutions-IAM5[Resource::<NeonUsageFunction64053658.Arn>:*]",
     reason: "EventBridge Scheduler's role may invoke this one function and its versions; CDK adds the :* suffix.",
     paths: ["Database"]
@@ -92,6 +102,11 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
     id: "AwsSolutions-S1",
     reason: "The PWA bucket is private behind CloudFront origin access and holds only the public build; access logs cost storage (ADR-0021).",
     paths: ["Edge/PwaBucket"]
+  },
+  {
+    id: "AwsSolutions-S1",
+    reason: "The media bucket is private and reached only through presigned URLs the API issues and audits (media.uploaded); access logs cost storage (ADR-0021, D17).",
+    paths: ["Api/MediaBucket"]
   },
   { id: "AwsSolutions-CFR4", reason: TRACKED_IN_CFR4, paths: ["Edge/Distribution"] }
 ];

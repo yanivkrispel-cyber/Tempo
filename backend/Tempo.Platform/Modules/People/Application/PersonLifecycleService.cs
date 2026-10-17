@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Scheduling.Application;
 
@@ -70,7 +71,7 @@ public interface IPersonLifecycleService
     Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken);
 }
 
-public sealed class PersonLifecycleService(IDataSourceProvider dataSources, TimeProvider clock, IHealthDataKeys? healthKeys = null) : IPersonLifecycleService
+public sealed class PersonLifecycleService(IDataSourceProvider dataSources, TimeProvider clock, IHealthDataKeys? healthKeys = null, IMediaStore? mediaStore = null) : IPersonLifecycleService
 {
     /// <summary>The name an anonymized record shows (`display_name` is required).</summary>
     public const string ErasedName = "נמחק";
@@ -393,6 +394,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.spot_preferences WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
         // Buddy codes, links and wrong guesses go (docs/33 section 4.2).
         await BuddyService.ForgetAsync(unitOfWork, org, personId, cancellationToken);
+        // The avatar goes (docs/33 section 6.3); its objects are deleted once the erase commits.
+        var avatarKeys = await MediaService.ForgetAvatarAsync(unitOfWork, org, personId, cancellationToken);
+        await ExecuteAsync(unitOfWork, "UPDATE people.people SET avatar_media_id = NULL WHERE organization_id = $1 AND id = $2", cancellationToken, org, personId);
         // Every health declaration goes, current and replaced (docs/31 section 11); the audit keeps the count only.
         int healthDeclarations;
         await using (var deleteHealth = unitOfWork.Command("DELETE FROM people.health_declarations WHERE organization_id = $1 AND person_id = $2", org, personId))
@@ -412,6 +416,11 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await AuditAsync(unitOfWork, tenant, "person.erased", "person", personId, new { reasonGiven = true, healthDeclarations }, cancellationToken);
         var erased = await PeopleService.DetailAsync(unitOfWork, tenant.OrganizationId, personId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
+        if (mediaStore is not null)
+        {
+            await mediaStore.DeleteAsync(avatarKeys, cancellationToken);
+        }
+
         return erased;
     }
 

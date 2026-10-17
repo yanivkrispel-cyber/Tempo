@@ -11,6 +11,7 @@ using Tempo.Platform.Modules.Notifications.Application;
 using Tempo.Platform.Modules.Notifications.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Billing;
+using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Scheduling.Application;
@@ -53,6 +54,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClassService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<ISpotService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IBuddyService, BuddyService>();
+        services.AddSingleton<IMediaService, MediaService>();
+        services.AddSingleton<IInstructorService, InstructorService>();
         services.AddSingleton<ISessionMessageService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IBookingCalendarService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IStudioSettingsService, StudioSettingsService>();

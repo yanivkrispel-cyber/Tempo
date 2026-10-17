@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.Organizations.Application;
 
 namespace Tempo.Platform.Modules.PlatformAdmin;
@@ -57,7 +58,7 @@ public interface IPlatformService
     Task DeleteOrganizationAsync(OperatorContext caller, Guid organizationId, string? confirmName, int minDaysSuspended, CancellationToken cancellationToken);
 }
 
-public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvider? clock = null) : IPlatformService, IOperatorDirectory
+public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvider? clock = null, IMediaStore? mediaStore = null) : IPlatformService, IOperatorDirectory
 {
     /// <summary>Active studios at which the owner moves to hourly backups (ADR-0021, docs/26 section 10.2).</summary>
     public const int HourlyBackupThreshold = 10;
@@ -273,6 +274,18 @@ public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvide
             throw new DomainRuleViolationException(ViolationKind.Validation, "organization.name_mismatch", "Type the studio's name to confirm.", "confirmName");
         }
 
+        // The studio's pictures (docs/33 section 6): their ids before the rows go, their objects after the commit.
+        var pictures = new List<string>();
+        await using (var media = unitOfWork.Command("SELECT id FROM media.media_objects WHERE organization_id = $1", organizationId))
+        await using (var reader = await media.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var id = reader.GetGuid(0);
+                pictures.AddRange([MediaKeys.Incoming(id), MediaKeys.Large(id), MediaKeys.Small(id)]);
+            }
+        }
+
         long rows;
         await using (var delete = unitOfWork.Command("SELECT platform_admin.delete_organization($1)", organizationId))
         {
@@ -285,6 +298,13 @@ public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvide
             new AuditEvent(null, "operator", caller.OperatorId, "platform.organization.deleted", "organization", organizationId, caller.CorrelationId, new { name, rows }),
             cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
+        if (mediaStore is not null)
+        {
+            foreach (var chunk in pictures.Chunk(900))
+            {
+                await mediaStore.DeleteAsync(chunk, cancellationToken);
+            }
+        }
     }
 
     public async Task<PlatformStats> StatsAsync(CancellationToken cancellationToken)

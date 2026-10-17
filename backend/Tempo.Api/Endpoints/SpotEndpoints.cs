@@ -57,7 +57,7 @@ public static class SpotEndpoints
             map.UsualSpotId,
             [.. map.Spots.Select(s => new SessionSpotResponse(
                 s.Id, s.Label, s.Row, s.Col, s.Kind, s.State, s.BookingId,
-                s.Person is { } p ? new PersonRefResponse(p.Id, p.DisplayName) : null,
+                s.Person is { } p ? new PersonRefResponse(p.Id, p.DisplayName, MediaLinks.Url(s.AvatarMediaId, small: true)) : null,
                 s.Attendance, s.HealthStatus))]));
     }
 

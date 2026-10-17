@@ -12,7 +12,7 @@ public sealed record CreateRoomRequest(string? Name, int? DefaultCapacity);
 public sealed record UpdateRoomRequest(string? Name, int? DefaultCapacity, string? Status);
 
 /// <summary>`ClassType`.</summary>
-public sealed record ClassTypeResponse(Guid Id, string Name, string Category, string Color, int DefaultMinutes, string? Description, string Status, string Version);
+public sealed record ClassTypeResponse(Guid Id, string Name, string Category, string Color, int DefaultMinutes, string? Description, string Status, string Version, Uri? CoverUrl = null, Uri? CoverSmallUrl = null);
 
 public sealed record ClassTypeListResponse(IReadOnlyList<ClassTypeResponse> Items);
 
@@ -50,11 +50,11 @@ public sealed record CreateScheduleTemplateRequest(
 
 public sealed record ScheduleTemplateChangeResponse(ScheduleTemplateResponse Template, IReadOnlyList<SessionResponse> UntouchedSessions);
 
-public sealed record SessionClassTypeResponse(Guid Id, string Name, string Category, string Color, string? Description = null);
+public sealed record SessionClassTypeResponse(Guid Id, string Name, string Category, string Color, string? Description = null, Uri? CoverUrl = null, Uri? CoverSmallUrl = null);
 
 public sealed record InstructorResponse(Guid MembershipId, string DisplayName);
 
-public sealed record SessionRoomResponse(Guid Id, string Name);
+public sealed record SessionRoomResponse(Guid Id, string Name, bool SpotSelection = false);
 
 public sealed record MyBookingStateResponse(Guid BookingId, string Status, int? WaitlistPosition, DateTimeOffset? FreeCancelUntil);
 
@@ -77,7 +77,8 @@ public sealed record SessionResponse(
     MyBookingStateResponse? MyBooking,
     PassSummaryResponse? PassPreview,
     string Version,
-    DateOnly? FrozenUntil = null);
+    DateOnly? FrozenUntil = null,
+    string? MemberNote = null);
 
 public sealed record SessionListResponse(IReadOnlyList<SessionResponse> Items);
 
@@ -135,7 +136,7 @@ public sealed record PassListResponse(IReadOnlyList<PassResponse> Items);
 
 public sealed record GrantPassRequest(Guid? ProductId, DateOnly? StartsOn, string? Note);
 
-public sealed record PersonRefResponse(Guid Id, string DisplayName);
+public sealed record PersonRefResponse(Guid Id, string DisplayName, Uri? AvatarUrl = null);
 
 /// <summary>`Booking`: a place in a session, or a place in its waitlist.</summary>
 public sealed record BookingResponse(
@@ -251,3 +252,32 @@ public sealed record SendSessionMessageRequest(string? Text);
 public sealed record SessionMessageResponse(Guid Id, Guid SessionId, int Recipients, DateTimeOffset CreatedAt);
 
 public sealed record InboxPageResponse(IReadOnlyList<InboxItemResponse> Items, int UnreadCount, Guid? NextBefore);
+
+/// <summary>`Instructor`: an instructor's public profile inside the studio (docs/33 section 5).</summary>
+public sealed record InstructorProfileResponse(
+    Guid MembershipId,
+    string DisplayName,
+    string? Headline,
+    string? Bio,
+    string? InstagramHandle,
+    string? PlaylistUrl,
+    Uri? PhotoUrl,
+    Uri? PhotoSmallUrl,
+    bool Visible,
+    IReadOnlyList<SessionResponse>? NextSessions);
+
+public sealed record InstructorListResponse(IReadOnlyList<InstructorProfileResponse> Items);
+
+public sealed record StaffProfileRequest(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible);
+
+/// <summary>`MemberNoteRequest`: the instructor's note to a class; null or empty clears it.</summary>
+public sealed record MemberNoteRequest(string? Note, bool? ApplyToWeekly);
+
+/// <summary>`MediaUploadRequest`: what the picture is for and its declared type and size.</summary>
+public sealed record MediaUploadRequest(string? Purpose, Guid? OwnerId, string? ContentType, int? Bytes);
+
+/// <summary>`MediaUploadTicket`: PUT the file to `uploadUrl` with this `Content-Type`, then finalize.</summary>
+public sealed record MediaUploadTicketResponse(Guid MediaId, Uri UploadUrl, string ContentType, DateTimeOffset ExpiresAt);
+
+/// <summary>`Media`: a ready picture.</summary>
+public sealed record MediaResponse(Guid Id, string Purpose, Guid OwnerId, Uri Url, Uri SmallUrl, int Width, int Height);

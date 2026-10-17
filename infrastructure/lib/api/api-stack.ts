@@ -1,4 +1,4 @@
-import { CfnOutput, Duration, Fn, Stack, StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
 import { AccessLogFormat } from "aws-cdk-lib/aws-apigateway";
 import {
   CorsHttpMethod,
@@ -12,6 +12,7 @@ import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations
 import { IUserPool, IUserPoolClient } from "aws-cdk-lib/aws-cognito";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { CfnPermission, FunctionUrlAuthType } from "aws-cdk-lib/aws-lambda";
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, ObjectOwnership } from "aws-cdk-lib/aws-s3";
 import { IStringParameter, StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
@@ -70,6 +71,8 @@ const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
 export class ApiStack extends Stack {
   public readonly httpApi: HttpApi;
   public readonly apiFunction: TempoFunction;
+  /** The private bucket for pictures (docs/33 section 6). */
+  public readonly mediaBucket: Bucket;
   /** Domain of the API function's Function URL, the edge distribution's /api/* origin. */
   public readonly functionUrlDomain: string;
 
@@ -77,6 +80,32 @@ export class ApiStack extends Stack {
     super(scope, id, props);
     const { config } = props;
     const database = this.databaseConnection(config);
+
+    // Pictures (docs/33 section 6, D17): one private bucket. The apps PUT uploads to presigned URLs under
+    // incoming/ (CORS for the apps' origins); the API re-encodes them into media/ and links them with presigned
+    // GETs. Nothing is public. About US$0.10 a month at pilot size (owner approved S3 on 2026-10-17).
+    this.mediaBucket = new Bucket(this, "MediaBucket", {
+      bucketName: resourceName(config, `media-${config.accountId}`),
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      encryption: BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      versioned: false,
+      removalPolicy: config.environmentName === "prod" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+      autoDeleteObjects: false,
+      lifecycleRules: [
+        { id: "abort-incomplete-uploads", abortIncompleteMultipartUploadAfter: Duration.days(1) },
+        { id: "expire-unfinished-uploads", prefix: "incoming/", expiration: Duration.days(1) }
+      ],
+      cors: [
+        {
+          allowedMethods: [HttpMethods.PUT],
+          allowedOrigins: [...config.corsAllowedOrigins],
+          allowedHeaders: ["content-type"],
+          maxAge: 3600
+        }
+      ]
+    });
 
     this.apiFunction = new TempoFunction(this, "ApiFunction", config, {
       functionName: resourceName(config, "api"),
@@ -110,6 +139,7 @@ export class ApiStack extends Stack {
         // data key, by name; the value never passes through a template.
         HEALTH_DATA_KEY_PARAMETER_PREFIX: healthDataKeyPrefix(config),
         HEALTH_DATA_KEY_CURRENT_VERSION: HEALTH_DATA_KEY_CURRENT_VERSION,
+        MEDIA_BUCKET: this.mediaBucket.bucketName,
         ...database.environment
       }
     });
@@ -135,6 +165,13 @@ export class ApiStack extends Stack {
         resources: HEALTH_DATA_KEY_READABLE_VERSIONS.map(
           (version) => `arn:aws:ssm:${config.region}:${config.accountId}:parameter${healthDataKeyPrefix(config)}${version}`
         )
+      })
+    );
+    // Presign uploads to incoming/, read them back, write and delete pictures under media/. No list, no ACLs.
+    this.apiFunction.function.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+        resources: [this.mediaBucket.arnForObjects("incoming/*"), this.mediaBucket.arnForObjects("media/*")]
       })
     );
     this.apiFunction.function.addToRolePolicy(

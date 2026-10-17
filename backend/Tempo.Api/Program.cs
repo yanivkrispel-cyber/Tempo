@@ -1,8 +1,10 @@
+using Amazon.S3;
 using Amazon.Lambda.AspNetCoreServer.Hosting;
 using Serilog;
 using Serilog.Formatting.Compact;
 using Tempo.Api.DependencyInjection;
 using Tempo.Api.Endpoints;
+using Tempo.Platform.Modules.Media;
 using Tempo.Api.Middleware;
 using Amazon.SQS;
 using Tempo.Api.Notifications;
@@ -34,6 +36,10 @@ try
         preserveStaticLogger: true);
 
     builder.Services.AddTempoApi();
+    // Pictures (docs/33 section 6, D17): the environment's bucket when deployed, none locally.
+    builder.Services.AddSingleton<IMediaStore>(builder.Configuration["MEDIA_BUCKET"] is { Length: > 0 } bucket
+        ? new S3MediaStore(new AmazonS3Client(), bucket)
+        : new UnavailableMediaStore());
     builder.Services.AddCognitoAuthentication(builder.Configuration);
 
     var app = builder.Build();
@@ -47,6 +53,7 @@ try
     }
 
     app.UseMiddleware<CorrelationIdMiddleware>();
+    app.UseMediaLinks();
     app.UseExceptionHandler();
     // Without an explicit logger, request events go to the static startup logger.
     app.UseSerilogRequestLogging(options => options.Logger = app.Services.GetRequiredService<Serilog.ILogger>());
@@ -68,6 +75,8 @@ try
     app.MapBookingEndpoints();
     app.MapSpotEndpoints();
     app.MapBuddyEndpoints();
+    app.MapMediaEndpoints();
+    app.MapInstructorEndpoints();
     app.MapProgressEndpoints();
     app.MapReportEndpoints();
     app.MapHealthDeclarationEndpoints();
