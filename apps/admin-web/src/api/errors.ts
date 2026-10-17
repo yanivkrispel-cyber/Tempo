@@ -24,6 +24,10 @@ const messages: Record<string, string> = {
   "ownership.transfer_expired": "פג התוקף של ההצעה.",
   "ownership.transfer_stale": "התפקידים בסטודיו השתנו מאז ההצעה, ולכן היא בוטלה.",
   "auth.mfa_required": "כדי לנהל את הסטודיו צריך להפעיל בחשבון אימות דו־שלבי.",
+  // The health declaration (docs/31 section 9).
+  "health.declaration_not_found": "לאדם הזה אין הצהרת בריאות חתומה.",
+  "health.no_approval_needed": "ההצהרה לא ממתינה לאישור רפואי. ייתכן שכבר נרשם אישור.",
+  "health.key_unavailable": "אי אפשר לפתוח את ההצהרות כרגע. נסו שוב בעוד כמה דקות.",
   "billing.restricted":
     "המנוי של הסטודיו מושהה, ולכן אי אפשר להוסיף או לשנות דבר. אפשר עדיין לצפות, לייצא, לבטל הזמנות ולהסיר חברים.",
   "person.read_only": "הרשומה הזו כבר לא ניתנת לשינוי (נמחקה או אוחדה).",
