@@ -88,13 +88,17 @@ export async function removeE2eSchedule(api: Api, ownPersonId?: string): Promise
   }
 
   const templates = (
-    await api.call<{ items: { id: string; classTypeId: string; validUntil?: string | null }[] }>(
+    await api.call<{ items: { id: string; classTypeId: string; validFrom: string; validUntil?: string | null }[] }>(
       "GET",
       "/schedule-templates",
     )
   ).items.filter((item) => typeIds.has(item.classTypeId) && !item.validUntil);
+  // A weekly class ends on or after its first day (the API refuses earlier), so one that starts after today ends on
+  // its first day; that day's session is already cancelled above.
   for (const template of templates)
-    await api.call("PATCH", `/schedule-templates/${template.id}`, { data: { validUntil: today } });
+    await api.call("PATCH", `/schedule-templates/${template.id}`, {
+      data: { validUntil: template.validFrom > today ? template.validFrom : today },
+    });
 
   const products = (await api.call<{ items: { id: string; name: string; status: string }[] }>("GET", "/pass-products"))
     .items;

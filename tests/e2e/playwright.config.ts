@@ -64,6 +64,14 @@ export default defineConfig({
       dependencies: ["sign-in"],
       use: { ...devices["Pixel 7"], storageState: sessionStatePath },
     },
+    {
+      // SYNC 5, pilot readiness (day board #232, X4): the health declaration, its booking gate and the member's
+      // progress, both apps at phone width.
+      name: "sync5",
+      testDir: "./specs/sync5",
+      dependencies: ["sign-in"],
+      use: { ...devices["Pixel 7"], storageState: sessionStatePath },
+    },
   ],
   webServer: [
     {

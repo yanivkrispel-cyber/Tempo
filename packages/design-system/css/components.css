@@ -1579,10 +1579,16 @@ button.tp-setting:hover {
   border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   padding: 28px;
   box-shadow: var(--shadow-float);
+  /* A tall dialog (a form, a list of answers) scrolls inside itself, so its buttons stay reachable on a phone
+     (found by the SYNC 5 run on #232). */
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @media (min-width: 768px) {
   .tp-dialog {
     border-radius: var(--radius-xl);
+    max-height: calc(100dvh - 48px);
   }
 }
 .tp-dialog__title {
@@ -2064,6 +2070,11 @@ a.tp-tabbar__fab:hover {
 .tp-page--tabbar {
   padding-block: 28px 128px;
   max-width: 520px;
+}
+/* Scrolling to a control (focus, a link to an anchor, scrollIntoView) stops above the fixed bar, so a focused field
+   near the bottom is never hidden behind it (WCAG 2.4.11, found by the SYNC 5 run on #232). */
+html:has(.tp-tabbar--fixed) {
+  scroll-padding-block-end: calc(112px + env(safe-area-inset-bottom));
 }
 
 /* -------------------------------------------------------- Template preview
