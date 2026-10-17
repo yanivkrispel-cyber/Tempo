@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Npgsql;
+using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
@@ -32,6 +33,25 @@ public sealed class RoleAssignmentScopeTests(PostgresFixture postgres) : IClassF
 
         var moved = () => db.AsMasterAsync("UPDATE authz.role_assignments SET role_id = $1 WHERE organization_id = $2 AND role_id = $3", roleB, studioA, roleA);
         (await moved.Should().ThrowAsync<PostgresException>()).Which.ConstraintName.Should().Be("role_assignments_role_in_scope");
+    }
+
+    [Fact]
+    public async Task TheAppRole_UnderItsStudiosRowSecurity_IsRefusedTheSame()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (studioA, membershipA) = await StudioAsync(db, "a");
+        var (studioB, _) = await StudioAsync(db, "b");
+        var roleB = await CustomRoleAsync(db, studioB);
+
+        // As the API writes: the app role, scoped to studio A, which cannot even see studio B's role.
+        await using var unitOfWork = await UnitOfWork.BeginAsync(db, DatabaseRole.Application, null, studioA, CancellationToken.None);
+        await using var insert = unitOfWork.Command(
+            "INSERT INTO authz.role_assignments (organization_id, id, membership_id, role_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4, 'active', now(), now())",
+            studioA, Guid.CreateVersion7(), membershipA, roleB);
+
+        var write = () => insert.ExecuteNonQueryAsync(CancellationToken.None);
+
+        (await write.Should().ThrowAsync<PostgresException>()).Which.ConstraintName.Should().Be("role_assignments_role_in_scope");
     }
 
     private static Task<object?> AssignAsync(MigratedDatabase db, Guid organizationId, Guid membershipId, Guid roleId) =>
