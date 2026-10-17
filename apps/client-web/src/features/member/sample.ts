@@ -1,20 +1,13 @@
-// Sample data for the parts of the member screens the studio API does not serve yet: the monthly goal and the
-// streak on the home screen, and the health declaration on the profile. The timetable, bookings and passes are
-// real (studio.ts).
+// Sample data for the one part of the member screens the studio API does not serve yet: the health declaration on
+// the profile (docs/31, built in H2). The timetable, bookings, passes and progress are real (studio.ts, progress.ts).
 import type { IsoDate } from "../../shared/utilities/dates";
 
 export interface MemberProfile {
-  visitsThisMonth: number;
-  monthlyGoal: number;
-  streakWeeks: number;
   healthDeclarationSigned: boolean;
 }
 
 function sampleProfile(): MemberProfile {
   return {
-    visitsThisMonth: 14,
-    monthlyGoal: 18,
-    streakWeeks: 6,
     healthDeclarationSigned: true,
   };
 }

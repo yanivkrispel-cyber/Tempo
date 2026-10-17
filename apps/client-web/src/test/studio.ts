@@ -122,11 +122,21 @@ export interface StudioOptions {
   past?: MyBooking[];
   /** The member's membership is frozen through this day: no pass preview, `Session.frozenUntil` set (A5). */
   frozenUntil?: string;
+  /** The member's progress (docs/31 section 12); 6 visits, no goal and a 3-week streak by default. */
+  progress?: Partial<Schemas["MyProgress"]>;
 }
 
 /** The studio's state and the stub routes that read and change it. */
 export function createStudio(options: StudioOptions = {}) {
   const passes = options.passes ?? [structuredClone(card)];
+  const progress: Schemas["MyProgress"] = {
+    month: "2026-10",
+    timeZone: "Asia/Jerusalem",
+    visitsThisMonth: 6,
+    monthlyGoal: null,
+    streakWeeks: 3,
+    ...options.progress,
+  };
   const sessions: Session[] = [
     // Already over: not shown.
     session(1, testToday, "2026-10-13T05:00:00Z", 50, "reformer", "dana", "machines", 4, 8),
@@ -279,6 +289,15 @@ export function createStudio(options: StudioOptions = {}) {
     [`GET ${base}/me/bookings`]: (request: Request) =>
       json({ items: mine(new URL(request.url).searchParams.get("scope")), nextBefore: null }),
     [`GET ${base}/me/passes`]: () => json({ items: passes }),
+    [`GET ${base}/me/progress`]: () => json(progress),
+    // The server's rule (G-1): a whole number from 1 to 31, or null to clear.
+    [`PUT ${base}/me/progress/goal`]: async (request: Request) => {
+      const { monthlyGoal } = (await request.json()) as { monthlyGoal: number | null };
+      if (monthlyGoal !== null && !(Number.isInteger(monthlyGoal) && monthlyGoal >= 1 && monthlyGoal <= 31))
+        return problem(400, "validation.failed");
+      progress.monthlyGoal = monthlyGoal;
+      return json(progress);
+    },
     [`GET ${base}/me/notifications`]: () =>
       json({ items: inbox, unreadCount: inbox.filter((item) => !item.readAt).length, nextBefore: null }),
   };
@@ -312,7 +331,7 @@ END:VCALENDAR
     };
   }
 
-  return { routes, sessions, passes, inbox, bookings };
+  return { routes, sessions, passes, inbox, bookings, progress };
 }
 
 /** History rows on this morning's class, which has ended: attended, cancelled late, and cancelled by the studio. */
