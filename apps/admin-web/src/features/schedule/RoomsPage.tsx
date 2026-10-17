@@ -17,6 +17,7 @@ import {
 } from "../../shared/design-system";
 import { useStudio } from "../console/studio";
 import { scheduleKeys, useRooms, wholeNumber, type Room } from "./queries";
+import { RoomLayoutDialog } from "./RoomLayoutDialog";
 
 /** `/o/:slug/rooms`: the studio's rooms and how many people each holds (docs/29 section 3). */
 export function RoomsPage() {
@@ -24,6 +25,7 @@ export function RoomsPage() {
   const rooms = useRooms();
   const [show, setShow] = useState<"active" | "archived">("active");
   const [editing, setEditing] = useState<Room | "new" | null>(null);
+  const [mapping, setMapping] = useState<Room | null>(null);
   const manage = studio.can("schedule.manage");
   const rows = (rooms.data ?? []).filter((room) => room.status === show);
 
@@ -89,6 +91,17 @@ export function RoomsPage() {
                   {manage && (
                     <td className="tp-table__actions" style={{ textAlign: "end" }}>
                       <span className="tp-row" style={{ gap: 4, justifyContent: "flex-end" }}>
+                        {room.status === "active" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon="home"
+                            onClick={() => setMapping(room)}
+                            aria-label={`מפת החדר ${room.name}`}
+                          >
+                            מפת החדר
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -108,6 +121,7 @@ export function RoomsPage() {
         </TableScroll>
       )}
 
+      {mapping && <RoomLayoutDialog room={mapping} onClose={() => setMapping(null)} />}
       {editing && <RoomDialog room={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </>
   );

@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState } from "react";
-import { rolesLabel } from "../../account/account";
+import { rolesLabel, systemRoleOf } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
 import {
@@ -18,6 +18,7 @@ import {
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { OutgoingTransferBanner, TransferDialog } from "../ownership/Ownership";
+import { InstructorProfileDialog } from "./InstructorProfileDialog";
 import { RemoveDialog, RoleDialog, nameOfMember, useUpdateMember } from "./MemberDialogs";
 import { assignableRoles, canOfferOwnership, canReactivate, canRemove, canSuspend } from "./rules";
 
@@ -57,6 +58,7 @@ export function MembersPage() {
   const studio = useStudio();
   const rows = members.data?.pages.flatMap((page) => page.items) ?? [];
   const [dialog, setDialog] = useState<{ kind: "role" | "remove" | "transfer"; member: Member } | null>(null);
+  const [profile, setProfile] = useState<{ membershipId: string; name: string } | null>(null);
   const update = useUpdateMember();
   const toast = useToast();
   const manages = studio.can("members.manage");
@@ -83,6 +85,11 @@ export function MembersPage() {
     const roles = assignableRoles(actor, member);
     const entries: MenuEntry[] = [];
     if (roles.length > 0) entries.push({ label: "שינוי תפקיד", onSelect: () => setDialog({ kind: "role", member }) });
+    if (studio.can("schedule.manage") && member.status === "active" && systemRoleOf(member.roles) !== "client")
+      entries.push({
+        label: "פרופיל מדריך",
+        onSelect: () => setProfile({ membershipId: member.id, name: nameOfMember(member) }),
+      });
     if (canSuspend(actor, member)) entries.push({ label: "השעיה", onSelect: () => setStatus(member, "suspended") });
     if (canReactivate(actor, member))
       entries.push({ label: "החזרה לפעילות", onSelect: () => setStatus(member, "active") });
@@ -99,9 +106,18 @@ export function MembersPage() {
 
   return (
     <>
-      <header>
-        <span className="tp-eyebrow">ניהול</span>
-        <h1>חברי הסטודיו</h1>
+      <header className="tp-row" style={{ justifyContent: "space-between" }}>
+        <div>
+          <span className="tp-eyebrow">ניהול</span>
+          <h1>חברי הסטודיו</h1>
+        </div>
+        <Button
+          variant="secondary"
+          icon="user"
+          onClick={() => setProfile({ membershipId: studio.membership.membershipId, name: "הפרופיל שלי" })}
+        >
+          פרופיל המדריך שלי
+        </Button>
       </header>
 
       <OutgoingTransferBanner />
@@ -171,6 +187,13 @@ export function MembersPage() {
           member={dialog.member}
           roles={assignableRoles(studio.membership, dialog.member)}
           onClose={() => setDialog(null)}
+        />
+      )}
+      {profile && (
+        <InstructorProfileDialog
+          membershipId={profile.membershipId}
+          name={profile.name}
+          onClose={() => setProfile(null)}
         />
       )}
       {dialog?.kind === "remove" && <RemoveDialog member={dialog.member} onClose={() => setDialog(null)} />}
