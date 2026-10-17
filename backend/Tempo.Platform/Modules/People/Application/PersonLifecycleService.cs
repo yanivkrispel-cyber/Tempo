@@ -368,6 +368,8 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET note = NULL WHERE organization_id = $1 AND person_id = $2 AND note IS NOT NULL", cancellationToken, org, personId);
         // The member's own monthly goal goes (docs/31 section 12).
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
+        // So does the usual spot in each room (docs/33 section 3).
+        await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.spot_preferences WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
         // Every health declaration goes, current and replaced (docs/31 section 11); the audit keeps the count only.
         int healthDeclarations;
         await using (var deleteHealth = unitOfWork.Command("DELETE FROM people.health_declarations WHERE organization_id = $1 AND person_id = $2", org, personId))
@@ -563,6 +565,8 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "UPDATE notifications.inbox_items SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
         // The survivor keeps its own monthly goal (docs/31 section 12); the merged record's goes.
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
+        // The survivor keeps its usual spots; the merged record's go.
+        await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.spot_preferences WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
         // Health declarations follow the survivor (their ciphertext is bound to the declaration, not the person). Of
         // two current ones, the newer signature stays current and the older is replaced (docs/31 section 11).
         await ExecuteAsync(
