@@ -42,11 +42,13 @@
     transform var(--duration-fast) var(--tp-ease),
     background-color var(--duration-fast) var(--tp-ease);
 }
-.tp-btn:hover {
-  text-decoration: none;
-  background: var(--brand-hover);
-  box-shadow: var(--shadow-glow);
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .tp-btn:hover {
+    text-decoration: none;
+    background: var(--brand-hover);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+  }
 }
 .tp-btn:active,
 .tp-btn[aria-pressed="true"] {
@@ -92,11 +94,13 @@
     var(--shadow-raise-sm),
     inset 0 0 0 1px var(--line);
 }
-.tp-btn--secondary:hover {
-  background: var(--surface);
-  box-shadow:
-    var(--shadow-raise),
-    inset 0 0 0 1px var(--line);
+@media (hover: hover) {
+  .tp-btn--secondary:hover {
+    background: var(--surface);
+    box-shadow:
+      var(--shadow-raise),
+      inset 0 0 0 1px var(--line);
+  }
 }
 .tp-btn--secondary:active {
   background: var(--surface-sunken);
@@ -109,10 +113,12 @@
   color: var(--ink-muted);
   box-shadow: none;
 }
-.tp-btn--ghost:hover {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-raise-sm);
+@media (hover: hover) {
+  .tp-btn--ghost:hover {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-raise-sm);
+  }
 }
 .tp-btn--ghost:active {
   background: var(--surface-sunken);
@@ -127,11 +133,13 @@
     0 8px 18px -6px #ad8b7f8c,
     inset 0 1px 0 #ffffff66;
 }
-.tp-btn--rose:hover {
-  background: var(--rose);
-  box-shadow:
-    0 0 0 4px var(--rose-soft),
-    0 10px 22px -6px #ad8b7f99;
+@media (hover: hover) {
+  .tp-btn--rose:hover {
+    background: var(--rose);
+    box-shadow:
+      0 0 0 4px var(--rose-soft),
+      0 10px 22px -6px #ad8b7f99;
+  }
 }
 .tp-btn--rose:active {
   background: var(--rose-deep);
@@ -146,10 +154,12 @@
     0 8px 18px -6px #c0786b8c,
     inset 0 1px 0 #ffffff66;
 }
-.tp-btn--danger:hover {
-  box-shadow:
-    0 0 0 4px var(--danger-soft),
-    0 10px 22px -6px #c0786b99;
+@media (hover: hover) {
+  .tp-btn--danger:hover {
+    box-shadow:
+      0 0 0 4px var(--danger-soft),
+      0 10px 22px -6px #c0786b99;
+  }
 }
 .tp-btn--danger:active {
   box-shadow: var(--shadow-sunken);
@@ -160,9 +170,11 @@
   color: var(--danger-ink);
   box-shadow: none;
 }
-.tp-btn--ghost-danger:hover {
-  background: var(--surface);
-  box-shadow: var(--shadow-raise-sm);
+@media (hover: hover) {
+  .tp-btn--ghost-danger:hover {
+    background: var(--surface);
+    box-shadow: var(--shadow-raise-sm);
+  }
 }
 .tp-btn--ghost-danger:active {
   background: var(--surface-sunken);
@@ -179,10 +191,12 @@
   color: var(--icon-dark);
   box-shadow: var(--shadow-raise-sm);
 }
-.tp-btn--icon:hover {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-raise);
+@media (hover: hover) {
+  .tp-btn--icon:hover {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-raise);
+  }
 }
 .tp-btn--icon:active {
   background: var(--surface-sunken);
@@ -203,9 +217,11 @@
   color: var(--on-brand);
   box-shadow: var(--shadow-brand);
 }
-.tp-btn--icon.tp-btn--primary:hover {
-  background: var(--brand-hover);
-  box-shadow: var(--shadow-glow);
+@media (hover: hover) {
+  .tp-btn--icon.tp-btn--primary:hover {
+    background: var(--brand-hover);
+    box-shadow: var(--shadow-glow);
+  }
 }
 
 /* loading */
@@ -461,8 +477,10 @@
   cursor: pointer;
   transition: background var(--duration-fast) var(--tp-ease);
 }
-.tp-calendar__day:hover {
-  background: var(--taupe-soft);
+@media (hover: hover) {
+  .tp-calendar__day:hover {
+    background: var(--taupe-soft);
+  }
 }
 .tp-calendar__day--outside {
   color: var(--ink-faint);
@@ -631,8 +649,10 @@
     color var(--duration-base) var(--tp-ease),
     background var(--duration-base) var(--tp-ease);
 }
-.tp-seg__opt:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .tp-seg__opt:hover {
+    color: var(--ink);
+  }
 }
 .tp-seg__opt[aria-pressed="true"],
 .tp-seg__opt[aria-selected="true"] {
@@ -900,8 +920,10 @@ button.tp-setting {
   text-align: start;
   border-radius: var(--radius-sm);
 }
-button.tp-setting:hover {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  button.tp-setting:hover {
+    background: var(--surface-hover);
+  }
 }
 .tp-icon-tile {
   width: 40px;
@@ -1255,8 +1277,10 @@ button.tp-setting:hover {
   border-start-end-radius: var(--radius-sm);
   border-end-end-radius: var(--radius-sm);
 }
-.tp-table tbody tr:hover td {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  .tp-table tbody tr:hover td {
+    background: var(--surface-hover);
+  }
 }
 .tp-table tr[aria-selected="true"] td {
   background: var(--selected);
@@ -1310,8 +1334,10 @@ button.tp-setting:hover {
   white-space: nowrap;
   border-radius: 9px;
 }
-.tp-tab:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .tp-tab:hover {
+    color: var(--ink);
+  }
 }
 .tp-tab[aria-selected="true"] {
   color: var(--ink);
@@ -1363,10 +1389,12 @@ button.tp-setting:hover {
     box-shadow var(--duration-base) var(--tp-ease),
     background var(--duration-base) var(--tp-ease);
 }
-.tp-rail__item:hover {
-  background: var(--surface);
-  box-shadow: var(--shadow-raise-sm);
-  text-decoration: none;
+@media (hover: hover) {
+  .tp-rail__item:hover {
+    background: var(--surface);
+    box-shadow: var(--shadow-raise-sm);
+    text-decoration: none;
+  }
 }
 .tp-rail__item[aria-current="page"] {
   color: var(--brand-ink);
@@ -1412,10 +1440,12 @@ button.tp-setting:hover {
   font-weight: 600;
   text-decoration: none;
 }
-.tp-nav__item:hover {
-  color: var(--ink);
-  background: var(--surface-hover);
-  text-decoration: none;
+@media (hover: hover) {
+  .tp-nav__item:hover {
+    color: var(--ink);
+    background: var(--surface-hover);
+    text-decoration: none;
+  }
 }
 .tp-nav__item[aria-current="page"] {
   color: var(--brand-ink);
@@ -1522,9 +1552,11 @@ button.tp-setting:hover {
   display: grid;
   place-items: center;
 }
-.tp-toast__close:hover {
-  background: var(--surface-hover);
-  color: var(--ink);
+@media (hover: hover) {
+  .tp-toast__close:hover {
+    background: var(--surface-hover);
+    color: var(--ink);
+  }
 }
 /* Where toasts appear: above the bottom tab bar on phones, in the bottom end corner from 768px. */
 .tp-toast-region {
@@ -1789,9 +1821,11 @@ button.tp-setting:hover {
   border-radius: 2px;
   background: var(--ev);
 }
-.tp-event:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-raise);
+@media (hover: hover) {
+  .tp-event:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-raise);
+  }
 }
 .tp-event:active {
   transform: none;
@@ -1930,6 +1964,10 @@ a.tp-card {
 a.tp-card {
   display: block;
 }
+/* A card link laid out as a row (a studio in the list): the row's flex wins over the link's block. */
+a.tp-card.tp-row {
+  display: flex;
+}
 a.tp-event,
 a.tp-event:hover,
 a.tp-card,
@@ -2051,8 +2089,10 @@ a.tp-tabbar__fab:hover {
   place-items: center;
   margin-top: -26px;
 }
-.tp-tabbar__fab:hover {
-  box-shadow: var(--shadow-glow);
+@media (hover: hover) {
+  .tp-tabbar__fab:hover {
+    box-shadow: var(--shadow-glow);
+  }
 }
 .tp-tabbar__fab .tp-icon {
   width: 24px;
@@ -2250,8 +2290,10 @@ html:has(.tp-tabbar--fixed) {
     color var(--duration-base) var(--tp-ease),
     background var(--duration-base) var(--tp-ease);
 }
-.tp-question__opt input:hover + span {
-  color: var(--ink);
+@media (hover: hover) {
+  .tp-question__opt input:hover + span {
+    color: var(--ink);
+  }
 }
 .tp-question__opt input:checked + span {
   background: var(--tp-slab);
@@ -2457,8 +2499,10 @@ html:has(.tp-tabbar--fixed) {
 .tp-bars__col:hover .tp-bars__value {
   opacity: 1;
 }
-.tp-bars__col:hover .tp-bars__bar {
-  fill: var(--ink);
+@media (hover: hover) {
+  .tp-bars__col:hover .tp-bars__bar {
+    fill: var(--ink);
+  }
 }
 /* The hit area is the whole column, wider than the thin bar. */
 .tp-bars__hit {
@@ -2493,8 +2537,10 @@ html:has(.tp-tabbar--fixed) {
   text-decoration: none;
   min-width: 0;
 }
-a.tp-row:hover {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  a.tp-row:hover {
+    background: var(--surface-hover);
+  }
 }
 a.tp-row:focus-visible {
   outline: 2px solid var(--focus);
@@ -2541,4 +2587,292 @@ a.tp-row:focus-visible {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------- Touch
+   A finger needs 44px (docs/25 section 4; D15, every console on a phone): on a coarse pointer every control grows to
+   --touch-min, and a mouse keeps the compact sizes. Only the height and the hit area change, not the look. */
+@media (pointer: coarse) {
+  :root {
+    --control-sm: var(--touch-min);
+    --control-md: var(--touch-min);
+  }
+  .tp-seg {
+    min-height: calc(var(--touch-min) + 8px);
+  }
+  .tp-seg__opt,
+  .tp-tab,
+  .tp-menu__item,
+  .tp-check,
+  button.tp-chip,
+  a.tp-chip {
+    min-height: var(--touch-min);
+  }
+  .tp-week__day {
+    width: var(--touch-min);
+  }
+  button.tp-chip,
+  a.tp-chip {
+    min-width: var(--touch-min);
+    justify-content: center;
+  }
+  /* A class card's title and details are its link; a short title alone still makes a full target. */
+  a.tp-class__body {
+    min-height: var(--touch-min);
+    justify-content: center;
+  }
+}
+
+/* ----------------------------------------------------------------- App bar
+   The top bar of a phone or tablet screen: the menu button, the place's name, actions at the end. It stays under the
+   status bar while the page scrolls, on the page's own colour with a hairline under it. */
+.tp-appbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding-block: calc(10px + env(safe-area-inset-top)) 10px;
+  padding-inline: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+  background: var(--canvas);
+  box-shadow: 0 1px 0 var(--line);
+}
+.tp-appbar__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+}
+.tp-appbar__title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ Drawer
+   A side panel over the page on phones and tablets. It slides in from the start edge (the right in Hebrew) over a
+   scrim; closed, it is off screen and hidden from everyone (visibility), so nothing in it takes focus. */
+.tp-drawer {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-modal);
+  width: min(320px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-block: calc(16px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-bottom));
+  padding-inline: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--tp-slab);
+  box-shadow: var(--shadow-float);
+  border-start-end-radius: var(--radius-2xl);
+  border-end-end-radius: var(--radius-2xl);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition:
+    transform var(--duration-slow) var(--tp-ease),
+    visibility 0s linear var(--duration-slow);
+}
+[dir="ltr"] .tp-drawer {
+  transform: translateX(-100%);
+}
+.tp-drawer[data-open] {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--duration-slow) var(--tp-ease);
+}
+.tp-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ----------------------------------------------------------- Stacked table
+   A table that turns into a list of cards when its frame is narrow (a phone, a tablet beside a menu): the header row
+   hides, each row is a card, its first cell (or row header) the title, and every other cell a line with its column's
+   name (`data-label` on the cell). A cell with `tp-table__end` (a status, a menu, one button) sits at the card's top
+   end; `tp-table__actions` (several buttons) becomes the card's last line; a cell with `data-empty` is left out.
+   The selectors carry .tp-table twice over to outrank the table's own cell rules (`.tp-table tbody td:first-child`). */
+.tp-table-wrap {
+  container: tp-table / inline-size;
+}
+@container tp-table (max-width: 599px) {
+  .tp-table.tp-table--stack,
+  .tp-table--stack > tbody,
+  .tp-table--stack > tfoot,
+  .tp-table--stack tr {
+    display: block;
+  }
+  .tp-table--stack > thead {
+    display: none;
+  }
+  .tp-table--stack tr {
+    position: relative;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tp-table--stack > tbody > tr:last-child {
+    border-bottom: 0;
+  }
+  .tp-table--stack > tfoot > tr {
+    border-top: 1px solid var(--line-strong);
+    border-bottom: 0;
+  }
+  .tp-table.tp-table--stack tbody tr > td,
+  .tp-table.tp-table--stack tbody tr > th,
+  .tp-table.tp-table--stack tfoot tr > td,
+  .tp-table.tp-table--stack tfoot tr > th {
+    display: block;
+    position: static;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: 400;
+    color: var(--ink);
+    text-align: start;
+  }
+  .tp-table.tp-table--stack tbody tr:hover > td,
+  .tp-table.tp-table--stack tbody tr:hover > th {
+    background: transparent;
+  }
+  .tp-table.tp-table--stack tbody tr > :first-child,
+  .tp-table.tp-table--stack tfoot tr > :first-child {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    padding-inline-end: 96px;
+  }
+  .tp-table.tp-table--stack tr > * + * {
+    margin-top: 2px;
+  }
+  .tp-table--stack [data-label]::before {
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 6.5rem;
+    margin-inline-end: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-faint);
+  }
+  .tp-table.tp-table--stack tbody tr > td[data-empty] {
+    display: none;
+  }
+  .tp-table.tp-table--stack tbody tr > td.tp-table__end {
+    position: absolute;
+    top: 10px;
+    inset-inline-end: 10px;
+    margin: 0;
+  }
+  .tp-table.tp-table--stack tbody tr > td.tp-table__actions {
+    margin-top: 10px;
+  }
+}
+
+/* ------------------------------------------------------------- Day agenda
+   One day of a week on a narrow screen: the week strip on top, then the day's classes in a list. */
+.tp-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tp-agenda__day {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.tp-agenda__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* --------------------------------------------------------- Side navigation
+   The phone app's tab bar as a column at the start, on a computer or a tablet held sideways (D15): the place's name,
+   the same links with the label beside the icon, and the main action as a full-width button. */
+.tp-sidenav {
+  position: sticky;
+  top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 18px 14px;
+  border-radius: var(--radius-xl);
+  background: var(--tp-slab);
+  box-shadow: var(--shadow-raise);
+}
+.tp-sidenav__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-inline: 4px;
+}
+.tp-sidenav__head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ App frame
+   A phone app on a wide screen: the side navigation at the start and the page beside it. A tab bar page inside it
+   drops the room it kept for the bar and takes the width. */
+.tp-app {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-block: 32px 64px;
+  padding-inline: max(40px, env(safe-area-inset-left), env(safe-area-inset-right));
+}
+.tp-app .tp-page--tabbar {
+  padding: 0;
+  margin: 0;
+  max-width: 880px;
+}
+/* An upright tablet keeps the bottom bar, with a wider page. */
+@media (min-width: 768px) {
+  .tp-page--tabbar {
+    max-width: 680px;
+  }
+}
+
+/* A tab bar item can also be a button (the console's "עוד", which opens its menu). */
+button.tp-tabbar__item {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* A text link a finger can hit (`tp-hit`, and every plain link in a table): on a touch screen its box grows by 14px
+   above and below the text, to 44px or more even for a 16px caption line, and nothing around it moves. */
+@media (pointer: coarse) {
+  .tp-hit,
+  .tp-table a:not([class]) {
+    display: inline-block;
+    min-width: var(--touch-min);
+    padding-block: 14px;
+    margin-block: -14px;
+  }
 }

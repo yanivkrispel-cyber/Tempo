@@ -48,11 +48,15 @@ behaviour (focus management, aria, keyboard). They never restyle a primitive; a 
    White-on-sage, white-on-rose and white-on-taupe are reference-exact and under AA: labels only, 15px+, 600.
 4. **Numbers are tabular.** `body` sets `tabular-nums`; keep it in tables and stats. Hebrew text with Latin or
    numbers inside: wrap the Latin in `<bdi>` or `.tp-ltr`, write ranges in words ("בין 8 ל-12"), never with a dash.
-5. **Touch targets are 44px** even when the control looks 32px (`--touch-min`).
+5. **Touch targets are 44px** even when the control looks 32px (`--touch-min`): on a touch screen
+   (`pointer: coarse`) every control grows to it, and a lone text link takes `tp-hit`.
 6. **Focus is visible** everywhere: the reference's blue glow (`shadow-focus`, a 3px halo plus a 14px glow). Do not remove it.
 7. **White label changes the sage set only** (`brand`, `brand-light`, `brand-hover`, `brand-glow`, `brand-pressed`,
    `brand-soft`, `brand-ink`, `brand-deep`) and the logo. Rose, taupe and the grounds never change per tenant.
 8. **Motion is short** (120 to 280ms) and respects `prefers-reduced-motion`.
+9. **Every screen works on a phone, a tablet and a computer** (D15, `docs/25_Design_System.md` section 9): the app
+   bar, drawer and tab bar under 1024px, a side column above it, tables as `tp-table--stack`, hover only where a
+   pointer can hover, and no sideways scroll at any width.
 
 ## Editing tokens
 
