@@ -79,6 +79,13 @@ export default defineConfig({
       testDir: "./specs/sync6",
       use: { ...devices["Pixel 7"] },
     },
+    {
+      // D15 (#317): every screen of both apps on phones, tablets and computers. Each test sizes its own contexts
+      // (support/screens.ts). E2E_SCREENSHOTS=1 also keeps a full-page picture of each for review.
+      name: "screens",
+      testDir: "./specs/screens",
+      dependencies: ["sign-in"],
+    },
   ],
   webServer: [
     {

@@ -18,8 +18,13 @@ export const authDir = join(e2eRoot, ".auth");
 /** One browser state for both apps: each keeps its session in its own origin's localStorage. */
 export const sessionStatePath = join(authDir, "smoke-user.json");
 
-export const adminUrl = "http://localhost:5173";
-export const clientUrl = "http://localhost:5174";
+/**
+ * The local Vite dev servers by default. `E2E_ADMIN_URL` and `E2E_CLIENT_URL` point the suite at the published dev
+ * sites instead (https://tempo-studio-console.pages.dev and https://tempo-members.pages.dev, ADR-0027); Playwright then
+ * finds them up and starts no server.
+ */
+export const adminUrl = process.env.E2E_ADMIN_URL ?? "http://localhost:5173";
+export const clientUrl = process.env.E2E_CLIENT_URL ?? "http://localhost:5174";
 
 export const environment = process.env.E2E_ENVIRONMENT ?? "dev";
 export const region = process.env.E2E_AWS_REGION ?? "eu-central-1";
