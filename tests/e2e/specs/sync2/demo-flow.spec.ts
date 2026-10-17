@@ -80,8 +80,8 @@ test.afterAll(async () => {
 test("console: the owner creates a weekly class", async ({ consolePage: page }, testInfo) => {
   await page.goto(admin("/schedule"));
   await expect(page.getByRole("heading", { level: 1, name: "מערכת שבועית" })).toBeVisible();
-  // The week grid with its day headers, today's included (#164).
-  await expectNoSeriousA11yViolations(page, testInfo, "console schedule", ".tp-sched");
+  // The week with its days, today's included (#164): on a phone a strip of days over one day's classes (D15).
+  await expectNoSeriousA11yViolations(page, testInfo, "console schedule", ".tp-agenda");
 
   await page.getByRole("button", { name: "שיעור חדש" }).first().click();
   const dialog = page.getByRole("dialog", { name: "שיעור חדש" });
