@@ -3208,7 +3208,7 @@ export interface components {
             expiresAt: string;
         };
         LinkBuddyRequest: {
-            /** @description The 8 letters and digits; spaces */
+            /** @description The 8 letters and digits; spaces, dashes and case are ignored. */
             code: string;
         };
         ChangeSpotRequest: {

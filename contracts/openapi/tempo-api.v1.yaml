@@ -4430,7 +4430,7 @@ components:
       type: object
       required: [code]
       properties:
-        code: { type: string, description: The 8 letters and digits; spaces, dashes and case are ignored. }
+        code: { type: string, description: "The 8 letters and digits; spaces, dashes and case are ignored." }
 
     ChangeSpotRequest:
       type: object
