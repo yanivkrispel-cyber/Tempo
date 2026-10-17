@@ -47,6 +47,7 @@ function renderAs(
 
 async function rowOf(name: string) {
   const table = await screen.findByRole("table", { name: "חברי הסטודיו" });
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- test code: `name` is a fixed display name from this file's fixtures, never input.
   return within(table).getByRole("row", { name: new RegExp(name) });
 }
 

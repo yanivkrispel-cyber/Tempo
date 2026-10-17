@@ -68,6 +68,7 @@ function renderAs(
 async function actionsOf(name: string) {
   const table = await screen.findByRole("table", { name: "חברי הסטודיו" });
   await userEvent.click(
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- test code: `name` is a fixed display name from this file's fixtures, never input.
     within(within(table).getByRole("row", { name: new RegExp(name) })).getByRole("button", {
       name: `פעולות עבור ${name}`,
     }),
