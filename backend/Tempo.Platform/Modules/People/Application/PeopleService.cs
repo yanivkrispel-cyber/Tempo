@@ -570,7 +570,7 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
                 await reader.IsDBNullAsync(11, cancellationToken) ? null : reader.GetGuid(11),
                 await reader.GetFieldValueAsync<DateTimeOffset>(12, cancellationToken),
                 reader.GetInt64(13),
-                await reader.IsDBNullAsync(14, cancellationToken) ? null : reader.GetGuid(14)));
+                AvatarMediaId: await reader.IsDBNullAsync(14, cancellationToken) ? null : reader.GetGuid(14)));
         }
 
         return people;
