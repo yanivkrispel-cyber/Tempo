@@ -8,9 +8,10 @@ using Tempo.Platform.Modules.Scheduling.Domain;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
-public sealed record RoomView(Guid Id, string Name, int DefaultCapacity, string Status, long Version);
+public sealed record RoomView(Guid Id, string Name, int DefaultCapacity, string Status, long Version, bool SpotSelection = false);
 
-public sealed record ClassTypeView(Guid Id, string Name, string Category, string Color, int DefaultMinutes, string? Description, string Status, long Version);
+/// <summary><paramref name="CoverMediaId"/> is the class type's picture (docs/33 section 6); the API turns it into a URL.</summary>
+public sealed record ClassTypeView(Guid Id, string Name, string Category, string Color, int DefaultMinutes, string? Description, string Status, long Version, Guid? CoverMediaId = null);
 
 public sealed record TemplateView(
     Guid Id,
@@ -50,7 +51,8 @@ public sealed record SessionView(
     MyBookingStateView? MyBooking,
     long Version,
     PassSummaryView? PassPreview = null,
-    DateOnly? FrozenUntil = null);
+    DateOnly? FrozenUntil = null,
+    string? MemberNote = null);
 
 public sealed record TemplateChange(TemplateView Template, IReadOnlyList<SessionView> UntouchedSessions);
 
@@ -131,7 +133,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
     private static readonly string[] Colors = ["sage", "rose", "taupe", "amber", "mauve", "blue"];
 
     private const string RoomColumns = "id, name, default_capacity, status, version";
-    private const string ClassTypeColumns = "id, name, category, color, default_minutes, description, status, version";
+    private const string ClassTypeColumns = "id, name, category, color, default_minutes, description, status, version, cover_media_id";
     // $1 organization. A template with its class type, instructor name and room, as the console lists it.
     private const string TemplateSelect =
         """
@@ -159,7 +161,8 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                CASE WHEN mine.status = 'waitlisted' THEN
                    (SELECT count(*)::int FROM scheduling.bookings w WHERE w.organization_id = s.organization_id AND w.session_id = s.id
                       AND w.status = 'waitlisted' AND w.waitlist_position <= mine.waitlist_position)
-               END
+               END,
+               s.member_note, ct.cover_media_id, coalesce(r.spot_selection, false)
         FROM scheduling.sessions s
         JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
         LEFT JOIN scheduling.rooms r ON r.organization_id = s.organization_id AND r.id = s.room_id
@@ -512,8 +515,8 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
             var startsAt = StudioTime.ToInstant(date, template.LocalStart, zone);
             await using var insert = unitOfWork.Command(
                 """
-                INSERT INTO scheduling.sessions (organization_id, id, template_id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, room_id, capacity, status, created_at, updated_at)
-                SELECT t.organization_id, $3, t.id, $4, t.class_type_id, $5, $6, t.instructor_membership_id, t.room_id, t.capacity, 'scheduled', now(), now()
+                INSERT INTO scheduling.sessions (organization_id, id, template_id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, room_id, capacity, status, created_at, updated_at, member_note)
+                SELECT t.organization_id, $3, t.id, $4, t.class_type_id, $5, $6, t.instructor_membership_id, t.room_id, t.capacity, 'scheduled', now(), now(), t.member_note
                 FROM scheduling.templates t
                 WHERE t.organization_id = $1 AND t.id = $2 AND t.version = $7
                 ON CONFLICT (organization_id, template_id, local_date) WHERE template_id IS NOT NULL DO NOTHING
@@ -564,7 +567,8 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
             var startsAt = await reader.GetFieldValueAsync<DateTimeOffset>(3, cancellationToken);
             var classType = new ClassTypeView(
                 reader.GetGuid(5), reader.GetString(6), reader.GetString(7), reader.GetString(8), reader.GetInt32(9),
-                await reader.IsDBNullAsync(10, cancellationToken) ? null : reader.GetString(10), reader.GetString(11), reader.GetInt64(12));
+                await reader.IsDBNullAsync(10, cancellationToken) ? null : reader.GetString(10), reader.GetString(11), reader.GetInt64(12),
+                await reader.IsDBNullAsync(29, cancellationToken) ? null : reader.GetGuid(29));
             InstructorView? instructor = null;
             if (!await reader.IsDBNullAsync(13, cancellationToken))
             {
@@ -574,7 +578,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
             RoomView? room = await reader.IsDBNullAsync(15, cancellationToken)
                 ? null
-                : new RoomView(reader.GetGuid(15), reader.GetString(16), reader.GetInt32(17), reader.GetString(18), reader.GetInt64(19));
+                : new RoomView(reader.GetGuid(15), reader.GetString(16), reader.GetInt32(17), reader.GetString(18), reader.GetInt64(19), reader.GetBoolean(30));
             MyBookingStateView? mine = null;
             if (!await reader.IsDBNullAsync(25, cancellationToken))
             {
@@ -600,7 +604,8 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 reader.GetInt32(22),
                 reader.GetString(23),
                 mine,
-                reader.GetInt64(24)));
+                reader.GetInt64(24),
+                MemberNote: await reader.IsDBNullAsync(28, cancellationToken) ? null : reader.GetString(28)));
         }
 
         await reader.CloseAsync();
@@ -682,7 +687,8 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         {
             types.Add(new ClassTypeView(
                 reader.GetGuid(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetInt32(4),
-                await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5), reader.GetString(6), reader.GetInt64(7)));
+                await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5), reader.GetString(6), reader.GetInt64(7),
+                await reader.IsDBNullAsync(8, cancellationToken) ? null : reader.GetGuid(8)));
         }
 
         return types;

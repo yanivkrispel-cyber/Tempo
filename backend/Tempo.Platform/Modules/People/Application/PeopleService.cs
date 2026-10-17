@@ -21,7 +21,8 @@ public sealed record PersonView(
     string? PrimaryPhone,
     Guid? MergedIntoId,
     DateTimeOffset CreatedAt,
-    long Version);
+    long Version,
+    Guid? AvatarMediaId = null);
 
 public sealed record ContactPointView(Guid Id, string Type, string Value, bool IsPrimary, bool Verified, long Version);
 
@@ -106,7 +107,7 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
         p.user_account_id IS NOT NULL, p.membership_id,
         (SELECT c.value FROM people.contact_points c WHERE c.organization_id = p.organization_id AND c.person_id = p.id AND c.type = 'email' AND c.is_primary),
         (SELECT c.value FROM people.contact_points c WHERE c.organization_id = p.organization_id AND c.person_id = p.id AND c.type = 'phone' AND c.is_primary),
-        p.merged_into_id, p.created_at, p.version
+        p.merged_into_id, p.created_at, p.version, p.avatar_media_id
         """;
 
     public async Task<PersonPage> ListAsync(TenantContext tenant, PeopleQuery query, CancellationToken cancellationToken)
@@ -562,7 +563,8 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
                 await reader.IsDBNullAsync(10, cancellationToken) ? null : reader.GetString(10),
                 await reader.IsDBNullAsync(11, cancellationToken) ? null : reader.GetGuid(11),
                 await reader.GetFieldValueAsync<DateTimeOffset>(12, cancellationToken),
-                reader.GetInt64(13)));
+                reader.GetInt64(13),
+                await reader.IsDBNullAsync(14, cancellationToken) ? null : reader.GetGuid(14)));
         }
 
         return people;

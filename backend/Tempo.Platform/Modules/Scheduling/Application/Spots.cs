@@ -31,7 +31,8 @@ public sealed record SessionSpotView(
     Guid? BookingId = null,
     PersonRefView? Person = null,
     string? Attendance = null,
-    string? HealthStatus = null);
+    string? HealthStatus = null,
+    Guid? AvatarMediaId = null);
 
 public sealed record SessionSpotsView(
     Guid SessionId,
@@ -185,10 +186,10 @@ public sealed partial class BookingService : ISpotService
             me = await mine.ExecuteScalarAsync(cancellationToken) as Guid?;
         }
 
-        var holders = new Dictionary<Guid, (Guid BookingId, Guid PersonId, string Name, string Status)>();
+        var holders = new Dictionary<Guid, (Guid BookingId, Guid PersonId, string Name, string Status, Guid? Avatar)>();
         await using (var read = unitOfWork.Command(
             """
-            SELECT b.spot_id, b.id, p.id, p.display_name, b.status
+            SELECT b.spot_id, b.id, p.id, p.display_name, b.status, p.avatar_media_id
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
             WHERE b.organization_id = $1 AND b.session_id = $2 AND b.spot_id IS NOT NULL AND b.status IN ('booked', 'attended', 'no_show')
@@ -198,7 +199,7 @@ public sealed partial class BookingService : ISpotService
         {
             while (await reader.ReadAsync(cancellationToken))
             {
-                holders[reader.GetGuid(0)] = (reader.GetGuid(1), reader.GetGuid(2), reader.GetString(3), reader.GetString(4));
+                holders[reader.GetGuid(0)] = (reader.GetGuid(1), reader.GetGuid(2), reader.GetString(3), reader.GetString(4), await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetGuid(5));
             }
         }
 
@@ -233,14 +234,14 @@ public sealed partial class BookingService : ISpotService
                 state = "buddy";
                 if (!staff)
                 {
-                    spots.Add(new SessionSpotView(spot.Id, spot.Label, spot.Row, spot.Col, spot.Kind, state, null, new PersonRefView(holder.PersonId, holder.Name)));
+                    spots.Add(new SessionSpotView(spot.Id, spot.Label, spot.Row, spot.Col, spot.Kind, state, null, new PersonRefView(holder.PersonId, holder.Name), AvatarMediaId: holder.Avatar));
                     continue;
                 }
             }
 
             spots.Add(staff
                 ? new SessionSpotView(spot.Id, spot.Label, spot.Row, spot.Col, spot.Kind, state, holder.BookingId, new PersonRefView(holder.PersonId, holder.Name), holder.Status,
-                    await HealthStatus.OfPersonAsync(unitOfWork, tenant.OrganizationId, holder.PersonId, now, cancellationToken))
+                    await HealthStatus.OfPersonAsync(unitOfWork, tenant.OrganizationId, holder.PersonId, now, cancellationToken), holder.Avatar)
                 : new SessionSpotView(spot.Id, spot.Label, spot.Row, spot.Col, spot.Kind, state, MineOnly(state, holder.BookingId)));
         }
 
