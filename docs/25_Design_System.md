@@ -74,13 +74,14 @@ tenant color until it passes. All other tokens are platform-owned.
 Button (sage default, cream secondary, ghost, rose CTA, danger, icon tile, loading, three sizes) · Field with Input, Select, Textarea, search
 input · Toggle · Checkbox and Radio · Segmented control · Chip (status, category, count) · Card (flat, raised,
 sunken, selected) · Stat tile and Progress ring · Progress bar · Avatar · Table · Tabs · Sidebar rail and expanded nav · Bottom tab bar · Banner ·
-Toast · Dialog and bottom sheet · Skeleton · Empty state · Week schedule with event tiles · Class card.
+Toast · Dialog and bottom sheet · Skeleton · Empty state · Week schedule with event tiles · Class card · KPI tile ·
+Weekly bar chart (one series, with a table for screen readers) · Compact link rows (owner reports, #256).
 
 Two composed reference screens live in `packages/design-system/docs/specimen.html`: the console's weekly schedule and
 the member app home.
 
-Not yet: command palette, charts (use the `dataviz` guidance with these
-tokens when they arrive), data grid virtualization.
+Not yet: command palette, data grid virtualization. Charts beyond the weekly bar chart follow the `dataviz` guidance
+with these tokens.
 
 ## 8. Workflow
 
