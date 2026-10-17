@@ -1,8 +1,11 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using Tempo.Contracts.Api.Platform;
 using Tempo.Platform.BuildingBlocks.Tenancy;
@@ -74,6 +77,52 @@ public sealed class PlatformEndpointTests : IDisposable
         var response = await api.GetAsync("/api/v1/platform/stats", api.OperatorToken());
 
         (await response.Content.ReadFromJsonAsync<PlatformStatsResponse>())!.HourlyBackupThreshold.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task DeletingAStudio_WithoutARecentSignIn_Is401_AndNothingIsDeleted()
+    {
+        var response = await DeleteStudioAsync(DateTimeOffset.UtcNow.AddMinutes(-11));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await api.Platform.DidNotReceiveWithAnyArgs().DeleteOrganizationAsync(default!, Guid.Empty, default, default, default);
+    }
+
+    [Fact]
+    public async Task DeletingAStudio_PassesTheTypedName_AndAnswers204()
+    {
+        var response = await DeleteStudioAsync(DateTimeOffset.UtcNow.AddMinutes(-1));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await api.Platform.Received(1).DeleteOrganizationAsync(Arg.Is<OperatorContext>(o => o.OperatorId == OperatorId), StudioId, "e2e-x", Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("dev", null, 0)]
+    [InlineData("prod", null, 30)]
+    [InlineData("stg", null, 30)]
+    [InlineData(null, null, 30)]
+    [InlineData("prod", "45", 45)]
+    [InlineData("dev", "not-a-number", 0)]
+    public void StudioRemovalMinDays_IsZeroOnDevOnly_UnlessConfigured(string? environment, string? configured, int expected)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["TEMPO_ENVIRONMENT"] = environment, ["TEMPO_STUDIO_REMOVAL_MIN_DAYS"] = configured })
+            .Build();
+
+        Tempo.Api.Endpoints.PlatformEndpoints.StudioRemovalMinDays(configuration).Should().Be(expected);
+    }
+
+    private async Task<HttpResponseMessage> DeleteStudioAsync(DateTimeOffset authTime)
+    {
+        var token = api.Token(
+            TestApi.OperatorIssuer,
+            TestApi.OperatorClient,
+            "operator-1",
+            extraClaims: new Claim("auth_time", authTime.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64));
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/platform/organizations/{StudioId}") { Content = JsonContent.Create(new { confirmName = "e2e-x" }) };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return await api.CreateClient().SendAsync(request);
     }
 
     [Fact]

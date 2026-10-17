@@ -48,9 +48,16 @@ public interface IPlatformService
     /// reason and a support ticket. The only way to change the owner without the owner. Audited.
     /// </summary>
     Task<PlatformOrganizationView> ForceOwnerTransferAsync(OperatorContext caller, Guid organizationId, Guid toMembershipId, string reason, string ticket, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Removes a studio suspended for at least <paramref name="minDaysSuspended"/> days, with every row it owns
+    /// (docs/32 section 10, A-3). 409 `organization.not_suspended` or `organization.suspended_too_recently`
+    /// (with `deletableFrom`), 400 `organization.name_mismatch`. Audited without the studio's content.
+    /// </summary>
+    Task DeleteOrganizationAsync(OperatorContext caller, Guid organizationId, string? confirmName, int minDaysSuspended, CancellationToken cancellationToken);
 }
 
-public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatformService, IOperatorDirectory
+public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvider? clock = null) : IPlatformService, IOperatorDirectory
 {
     /// <summary>Active studios at which the owner moves to hourly backups (ADR-0021, docs/26 section 10.2).</summary>
     public const int HourlyBackupThreshold = 10;
@@ -217,6 +224,67 @@ public sealed class PlatformService(IDataSourceProvider dataSources) : IPlatform
         var after = await FindAsync(unitOfWork, organizationId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return after;
+    }
+
+    public async Task DeleteOrganizationAsync(OperatorContext caller, Guid organizationId, string? confirmName, int minDaysSuspended, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(cancellationToken);
+        string name;
+        string status;
+        DateTimeOffset suspendedAt;
+        await using (var command = unitOfWork.Command(
+            """
+            SELECT o.display_name, o.status,
+                   coalesce((SELECT max(a.occurred_at) FROM audit.audit_events a
+                             WHERE a.organization_id = o.id AND a.action = 'organization.suspended'), o.updated_at)
+            FROM organizations.organizations o
+            WHERE o.id = $1
+            FOR UPDATE OF o
+            """,
+            organizationId))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new DomainRuleViolationException(ViolationKind.NotFound, "organization.not_found", "Studio not found.");
+            }
+
+            name = reader.GetString(0);
+            status = reader.GetString(1);
+            suspendedAt = await reader.GetFieldValueAsync<DateTimeOffset>(2, cancellationToken);
+        }
+
+        if (status != StoredValue.Of(OrganizationStatus.Suspended))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "organization.not_suspended", "Suspend the studio before removing it.");
+        }
+
+        var deletableFrom = suspendedAt.AddDays(minDaysSuspended);
+        if ((clock ?? TimeProvider.System).GetUtcNow() < deletableFrom)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "organization.suspended_too_recently", "The studio was suspended too recently to remove.")
+            {
+                Extensions = new Dictionary<string, object?> { ["deletableFrom"] = deletableFrom }
+            };
+        }
+
+        if (!string.Equals(confirmName?.Trim(), name.Trim(), StringComparison.Ordinal))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Validation, "organization.name_mismatch", "Type the studio's name to confirm.", "confirmName");
+        }
+
+        long rows;
+        await using (var delete = unitOfWork.Command("SELECT platform_admin.delete_organization($1)", organizationId))
+        {
+            rows = (long)(await delete.ExecuteScalarAsync(cancellationToken))!;
+        }
+
+        // The studio's own audit rows went with it; this one has no studio, so it stays.
+        await AuditWriter.WriteAsync(
+            unitOfWork,
+            new AuditEvent(null, "operator", caller.OperatorId, "platform.organization.deleted", "organization", organizationId, caller.CorrelationId, new { name, rows }),
+            cancellationToken);
+        await unitOfWork.CommitAsync(cancellationToken);
     }
 
     public async Task<PlatformStats> StatsAsync(CancellationToken cancellationToken)

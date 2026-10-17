@@ -30,7 +30,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(22);
+        result.AppliedScripts.Should().HaveCount(23);
         result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
         result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
         result.AppliedScripts[2].Should().EndWith("0003_join_attempts.sql");
@@ -53,6 +53,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         result.AppliedScripts[19].Should().EndWith("0020_role_assignment_scope.sql");
         result.AppliedScripts[20].Should().EndWith("0021_reports_view.sql");
         result.AppliedScripts[21].Should().EndWith("0022_account_deletion.sql");
+        result.AppliedScripts[22].Should().EndWith("0023_organization_removal.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -60,7 +61,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(22);
+            .Should().Be(23);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
     }
@@ -91,7 +92,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(22);
+        result.AppliedScripts.Should().HaveCount(23);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();

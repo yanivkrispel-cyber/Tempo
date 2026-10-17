@@ -37,3 +37,6 @@ public sealed record AuditEventPageResponse(IReadOnlyList<AuditEventResponse> It
 
 /// <summary>`ForceOwnerTransferRequest`: the admin who becomes owner, a written reason and the support ticket.</summary>
 public sealed record ForceOwnerTransferRequest(Guid ToMembershipId, string? Reason, string? Ticket);
+
+/// <summary>`DeleteOrganizationRequest` (docs/32 section 10): the studio's name, typed by the operator.</summary>
+public sealed record DeleteOrganizationRequest(string? ConfirmName);
