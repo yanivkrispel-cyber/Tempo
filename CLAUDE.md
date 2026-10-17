@@ -59,3 +59,5 @@ personal data here.
 - Destructive or account-wide actions (deleting stacks, IAM changes, Neon branch deletes, force-push) need the
   owner's explicit approval each time.
 - Code, comments, commit messages and docs are in English.
+- Every console works on a phone and on a computer with the same functions (D15 in
+  `docs/claude-memory/decisions.md`): owner, coach and member. A UI change is checked at 360 px and at 1280 px wide.
