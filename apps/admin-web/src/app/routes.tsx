@@ -9,6 +9,7 @@ import { InvitationsPage } from "../features/invitations/InvitationsPage";
 import { InvitePage } from "../features/invitations/InvitePage";
 import { MembersPage } from "../features/members/MembersPage";
 import { PassProductsPage } from "../features/passes/PassProductsPage";
+import { ImportPage } from "../features/import/ImportPage";
 import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
@@ -49,6 +50,7 @@ export const routes: RouteObject[] = [
               { path: "invitations", element: <InvitationsPage /> },
               { path: "roles", element: <RolesPage /> },
               { path: "people", element: <PeoplePage /> },
+              { path: "people/import", element: <ImportPage /> },
               { path: "people/:personId", element: <PersonPage /> },
               { path: "duplicates", element: <DuplicatesPage /> },
               { path: "schedule", element: <SchedulePage /> },
