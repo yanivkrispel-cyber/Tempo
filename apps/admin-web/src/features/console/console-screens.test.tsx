@@ -50,6 +50,29 @@ describe("the console on a phone or an upright tablet (D15)", () => {
     expect(menuButton).toHaveFocus();
   });
 
+  it("gives focus back to what opened the drawer, however it closes", async () => {
+    renderAt("/o/neshima", "owner", 390);
+    const menuButton = await screen.findByRole("button", { name: "התפריט של הסטודיו" });
+    const drawer = document.getElementById("console-menu")!;
+    const more = within(screen.getByRole("navigation", { name: "קיצורי דרך" })).getByRole("button", { name: "עוד" });
+
+    await userEvent.click(menuButton);
+    await userEvent.click(within(drawer).getByRole("button", { name: "סגירת התפריט" }));
+    expect(drawer).not.toHaveAttribute("data-open");
+    expect(menuButton).toHaveFocus();
+
+    await userEvent.click(more);
+    expect(drawer).toHaveAttribute("data-open");
+    await userEvent.keyboard("{Escape}");
+    expect(drawer).not.toHaveAttribute("data-open");
+    expect(more).toHaveFocus();
+
+    await userEvent.click(more);
+    await userEvent.click(document.querySelector<HTMLElement>(".tp-scrim")!);
+    expect(drawer).not.toHaveAttribute("data-open");
+    expect(more).toHaveFocus();
+  });
+
   it("closes the drawer when a section is chosen", async () => {
     const { router } = renderAt("/o/neshima", "owner", 390);
     await userEvent.click(await screen.findByRole("button", { name: "התפריט של הסטודיו" }));

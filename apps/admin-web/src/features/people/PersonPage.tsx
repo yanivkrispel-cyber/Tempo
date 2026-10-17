@@ -30,6 +30,8 @@ import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
 import { InvitePersonDialog } from "./InvitePersonDialog";
 import { personStatus, sourceLabel } from "./labels";
+import { NotesSection } from "./NotesSection";
+import { PersonTagsSection } from "./PersonTagsSection";
 import { RelationshipsSection } from "./RelationshipsSection";
 
 type PersonDetail = Schemas["PersonDetail"];
@@ -164,6 +166,8 @@ function PersonCard({ person }: { person: PersonDetail }) {
         </dl>
       </Card>
 
+      <PersonTagsSection person={person} writable={writable} />
+      {studio.can("people.notes.view") && <NotesSection person={person} />}
       <ContactPoints person={person} writable={writable} />
       {studio.can("passes.view") && <PassesSection person={person} />}
       {studio.can("people.view") && <HealthSection person={person} />}
