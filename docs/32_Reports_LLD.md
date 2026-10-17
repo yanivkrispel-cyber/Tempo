@@ -122,8 +122,13 @@ policy); archived types still appear when they were held in the period. Ordered 
 SELECT count(DISTINCT b.person_id)
 FROM scheduling.bookings b
 JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
-WHERE b.organization_id = $1 AND b.status = 'attended' AND s.local_date BETWEEN $2 AND $3;
+JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
+LEFT JOIN organizations.memberships m ON m.organization_id = p.organization_id AND m.id = p.membership_id
+WHERE b.organization_id = $1 AND b.status = 'attended' AND s.local_date BETWEEN $2 AND $3
+  AND (m.id IS NULL OR m.role = 'client');
 ```
+
+An instructor who takes a class is staff, not a member, so active members use the same role filter as new members.
 
 **New members** (`$4` = the studio's time zone id):
 
@@ -228,9 +233,11 @@ The hot paths and the indexes they use:
 | a person's attended visits | `ix_bookings_person (organization_id, person_id, created_at)` |
 | passes per person | `ix_passes_person (organization_id, person_id, ends_on)` |
 
-R2 seeds 10 000 bookings **locally** (never on dev) and posts the `EXPLAIN (ANALYZE, BUFFERS)` of the session
-query and the members-at-risk query on the board. An index (migration 0021, same PR) is added only if a plan shows a
-sequential scan over bookings or sessions that costs more than about 50 ms.
+R2 seeded 10 000 bookings **locally** (never on dev): one studio with 1 000 people, 1 300 sessions over about six
+months and a pass each. It ran `EXPLAIN (ANALYZE, BUFFERS)` in the application role with `app.organization_id` set,
+and the plans are on board #253. The 92-day session query took 3.9 ms and members at risk took 7.7 ms. Both plans
+read `sessions` and `bookings` with a sequential scan, because one studio is the whole table, and they stay far
+below the 50 ms bar. So no index is added. Look again when a studio passes about 100 000 bookings.
 
 ## 9. Deleting my login (A-1, A-2, P2 F6)
 
