@@ -41,6 +41,9 @@ public static class Permissions
     // Owner reports (docs/32 section 3), seeded by migration 0021 for the owner and admin roles.
     public const string ReportsView = "reports.view";
 
+    // Member import from a file (docs/34 section 3), seeded by migration 0024 for the owner and admin roles.
+    public const string PeopleImport = "people.import";
+
     /// <summary>Every key with what it allows, for the role screen (`GET /permissions`).</summary>
     public static readonly IReadOnlyDictionary<string, string> Catalog = new Dictionary<string, string>
     {
@@ -68,7 +71,8 @@ public static class Permissions
         [BillingView] = "See the studio's plan and billing details",
         [BillingManage] = "Change the studio's billing details",
         [HealthView] = "Read health declaration answers and record medical approval",
-        [ReportsView] = "See the studio's reports"
+        [ReportsView] = "See the studio's reports",
+        [PeopleImport] = "Import people from a file"
     };
 }
 
@@ -95,7 +99,8 @@ public static class SystemRoles
             Permissions.MembersInviteStaff, Permissions.MembersManage, Permissions.AuditView, Permissions.PeopleView,
             Permissions.PeopleManage, Permissions.PeopleMerge, Permissions.PeopleExport, Permissions.ConsentManage,
             Permissions.ScheduleView, Permissions.ScheduleManage, Permissions.BookingsManage, Permissions.AttendanceMark,
-            Permissions.PassesView, Permissions.PassesManage, Permissions.BillingView, Permissions.ReportsView
+            Permissions.PassesView, Permissions.PassesManage, Permissions.BillingView, Permissions.ReportsView,
+            Permissions.PeopleImport
         });
 
     public static readonly SystemRole Staff = new(
