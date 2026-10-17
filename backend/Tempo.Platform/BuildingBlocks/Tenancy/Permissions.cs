@@ -38,6 +38,9 @@ public static class Permissions
     // The health declaration (docs/31 section 5), seeded by migration 0018 for the owner role only.
     public const string HealthView = "health.view";
 
+    // Owner reports (docs/32 section 3), seeded by migration 0021 for the owner and admin roles.
+    public const string ReportsView = "reports.view";
+
     /// <summary>Every key with what it allows, for the role screen (`GET /permissions`).</summary>
     public static readonly IReadOnlyDictionary<string, string> Catalog = new Dictionary<string, string>
     {
@@ -64,7 +67,8 @@ public static class Permissions
         [PassesManage] = "Create pass products, grant and void passes",
         [BillingView] = "See the studio's plan and billing details",
         [BillingManage] = "Change the studio's billing details",
-        [HealthView] = "Read health declaration answers and record medical approval"
+        [HealthView] = "Read health declaration answers and record medical approval",
+        [ReportsView] = "See the studio's reports"
     };
 }
 
@@ -91,7 +95,7 @@ public static class SystemRoles
             Permissions.MembersInviteStaff, Permissions.MembersManage, Permissions.AuditView, Permissions.PeopleView,
             Permissions.PeopleManage, Permissions.PeopleMerge, Permissions.PeopleExport, Permissions.ConsentManage,
             Permissions.ScheduleView, Permissions.ScheduleManage, Permissions.BookingsManage, Permissions.AttendanceMark,
-            Permissions.PassesView, Permissions.PassesManage, Permissions.BillingView
+            Permissions.PassesView, Permissions.PassesManage, Permissions.BillingView, Permissions.ReportsView
         });
 
     public static readonly SystemRole Staff = new(

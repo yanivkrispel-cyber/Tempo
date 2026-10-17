@@ -2593,7 +2593,6 @@ paths:
     get:
       tags: [Reports]
       operationId: getReportSummary
-      x-tempo-planned: true
       summary: "Weekly figures, per class type and members for a period (`reports.view`)"
       description: |
         docs/32 sections 4 and 5. `from` and `to` are dates in the studio's time zone, both included, at most 92
@@ -2631,7 +2630,6 @@ paths:
     get:
       tags: [Reports]
       operationId: listPassesEnding
-      x-tempo-planned: true
       summary: "Passes that end within 14 days or have one entry left (`reports.view` and `people.view`)"
       description: docs/32 section 6. At most 50 rows, the soonest first; `truncated` says more exist.
       responses:
@@ -2650,7 +2648,6 @@ paths:
     get:
       tags: [Reports]
       operationId: listMembersAtRisk
-      x-tempo-planned: true
       summary: "Members with a valid pass and no attended class for 30 days (`reports.view` and `people.view`)"
       description: docs/32 section 6. At most 50 rows, the longest absence first; `truncated` says more exist.
       responses:
