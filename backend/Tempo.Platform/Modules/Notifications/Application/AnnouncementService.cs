@@ -50,7 +50,8 @@ public sealed class AnnouncementService(IDataSourceProvider dataSources, TimePro
     {
         var title = subject?.Trim() ?? string.Empty;
         var text = body?.Trim() ?? string.Empty;
-        if (title.Length is 0 or > SubjectMax || title.Contains('\n', StringComparison.Ordinal))
+        // One line: no \n, no bare \r, and no other control character (#208).
+        if (title.Length is 0 or > SubjectMax || title.Any(char.IsControl))
         {
             throw new DomainRuleViolationException(ViolationKind.Validation, "announcement.invalid", $"Write one line of 1 to {SubjectMax} characters.", "subject");
         }

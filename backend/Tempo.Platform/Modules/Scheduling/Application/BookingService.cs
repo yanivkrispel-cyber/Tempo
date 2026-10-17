@@ -539,7 +539,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         await use.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private static async Task ReturnEntryAsync(UnitOfWork unitOfWork, Guid organizationId, Guid bookingId, CancellationToken cancellationToken)
+    /// <summary>Gives a booking's held entry back to its punch card; a membership has nothing to return. Erase and merge use it too.</summary>
+    internal static async Task ReturnEntryAsync(UnitOfWork unitOfWork, Guid organizationId, Guid bookingId, CancellationToken cancellationToken)
     {
         await using var returned = unitOfWork.Command(
             """

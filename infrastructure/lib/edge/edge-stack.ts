@@ -12,7 +12,7 @@ import {
   OriginRequestPolicy,
   ResponseHeadersPolicy,
   Signing,
-  ViewerProtocolPolicy
+  ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
 import { HttpOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from "aws-cdk-lib/aws-cloudwatch";
@@ -48,7 +48,7 @@ export function appContentSecurityPolicy(config: TempoEnvironmentConfig): string
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "object-src 'none'",
-    "upgrade-insecure-requests"
+    "upgrade-insecure-requests",
   ].join("; ");
 }
 
@@ -58,7 +58,7 @@ function cspFunctionSource(policy: string): string {
     "  var response = event.response;",
     `  response.headers["content-security-policy"] = { value: ${JSON.stringify(policy)} };`,
     "  return response;",
-    "}"
+    "}",
   ].join("\n");
 }
 
@@ -76,7 +76,12 @@ export const AUTH_RATE_LIMIT = 100;
  * Invitation tokens and join codes are the only inputs worth guessing (docs/26 section 10.3); sign-in itself goes
  * through Cognito, not this API. `/api/v1/auth/` was named here before and has no routes.
  */
-export const GUESSABLE_INPUT_PATHS = ["/api/v1/invitations/preview", "/api/v1/invitations/accept", "/api/v1/join", "/api/v1/join/preview"] as const;
+export const GUESSABLE_INPUT_PATHS = [
+  "/api/v1/invitations/preview",
+  "/api/v1/invitations/accept",
+  "/api/v1/join",
+  "/api/v1/join/preview",
+] as const;
 /** What the canary calls through CloudFront (ADR-0012 amendment). */
 export const HEALTH_PATH = "/api/v1/health";
 export const CANARY_INTERVAL_MINUTES = 5;
@@ -122,7 +127,7 @@ export class EdgeStack extends Stack {
           priority: 3,
           action: { block: {} },
           statement: { rateBasedStatement: { limit: GENERAL_RATE_LIMIT, aggregateKeyType: "IP" } },
-          visibilityConfig: visibility("RateLimitAll")
+          visibilityConfig: visibility("RateLimitAll"),
         },
         {
           name: "RateLimitAuth",
@@ -134,23 +139,27 @@ export class EdgeStack extends Stack {
               aggregateKeyType: "IP",
               scopeDownStatement: {
                 orStatement: {
-                  // ASP.NET Core routing ignores case and a trailing slash (#180), so each match lowercases the
-                  // path and every path also comes with a trailing slash.
+                  // ASP.NET Core routing ignores case and a trailing slash (#180), and decodes the path, so
+                  // /api/v1/%6Aoin reaches join: each match URL-decodes, then lowercases, and every path also
+                  // comes with a trailing slash (#208).
                   statements: GUESSABLE_INPUT_PATHS.flatMap((path) => [path, `${path}/`]).map((path) => ({
                     byteMatchStatement: {
                       searchString: path,
                       fieldToMatch: { uriPath: {} },
                       positionalConstraint: "EXACTLY",
-                      textTransformations: [{ priority: 0, type: "LOWERCASE" }]
-                    }
-                  }))
-                }
-              }
-            }
+                      textTransformations: [
+                        { priority: 0, type: "URL_DECODE" },
+                        { priority: 1, type: "LOWERCASE" },
+                      ],
+                    },
+                  })),
+                },
+              },
+            },
           },
-          visibilityConfig: visibility("RateLimitAuth")
-        }
-      ]
+          visibilityConfig: visibility("RateLimitAuth"),
+        },
+      ],
     });
 
     // Static PWA files only, no personal data, so the bucket can live here
@@ -159,7 +168,7 @@ export class EdgeStack extends Stack {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
-      removalPolicy: config.environmentName === "prod" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY
+      removalPolicy: config.environmentName === "prod" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
 
     // Signs every request to the Function URL (AuthType AWS_IAM), so the URL
@@ -167,7 +176,7 @@ export class EdgeStack extends Stack {
     // because a Lambda permission must be in the function's Region.
     const apiOriginAccessControl = new FunctionUrlOriginAccessControl(this, "ApiOriginAccessControl", {
       originAccessControlName: resourceName(config, "api-oac"),
-      signing: Signing.SIGV4_ALWAYS
+      signing: Signing.SIGV4_ALWAYS,
     });
 
     // The Free plan allows managed response header policies and CloudFront Functions, but no custom response
@@ -177,7 +186,7 @@ export class EdgeStack extends Stack {
       functionName: resourceName(config, "csp"),
       comment: "Adds the apps' Content-Security-Policy (docs: issue #133)",
       runtime: FunctionRuntime.JS_2_0,
-      code: FunctionCode.fromInline(cspFunctionSource(appContentSecurityPolicy(config)))
+      code: FunctionCode.fromInline(cspFunctionSource(appContentSecurityPolicy(config))),
     });
 
     // Only managed cache and origin request policies: the Free plan allows no others.
@@ -191,20 +200,20 @@ export class EdgeStack extends Stack {
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
         responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
         functionAssociations: [{ function: contentSecurityPolicy, eventType: FunctionEventType.VIEWER_RESPONSE }],
-        compress: true
+        compress: true,
       },
       additionalBehaviors: {
         "/api/*": {
           origin: new HttpOrigin(props.apiFunctionUrlDomain, {
             protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
-            originAccessControlId: apiOriginAccessControl.originAccessControlId
+            originAccessControlId: apiOriginAccessControl.originAccessControlId,
           }),
           viewerProtocolPolicy: ViewerProtocolPolicy.HTTPS_ONLY,
           allowedMethods: AllowedMethods.ALLOW_ALL,
           cachePolicy: CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER
-        }
-      }
+          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        },
+      },
     });
 
     // No CDK construct yet. FREE activates at once; a paid tier would wait in
@@ -215,8 +224,8 @@ export class EdgeStack extends Stack {
         PlanFamily: "CloudFront",
         PlanTier: "FREE",
         UsageLevel: "DEFAULT",
-        ResourceArns: [this.distribution.distributionArn, webAcl.attrArn]
-      }
+        ResourceArns: [this.distribution.distributionArn, webAcl.attrArn],
+      },
     });
 
     // The resource type is documented in the CloudFormation template reference,
@@ -224,20 +233,20 @@ export class EdgeStack extends Stack {
     // applies the acknowledgement app-wide; this is the only CfnResource here.
     Validations.of(freePlan).acknowledge({
       id: "CloudFormation-Validate::F3006",
-      reason: "AWS::PricingPlanManager::Subscription exists in CloudFormation but not yet in the bundled resource spec"
+      reason: "AWS::PricingPlanManager::Subscription exists in CloudFormation but not yet in the bundled resource spec",
     });
 
     new CfnOutput(this, "DistributionDomainName", {
       description: "The PWA and, under /api/*, the API - read by the deployment smoke test",
-      value: this.distribution.distributionDomainName
+      value: this.distribution.distributionDomainName,
     });
     new CfnOutput(this, "PwaBucketName", {
       description: "Where the PWA build is uploaded",
-      value: pwaBucket.bucketName
+      value: pwaBucket.bucketName,
     });
     new CfnOutput(this, "FreePlanStatus", {
       description: "ACTIVE once the Free plan covers the distribution and the web ACL",
-      value: freePlan.getAtt("Status").toString()
+      value: freePlan.getAtt("Status").toString(),
     });
 
     const canary = this.addCanary(config);
@@ -272,14 +281,14 @@ export class EdgeStack extends Stack {
       logGroup: createLogGroup(this, "CanaryLogGroup", config, { logGroupName: `/aws/lambda/${functionName}` }),
       environment: { HEALTH_URL: `https://${this.distribution.distributionDomainName}${HEALTH_PATH}` },
       handler: "index.handler",
-      code: Code.fromInline(CANARY_SOURCE)
+      code: Code.fromInline(CANARY_SOURCE),
     });
 
     new Schedule(this, "CanarySchedule", {
       scheduleName: resourceName(config, "canary"),
       description: "Runs the canary (ADR-0012 amendment)",
       schedule: ScheduleExpression.rate(Duration.minutes(CANARY_INTERVAL_MINUTES)),
-      target: new LambdaInvoke(canary, { retryAttempts: 0 })
+      target: new LambdaInvoke(canary, { retryAttempts: 0 }),
     });
 
     return canary;
@@ -299,12 +308,12 @@ export class EdgeStack extends Stack {
         metricName: "5xxErrorRate",
         dimensionsMap: { DistributionId: this.distribution.distributionId, Region: "Global" },
         statistic: "Average",
-        period: Duration.minutes(5)
+        period: Duration.minutes(5),
       }),
       threshold: CLOUDFRONT_5XX_RATE_THRESHOLD,
       evaluationPeriods: 3,
       comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING
+      treatMissingData: TreatMissingData.NOT_BREACHING,
     });
 
     // Two failed checks in a row. A canary that stops running is a failure too.
@@ -315,7 +324,7 @@ export class EdgeStack extends Stack {
       threshold: 1,
       evaluationPeriods: 2,
       comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.BREACHING
+      treatMissingData: TreatMissingData.BREACHING,
     });
 
     if (config.observability.alarmNotificationsEnabled && config.observability.alarmEmail) {
@@ -348,6 +357,6 @@ function managedRuleGroup(name: string, priority: number): CfnWebACL.RulePropert
     priority,
     overrideAction: { none: {} },
     statement: { managedRuleGroupStatement: { vendorName: "AWS", name } },
-    visibilityConfig: visibility(name)
+    visibilityConfig: visibility(name),
   };
 }

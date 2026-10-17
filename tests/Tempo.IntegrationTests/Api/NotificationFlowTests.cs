@@ -391,6 +391,8 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         var invalid = await RawAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "שורה\nשנייה", body = "גוף" });
         invalid.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await invalid.Content.ReadAsStringAsync()).Should().Contain("announcement.invalid").And.Contain("subject");
+        var bareReturn = await RawAsync(client, HttpMethod.Post, announcements, Customer("owner"), new { subject = "שורה\rשנייה", body = "גוף" });
+        bareReturn.StatusCode.Should().Be(HttpStatusCode.BadRequest, "a bare \\r breaks the subject line too (#208)");
 
         // 2. Sent: Rina's inbox shows the subject and the text; her push carries only the kind and ids.
         await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/push-subscriptions", Customer("rina"),
