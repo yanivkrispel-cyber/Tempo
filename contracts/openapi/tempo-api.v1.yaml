@@ -93,6 +93,8 @@ tags:
     description: Instructor profiles inside the studio (docs/33 section 5).
   - name: Check-in
     description: The rotating check-in code and the scan at the door (docs/33 section 8).
+  - name: Insights
+    description: The owner's console at a glance (docs/33 section 9).
   - name: Passes
     description: Punch cards and memberships the studio sells and grants (docs/29).
   - name: Notifications
@@ -1786,6 +1788,101 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/organizations/{organizationId}/insights/sales:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Insights]
+      operationId: getSales
+      summary: "Pass sales this month and a forecast (`reports.view`)"
+      description: "Passes granted at their product's list price, not payments (docs/33 X-9); the forecast is null before the third day."
+      parameters:
+        - { name: month, in: query, required: false, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sales" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/organizations/{organizationId}/insights/occupancy:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Insights]
+      operationId: getOccupancy
+      summary: "The week's occupancy by day and part of day (`reports.view`)"
+      parameters:
+        - { name: week, in: query, required: false, schema: { type: string, format: date }, description: Any day of the week; defaults to this week. }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Occupancy" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/organizations/{organizationId}/insights/suggestions:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Insights]
+      operationId: listSuggestions
+      summary: "Up to three \"waiting for you\" cards (`reports.view`)"
+      description: "Members at risk and passes ending need `people.view` too; a full class with four or more waiting comes with the first free slot that day."
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuggestionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/organizations/{organizationId}/insights/activity:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Insights]
+      operationId: listActivity
+      summary: "What happened in the last 48 hours (`reports.view` and `people.view`)"
+      parameters:
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivityList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/organizations/{organizationId}/search:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Insights]
+      operationId: search
+      summary: "People and upcoming classes by name (`schedule.view`; people with `people.view`)"
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2 } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResults" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/organizations/{organizationId}/class-types:
     parameters:
@@ -4804,6 +4901,120 @@ components:
         healthStatus: { type: string, enum: [signed, missing, expired, needs_medical_approval] }
         alreadyCheckedIn: { type: boolean }
 
+    Sales:
+      type: object
+      required: [month, timeZone, soFarAgorot, previousToDateAgorot, passesSold, unpricedCount, days]
+      properties:
+        month: { type: string }
+        timeZone: { type: string }
+        soFarAgorot: { type: integer }
+        previousToDateAgorot: { type: integer, description: The previous month up to the same day. }
+        forecastAgorot: { type: [integer, "null"] }
+        passesSold: { type: integer }
+        unpricedCount: { type: integer, description: Passes of a product without a price (counted as 0). }
+        days:
+          type: array
+          items:
+            type: object
+            required: [day, cumulativeAgorot]
+            properties:
+              day: { type: string, format: date }
+              cumulativeAgorot: { type: integer }
+
+    Occupancy:
+      type: object
+      required: [weekStart, timeZone, places, capacity, cells]
+      properties:
+        weekStart: { type: string, format: date }
+        timeZone: { type: string }
+        places: { type: integer }
+        capacity: { type: integer }
+        previousPlaces: { type: [integer, "null"] }
+        previousCapacity: { type: [integer, "null"] }
+        cells:
+          type: array
+          items:
+            type: object
+            required: [day, part, places, capacity, fullWithWaitlist]
+            properties:
+              day: { type: string, format: date }
+              part: { type: string, enum: [morning, noon, evening] }
+              places: { type: integer }
+              capacity: { type: integer }
+              fullWithWaitlist: { type: boolean }
+
+    Suggestion:
+      type: object
+      required: [kind, count, people]
+      properties:
+        kind: { type: string, enum: [passes_ending, members_at_risk, waitlist_pressure] }
+        count: { type: integer }
+        people:
+          type: array
+          items: { $ref: "#/components/schemas/PersonRef" }
+        amountAgorot: { type: [integer, "null"] }
+        sessionId: { type: [string, "null"], format: uuid }
+        className: { type: [string, "null"] }
+        startsAt: { type: [string, "null"], format: date-time }
+        instructorMembershipId: { type: [string, "null"], format: uuid }
+        instructorName: { type: [string, "null"] }
+        slot:
+          oneOf:
+            - type: object
+              required: [startsAt]
+              properties:
+                startsAt: { type: string, format: date-time }
+                roomId: { type: [string, "null"], format: uuid }
+                roomName: { type: [string, "null"] }
+            - type: "null"
+
+    SuggestionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Suggestion" }
+
+    Activity:
+      type: object
+      required: [kind, at, person]
+      properties:
+        kind: { type: string, enum: [booking.created, booking.waitlisted, booking.cancelled, booking.promoted, booking.checked_in, pass.granted, health.declaration.signed] }
+        at: { type: string, format: date-time }
+        person: { $ref: "#/components/schemas/PersonRef" }
+        className: { type: [string, "null"] }
+        classStartsAt: { type: [string, "null"], format: date-time }
+        spotLabel: { type: [string, "null"] }
+        productName: { type: [string, "null"] }
+        priceAgorot: { type: [integer, "null"] }
+
+    ActivityList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Activity" }
+
+    SearchResults:
+      type: object
+      required: [people, sessions]
+      properties:
+        people:
+          type: array
+          items: { $ref: "#/components/schemas/PersonRef" }
+        sessions:
+          type: array
+          items:
+            type: object
+            required: [id, className, startsAt]
+            properties:
+              id: { type: string, format: uuid }
+              className: { type: string }
+              startsAt: { type: string, format: date-time }
+              instructorName: { type: [string, "null"] }
+
     ChangeSpotRequest:
       type: object
       required: [spotId]
@@ -5614,6 +5825,18 @@ components:
           type: integer
           minimum: 0
           description: Consecutive Sunday-to-Saturday weeks with an attended class; the current week counts once it has one.
+        weeks:
+          type: array
+          description: The last 12 weeks, oldest first (docs/33 section 10).
+          items: { $ref: "#/components/schemas/ProgressWeek" }
+
+    ProgressWeek:
+      type: object
+      required: [weekStart, attended, booked]
+      properties:
+        weekStart: { type: string, format: date, description: The Sunday. }
+        attended: { type: integer, minimum: 0 }
+        booked: { type: integer, minimum: 0, description: "Places still booked ahead; the current week only." }
 
     MonthlyGoalRequest:
       type: object

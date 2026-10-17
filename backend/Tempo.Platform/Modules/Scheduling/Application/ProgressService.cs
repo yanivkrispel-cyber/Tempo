@@ -7,7 +7,9 @@ using Tempo.Platform.Modules.Scheduling.Domain;
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
 /// <summary><paramref name="Month"/> is `yyyy-MM` in the studio's time zone.</summary>
-public sealed record ProgressView(string Month, string TimeZone, int VisitsThisMonth, int? MonthlyGoal, int StreakWeeks);
+public sealed record ProgressWeekView(DateOnly WeekStart, int Attended, int Booked);
+
+public sealed record ProgressView(string Month, string TimeZone, int VisitsThisMonth, int? MonthlyGoal, int StreakWeeks, IReadOnlyList<ProgressWeekView>? Weeks = null);
 
 /// <summary>The member's own progress in one studio: visits, goal and streak (docs/31 section 12).</summary>
 public interface IProgressService
@@ -77,6 +79,24 @@ public sealed class ProgressService(IDataSourceProvider dataSources, TimeProvide
             }
         }
 
+        // Places still booked this week, for the current week's dot (docs/33 section 10).
+        var booked = new List<DateOnly>();
+        await using (var command = unitOfWork.Command(
+            """
+            SELECT s.local_date
+            FROM scheduling.bookings b
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE b.organization_id = $1 AND b.person_id = $2 AND b.status = 'booked' AND s.local_date BETWEEN $3 AND $4
+            """,
+            organizationId, person, today, Progress.WeekStart(today).AddDays(6)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                booked.Add(await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken));
+            }
+        }
+
         await using var goal = unitOfWork.Command(
             "SELECT monthly_goal FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2",
             organizationId, person);
@@ -87,7 +107,8 @@ public sealed class ProgressService(IDataSourceProvider dataSources, TimeProvide
             zone.Id,
             Progress.VisitsInMonth(attended, today),
             monthlyGoal,
-            Progress.StreakWeeks(attended, today));
+            Progress.StreakWeeks(attended, today),
+            [.. Progress.Weeks(attended, booked, today).Select(w => new ProgressWeekView(w.WeekStart, w.Attended, w.Booked))]);
     }
 
     private static async Task<Guid> MyPersonIdAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)
