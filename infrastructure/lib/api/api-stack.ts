@@ -228,10 +228,11 @@ export class ApiStack extends Stack {
     const functionUrl = this.apiFunction.function.addFunctionUrl({ authType: FunctionUrlAuthType.AWS_IAM });
     this.functionUrlDomain = Fn.select(2, Fn.split("/", functionUrl.url));
 
-    // The distribution lives in us-east-1 and reads this stack's URL, so naming
-    // its ARN here would make the reference circular. Any distribution of this
-    // account may invoke; the function URL itself is still private to them.
-    const distributions = `arn:${this.partition}:cloudfront::${this.account}:distribution/*`;
+    // The distribution lives in us-east-1 and reads this stack's URL, so it
+    // cannot be referenced from here. Once its id is in the environment config
+    // (after the edge's first deploy) only it may invoke; until then any
+    // distribution of this account may, and the URL stays private to them (#124).
+    const distributions = `arn:${this.partition}:cloudfront::${this.account}:distribution/${config.edgeDistributionId ?? "*"}`;
     new CfnPermission(this, "AllowCloudFrontInvokeFunctionUrl", {
       action: "lambda:InvokeFunctionUrl",
       functionName: this.apiFunction.function.functionName,

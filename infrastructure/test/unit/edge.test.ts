@@ -96,6 +96,9 @@ describe.each([
     expect(code).toContain("content-security-policy");
     expect(code).toContain("script-src 'self'");
     expect(code).toContain("frame-ancestors 'none'");
+    // The service worker and the manifest are same-origin (#124 item 10, K2's CSP review on #232).
+    expect(code).toContain("worker-src 'self'");
+    expect(code).toContain("manifest-src 'self'");
     expect(code).toContain("https://cognito-idp.");
     expect(code).not.toContain("unsafe-eval");
   });

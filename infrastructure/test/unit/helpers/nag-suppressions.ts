@@ -22,7 +22,7 @@ const LAMBDA_ROLES = [
   "Canary/CanaryFunction/ServiceRole"
 ];
 
-const TRACKED_IN_109 = "Hardening tracked in issue #109 (cdk-nag findings that existed before the gate).";
+const TRACKED_IN_CFR4 = "Needs the custom domain and an ACM certificate; tracked in issue #241 (moved out of #109).";
 
 export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
   {
@@ -91,8 +91,5 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
     reason: "The PWA bucket is private behind CloudFront origin access and holds only the public build; access logs cost storage (ADR-0021).",
     paths: ["Edge/PwaBucket"]
   },
-  { id: "AwsSolutions-CFR4", reason: TRACKED_IN_109, paths: ["Edge/Distribution"] },
-  { id: "AwsSolutions-L1", reason: TRACKED_IN_109, paths: ["Database/NeonUsageFunction", "Edge/CanaryFunction"] },
-  { id: "AwsSolutions-SNS3", reason: TRACKED_IN_109, paths: ["Observability/AlarmTopic", "Edge/AlarmTopic"] },
-  { id: "AwsSolutions-SQS4", reason: TRACKED_IN_109, paths: ["Messaging/WorkQueue"] }
+  { id: "AwsSolutions-CFR4", reason: TRACKED_IN_CFR4, paths: ["Edge/Distribution"] }
 ];

@@ -126,6 +126,13 @@ export interface TempoEnvironmentConfig {
 
   readonly enableDeletionProtection: boolean;
 
+  /**
+   * The edge distribution's id (`E...`), set after the edge stack's first deploy (#124 item 8). When set, only that
+   * distribution may invoke the API's Function URL; until then any distribution of the account may, because the
+   * distribution lives in us-east-1 and naming it from the API stack would be a circular cross-Region reference.
+   */
+  readonly edgeDistributionId?: string;
+
   readonly neon: NeonConfig;
   readonly lambda: LambdaConfig;
   readonly observability: ObservabilityConfig;
@@ -171,6 +178,10 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (!/^\d{12}$/.test(config.accountId)) {
     errors.push(`accountId must be a 12-digit AWS account id, got "${config.accountId}"`);
+  }
+
+  if (config.edgeDistributionId !== undefined && !/^E[A-Z0-9]{8,20}$/.test(config.edgeDistributionId)) {
+    errors.push(`edgeDistributionId must be a CloudFront distribution id, got "${config.edgeDistributionId}"`);
   }
 
   if (config.region !== "eu-central-1") {

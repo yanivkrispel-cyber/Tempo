@@ -45,6 +45,8 @@ export function appContentSecurityPolicy(config: TempoEnvironmentConfig): string
     "img-src 'self' data: blob:",
     `connect-src 'self' ${cognitoDomain} ${cognitoApi}`,
     `form-action 'self' ${cognitoDomain}`,
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "object-src 'none'",
