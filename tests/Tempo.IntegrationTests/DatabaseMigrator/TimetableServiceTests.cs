@@ -112,6 +112,42 @@ public sealed class TimetableServiceTests(PostgresFixture postgres) : IClassFixt
         (await archived.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("class_type.invalid");
     }
 
+    [Fact]
+    public async Task AWeeklyClassNobodyBooked_EndsBeforeItsFirstDay_AndLeavesNoSessions()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var timetable = new TimetableService(db, TimeProvider.System);
+        var (classType, _) = await BasicsAsync(timetable, owner);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var change = await timetable.CreateTemplateAsync(owner, new NewTemplate(classType.Id, 3, new TimeOnly(18, 0), null, null, null, 8, today.AddDays(10), null), CancellationToken.None);
+
+        var ended = await timetable.UpdateTemplateAsync(owner, change.Template.Id, new TemplateChanges(null, null, null, default, default, null, new Change<DateOnly?>(true, today)), null, CancellationToken.None);
+
+        ended.Template.ValidUntil.Should().Be(ended.Template.ValidFrom.AddDays(-1), "an empty range: the class never runs");
+        (await db.AsMasterAsync("SELECT count(*)::int FROM scheduling.sessions WHERE template_id = $1", change.Template.Id)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AWeeklyClassWithABooking_CannotEndBeforeItsFirstDay()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var owner = await StudioAsync(db);
+        var timetable = new TimetableService(db, TimeProvider.System);
+        var (classType, _) = await BasicsAsync(timetable, owner);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var change = await timetable.CreateTemplateAsync(owner, new NewTemplate(classType.Id, 3, new TimeOnly(18, 0), null, null, null, 8, today.AddDays(10), null), CancellationToken.None);
+        var session = (Guid)(await db.AsMasterAsync("SELECT id FROM scheduling.sessions WHERE template_id = $1 ORDER BY starts_at LIMIT 1", change.Template.Id))!;
+        var person = (Guid)(await db.AsMasterAsync("SELECT id FROM people.people WHERE organization_id = $1", owner.OrganizationId))!;
+        await db.AsMasterAsync(
+            "INSERT INTO scheduling.bookings (organization_id, id, session_id, person_id, status, booked_by, created_at, updated_at) VALUES ($1, $2, $3, $4, 'booked', $5, now(), now())",
+            owner.OrganizationId, Guid.CreateVersion7(), session, person, owner.MembershipId);
+
+        var end = () => timetable.UpdateTemplateAsync(owner, change.Template.Id, new TemplateChanges(null, null, null, default, default, null, new Change<DateOnly?>(true, today)), null, CancellationToken.None);
+
+        (await end.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("template.has_bookings");
+    }
+
     private static async Task<(ClassTypeView ClassType, RoomView Room)> BasicsAsync(TimetableService timetable, TenantContext owner)
     {
         var room = await timetable.CreateRoomAsync(owner, new NewRoom("חדר המכשירים", 8), CancellationToken.None);
