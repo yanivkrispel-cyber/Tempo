@@ -14,7 +14,7 @@ namespace Tempo.Api.Endpoints;
 /// The account routes of docs/26 section 8.1 that need no studio:
 /// POST /api/v1/session, GET /api/v1/me and PATCH /api/v1/me; and DELETE /api/v1/me (docs/32 section 9).
 /// </summary>
-public static partial class AccountEndpoints
+public static class AccountEndpoints
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -110,10 +110,6 @@ public static partial class AccountEndpoints
             m.EntitlementsJson is { } json ? System.Text.Json.JsonDocument.Parse(json).RootElement.Clone() : null);
 
     /// <summary>
-    /// The sign-in behind a validated customer access token. Cognito access
-    /// tokens carry `username` (what AdminGetUser takes) and `auth_time`.
-    /// </summary>
-    /// <summary>
     /// A-1 and A-2: a recent sign-in, the email typed, then the database in one transaction and the Cognito user
     /// after it. A failed Cognito call is logged and the answer is still 204: the login reaches nothing any more.
     /// </summary>
@@ -123,7 +119,7 @@ public static partial class AccountEndpoints
         IAccountDeletionService deletion,
         ICognitoUserDeleter cognito,
         TimeProvider clock,
-        ILoggerFactory loggers)
+        Serilog.ILogger log)
     {
         var signIn = SignInOf(httpContext);
         if (signIn is null)
@@ -139,15 +135,18 @@ public static partial class AccountEndpoints
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            LogCognitoDeleteFailed(loggers.CreateLogger(typeof(AccountEndpoints)), e);
+            // The account row is gone, so DELETE /me can't be retried: the Cognito `sub` (pseudonymous, never the
+            // email) is what an operator needs to delete the leftover user with admin-delete-user.
+            log.Warning(e, "The account is deleted but Cognito user {CognitoSubject} is not; delete it with admin-delete-user", signIn.Subject);
         }
 
         return Results.NoContent();
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "The account is deleted but its Cognito user is not; deleting it again is safe")]
-    private static partial void LogCognitoDeleteFailed(ILogger logger, Exception exception);
-
+    /// <summary>
+    /// The sign-in behind a validated customer access token. Cognito access
+    /// tokens carry `username` (what AdminGetUser takes) and `auth_time`.
+    /// </summary>
     private static SignIn? SignInOf(HttpContext httpContext)
     {
         var user = httpContext.User;
