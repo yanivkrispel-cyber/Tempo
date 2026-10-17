@@ -3538,7 +3538,8 @@ export interface components {
          *     `ownership.transfer_pending`, `ownership.transfer_stale` (roles changed since the offer; it is cancelled),
          *     `person.has_login`, `person.merge_both_have_login`, `person.read_only` (anonymized or merged),
          *     `contact_point.verified` (the sign-in email changes only with the account), `relationship.exists`,
-         *     `health.declaration_required`, `health.form_version_stale`, `health.no_approval_needed`.
+         *     `health.declaration_required`, `health.form_version_stale`, `health.no_approval_needed`,
+         *     `template.has_bookings` (a weekly class with bookings cannot end before its first day).
          */
         Conflict: {
             headers: {

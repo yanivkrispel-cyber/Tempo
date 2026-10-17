@@ -366,7 +366,20 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         };
         if (next.ValidUntil is { } until && until < next.ValidFrom)
         {
-            throw Invalid("validUntil", "End the weekly class on or after its first day.");
+            // Ending before the first day (#232 P2 F5): a class created by mistake that nobody ever booked becomes an
+            // empty range, the day before its first day, and its sessions go below. One with a booking keeps them.
+            await using var booked = unitOfWork.Command(
+                """
+                SELECT EXISTS (SELECT 1 FROM scheduling.bookings b JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+                               WHERE s.organization_id = $1 AND s.template_id = $2)
+                """,
+                tenant.OrganizationId, templateId);
+            if ((bool)(await booked.ExecuteScalarAsync(cancellationToken))!)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Conflict, "template.has_bookings", "This weekly class has bookings; end it on or after its first day.");
+            }
+
+            next = next with { ValidUntil = next.ValidFrom.AddDays(-1) };
         }
 
         if (changes.InstructorMembershipId.IsSet)
