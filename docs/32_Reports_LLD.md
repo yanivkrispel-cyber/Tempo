@@ -278,20 +278,28 @@ below the 50 ms bar. So no index is added. Look again when a studio passes about
 
 `DELETE /api/v1/platform/organizations/{id}` with `{ "confirmName": "…" }`, operator pool only, recent sign-in.
 
-- 409 `organization.not_suspended` unless the studio is `suspended`; 409 `organization.suspended_too_recently`
-  with `deletableFrom` when it was suspended less than `Platform:StudioRemovalMinDays` ago (0 in
-  `development.ts`, 30 in production).
+- 409 `organization.not_suspended` unless the studio is `suspended`. 409 `organization.suspended_too_recently`,
+  with `deletableFrom`, when it was suspended (the latest `organization.suspended` audit row) less than the minimum
+  days ago. The minimum is `TEMPO_STUDIO_REMOVAL_MIN_DAYS` when set; otherwise it is 0 when `TEMPO_ENVIRONMENT` is
+  `dev`, and 30 anywhere else.
 - 400 `organization.name_mismatch` when `confirmName` is not the studio's name after trimming.
-- One transaction in the platform role deletes every row whose `organization_id` is the studio, in foreign-key
-  order, then the `organizations.organizations` row. The table list is **read from the catalog**
-  (`information_schema.columns` where `column_name = 'organization_id'`), ordered by the foreign keys, so a table
-  added later cannot be missed. The test seeds one row in every such table, deletes the studio and asserts zero rows
-  left for that id anywhere (A2).
-- Health declarations and push subscriptions go with the rest. Cognito users are not touched: a login may belong to
-  other studios, and A-1 or A-4 removes a login.
-- The audit keeps one row with `organization_id = NULL`, `action = 'platform.organization.deleted'`, `target_id` =
-  the studio id and the name in `details`; the studio's own audit rows are tenant rows and go.
-- Migration 0023 only if a foreign key needs an `ON DELETE` change; the ordered delete should make it unneeded.
+- **Migration 0023** adds `platform_admin.delete_organization(uuid)`. It is a `SECURITY DEFINER` function owned by the
+  migrator, and the platform role may call it but has no `DELETE` on any table.
+  1. It refuses a studio that is not suspended (SQLSTATE 55000).
+  2. It deletes the permissions of the studio's custom roles, the one tenant table without an `organization_id`.
+  3. It deletes every row whose `organization_id` is the studio's, in every table that has that column. The table
+     list is **read from the catalog** (`pg_attribute`), so a table added later is covered without a change.
+  4. It follows the foreign keys by retrying, on the next pass, a table whose rows are still referenced.
+  5. Last, it deletes the `organizations.organizations` row.
+
+  All of this happens in the caller's transaction.
+- Health declarations, push subscriptions, operator notes and the studio's own audit rows go with the rest. Cognito
+  users are not touched: a login may belong to other studios, and A-1 or A-4 removes a login.
+- The API then writes one audit row with `organization_id = NULL`, `action = 'platform.organization.deleted'`,
+  `target_id` = the studio id and `{ name, rows }` in `data`.
+- The test seeds a row in every tenant table, for this studio and for a neighbour. Before the delete, it asserts
+  from the catalog that no tenant table is empty for the studio, so a new table fails the test until its seed is
+  added. After the delete, it asserts zero rows anywhere for that id, and that the neighbour lost nothing.
 
 ## 11. The export without the health key (A-5, #239 note 2)
 

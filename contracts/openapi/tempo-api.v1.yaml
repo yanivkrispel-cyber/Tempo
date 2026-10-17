@@ -578,7 +578,6 @@ paths:
     delete:
       tags: [Platform]
       operationId: platformDeleteOrganization
-      x-tempo-planned: true
       summary: Remove a suspended studio and every row it owns (audited, recent sign-in)
       description: |
         docs/32 section 10 (A-3). Only a studio suspended for at least the configured days (0 on dev, 30 on prod).
