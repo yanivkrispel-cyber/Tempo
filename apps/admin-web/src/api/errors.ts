@@ -15,6 +15,7 @@ const messages: Record<string, string> = {
   "permission.denied": "אין לך הרשאה לפעולה הזו.",
   "concurrency.conflict": "מישהו אחר שינה את הנתונים בינתיים. רעננו ונסו שוב.",
   "quietHours.invalid": "שעת הסיום של השעות השקטות צריכה להיות שונה משעת ההתחלה.",
+  "account.confirmation_mismatch": "כתובת המייל לא תואמת לחשבון. כתבו אותה בדיוק כפי שהיא מופיעה.",
   "auth.step_up_required": "לפעולה הזו צריך לאמת שוב את הזהות: התחברו מחדש, ואחר כך נסו שוב.",
   "membership.forbidden_role_change": "אי אפשר לתת את התפקיד הזה לחבר הזה.",
   "role.exceeds_actor": "אפשר לתת רק תפקיד נמוך מהתפקיד שלך.",
