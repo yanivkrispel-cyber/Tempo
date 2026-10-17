@@ -7,6 +7,7 @@ import { routes } from "../../app/routes";
 import { apiStub, json, membershipAs, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 import { permissionsFor } from "../../test/permissions";
+import { answersKey, healthKey } from "./HealthSection";
 
 // Generic questions only: no real health data, not even in tests.
 const studio = sampleMe.memberships[0]!;
@@ -100,6 +101,14 @@ const reads = (api: ReturnType<typeof apiStub>, suffix: string) =>
   api.requests.filter((request) => request.method === "GET" && request.url.endsWith(suffix)).length;
 
 afterEach(() => vi.useRealTimers());
+
+describe("the answers' cache key", () => {
+  it("is outside every studio and status key, so no invalidation of those can refetch them (a second audited read)", () => {
+    const answers = answersKey(studio.organization.id, personId);
+    const prefixes = [["studio"], ["studio", studio.organization.id], healthKey(studio.organization.id, personId)];
+    for (const prefix of prefixes) expect(answers.slice(0, prefix.length)).not.toEqual(prefix);
+  });
+});
 
 describe("the person card's health declaration (docs/31 sections 5 and 13)", () => {
   it("shows staff with people.view the status and its dates in the studio's days, and no way to the answers", async () => {

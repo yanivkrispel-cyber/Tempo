@@ -22,8 +22,14 @@ import { useStudio } from "../console/studio";
 type PersonDetail = Schemas["PersonDetail"];
 type StatusView = Schemas["HealthDeclarationStatusView"];
 
-const healthKey = (organizationId: string, personId: string) =>
+export const healthKey = (organizationId: string, personId: string) =>
   ["studio", organizationId, "people", personId, "health-declaration"] as const;
+/**
+ * The answers sit under their own top-level key, never under the status key, so invalidating a person's status can
+ * never refetch the answers: each fetch is an audited read.
+ */
+export const answersKey = (organizationId: string, personId: string) =>
+  ["health-answers", organizationId, personId] as const;
 
 /** Dates are the studio's: the server checks an approval against the studio-local day of the signature. */
 function useStudioDay() {
@@ -130,7 +136,7 @@ function AnswersDialog({ person, onClose }: { person: PersonDetail; onClose: () 
   const api = useApi();
   const { organizationId } = useStudio();
   const answers = useQuery({
-    queryKey: [...healthKey(organizationId, person.id), "answers"],
+    queryKey: answersKey(organizationId, person.id),
     queryFn: () =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/people/{personId}/health-declaration/answers", {
