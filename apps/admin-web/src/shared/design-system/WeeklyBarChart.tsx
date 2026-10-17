@@ -19,6 +19,8 @@ export interface WeeklyBarChartProps {
   valueLabel: string;
   /** Formats a value for the labels and the table; whole numbers by default. */
   format?: (value: number) => string;
+  /** Whole counts (the default) never get a tick between two whole numbers. */
+  whole?: boolean;
   /** Shows the table on screen under the chart, not only to screen readers. */
   showTable?: boolean;
   emptyText?: string;
@@ -33,13 +35,23 @@ const start = 28;
 const plotHeight = height - top - bottom;
 const radius = 4;
 
-/** 1, 2, 5 times a power of ten: the smallest such step that gives at most `count` intervals up to `max`. */
-export function niceMax(max: number, count = 2) {
-  if (max <= 0) return 1;
+/**
+ * The axis for values up to `max`: a step of 1, 2 or 5 times a power of ten (at least 1 for whole counts) that
+ * reaches `max` in at most `count` steps, and the ticks at each whole step, so no two ticks share a label.
+ */
+export function niceScale(max: number, { count = 2, whole = true } = {}): { max: number; ticks: number[] } {
+  if (max <= 0) return { max: 1, ticks: [0, 1] };
   const raw = max / count;
   const power = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= raw) ?? 10 * power;
-  return Math.max(1, Math.ceil(max / step) * step);
+  const nice = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= raw) ?? 10 * power;
+  const step = whole ? Math.max(1, nice) : nice;
+  const top = Math.ceil(max / step) * step;
+  return { max: top, ticks: Array.from({ length: Math.round(top / step) + 1 }, (_, index) => index * step) };
+}
+
+/** The top of the axis for values up to `max` (niceScale's). */
+export function niceMax(max: number, count = 2) {
+  return niceScale(max, { count }).max;
 }
 
 /** A bar with rounded top corners, anchored square on the baseline. */
@@ -58,6 +70,7 @@ export function WeeklyBarChart({
   weeks,
   valueLabel,
   format = (value) => String(Math.round(value)),
+  whole = true,
   showTable = false,
   emptyText = "אין נתונים בתקופה הזאת",
   className,
@@ -74,7 +87,7 @@ export function WeeklyBarChart({
     );
   }
 
-  const max = niceMax(Math.max(...weeks.map((week) => week.value)));
+  const { max, ticks } = niceScale(Math.max(...weeks.map((week) => week.value)), { whole });
   const band = (width - start) / weeks.length;
   const barWidth = Math.max(4, Math.min(24, band * 0.6));
   const y = (value: number) => top + plotHeight - (Math.max(0, value) / max) * plotHeight;
@@ -88,7 +101,7 @@ export function WeeklyBarChart({
       </figcaption>
       <div className="tp-bars__plot" dir="ltr" aria-hidden="true">
         <svg viewBox={`0 0 ${width} ${height}`} focusable="false">
-          {[0, max / 2, max].map((tick) => (
+          {ticks.map((tick) => (
             <g key={tick}>
               <line
                 className={tick === 0 ? "tp-bars__axis" : "tp-bars__grid"}

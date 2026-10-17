@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { KpiTile, LinkRows, niceMax, WeeklyBarChart } from "./index";
+import { KpiTile, LinkRows, niceMax, niceScale, WeeklyBarChart } from "./index";
 
 // Fictional figures and names only.
 const weeks = [
@@ -82,6 +82,23 @@ describe("WeeklyBarChart", () => {
     rerender(<WeeklyBarChart title="ביקורים" weeks={[]} valueLabel="ביקורים" />);
     expect(screen.getByText("אין נתונים בתקופה הזאת")).toBeInTheDocument();
     expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("never labels two ticks alike: one visit in a period gives the axis 0 and 1 (Y3's case)", () => {
+    const { container } = render(
+      <WeeklyBarChart title="ביקורים" weeks={[{ key: "w", label: "11.10", value: 1 }]} valueLabel="ביקורים" />,
+    );
+    const axis = [...container.querySelectorAll("svg > g:not(.tp-bars__col) .tp-bars__tick")].map((t) => t.textContent);
+    expect(axis).toEqual(["0", "1"]);
+    expect(new Set(axis).size).toBe(axis.length);
+  });
+
+  it("puts the ticks at whole steps of the scale, and below 1 only for values that aren't counts", () => {
+    expect(niceScale(1)).toEqual({ max: 1, ticks: [0, 1] });
+    expect(niceScale(5)).toEqual({ max: 5, ticks: [0, 5] });
+    expect(niceScale(3)).toEqual({ max: 4, ticks: [0, 2, 4] });
+    expect(niceScale(18)).toEqual({ max: 20, ticks: [0, 10, 20] });
+    expect(niceScale(0.8, { whole: false })).toEqual({ max: 1, ticks: [0, 0.5, 1] });
   });
 
   it("rounds the scale up to a 1, 2 or 5 step", () => {
