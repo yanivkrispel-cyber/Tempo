@@ -58,6 +58,17 @@ node tools/scripts/demo-studio.mjs clean   --profile tempo
 7. **People and members.** Console, people: a record per member (name, email or phone). To let a member use the
    app, invite the recorded person (#88); when they accept, the person and the membership are linked. Members can
    also join through the studio's join link (`PUT /join-link`), which the owner shares.
+
+   **Bringing an existing member list (docs/34):** console, people, **Import** (owner and admin, `people.import`).
+   Save the list from Excel as **CSV UTF-8** (or plain CSV on a Hebrew Windows; both are read), one person per row
+   with a header row. The console proposes which column is the name, phone, email and birth date. **Check** first:
+   it shows every row as valid, already in the studio, repeated in the file, or invalid with the reason, and writes
+   nothing. **Import** then creates the valid rows; running the same file again creates nothing new. At most 1,000
+   rows per file. The import records no marketing consent and sends nothing: invite people from their card as above.
+   Tip: create a tag first (for example "ייבוא 17.10") and give it to the whole batch.
+7a. **Tags and staff notes.** Console, settings, Tags (owner and admin): the studio's labels, up to 100. On a person's
+   card, staff put tags on and write short notes ("prefers the front row"). **Never write health information in a
+   note**: it belongs in the health declaration. A person who asks for their data gets the notes in the export.
 8. **Booking policy.** Console, settings: free-cancellation window (default 6 hours, C-1), booking horizon (14
    days, C-4), waitlist on or off and its cutoff (2 hours). Defaults apply if nothing is changed.
 9. **Go.** Members book from client-web (timetable, class, book, waitlist, my bookings, passes, inbox; #128). Staff

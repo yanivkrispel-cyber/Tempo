@@ -80,6 +80,12 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
     {
+      // SYNC 7, member import, notes and tags (day board #321, Z3): a fresh e2e owner at 1280px and a staff member at
+      // 360px sign in through the Hosted UI themselves; each sizes its own context (support/screens.ts).
+      name: "sync7",
+      testDir: "./specs/sync7",
+    },
+    {
       // D15 (#317): every screen of both apps on phones, tablets and computers. Each test sizes its own contexts
       // (support/screens.ts). E2E_SCREENSHOTS=1 also keeps a full-page picture of each for review.
       name: "screens",

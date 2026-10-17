@@ -1,18 +1,20 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import {
   Banner,
   Button,
+  ButtonLink,
   Chip,
   DateInput,
   Dialog,
   Field,
   Input,
   Segmented,
+  Select,
   Skeleton,
   TableScroll,
 } from "../../shared/design-system";
@@ -20,6 +22,7 @@ import { displayPhone, phoneSearchText } from "../../shared/utilities/phones";
 import { todayIso, type IsoDate } from "../../shared/utilities/dates";
 import { useDebounced } from "../../shared/useDebounced";
 import { useStudio } from "../console/studio";
+import { TagChips, useTags } from "../tags/tags";
 import { personStatus, sourceLabel } from "./labels";
 
 type Person = Schemas["Person"];
@@ -31,7 +34,11 @@ export function PeoplePage() {
   const query = useDebounced(text.trim(), 300);
   const [status, setStatus] = useState<"current" | "archived">("current");
   const [adding, setAdding] = useState(false);
-  const people = usePeople(query.length >= 2 ? phoneSearchText(query) : undefined, status);
+  // The tag filter lives in the address (?tag=), so the import can link to the batch it tagged (I-8).
+  const [params, setParams] = useSearchParams();
+  const tag = params.get("tag") ?? "";
+  const tags = useTags();
+  const people = usePeople(query.length >= 2 ? phoneSearchText(query) : undefined, status, tag || undefined);
   const rows = people.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
@@ -41,11 +48,19 @@ export function PeoplePage() {
           <span className="tp-eyebrow">ניהול</span>
           <h1>אנשים</h1>
         </div>
-        {studio.can("people.manage") && (
-          <Button icon="plus" onClick={() => setAdding(true)}>
-            אדם חדש
-          </Button>
-        )}
+        <div className="tp-row" style={{ gap: 8 }}>
+          {/* Importing a member list from a file (docs/34, I-1): owners and admins. */}
+          {studio.can("people.import") && (
+            <ButtonLink to="import" variant="secondary" icon="upload">
+              ייבוא מקובץ
+            </ButtonLink>
+          )}
+          {studio.can("people.manage") && (
+            <Button icon="plus" onClick={() => setAdding(true)}>
+              אדם חדש
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="tp-row" style={{ justifyContent: "space-between" }}>
@@ -58,15 +73,32 @@ export function PeoplePage() {
           onChange={(event) => setText(event.target.value)}
           style={{ maxWidth: 360 }}
         />
-        <Segmented
-          label="אילו אנשים"
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: "current", label: "פעילים" },
-            { value: "archived", label: "בארכיון" },
-          ]}
-        />
+        <div className="tp-row" style={{ gap: 8 }}>
+          {(tags.data?.length ?? 0) > 0 && (
+            <Select
+              aria-label="סינון לפי תגית"
+              value={tag}
+              onChange={(event) => setParams(event.target.value ? { tag: event.target.value } : {}, { replace: true })}
+              style={{ width: "auto" }}
+            >
+              <option value="">כל התגיות</option>
+              {tags.data!.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
+          )}
+          <Segmented
+            label="אילו אנשים"
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: "current", label: "פעילים" },
+              { value: "archived", label: "בארכיון" },
+            ]}
+          />
+        </div>
       </div>
 
       {people.isError ? (
@@ -81,7 +113,7 @@ export function PeoplePage() {
         </div>
       ) : rows.length === 0 ? (
         <p className="tp-muted">
-          {query.length >= 2
+          {query.length >= 2 || tag
             ? "לא נמצא אף אחד."
             : status === "archived"
               ? "אין אנשים בארכיון."
@@ -97,6 +129,7 @@ export function PeoplePage() {
                 <th scope="col">טלפון</th>
                 <th scope="col">מייל</th>
                 <th scope="col">מקור</th>
+                <th scope="col">תגיות</th>
                 <th scope="col">מצב</th>
               </tr>
             </thead>
@@ -137,6 +170,9 @@ function PersonRow({ person }: { person: Person }) {
         {person.primaryEmail ? <bdi className="tp-ltr">{person.primaryEmail}</bdi> : "—"}
       </td>
       <td data-label="מקור">{sourceLabel[person.source]}</td>
+      <td data-label="תגיות" data-empty={!person.tags?.length || undefined}>
+        <TagChips tags={person.tags} />
+      </td>
       <td className="tp-table__end">
         <Chip tone={status.tone}>{status.text}</Chip>
       </td>
@@ -144,11 +180,11 @@ function PersonRow({ person }: { person: Person }) {
   );
 }
 
-function usePeople(query: string | undefined, status: "current" | "archived") {
+function usePeople(query: string | undefined, status: "current" | "archived", tag: string | undefined) {
   const api = useApi();
   const { organizationId } = useStudio();
   return useInfiniteQuery({
-    queryKey: ["studio", organizationId, "people", { query, status }],
+    queryKey: ["studio", organizationId, "people", { query, status, tag }],
     queryFn: ({ pageParam }) =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/people", {
@@ -158,6 +194,7 @@ function usePeople(query: string | undefined, status: "current" | "archived") {
             query: {
               query,
               status: status === "archived" ? "archived" : "active",
+              tag,
               limit: 50,
               before: pageParam ?? undefined,
             },

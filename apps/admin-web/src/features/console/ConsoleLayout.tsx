@@ -97,28 +97,35 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
   const open = !wide && menuOpen;
   const opener = useRef<HTMLElement | null>(null);
   const menu = useRef<HTMLElement>(null);
+  // Set when the menu closes by its close button, Escape or the scrim, which hand focus back to the opener.
+  const refocus = useRef(false);
 
   const openMenu = (event: MouseEvent<HTMLElement>) => {
     opener.current = event.currentTarget;
     setMenuOpen(true);
   };
 
+  const closeMenu = () => {
+    refocus.current = true;
+    setMenuOpen(false);
+  };
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Only once the close is on screen: until then the opener's bar is inert, and a browser ignores focus() there.
+      if (refocus.current) opener.current?.focus();
+      refocus.current = false;
+      return;
+    }
     menu.current?.focus();
     const close = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      refocus.current = true;
       setMenuOpen(false);
-      opener.current?.focus();
     };
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
   }, [open]);
-
-  const closeMenu = () => {
-    setMenuOpen(false);
-    opener.current?.focus();
-  };
 
   const visible = sections.filter((section) => studio.can(section.permission));
   const quick = quickOrder
