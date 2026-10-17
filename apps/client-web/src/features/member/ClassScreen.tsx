@@ -37,6 +37,7 @@ import {
   useBookingPolicy,
   useCalendarFile,
   useCancelBooking,
+  useChangeSpot,
   useInbox,
   useSession,
   useStudio,
@@ -47,6 +48,9 @@ import {
   type Studio,
 } from "./studio";
 import { LoadError, NoStudio } from "./StudioGate";
+import { useInstructors, useSessionSpots, useUsualSpot, type Instructor, type SessionSpot } from "./experience";
+import { RoomMap } from "./RoomMap";
+import { CheckinPass } from "./Premium";
 import { useBookingPaused } from "./StudioNotices";
 import { clockTime, hasStarted, momentText } from "./studioTime";
 
@@ -76,7 +80,15 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [cancelled, setCancelled] = useState<{ booking: Booking; waited: boolean } | null>(null);
+  const [booked, setBooked] = useState<Booking | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [passOpen, setPassOpen] = useState(false);
   const inbox = useInbox(studio.id);
+  const instructors = useInstructors(studio.id);
+  const changeSpot = useChangeSpot(studio.id);
+  const usualSpot = useUsualSpot(studio.id);
+  const withSpots = sessionQuery.data?.room?.spotSelection === true;
+  const spots = useSessionSpots(studio.id, sessionId, withSpots);
   // After booking or cancelling, the button that was pressed is gone: focus moves to the class's title, and the
   // result banner under it is announced.
   const title = useRef<HTMLHeadingElement>(null);
@@ -127,6 +139,14 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
 
   const session = sessionQuery.data;
   const state = myState(session, now);
+  const map = spots.data?.spotSelection ? spots.data : null;
+  const mySpot = map?.spots.find((spot) => spot.state === "mine") ?? null;
+  const usualFree = map?.spots.find((spot) => spot.id === map.usualSpotId && spot.state === "free") ?? null;
+  const chosenSpot =
+    map?.spots.find((spot) => spot.id === (chosen ?? (state === "none" ? usualFree?.id : mySpot?.id))) ?? null;
+  const instructor: Instructor | undefined = session.instructor
+    ? instructors.data?.get(session.instructor.membershipId)
+    : undefined;
   const started = hasStarted(session.startsAt, now);
   const chip =
     session.status === "cancelled"
@@ -166,20 +186,36 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
     <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
       {header}
 
-      <div className={styles.heading}>
-        <div className={styles.chips}>
-          <Chip tone={`cat-${session.classType.color}`}>{categoryName(session.classType.category, [session])}</Chip>
+      <section className={`tp-hero ${styles.classHero}`} aria-labelledby="class-title">
+        {session.classType.coverUrl && <img className="tp-hero__photo" src={session.classType.coverUrl} alt="" />}
+        <div className="tp-hero__top">
+          <Chip tone="neutral" plain className="tp-glass-dark">
+            {categoryName(session.classType.category, [session])}
+          </Chip>
           {chip && (
-            <Chip tone={chip.tone} plain={chip.tone === "neutral"}>
+            <Chip tone={chip.tone} plain={chip.tone === "neutral"} className="tp-glass-dark">
               {chip.label}
             </Chip>
           )}
         </div>
-        <h1 ref={title} tabIndex={-1} className={styles.title}>
-          {session.classType.name}
-        </h1>
-        <span className="tp-muted">{whenText(session, timeZone, today)}</span>
-      </div>
+        <div className="tp-hero__body">
+          <div className="tp-hero__text">
+            <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.92 }}>{whenText(session, timeZone, today)}</span>
+            <h1 id="class-title" ref={title} tabIndex={-1} className="tp-hero__title">
+              <bdi>{session.classType.name}</bdi>
+            </h1>
+            {session.instructor && (
+              <span className="tp-hero__meta">
+                <Avatar name={session.instructor.displayName} src={instructor?.photoSmallUrl ?? undefined} size="sm" />
+                <span>
+                  עם <bdi>{session.instructor.displayName}</bdi>
+                  {session.room && <> · {session.room.name}</>}
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
 
       {cancelled && (
         <Banner tone="info" icon="info">
@@ -214,6 +250,102 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
           הסטודיו ביטל את השיעור הזה. אם נרשמת, הכניסה חזרה אליך.
         </Banner>
       )}
+
+      {session.memberNote && (
+        <Card as="section" small className={styles.note} aria-label="הערה מהמדריכה">
+          <span className="tp-eyebrow">
+            {session.instructor ? <bdi>{session.instructor.displayName}</bdi> : "מהמדריכה"}
+          </span>
+          <p>{session.memberNote}</p>
+        </Card>
+      )}
+
+      {map &&
+        (state === "booked" || (state === "none" && (canBook || canWait))) &&
+        session.status === "scheduled" &&
+        !started && (
+          <section aria-labelledby="room-title" className={styles.section}>
+            <div className={styles.sectionHead}>
+              <h2 id="room-title" className={styles.sectionTitle}>
+                {state === "booked" ? "המכשיר שלך" : "בחירת מכשיר"}
+              </h2>
+              <span className="tp-caption">
+                {map.spots.filter((spot) => spot.state === "free").length} פנויים מתוך {map.spots.length}
+              </span>
+            </div>
+            <RoomMap
+              map={map}
+              selectedId={chosenSpot?.id ?? null}
+              onSelect={(spot: SessionSpot) => setChosen(spot.id)}
+              instructorName={session.instructor?.displayName}
+              instructorPhoto={instructor?.photoSmallUrl}
+            />
+            {state === "booked" && chosenSpot && mySpot && chosenSpot.id !== mySpot.id && (
+              <Button
+                size="lg"
+                block
+                loading={changeSpot.isPending}
+                onClick={() => {
+                  const bookingId = session.myBooking?.bookingId;
+                  if (bookingId)
+                    changeSpot.mutate({ bookingId, spotId: chosenSpot.id }, { onSuccess: () => setChosen(null) });
+                }}
+              >
+                מעבר למכשיר {chosenSpot.label}
+              </Button>
+            )}
+            {state === "booked" && mySpot && map.usualSpotId !== mySpot.id && (
+              <Button
+                variant="ghost"
+                block
+                loading={usualSpot.isPending}
+                onClick={() => session.room && usualSpot.mutate({ roomId: session.room.id, spotId: mySpot.id })}
+              >
+                לשמור את מכשיר {mySpot.label} כמקום הקבוע שלי
+              </Button>
+            )}
+          </section>
+        )}
+
+      {instructor &&
+        (instructor.headline || instructor.bio || instructor.instagramHandle || instructor.playlistUrl) && (
+          <Card as="section" className={styles.instructor} aria-labelledby="instructor-title">
+            <div className={styles.instructorHead}>
+              <Avatar name={instructor.displayName} src={instructor.photoSmallUrl ?? undefined} size="lg" />
+              <span>
+                <h2 id="instructor-title" className={styles.sectionTitle}>
+                  <bdi>{instructor.displayName}</bdi>
+                </h2>
+                {instructor.headline && <span className="tp-muted">{instructor.headline}</span>}
+              </span>
+            </div>
+            {instructor.bio && <p>{instructor.bio}</p>}
+            <div className={styles.instructorLinks}>
+              {instructor.instagramHandle && (
+                <a
+                  className="tp-btn tp-btn--secondary tp-btn--sm"
+                  href={`https://www.instagram.com/${instructor.instagramHandle}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon name="camera" />
+                  <bdi dir="ltr">@{instructor.instagramHandle}</bdi>
+                </a>
+              )}
+              {instructor.playlistUrl && (
+                <a
+                  className="tp-btn tp-btn--secondary tp-btn--sm"
+                  href={instructor.playlistUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon name="music" />
+                  הפלייליסט של השיעור
+                </a>
+              )}
+            </div>
+          </Card>
+        )}
 
       <Card as="section" className={styles.classCard} aria-label="פרטי השיעור">
         {session.instructor && (
@@ -255,6 +387,9 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
       <div className={styles.sheetActions}>
         {state === "booked" && !started && session.status === "scheduled" && (
           <>
+            <Button size="lg" block icon="qr" onClick={() => setPassOpen(true)}>
+              כרטיס כניסה
+            </Button>
             {/* A file, not a subscription: cancelling later does not remove the calendar entry (docs/29 16.3). */}
             <Button
               variant="secondary"
@@ -333,17 +468,106 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
         now={now}
         pending={flow.pendingId !== undefined}
         error={flow.error}
+        spot={
+          chosenSpot && chosenSpot.state === "free"
+            ? { label: chosenSpot.label, note: chosenSpot.id === map?.usualSpotId ? "המקום הקבוע שלך" : undefined }
+            : null
+        }
+        spotsAuto={map !== null}
         onConfirm={(target) =>
-          flow.run(target, () => {
-            setSheetOpen(false);
-            setFocusTitle((count) => count + 1);
-          })
+          flow.run(
+            target,
+            (booking) => {
+              setSheetOpen(false);
+              setChosen(null);
+              if (booking.status === "booked" && booking.spot) setBooked(booking);
+              setFocusTitle((count) => count + 1);
+            },
+            chosenSpot?.state === "free" ? chosenSpot.id : null,
+          )
         }
         onClose={() => {
           flow.reset();
           setSheetOpen(false);
         }}
       />
+      <Dialog
+        open={booked !== null}
+        onClose={() => setBooked(null)}
+        title={`נתראה ${relativeDay(session.localDate, today)}`}
+      >
+        {booked && (
+          <div className={`tp-rise ${styles.done}`}>
+            <span className={styles.doneCheck} aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                width="30"
+                height="30"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path className="tp-check-draw" d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            <div className="tp-ticket">
+              {session.classType.coverUrl && (
+                <div className="tp-ticket__photo">
+                  <img src={session.classType.coverUrl} alt="" />
+                </div>
+              )}
+              <div className={styles.ticketBody}>
+                <dl className={styles.ticketFacts}>
+                  <div>
+                    <dt className="tp-eyebrow">שיעור</dt>
+                    <dd>
+                      <bdi>{session.classType.name}</bdi>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="tp-eyebrow">מתי</dt>
+                    <dd>
+                      {shortDate(session.localDate)} · {clockTime(session.startsAt, timeZone)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="tp-eyebrow">מכשיר</dt>
+                    <dd>{booked.spot?.label}</dd>
+                  </div>
+                  {session.instructor && (
+                    <div>
+                      <dt className="tp-eyebrow">מדריכה</dt>
+                      <dd>
+                        <bdi>{session.instructor.displayName}</bdi>
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            </div>
+            <div className={styles.sheetActions}>
+              <Button
+                variant="secondary"
+                size="lg"
+                block
+                icon="calendar"
+                loading={calendar.isPending}
+                onClick={() =>
+                  calendar.mutate(booked.id, { onSuccess: (file) => saveFile(file, `tempo-${session.localDate}.ics`) })
+                }
+              >
+                הוספה ליומן
+              </Button>
+              <Button variant="ghost" block onClick={() => setBooked(null)}>
+                סגירה
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+      <CheckinPass organizationId={studio.id} timeZone={timeZone} open={passOpen} onClose={() => setPassOpen(false)} />
     </main>
   );
 }

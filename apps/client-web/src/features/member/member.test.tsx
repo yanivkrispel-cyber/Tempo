@@ -44,12 +44,15 @@ const titles = (list: HTMLElement) =>
 describe("member home", () => {
   it("greets the member and shows the next booked class in the studio's time", async () => {
     renderAt("/");
-    expect(await screen.findByRole("heading", { level: 1, name: "היי נגה" })).toBeInTheDocument();
-    expect(screen.getByText("יום שלישי · 13.10 · סטודיו נשימה")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^(בוקר טוב|צהריים טובים|ערב טוב), נגה$/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("סטודיו נשימה · יום שלישי, 13.10")).toBeInTheDocument();
 
     const next = await screen.findByRole("region", { name: "פילאטיס מכשירים" });
     expect(next).toHaveTextContent("השיעור הבא שלך");
-    expect(next).toHaveTextContent("היום 13:00 · דנה אלון · חדר המכשירים");
+    expect(next).toHaveTextContent("היום 13:00");
+    expect(next).toHaveTextContent("עם דנה אלון · 50 דקות · חדר המכשירים");
     expect(within(next).getByRole("link", { name: "לפרטי השיעור" })).toHaveAttribute(
       "href",
       `/classes/${sessionIds.reformer}`,

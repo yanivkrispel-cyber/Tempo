@@ -188,13 +188,37 @@ function useScheduleMutation<TVariables>(
   });
 }
 
-/** Books the caller; a full session puts them on the waitlist instead (the response's `status` says which). */
+/** What to book: a class, and in a room with spots the spot the member chose (docs/33 section 3.3). */
+export type BookTarget = string | { sessionId: string; spotId?: string | null };
+
+export const targetSessionId = (target: BookTarget): string => (typeof target === "string" ? target : target.sessionId);
+
+/**
+ * Books the caller; a full session puts them on the waitlist instead (the response's `status` says which). Without a
+ * spot the server takes the usual spot when it is free, else the first free one.
+ */
 export function useBook(organizationId: string) {
   const api = useApi();
-  return useScheduleMutation(organizationId, (sessionId: string) =>
-    unwrap(
+  return useScheduleMutation(organizationId, (target: BookTarget) => {
+    const sessionId = targetSessionId(target);
+    const spotId = typeof target === "string" ? null : (target.spotId ?? null);
+    return unwrap(
       api.POST("/api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings", {
         params: { path: { organizationId, sessionId } },
+        ...(spotId ? { body: { spotId } } : {}),
+      }),
+    );
+  });
+}
+
+/** Moves the caller's own booked place to another free spot of the same class. */
+export function useChangeSpot(organizationId: string) {
+  const api = useApi();
+  return useScheduleMutation(organizationId, ({ bookingId, spotId }: { bookingId: string; spotId: string }) =>
+    unwrap(
+      api.PUT("/api/v1/organizations/{organizationId}/bookings/{bookingId}/spot", {
+        params: { path: { organizationId, bookingId } },
+        body: { spotId },
       }),
     ),
   );
