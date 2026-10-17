@@ -134,6 +134,7 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 request uuid := gen_random_uuid();
                 admin_account uuid := gen_random_uuid();
                 admin_membership uuid := gen_random_uuid();
+                tag uuid := gen_random_uuid();
                 subscription uuid;
             BEGIN
                 INSERT INTO people.people (organization_id, id, display_name, status, source, created_at, updated_at) VALUES
@@ -147,6 +148,10 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO people.duplicate_candidates (organization_id, id, person_a_id, person_b_id, reason, status, created_at, updated_at) VALUES (org, gen_random_uuid(), least(person, other_person), greatest(person, other_person), 'email', 'open', now(), now());
                 INSERT INTO people.health_declarations (organization_id, id, person_id, form_version, signer_role, has_yes, signed_at, expires_at, key_version, answers_ciphertext, signed_name_ciphertext, created_at)
                     VALUES (org, gen_random_uuid(), person, 1, 'self', false, now(), now() + interval '1 year', 1, '\x00', '\x00', now());
+                INSERT INTO people.tags (organization_id, id, name, color, created_at, updated_at) VALUES (org, tag, 'בוקר', 1, now(), now());
+                INSERT INTO people.person_tags (organization_id, person_id, tag_id, created_at) VALUES (org, person, tag, now());
+                INSERT INTO people.person_notes (organization_id, id, person_id, author_membership_id, author_role, body, created_at)
+                    VALUES (org, gen_random_uuid(), person, owner_membership, 'owner', 'מעדיפה שורה ראשונה', now());
                 INSERT INTO identity.user_accounts (id, status, email, email_verified, identity_synced_at, created_at, updated_at) VALUES (admin_account, 'active', 'e2e-admin-' || admin_account || '@example.com', true, now(), now(), now());
                 INSERT INTO organizations.memberships (organization_id, id, user_account_id, role, status, created_at, updated_at) VALUES (org, admin_membership, admin_account, 'admin', 'active', now(), now());
                 INSERT INTO organizations.ownership_transfers (organization_id, id, from_membership_id, to_membership_id, status, expires_at, created_at, updated_at)
