@@ -1645,7 +1645,8 @@ button.tp-setting:hover {
   text-align: center;
   padding-block: 40px;
   padding-inline: 16px;
-  color: var(--ink-muted);
+  /* --ink: --ink-muted on the deep tile is 4.3:1, under AA (found by the P2 dry run on #232). */
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   align-items: center;
