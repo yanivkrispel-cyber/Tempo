@@ -2489,7 +2489,6 @@ paths:
     get:
       tags: [Progress]
       operationId: getMyProgress
-      x-tempo-planned: true
       summary: "My visits this month, my monthly goal and my streak of weeks in this studio (self)"
       description: Only attended classes count, by the session's start in the studio's time zone (docs/31 section 12).
       responses:
@@ -2508,7 +2507,6 @@ paths:
     put:
       tags: [Progress]
       operationId: setMyMonthlyGoal
-      x-tempo-planned: true
       summary: "Set my monthly goal (1 to 31), or clear it with null (self)"
       requestBody:
         required: true

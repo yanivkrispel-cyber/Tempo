@@ -51,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISessionMessageService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IBookingCalendarService>(provider => provider.GetRequiredService<BookingService>());
         services.AddSingleton<IStudioSettingsService, StudioSettingsService>();
+        services.AddSingleton<IProgressService, ProgressService>();
         services.AddSingleton<INotificationPreferencesService, NotificationPreferencesService>();
         services.AddSingleton<INotificationTemplateService, NotificationTemplateService>();
         services.AddSingleton<IAnnouncementService, AnnouncementService>();
