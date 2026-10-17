@@ -11,7 +11,7 @@ function invokePermissions(stage: TempoStage) {
   const api = stage.node.findChild("Api");
   if (!Stack.isStack(api)) throw new Error("Api is not a Stack");
   return Object.values(Template.fromStack(api).findResources("AWS::Lambda::Permission")).filter(
-    (permission) => permission.Properties.Principal === "cloudfront.amazonaws.com",
+    (permission) => permission.Properties.Principal === "cloudfront.amazonaws.com"
   );
 }
 
@@ -42,10 +42,10 @@ describe("who may invoke the API's Function URL (#124 item 8)", () => {
 
   it("refuses an id that is not a distribution id", () => {
     expect(() => validateEnvironmentConfig({ ...developmentConfig, edgeDistributionId: "*" })).toThrow(
-      /edgeDistributionId/,
+      /edgeDistributionId/
     );
     expect(() =>
-      validateEnvironmentConfig({ ...developmentConfig, edgeDistributionId: "E2EXAMPLE12345" }),
+      validateEnvironmentConfig({ ...developmentConfig, edgeDistributionId: "E2EXAMPLE12345" })
     ).not.toThrow();
   });
 });
