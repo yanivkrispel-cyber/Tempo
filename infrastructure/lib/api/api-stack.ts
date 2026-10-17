@@ -1,6 +1,12 @@
 import { CfnOutput, Duration, Fn, Stack, StackProps } from "aws-cdk-lib";
 import { AccessLogFormat } from "aws-cdk-lib/aws-apigateway";
-import { CorsHttpMethod, HttpApi, HttpMethod, HttpStage, LogGroupLogDestination } from "aws-cdk-lib/aws-apigatewayv2";
+import {
+  CorsHttpMethod,
+  HttpApi,
+  HttpMethod,
+  HttpStage,
+  LogGroupLogDestination
+} from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpUserPoolAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { IUserPool, IUserPoolClient } from "aws-cdk-lib/aws-cognito";
@@ -14,11 +20,7 @@ import { createLogGroup } from "../constructs/log-group-defaults";
 import { TempoFunction } from "../constructs/lambda-defaults";
 import { applyStandardTags } from "../constructs/tagging";
 import { pushParameterName } from "../async/push-parameters";
-import {
-  HEALTH_DATA_KEY_CURRENT_VERSION,
-  HEALTH_DATA_KEY_READABLE_VERSIONS,
-  healthDataKeyPrefix,
-} from "./health-parameters";
+import { HEALTH_DATA_KEY_CURRENT_VERSION, HEALTH_DATA_KEY_READABLE_VERSIONS, healthDataKeyPrefix } from "./health-parameters";
 import { databaseParameterName } from "../data/database-stack";
 
 export interface ApiStackProps extends StackProps {
@@ -42,8 +44,8 @@ const ACCESS_LOG_FORMAT = AccessLogFormat.custom(
     sourceIp: "$context.identity.sourceIp",
     userAgent: "$context.identity.userAgent",
     authorizerPrincipal: "$context.authorizer.principalId",
-    errorMessage: "$context.error.message",
-  }),
+    errorMessage: "$context.error.message"
+  })
 );
 
 /**
@@ -108,8 +110,8 @@ export class ApiStack extends Stack {
         // data key, by name; the value never passes through a template.
         HEALTH_DATA_KEY_PARAMETER_PREFIX: healthDataKeyPrefix(config),
         HEALTH_DATA_KEY_CURRENT_VERSION: HEALTH_DATA_KEY_CURRENT_VERSION,
-        ...database.environment,
-      },
+        ...database.environment
+      }
     });
 
     for (const parameter of database.passwords) {
@@ -120,25 +122,26 @@ export class ApiStack extends Stack {
     // would fail until someone had written the key (tools/scripts/vapid-keys.mjs).
     StringParameter.fromStringParameterAttributes(this, "VapidPublicKeyParameter", {
       parameterName: pushParameterName(config, "publicKey"),
-      forceDynamicReference: true,
-    }).grantRead(this.apiFunction.function);
-    // The health data key: GetParameter on its exact versions only. The aws/ssm key
-    // policy lets the account's principals decrypt through SSM, so no kms:*
+      forceDynamicReference: true
+    }).grantRead(
+      this.apiFunction.function
+    );
+    // The health data key: GetParameter on its exact versions only. The aws/ssm
+    // key policy lets the account's principals decrypt through SSM, so no kms:*
     // statement is added (ADR-0026).
     this.apiFunction.function.addToRolePolicy(
       new PolicyStatement({
         actions: ["ssm:GetParameter"],
         resources: HEALTH_DATA_KEY_READABLE_VERSIONS.map(
-          (version) =>
-            `arn:aws:ssm:${config.region}:${config.accountId}:parameter${healthDataKeyPrefix(config)}${version}`,
-        ),
-      }),
+          (version) => `arn:aws:ssm:${config.region}:${config.accountId}:parameter${healthDataKeyPrefix(config)}${version}`
+        )
+      })
     );
     this.apiFunction.function.addToRolePolicy(
       new PolicyStatement({
         actions: ["sqs:SendMessage"],
-        resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work")}`],
-      }),
+        resources: [`arn:aws:sqs:${config.region}:${config.accountId}:${resourceName(config, "work")}`]
+      })
     );
 
     // Account provisioning reads the caller's email from Cognito, because
@@ -147,13 +150,13 @@ export class ApiStack extends Stack {
     this.apiFunction.function.addToRolePolicy(
       new PolicyStatement({
         actions: ["cognito-idp:AdminGetUser"],
-        resources: [props.userPool.userPoolArn],
-      }),
+        resources: [props.userPool.userPoolArn]
+      })
     );
 
     const authorizer = new HttpUserPoolAuthorizer("CognitoAuthorizer", props.userPool, {
       userPoolClients: props.userPoolClients,
-      authorizerName: resourceName(config, "cognito-jwt-authorizer"),
+      authorizerName: resourceName(config, "cognito-jwt-authorizer")
     });
 
     this.httpApi = new HttpApi(this, "HttpApi", {
@@ -168,15 +171,15 @@ export class ApiStack extends Stack {
           CorsHttpMethod.PUT,
           CorsHttpMethod.PATCH,
           CorsHttpMethod.DELETE,
-          CorsHttpMethod.OPTIONS,
+          CorsHttpMethod.OPTIONS
         ],
         // If-Match carries the version on PATCH (concurrency.conflict); the
         // apps read Location after a create and Retry-After after a 429.
         allowHeaders: ["Content-Type", "Authorization", "X-Tempo-Authorization", "X-Correlation-Id", "If-Match"],
         exposeHeaders: ["Location", "Retry-After", "X-Correlation-Id"],
         allowCredentials: false,
-        maxAge: Duration.hours(1),
-      },
+        maxAge: Duration.hours(1)
+      }
     });
 
     const integration = new HttpLambdaIntegration("ApiIntegration", this.apiFunction.function);
@@ -184,14 +187,14 @@ export class ApiStack extends Stack {
     this.httpApi.addRoutes({
       path: "/api/v1/health",
       methods: [HttpMethod.GET],
-      integration,
+      integration
     });
 
     this.httpApi.addRoutes({
       path: "/api/v1/me",
       methods: [HttpMethod.GET],
       integration,
-      authorizer,
+      authorizer
     });
 
     // Explicit methods, never ANY: ANY includes OPTIONS, which would send CORS
@@ -200,11 +203,11 @@ export class ApiStack extends Stack {
     this.httpApi.addRoutes({
       path: "/api/v1/{proxy+}",
       methods: [HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE],
-      integration,
+      integration
     });
 
     const accessLogGroup = createLogGroup(this, "AccessLogGroup", config, {
-      logGroupName: `/aws/apigateway/${config.apiName}`,
+      logGroupName: `/aws/apigateway/${config.apiName}`
     });
 
     new HttpStage(this, "DefaultStage", {
@@ -215,8 +218,8 @@ export class ApiStack extends Stack {
       detailedMetricsEnabled: true,
       accessLogSettings: {
         destination: new LogGroupLogDestination(accessLogGroup),
-        format: ACCESS_LOG_FORMAT,
-      },
+        format: ACCESS_LOG_FORMAT
+      }
     });
 
     // The edge distribution's /api/* origin (ADR-0009 amendment). AWS_IAM means
@@ -234,24 +237,24 @@ export class ApiStack extends Stack {
       functionName: this.apiFunction.function.functionName,
       principal: "cloudfront.amazonaws.com",
       sourceArn: distributions,
-      functionUrlAuthType: "AWS_IAM",
+      functionUrlAuthType: "AWS_IAM"
     });
     // Lambda also checks lambda:InvokeFunction for requests signed by an OAC.
     new CfnPermission(this, "AllowCloudFrontInvokeFunction", {
       action: "lambda:InvokeFunction",
       functionName: this.apiFunction.function.functionName,
       principal: "cloudfront.amazonaws.com",
-      sourceArn: distributions,
+      sourceArn: distributions
     });
 
     new CfnOutput(this, "FunctionUrlDomain", {
       description: "The API function's Function URL domain - the edge stack reads it across Regions",
-      value: this.functionUrlDomain,
+      value: this.functionUrlDomain
     });
 
     new CfnOutput(this, "HttpApiUrl", {
       description: "Base URL for the Tempo HTTP API - read by the deployment smoke test",
-      value: this.httpApi.apiEndpoint,
+      value: this.httpApi.apiEndpoint
     });
 
     applyStandardTags(this, config, "api");
@@ -271,8 +274,8 @@ export class ApiStack extends Stack {
 
     const [application, platform] = (["applicationPassword", "platformPassword"] as const).map((key) =>
       StringParameter.fromSecureStringParameterAttributes(this, `${key}Parameter`, {
-        parameterName: databaseParameterName(config, key),
-      }),
+        parameterName: databaseParameterName(config, key)
+      })
     );
 
     return {
@@ -280,9 +283,9 @@ export class ApiStack extends Stack {
         DATABASE_HOST: config.neon.pooledHost,
         DATABASE_NAME: config.neon.databaseName,
         DATABASE_APP_PASSWORD_PARAMETER: application.parameterName,
-        DATABASE_PLATFORM_PASSWORD_PARAMETER: platform.parameterName,
+        DATABASE_PLATFORM_PASSWORD_PARAMETER: platform.parameterName
       },
-      passwords: [application, platform],
+      passwords: [application, platform]
     };
   }
 }

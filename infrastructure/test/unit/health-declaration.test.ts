@@ -11,7 +11,7 @@ function stackTemplate(childId: string) {
 
 function statements(template: Template) {
   return Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
-    (policy) => policy.Properties.PolicyDocument.Statement as { Action: string | string[]; Resource: unknown }[],
+    (policy) => policy.Properties.PolicyDocument.Statement as { Action: string | string[]; Resource: unknown }[]
   );
 }
 
@@ -23,7 +23,7 @@ describe("the health data key (docs/31 section 7, ADR-0026)", () => {
 
   it("the API names the key path and the current version", () => {
     const fn = Object.values(api.findResources("AWS::Lambda::Function")).find((f) =>
-      String(f.Properties.FunctionName).endsWith("-api"),
+      String(f.Properties.FunctionName).endsWith("-api")
     );
     const env = fn?.Properties.Environment.Variables as Record<string, unknown>;
     expect(env.HEALTH_DATA_KEY_PARAMETER_PREFIX).toBe("/tempo/dev/health/data-key/");
