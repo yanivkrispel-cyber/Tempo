@@ -399,3 +399,8 @@ One PR each; migrations in this order, one writer at a time (CLAUDE.md):
 | E8 | Member app redesign (home, schedule, booking with map, booking done, profile with buddies) | |
 | E9 | Console redesign (today dashboard, live class, rooms editor, instructor profiles, search) | |
 | E10 | e2e at 360 and 1280 px for the redesigned screens; the reference artifact updated | |
+
+As delivered (2026-10-17), stacked in this order: E2 #324, E3 #326, E4 #331, E5 #332, E6 #334, E7 and E8 together #337,
+E9 #340. E1 did not get a PR of its own: each step added its own endpoints to the contract, so the contract and the code
+behind it are reviewed together. E10's screen checks run on each PR (Playwright `screens`, six sizes, 44px targets); the
+dev API serves `main`, so the new cards and maps show on dev only after the stack merges.
