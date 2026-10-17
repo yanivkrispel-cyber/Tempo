@@ -12,8 +12,11 @@ export function LoginPage() {
   if (isSignedIn) return <Navigate to={returnTo} replace />;
 
   return (
-    <main className="tp-page">
+    <main className="tp-page tp-page--center">
       <div className="tp-card tp-stack">
+        <span className="tp-rail__logo" aria-hidden="true">
+          T
+        </span>
         <h1>
           ניהול הסטודיו ב־<bdi>Tempo</bdi>
         </h1>

@@ -92,7 +92,7 @@ export function PassProductsPage() {
         </EmptyState>
       ) : (
         <TableScroll label="כרטיסיות ומנויים">
-          <table className="tp-table">
+          <table className="tp-table tp-table--stack">
             <caption className="tp-sr-only">כרטיסיות ומנויים</caption>
             <thead>
               <tr>
@@ -113,15 +113,17 @@ export function PassProductsPage() {
               {rows.map((product) => (
                 <tr key={product.id}>
                   <td>{product.name}</td>
-                  <td>
+                  <td data-label="סוג">
                     <Chip tone={product.kind === "membership" ? "brand" : "neutral"}>{kindLabels[product.kind]}</Chip>
                   </td>
-                  <td>{allowance(product.kind, product.entries, product.weeklyCap)}</td>
-                  <td>{daysLabel(product.validDays)}</td>
-                  <td>{categoryScope(product.classCategory)}</td>
-                  <td className="tp-num">{priceLabel(product.priceAgorot)}</td>
+                  <td data-label="מה כולל">{allowance(product.kind, product.entries, product.weeklyCap)}</td>
+                  <td data-label="תוקף">{daysLabel(product.validDays)}</td>
+                  <td data-label="שיעורים">{categoryScope(product.classCategory)}</td>
+                  <td data-label="מחיר" className="tp-num">
+                    {priceLabel(product.priceAgorot)}
+                  </td>
                   {manage && show === "active" && (
-                    <td style={{ textAlign: "end" }}>
+                    <td className="tp-table__end" style={{ textAlign: "end" }}>
                       <Button
                         variant="ghost-danger"
                         size="sm"

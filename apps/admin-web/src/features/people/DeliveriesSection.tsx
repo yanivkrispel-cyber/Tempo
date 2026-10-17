@@ -85,7 +85,7 @@ export function DeliveriesSection({ personId }: { personId: string }) {
         </EmptyState>
       ) : (
         <TableScroll label="התראות אחרונות">
-          <table className="tp-table tp-table--compact">
+          <table className="tp-table tp-table--compact tp-table--stack">
             <caption className="tp-sr-only">התראות אחרונות</caption>
             <thead>
               <tr>
@@ -104,9 +104,9 @@ export function DeliveriesSection({ personId }: { personId: string }) {
                     <td className="tp-num">
                       <time dateTime={delivery.updatedAt}>{when.format(new Date(delivery.updatedAt))}</time>
                     </td>
-                    <td>{otherKinds[delivery.kind] ?? kindLabel(delivery.kind)}</td>
-                    <td>{channelLabel[delivery.channel] ?? delivery.channel}</td>
-                    <td>
+                    <td data-label="התראה">{otherKinds[delivery.kind] ?? kindLabel(delivery.kind)}</td>
+                    <td data-label="ערוץ">{channelLabel[delivery.channel] ?? delivery.channel}</td>
+                    <td data-label="מצב">
                       <Chip tone={status.tone}>{status.label}</Chip>
                       {reason && <span className="tp-caption tp-muted"> {reason}</span>}
                       {delivery.attempts > 1 && (

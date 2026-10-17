@@ -119,7 +119,7 @@ export function MembersPage() {
         </div>
       ) : (
         <TableScroll label="חברי הסטודיו">
-          <table className="tp-table">
+          <table className="tp-table tp-table--stack">
             <caption className="tp-sr-only">חברי הסטודיו</caption>
             <thead>
               <tr>
@@ -139,16 +139,18 @@ export function MembersPage() {
               {rows.map((member) => (
                 <tr key={member.id}>
                   <td>{nameOfMember(member)}</td>
-                  <td>
+                  <td data-label="מייל">
                     <bdi className="tp-ltr">{member.email}</bdi>
                   </td>
-                  <td>{memberRole(member)}</td>
-                  <td>
+                  <td data-label="תפקיד">{memberRole(member)}</td>
+                  <td data-label="מצב">
                     <Chip tone={statusLabel[member.status].tone}>{statusLabel[member.status].text}</Chip>
                   </td>
-                  <td className="tp-num">{formatDate(toIsoDate(new Date(member.joinedAt)))}</td>
+                  <td data-label="הצטרפות" className="tp-num">
+                    {formatDate(toIsoDate(new Date(member.joinedAt)))}
+                  </td>
                   {manages && (
-                    <td>
+                    <td className="tp-table__end">
                       {actionsFor(member).length > 0 && (
                         <DropdownMenu label="פעולות" variant="ghost" size="sm" items={actionsFor(member)}>
                           {/* The space is a text node of its own: inside the hidden span it would be trimmed from the name. */}{" "}

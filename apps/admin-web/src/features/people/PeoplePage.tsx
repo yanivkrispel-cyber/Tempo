@@ -89,7 +89,7 @@ export function PeoplePage() {
         </p>
       ) : (
         <TableScroll label="אנשים">
-          <table className="tp-table">
+          <table className="tp-table tp-table--stack">
             <caption className="tp-sr-only">אנשים</caption>
             <thead>
               <tr>
@@ -130,10 +130,14 @@ function PersonRow({ person }: { person: Person }) {
         <Link to={person.id}>{person.displayName}</Link>
         {person.hasLogin && <span className="tp-caption tp-muted"> · יש חשבון</span>}
       </td>
-      <td>{person.primaryPhone ? <bdi className="tp-ltr tp-num">{displayPhone(person.primaryPhone)}</bdi> : "—"}</td>
-      <td>{person.primaryEmail ? <bdi className="tp-ltr">{person.primaryEmail}</bdi> : "—"}</td>
-      <td>{sourceLabel[person.source]}</td>
-      <td>
+      <td data-label="טלפון" data-empty={!person.primaryPhone || undefined}>
+        {person.primaryPhone ? <bdi className="tp-ltr tp-num">{displayPhone(person.primaryPhone)}</bdi> : "—"}
+      </td>
+      <td data-label="מייל" data-empty={!person.primaryEmail || undefined}>
+        {person.primaryEmail ? <bdi className="tp-ltr">{person.primaryEmail}</bdi> : "—"}
+      </td>
+      <td data-label="מקור">{sourceLabel[person.source]}</td>
+      <td className="tp-table__end">
         <Chip tone={status.tone}>{status.text}</Chip>
       </td>
     </tr>

@@ -56,7 +56,7 @@ export function AuditPage() {
         <p className="tp-muted">עוד אין פעולות ביומן.</p>
       ) : (
         <TableScroll label="יומן פעולות">
-          <table className="tp-table tp-table--compact">
+          <table className="tp-table tp-table--compact tp-table--stack">
             <caption className="tp-sr-only">יומן פעולות</caption>
             <thead>
               <tr>
@@ -73,8 +73,8 @@ export function AuditPage() {
                     <td className="tp-num">
                       {formatDate(toIsoDate(when))} · {time.format(when)}
                     </td>
-                    <td>{actor(event)}</td>
-                    <td>{actionLabel(event.action)}</td>
+                    <td data-label="מי">{actor(event)}</td>
+                    <td data-label="פעולה">{actionLabel(event.action)}</td>
                   </tr>
                 );
               })}

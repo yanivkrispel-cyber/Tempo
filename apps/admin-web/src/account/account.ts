@@ -97,6 +97,15 @@ export function permissionsOf(membership: MyMembership): ReadonlySet<string> {
   return new Set(membership.permissions ?? []);
 }
 
+/**
+ * Where the console opens a studio: the day's classes for anyone who sees the timetable (owners, admins and coaches,
+ * D15), else the member list.
+ */
+export function studioHome(membership: MyMembership): string {
+  const slug = membership.organization.slug;
+  return permissionsOf(membership).has("schedule.view") ? `/o/${slug}/today` : `/o/${slug}`;
+}
+
 /** The studios this console serves: live memberships whose roles can see the member list (owner, admin, staff). */
 export function consoleStudios(me: Me): MyMembership[] {
   return activeMemberships(me).filter((membership) => permissionsOf(membership).has("members.view"));

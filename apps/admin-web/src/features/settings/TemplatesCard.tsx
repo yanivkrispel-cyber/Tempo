@@ -71,7 +71,9 @@ function TemplateListRow({ row }: { row: TemplateRow }) {
   const customized = row.customized.length > 0;
   return (
     <li className="tp-setting">
-      <Link to={`templates/${encodeURIComponent(row.kind)}`}>{kindLabel(row.kind)}</Link>
+      <Link to={`templates/${encodeURIComponent(row.kind)}`} className="tp-hit">
+        {kindLabel(row.kind)}
+      </Link>
       <Chip tone={customized ? "brand" : "neutral"}>
         {!customized
           ? "נוסח Tempo"

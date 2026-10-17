@@ -84,7 +84,7 @@ export function InvitationsPage() {
           <p className="tp-muted">{filter === "pending" ? "אין הזמנות שממתינות לתשובה." : "עוד לא נשלחו הזמנות."}</p>
         ) : (
           <TableScroll label="הזמנות במייל">
-            <table className="tp-table">
+            <table className="tp-table tp-table--stack">
               <caption className="tp-sr-only">הזמנות במייל</caption>
               <thead>
                 <tr>
@@ -173,13 +173,17 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
       <td>
         <bdi className="tp-ltr">{invitation.email}</bdi>
       </td>
-      <td>{roleName(invitation.role)}</td>
-      <td>
+      <td data-label="תפקיד">{roleName(invitation.role)}</td>
+      <td data-label="מצב">
         <Chip tone={statusLabel[invitation.status].tone}>{statusLabel[invitation.status].text}</Chip>
       </td>
-      <td className="tp-num">{day(invitation.expiresAt)}</td>
-      <td>{invitation.invitedBy?.displayName ?? "—"}</td>
-      <td>
+      <td data-label="בתוקף עד" className="tp-num">
+        {day(invitation.expiresAt)}
+      </td>
+      <td data-label="הוזמן על ידי" data-empty={!invitation.invitedBy || undefined}>
+        {invitation.invitedBy?.displayName ?? "—"}
+      </td>
+      <td className="tp-table__end">
         {invitation.status === "pending" && (
           <Button
             variant="ghost-danger"

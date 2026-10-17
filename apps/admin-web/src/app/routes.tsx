@@ -24,6 +24,7 @@ import { SettingsPage } from "../features/settings/SettingsPage";
 import { TemplatePage } from "../features/settings/TemplatePage";
 import { HomeRedirect } from "../features/studios/HomeRedirect";
 import { SelectStudioPage } from "../features/studios/SelectStudioPage";
+import { TodayPage } from "../features/today/TodayPage";
 import { NotFoundPage } from "./NotFoundPage";
 
 // docs/06 section 5: /login, /select-organization, /o/:organizationSlug/...
@@ -44,6 +45,7 @@ export const routes: RouteObject[] = [
             element: <ConsoleLayout />,
             children: [
               { index: true, element: <MembersPage /> },
+              { path: "today", element: <TodayPage /> },
               { path: "invitations", element: <InvitationsPage /> },
               { path: "roles", element: <RolesPage /> },
               { path: "people", element: <PeoplePage /> },

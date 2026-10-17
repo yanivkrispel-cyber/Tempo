@@ -66,7 +66,7 @@ export function RoomsPage() {
         </EmptyState>
       ) : (
         <TableScroll label="חדרים">
-          <table className="tp-table">
+          <table className="tp-table tp-table--stack">
             <caption className="tp-sr-only">חדרים</caption>
             <thead>
               <tr>
@@ -83,9 +83,11 @@ export function RoomsPage() {
               {rows.map((room) => (
                 <tr key={room.id}>
                   <td>{room.name}</td>
-                  <td className="tp-num">{room.defaultCapacity}</td>
+                  <td data-label="מקומות" className="tp-num">
+                    {room.defaultCapacity}
+                  </td>
                   {manage && (
-                    <td style={{ textAlign: "end" }}>
+                    <td className="tp-table__actions" style={{ textAlign: "end" }}>
                       <span className="tp-row" style={{ gap: 4, justifyContent: "flex-end" }}>
                         <Button
                           variant="ghost"
