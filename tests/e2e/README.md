@@ -79,6 +79,18 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
    `test-results/screens/`. To check the published dev sites instead of local servers, set
    `E2E_ADMIN_URL=https://tempo-studio-console.pages.dev` and `E2E_CLIENT_URL=https://tempo-members.pages.dev`.
 
+7. **SYNC 7, member import, notes and tags** (`specs/sync7/`, project `sync7`, docs/34, board #321): run it alone
+   (`pnpm e2e --project=sync7`, about three minutes). Like SYNC 6 it needs no smoke user: it creates
+   `e2e-sync7-owner-…@example.com` and `e2e-sync7-staff-…@example.com` (`support/accounts.ts`). The owner works at
+   1280px with a mouse, the staff member at 360px by touch (D15).
+   - The owner opens an `e2e-sync7` studio, makes two tags, and imports a made-up six-row file with a batch tag. The
+     check shows 3 to create, 1 already in the studio, 1 repeated and 1 invalid; the import creates the 3, tagged.
+   - Staff add a note and a tag to an imported person, and the people list filters by that tag.
+   - Staff see no import, and the route and the API refuse them; the API refuses them a new tag too.
+   - The owner's export of that person carries the note (author by role) and both tags; after an erase both are gone.
+   - axe runs on each new screen. The staff member deletes their own login (A-1). The owner's Cognito user is deleted
+     at the end, and the studio stays for the operator's cleanup (A-4).
+
 **axe on every screen.** `support/axe.ts` audits each screen against WCAG 2.2 A and AA. A serious or critical
 violation fails the test; minor and moderate ones are attached to the report as annotations. The audit runs with the
 pointer moved off the page, so it checks the resting screen and not a hover state.
