@@ -18,7 +18,8 @@ public sealed record PersonResponse(
     string? PrimaryPhone,
     Guid? MergedIntoId,
     DateTimeOffset CreatedAt,
-    string Version);
+    string Version,
+    IReadOnlyList<PersonTagResponse> Tags);
 
 /// <summary>`PersonDetail`: the person with contacts, current consent and relationships.</summary>
 public sealed record PersonDetailResponse(
@@ -38,7 +39,8 @@ public sealed record PersonDetailResponse(
     string Version,
     IReadOnlyList<ContactPointResponse> ContactPoints,
     IReadOnlyList<ConsentResponse> Consents,
-    IReadOnlyList<RelationshipResponse> Relationships);
+    IReadOnlyList<RelationshipResponse> Relationships,
+    IReadOnlyList<PersonTagResponse> Tags);
 
 public sealed record PersonPageResponse(IReadOnlyList<PersonResponse> Items, Guid? NextBefore);
 
@@ -102,6 +104,8 @@ public sealed record PersonExportResponse(
     IReadOnlyList<ExportHealthDeclarationResponse> HealthDeclarations,
     bool HealthAnswersWithheld,
     string? HealthAnswersWithheldReason,
+    IReadOnlyList<string> Tags,
+    IReadOnlyList<ExportNoteResponse> Notes,
     IReadOnlyList<BuddyResponse>? Buddies = null);
 
 /// <summary>`Buddy`: a member linked by mutual consent (docs/33 section 4).</summary>
