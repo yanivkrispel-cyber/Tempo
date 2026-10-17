@@ -5,6 +5,7 @@ import { cx } from "./cx";
 const shapes = {
   "arrow-down": <path d="M12 5v14M19 12l-7 7-7-7" />,
   "arrow-up": <path d="M12 19V5M5 12l7-7 7 7" />,
+  "bar-chart": <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />,
   bell: (
     <>
       <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
