@@ -2349,6 +2349,189 @@ html:has(.tp-tabbar--fixed) {
   color: var(--danger-ink);
 }
 
+/* ---------------------------------------------------------------- KPI tile
+   A report figure on a sand card: the label, the value, and the change against the previous period in words
+   with an arrow, so the direction never rests on the hue alone. Whether "up" is good is the caller's call. */
+.tp-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tp-kpi__label {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.tp-kpi__value {
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.tp-kpi__change {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.tp-kpi__change .tp-icon {
+  flex: none;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+.tp-kpi__change--good {
+  color: var(--success-ink);
+}
+.tp-kpi__change--bad {
+  color: var(--danger-ink);
+}
+/* A grid of tiles: two across on a phone, four on a wide console. */
+.tp-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: 12px;
+}
+
+/* --------------------------------------------------------- Weekly bar chart
+   One series of thin bars on the card. The plot is drawn left to right in a dir="ltr" box (oldest week first),
+   its Hebrew text carries direction="rtl", and the same figures sit in a table for screen readers
+   (or on screen with --table). Grid and axis stay recessive; the fill is the one data color. */
+.tp-bars {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.tp-bars__caption {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tp-bars__plot {
+  width: 100%;
+  min-width: 0;
+}
+.tp-bars__plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.tp-bars__grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.tp-bars__axis {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.tp-bars__bar {
+  fill: var(--brand-ink);
+}
+.tp-bars__tick {
+  fill: var(--ink-muted);
+  font-size: 11px;
+  font-family: inherit;
+}
+.tp-bars__value {
+  fill: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+/* Values are labelled selectively: the latest week always, any other week while it is hovered. */
+.tp-bars__col .tp-bars__value {
+  opacity: 0;
+}
+.tp-bars__col--latest .tp-bars__value,
+.tp-bars__col:hover .tp-bars__value {
+  opacity: 1;
+}
+.tp-bars__col:hover .tp-bars__bar {
+  fill: var(--ink);
+}
+/* The hit area is the whole column, wider than the thin bar. */
+.tp-bars__hit {
+  fill: transparent;
+}
+.tp-bars__empty {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------- Compact link rows
+   A report list: one line per person, the whole row a link to the person card, a short fact at the end. */
+.tp-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tp-rows > li + li {
+  border-block-start: 1px solid var(--line);
+}
+.tp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding-block: 8px;
+  padding-inline: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+}
+a.tp-row:hover {
+  background: var(--surface-hover);
+}
+a.tp-row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.tp-row__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.tp-row__title {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tp-row__meta {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.tp-row__aside {
+  flex: 0 1 auto;
+  max-width: 40%;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-align: end;
+}
+.tp-row > .tp-icon {
+  flex: none;
+  color: var(--ink-muted);
+}
+
 /* -------------------------------------------------------------------- Icons */
 .tp-icon {
   width: 20px;
