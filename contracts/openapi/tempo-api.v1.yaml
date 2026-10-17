@@ -4248,7 +4248,7 @@ components:
           type: [string, "null"]
           enum: [start, end, back, null]
           description: The wall with the window, as the room is drawn (start is the right side in Hebrew).
-        mirrorFront: { type: boolean, description: A mirror wall at the front, where the instructor stands. }
+        mirrorFront: { type: boolean, description: "A mirror wall at the front, where the instructor stands." }
         spots:
           type: array
           items: { $ref: "#/components/schemas/RoomSpot" }

@@ -3046,7 +3046,7 @@ export interface components {
              * @enum {string|null}
              */
             windowSide?: "start" | "end" | "back" | null;
-            /** @description A mirror wall at the front */
+            /** @description A mirror wall at the front, where the instructor stands. */
             mirrorFront: boolean;
             spots: components["schemas"]["RoomSpot"][];
             version: string;
