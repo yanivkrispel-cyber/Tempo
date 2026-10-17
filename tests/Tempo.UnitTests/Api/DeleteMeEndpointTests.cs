@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -7,6 +8,9 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.Modules.Identity.Application;
 using Xunit;
@@ -22,16 +26,26 @@ public sealed class DeleteMeEndpointTests : IDisposable
 {
     private readonly IAccountDeletionService deletion = Substitute.For<IAccountDeletionService>();
     private readonly ICognitoUserDeleter cognito = Substitute.For<ICognitoUserDeleter>();
+    private readonly CapturingSink events = new();
+    private readonly Serilog.Core.Logger hostLogger;
     private readonly TestApi api;
 
-    public DeleteMeEndpointTests() =>
+    public DeleteMeEndpointTests()
+    {
+        hostLogger = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(events).CreateLogger();
         api = new TestApi(configure: services =>
         {
             services.AddSingleton(deletion);
             services.AddSingleton(cognito);
+            services.AddSingleton<Serilog.ILogger>(hostLogger);
         });
+    }
 
-    public void Dispose() => api.Dispose();
+    public void Dispose()
+    {
+        api.Dispose();
+        hostLogger.Dispose();
+    }
 
     [Fact]
     public async Task WithoutARecentSignIn_Is401StepUp_AndNothingIsDeleted()
@@ -82,6 +96,10 @@ public sealed class DeleteMeEndpointTests : IDisposable
         var response = await DeleteAsync(DateTimeOffset.UtcNow.AddMinutes(-2));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // The only trace of the leftover Cognito user: its sub, never the email.
+        var warning = events.Rendered().Should().ContainSingle(line => line.Contains("is not; delete it", StringComparison.Ordinal)).Which;
+        warning.Should().Contain("sub-1").And.NotContain("member@example.com");
     }
 
     private async Task<HttpResponseMessage> DeleteAsync(DateTimeOffset authTime)
@@ -97,5 +115,15 @@ public sealed class DeleteMeEndpointTests : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/v1/me") { Content = JsonContent.Create(new { confirmEmail = "member@example.com" }) };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return await api.CreateClient().SendAsync(request);
+    }
+
+    private sealed class CapturingSink : ILogEventSink
+    {
+        private readonly ConcurrentQueue<LogEvent> events = new();
+
+        public void Emit(LogEvent logEvent) => events.Enqueue(logEvent);
+
+        public IEnumerable<string> Rendered() =>
+            events.Select(e => e.RenderMessage(CultureInfo.InvariantCulture) + " " + string.Join(" ", e.Properties.Select(p => p.Value.ToString())) + " " + e.Exception);
     }
 }
