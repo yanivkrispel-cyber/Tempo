@@ -40,7 +40,12 @@ describe("deleting my account (A-1, A-2)", () => {
     renderProfile();
     const dialog = await openDialog();
     expect(dialog).toHaveTextContent("ההתחברות שלך: לא תוכלו להיכנס עם החשבון הזה.");
-    expect(dialog).toHaveTextContent("הרשומה שלך בסטודיו: השם, השיעורים, הנוכחות, הכרטיסיות והמנויים.");
+    expect(dialog).toHaveTextContent("ההתראות בטלפון: המכשירים שלך לא יקבלו עוד התראות.");
+    // A-2 as A1 built it (docs/32 section 9): the inbox and the preferences stay with the studio's record.
+    expect(dialog).toHaveTextContent(
+      "הרשומה שלך בסטודיו: השם, השיעורים, הנוכחות, הכרטיסיות והמנויים, וגם ההודעות שהסטודיו שלח.",
+    );
+    expect(dialog).not.toHaveTextContent("העדפות ההתראות");
     expect(dialog).toHaveTextContent("כדי לאשר, כתבו noga@example.com");
   });
 

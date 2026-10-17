@@ -34,7 +34,9 @@ const deleteBodies = (api: ReturnType<typeof apiStub>) =>
 describe("deleting my account from the console's account page", () => {
   it("deletes with the typed email and signs out", async () => {
     const { api, redirect } = renderPage();
-    await confirmWith("dana@example.com");
+    const dialog = await confirmWith("dana@example.com");
+    expect(dialog).toHaveTextContent("נמחקים: ההתחברות, הגישה לכל הסטודיואים וההתראות בטלפון.");
+    expect(dialog).toHaveTextContent("נשארים בסטודיו: הרשומה שלך, השיעורים, הנוכחות, הכרטיסיות, המנויים וההודעות");
     await waitFor(() => expect(deleteBodies(api)).toEqual([{ confirmEmail: "dana@example.com" }]));
     await waitFor(() => expect(redirect).toHaveBeenCalledWith(expect.stringMatching(/\/logout\?/)));
   });
