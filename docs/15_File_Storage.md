@@ -8,6 +8,8 @@
 
 ## 1. Design
 
+**Decision (D17, 2026-10-17):** the first files are pictures (class covers, instructor photos, the studio cover, avatars) in one private S3 bucket per environment, served by short-lived presigned URLs; every picture is decoded and re-encoded to WebP on the server, which replaces the malware scan for images. Details: `33_Studio_Experience_LLD.md` section 6. Documents (PDFs, signed forms) keep the full flow below, scan included, when they arrive.
+
 Binary in object storage; metadata and lifecycle in PostgreSQL.
 
 ## 2. File Metadata
