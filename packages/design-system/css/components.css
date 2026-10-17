@@ -2169,6 +2169,174 @@ a.tp-tabbar__fab:hover {
   min-width: 0;
 }
 
+/* ------------------------------------------------------- Yes/no questions
+   A form of yes-or-no questions (the health declaration, docs/31): one cream slab per question, the question, then
+   "כן" and "לא" as two native radios drawn as a small segmented well. Each question is a fieldset, so a screen
+   reader names the pair by the question. An unanswered question after a submit says so in words (never hue alone).
+   The read-only variant shows the answer as a word in a sunken well, for staff who open the answers. */
+.tp-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.tp-question {
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--tp-slab);
+  box-shadow: var(--shadow-raise-sm);
+  min-width: 0;
+}
+/* A floated legend leaves the fieldset's border and sits in the slab like any first line. */
+.tp-question__text {
+  float: inline-start;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--ink);
+}
+.tp-question__text + * {
+  clear: both;
+}
+.tp-question__options {
+  display: inline-flex;
+  padding: 4px;
+  gap: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-sunken);
+}
+.tp-question__opt {
+  position: relative;
+  display: inline-flex;
+}
+/* The radio itself stays in the accessibility tree and takes the keyboard; the word next to it is the knob. */
+.tp-question__opt input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.tp-question__opt span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: var(--touch-min);
+  padding-inline: 16px;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  transition:
+    box-shadow var(--duration-base) var(--tp-ease),
+    color var(--duration-base) var(--tp-ease),
+    background var(--duration-base) var(--tp-ease);
+}
+.tp-question__opt input:hover + span {
+  color: var(--ink);
+}
+.tp-question__opt input:checked + span {
+  background: var(--tp-slab);
+  color: var(--ink);
+  box-shadow: var(--shadow-raise-sm);
+}
+.tp-question__opt input:focus-visible + span {
+  box-shadow: var(--shadow-raise-sm), var(--shadow-focus);
+}
+.tp-question__opt input:disabled,
+.tp-question__opt input:disabled + span {
+  cursor: not-allowed;
+}
+.tp-question__error {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--danger-ink);
+}
+.tp-question--missing {
+  box-shadow:
+    var(--shadow-raise-sm),
+    inset 0 0 0 1.5px var(--danger);
+}
+.tp-question__answer {
+  display: inline-grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: 32px;
+  padding-inline: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-sunken);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* -------------------------------------------------------------- Signature
+   Signing a form: who signs (the member, or a parent or guardian), the typed full name, and one confirmation. A sand
+   slab so it reads as the end of the form; the typed name is echoed on a signature line (decorative, aria-hidden). */
+.tp-signature {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sand);
+  box-shadow: var(--shadow-raise-sm);
+  min-width: 0;
+}
+.tp-signature__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.tp-signature__roles legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tp-signature__roles .tp-check {
+  min-height: var(--touch-min);
+}
+.tp-signature__line {
+  min-height: 40px;
+  padding-block: 6px 4px;
+  border-block-end: var(--border-mid) dashed var(--line-strong);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+/* A long confirmation wraps under itself, the box staying at the first line. */
+.tp-signature__confirm.tp-check {
+  align-items: flex-start;
+  line-height: 22px;
+}
+.tp-signature__confirm.tp-check input {
+  margin-block-start: 0;
+}
+.tp-signature__error {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--danger-ink);
+}
+
 /* -------------------------------------------------------------------- Icons */
 .tp-icon {
   width: 20px;

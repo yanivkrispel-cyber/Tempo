@@ -503,6 +503,106 @@
         </section>
 
         <!-- ===================================================== Tab bar -->
+        <section class="pv-cell tp-card" aria-labelledby="pv-questions">
+          <header>
+            <h2 id="pv-questions">שאלות כן ולא</h2>
+            <code>.tp-questions</code>
+            <span class="tp-caption tp-muted"
+              >הצהרת בריאות: שאלה, ואז "כן" או "לא" כשני כפתורי בחירה. שאלה שלא נענתה מסומנת במילים אחרי שליחה. למטה,
+              התצוגה לקריאה בלבד של הצוות.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch">
+            <div class="tp-questions" role="group" aria-label="שאלות ההצהרה">
+              <fieldset class="tp-question">
+                <legend class="tp-question__text">שאלה ראשונה לדוגמה, שמנוסחת ארוך מספיק כדי לרדת שורה בטלפון?</legend>
+                <div class="tp-question__options">
+                  <label class="tp-question__opt"><input type="radio" name="pv-q1" /><span>כן</span></label>
+                  <label class="tp-question__opt"><input type="radio" name="pv-q1" checked /><span>לא</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="tp-question tp-question--missing" aria-describedby="pv-q2-error">
+                <legend class="tp-question__text">שאלה שנייה לדוגמה?</legend>
+                <div class="tp-question__options">
+                  <label class="tp-question__opt"><input type="radio" name="pv-q2" /><span>כן</span></label>
+                  <label class="tp-question__opt"><input type="radio" name="pv-q2" /><span>לא</span></label>
+                </div>
+                <p class="tp-question__error" id="pv-q2-error">צריך לענות כן או לא.</p>
+              </fieldset>
+            </div>
+            <div class="tp-questions" role="group" aria-label="התשובות שנמסרו">
+              <fieldset class="tp-question">
+                <legend class="tp-question__text">שאלה ראשונה לדוגמה?</legend>
+                <p class="tp-question__answer">כן</p>
+              </fieldset>
+            </div>
+          </div>
+        </section>
+
+        <section class="pv-cell tp-card" aria-labelledby="pv-signature">
+          <header>
+            <h2 id="pv-signature">חתימה</h2>
+            <code>.tp-signature</code>
+            <span class="tp-caption tp-muted"
+              >סוף הטופס: מי חותם, השם המלא (ושם ההורה או האפוטרופוס כשהוא חותם), ואישור אחד. השם חוזר על קו
+              החתימה.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch">
+            <div class="tp-signature" role="group" aria-label="חתימה">
+              <fieldset class="tp-signature__roles">
+                <legend>מי חותם/ת</legend>
+                <label class="tp-check"><input type="radio" name="pv-signer" /><span>אני, על עצמי</span></label>
+                <label class="tp-check"
+                  ><input type="radio" name="pv-signer" checked /><span>הורה או אפוטרופוס</span></label
+                >
+              </fieldset>
+              <div class="tp-field">
+                <label class="tp-field__label" for="pv-sig-name"
+                  >השם המלא של המתאמן/ת<span class="tp-req" aria-hidden="true">*</span></label
+                >
+                <input class="tp-input" id="pv-sig-name" value="חבר דוגמה" required />
+              </div>
+              <div class="tp-field tp-field--invalid">
+                <label class="tp-field__label" for="pv-sig-guardian"
+                  >השם המלא של ההורה או האפוטרופוס<span class="tp-req" aria-hidden="true">*</span></label
+                >
+                <input
+                  class="tp-input"
+                  id="pv-sig-guardian"
+                  required
+                  aria-invalid="true"
+                  aria-describedby="pv-sig-guardian-msg"
+                />
+                <p class="tp-field__help" id="pv-sig-guardian-msg">צריך לכתוב את השם המלא של ההורה או האפוטרופוס.</p>
+              </div>
+              <div class="tp-signature__line" aria-hidden="true" dir="auto"></div>
+              <label class="tp-check tp-signature__confirm"
+                ><input type="checkbox" checked /><span
+                  >קראתי את השאלות, התשובות נכונות, ואעדכן את הסטודיו אם משהו ישתנה.</span
+                ></label
+              >
+            </div>
+          </div>
+        </section>
+
+        <section class="pv-cell tp-card" aria-labelledby="pv-health-status">
+          <header>
+            <h2 id="pv-health-status">מצב הצהרת בריאות</h2>
+            <code>.tp-chip</code>
+            <span class="tp-caption tp-muted"
+              >ארבעה מצבים, כל אחד במילה ובגוון. בשורת נוכחות מילה אחת, וקורא המסך שומע "הצהרת בריאות" לפניה.</span
+            >
+          </header>
+          <div class="pv-stage" role="group" aria-label="מצבי הצהרה">
+            <span class="tp-chip tp-chip--warning">חסרה הצהרת בריאות</span>
+            <span class="tp-chip tp-chip--success">הצהרת בריאות חתומה</span>
+            <span class="tp-chip tp-chip--info">ממתינה לאישור רפואי</span>
+            <span class="tp-chip tp-chip--danger">הצהרת הבריאות פגה</span>
+            <span class="tp-chip tp-chip--danger"><span class="tp-sr-only">הצהרת בריאות: </span>פגה</span>
+          </div>
+        </section>
+
         <section class="pv-cell tp-card" aria-labelledby="pv-tabbar">
           <header>
             <h2 id="pv-tabbar">סרגל לשוניות תחתון</h2>
