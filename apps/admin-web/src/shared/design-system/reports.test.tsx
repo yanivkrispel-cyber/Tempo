@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { KpiTile, LinkRows, niceMax, WeeklyBarChart } from "./index";
+import { KpiTile, LinkRows, niceMax, niceScale, WeeklyBarChart } from "./index";
 
 // Fictional figures and names only.
 const weeks = [
@@ -28,6 +28,13 @@ describe("KpiTile", () => {
     expect(change.textContent).not.toMatch(/[-−]/);
   });
 
+  it("says what the caller asks when there is nothing to compare", () => {
+    const { container } = render(
+      <KpiTile label="שיעור תפוסה" value="—" change={null} noChange="לא התקיימו שיעורים בתקופה" />,
+    );
+    expect(container.querySelector(".tp-kpi__change")!.textContent).toBe("לא התקיימו שיעורים בתקופה");
+  });
+
   it("treats a fall as good news when down is good (no-shows)", () => {
     const { container } = render(<KpiTile label="לא הגיעו" value="2" change={{ delta: -4 }} goodWhen="down" />);
     expect(container.querySelector(".tp-kpi__change")).toHaveClass("tp-kpi__change--good");
@@ -49,7 +56,10 @@ describe("WeeklyBarChart", () => {
     expect(container.querySelector(".tp-bars__plot")).toHaveAttribute("aria-hidden", "true");
     expect(container.querySelector(".tp-bars__plot")).toHaveAttribute("dir", "ltr");
     const table = within(figure).getByRole("table", { name: "ביקורים לפי שבוע" });
-    expect(table).toHaveClass("tp-sr-only");
+    // Hidden by a wrapper: on the table itself .tp-sr-only loses its 1px width to .tp-table's 100% (a 320px page
+    // scrolled sideways by the table's width).
+    expect(table).not.toHaveClass("tp-sr-only");
+    expect(table.parentElement).toHaveClass("tp-sr-only");
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(5);
     expect(within(rows[3]!).getByRole("rowheader")).toHaveTextContent("השבוע של 4.10");
@@ -78,10 +88,27 @@ describe("WeeklyBarChart", () => {
     const { rerender, container } = render(
       <WeeklyBarChart title="ביקורים" weeks={weeks} valueLabel="ביקורים" showTable />,
     );
-    expect(container.querySelector("table")).not.toHaveClass("tp-sr-only");
+    expect(container.querySelector("table")!.parentElement).not.toHaveClass("tp-sr-only");
     rerender(<WeeklyBarChart title="ביקורים" weeks={[]} valueLabel="ביקורים" />);
     expect(screen.getByText("אין נתונים בתקופה הזאת")).toBeInTheDocument();
     expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("never labels two ticks alike: one visit in a period gives the axis 0 and 1 (Y3's case)", () => {
+    const { container } = render(
+      <WeeklyBarChart title="ביקורים" weeks={[{ key: "w", label: "11.10", value: 1 }]} valueLabel="ביקורים" />,
+    );
+    const axis = [...container.querySelectorAll("svg > g:not(.tp-bars__col) .tp-bars__tick")].map((t) => t.textContent);
+    expect(axis).toEqual(["0", "1"]);
+    expect(new Set(axis).size).toBe(axis.length);
+  });
+
+  it("puts the ticks at whole steps of the scale, and below 1 only for values that aren't counts", () => {
+    expect(niceScale(1)).toEqual({ max: 1, ticks: [0, 1] });
+    expect(niceScale(5)).toEqual({ max: 5, ticks: [0, 5] });
+    expect(niceScale(3)).toEqual({ max: 4, ticks: [0, 2, 4] });
+    expect(niceScale(18)).toEqual({ max: 20, ticks: [0, 10, 20] });
+    expect(niceScale(0.8, { whole: false })).toEqual({ max: 1, ticks: [0, 0.5, 1] });
   });
 
   it("rounds the scale up to a 1, 2 or 5 step", () => {

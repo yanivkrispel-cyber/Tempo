@@ -57,7 +57,7 @@ export type { TimeInputProps } from "./TimeInput";
 export { isTimeWindowValid, TimeRange } from "./TimeRange";
 export type { TimeRangeProps, TimeWindow } from "./TimeRange";
 export { Checkbox, Radio, Toggle } from "./Toggle";
-export { niceMax, WeeklyBarChart } from "./WeeklyBarChart";
+export { niceMax, niceScale, WeeklyBarChart } from "./WeeklyBarChart";
 export type { WeeklyBar, WeeklyBarChartProps } from "./WeeklyBarChart";
 export { allAnswered, YesNoQuestions } from "./YesNoQuestions";
 export type { YesNoAnswers, YesNoQuestion, YesNoQuestionsProps } from "./YesNoQuestions";

@@ -30,11 +30,24 @@ for (const theme of ["light", "dark"] as const) {
       expect(box).toBeGreaterThanOrEqual(44);
     }
 
-    // Each new section fits the phone.
+    // Each new section fits the phone, absolutely placed parts included: a hidden table once kept .tp-table's width
+    // and widened the page, which the section's own scroll width never showed.
     for (const id of sections) {
       const section = page.locator(`section[aria-labelledby='${id}']`);
       const overflow = await section.evaluate((element) => element.scrollWidth - element.clientWidth);
       expect(overflow, `${id} overflows at 320 px`).toBeLessThanOrEqual(0);
+      // The page alone with this section: an absolutely placed part escapes the section's scroll width (and any
+      // clipping parent short of its containing block), but not the page's.
+      const widens = await page.evaluate((only) => {
+        const cells = Array.from(document.querySelectorAll<HTMLElement>(".pv-cell"));
+        const shown = cells.map((cell) => cell.style.display);
+        for (const cell of cells) if (cell.getAttribute("aria-labelledby") !== only) cell.style.display = "none";
+        // clientWidth, not innerWidth: on a phone (the Pixel 7 here) innerWidth grows to fit a too-wide page.
+        const extra = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+        cells.forEach((cell, index) => (cell.style.display = shown[index] ?? ""));
+        return extra;
+      }, id);
+      expect(widens, `${id} widens the page at 320 px`).toBeLessThanOrEqual(0);
     }
 
     for (const id of sections) {

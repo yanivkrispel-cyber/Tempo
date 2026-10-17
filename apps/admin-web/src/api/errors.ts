@@ -79,6 +79,8 @@ const messages: Record<string, string> = {
   "pass.freeze_started": "ההקפאה כבר התחילה, ואי אפשר להסיר אותה.",
   "pass.freeze_not_found": "ההקפאה לא נמצאה. ייתכן שהוסרה כבר.",
   "pass.freeze_has_bookings": "יש הזמנות בימים שההקפאה הוסיפה. העבירו או בטלו אותן קודם.",
+  "report.period_invalid": "בחרו תאריך התחלה ותאריך סיום, הסיום לא לפני ההתחלה.",
+  "report.period_too_long": "דוח מכסה עד 92 ימים. קצרו את התקופה.",
   "startsOn.invalid": "ההקפאה מתחילה היום או אחר כך.",
   "endsOn.invalid": "ההקפאה נמשכת בין יום אחד ל־90 ימים.",
 };

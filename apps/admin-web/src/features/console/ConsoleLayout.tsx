@@ -18,6 +18,7 @@ interface Section {
 
 const sections: Section[] = [
   { to: "", label: "חברי הסטודיו", icon: "users", permission: "members.view" },
+  { to: "reports", label: "דוחות", icon: "bar-chart", permission: "reports.view" },
   { to: "schedule", label: "מערכת שבועית", icon: "calendar", permission: "schedule.view" },
   { to: "weekly-classes", label: "שיעורים קבועים", icon: "clock", permission: "schedule.manage" },
   { to: "class-types", label: "סוגי שיעורים", icon: "list", permission: "schedule.view" },

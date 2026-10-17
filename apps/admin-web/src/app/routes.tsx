@@ -12,6 +12,7 @@ import { PassProductsPage } from "../features/passes/PassProductsPage";
 import { DuplicatesPage } from "../features/people/DuplicatesPage";
 import { PeoplePage } from "../features/people/PeoplePage";
 import { PersonPage } from "../features/people/PersonPage";
+import { ReportsPage } from "../features/reports/ReportsPage";
 import { RolesPage } from "../features/roles/RolesPage";
 import { ClassTypesPage } from "../features/schedule/ClassTypesPage";
 import { RoomsPage } from "../features/schedule/RoomsPage";
@@ -57,6 +58,7 @@ export const routes: RouteObject[] = [
               { path: "settings", element: <SettingsPage /> },
               { path: "settings/templates/:kind", element: <TemplatePage /> },
               { path: "audit", element: <AuditPage /> },
+              { path: "reports", element: <ReportsPage /> },
             ],
           },
         ],
