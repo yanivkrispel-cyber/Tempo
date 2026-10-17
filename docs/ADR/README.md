@@ -1,7 +1,7 @@
 # Tempo Architecture Decision Records - Current Baseline
 
-- **Version:** 3.4
-- **Date:** 2026-10-14
+- **Version:** 3.6
+- **Date:** 2026-10-17
 - **Cloud Decision:** AWS, except the database (Neon on AWS eu-central-1, ADR-0022)
 - **Architecture Direction:** Serverless-first modular monolith
 - **Backend Runtime:** .NET 10
@@ -44,6 +44,7 @@
 | ADR-0023 | Studio Self-Onboarding and a Separate Operator Identity Pool | Accepted |
 | ADR-0024 | Frontend Toolchain for the Tempo Web Apps | Accepted |
 | ADR-0025 | Two-Layer Quality: Gates Block, Agents Advise | Proposed |
+| ADR-0026 | Field-Level Encryption Without a Customer-Managed Key Until Revenue | Accepted |
 
 ## Decision Summary
 
@@ -59,7 +60,7 @@ Identity: Cognito User Pools Essentials: one pool for studios and clients, one M
 Async: one SQS work queue + DLQ, EventBridge Scheduler (outbox sweeper, reminders, canary), Transactional Outbox; EventBridge bus only for fan-out
 Files: S3
 Secrets: SSM Parameter Store SecureString (no Secrets Manager until a tripwire)
-Encryption: KMS
+Encryption: KMS; health fields AES-GCM in the app with the key in an SSM SecureString under aws/ssm (ADR-0026)
 Email: SES
 Observability: CloudWatch + OpenTelemetry/X-Ray
 Cost: $0 fixed cost until revenue; tripwires need owner approval (ADR-0021)
