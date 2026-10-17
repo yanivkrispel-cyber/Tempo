@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using Amazon.Runtime;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 using Tempo.Platform.BuildingBlocks.Errors;
@@ -20,7 +21,8 @@ public interface IHealthDataKeys
     Task<byte[]> GetAsync(int version, CancellationToken cancellationToken);
 }
 
-public sealed class HealthDataKeys(Func<string, string?> setting) : IHealthDataKeys, IDisposable
+/// <param name="readParameter">Reads one SSM SecureString by name; tests replace it. Defaults to the SSM client.</param>
+public sealed class HealthDataKeys(Func<string, string?> setting, Func<string, CancellationToken, Task<string>>? readParameter = null) : IHealthDataKeys, IDisposable
 {
     public const int KeyBytes = 32;
 
@@ -73,17 +75,22 @@ public sealed class HealthDataKeys(Func<string, string?> setting) : IHealthDataK
             return null;
         }
 
-        using var ssm = new AmazonSimpleSystemsManagementClient();
         try
         {
-            var request = new GetParameterRequest { Name = string.Create(CultureInfo.InvariantCulture, $"{prefix}{version}"), WithDecryption = true };
-            return (await ssm.GetParameterAsync(request, cancellationToken)).Parameter.Value;
+            return await (readParameter ?? ReadSsmAsync)(string.Create(CultureInfo.InvariantCulture, $"{prefix}{version}"), cancellationToken);
         }
-        catch (AmazonSimpleSystemsManagementException)
+        catch (Exception exception) when (exception is AmazonServiceException or AmazonClientException or HttpRequestException)
         {
-            // Not written yet, or no permission: either way the answers stay closed.
+            // Not written yet, no permission, no credentials or no network: the answers stay closed with 503, never
+            // a 500 (#239 review). The exception's text is not logged here; it can carry the parameter name only.
             return null;
         }
+    }
+
+    private static async Task<string> ReadSsmAsync(string name, CancellationToken cancellationToken)
+    {
+        using var ssm = new AmazonSimpleSystemsManagementClient();
+        return (await ssm.GetParameterAsync(new GetParameterRequest { Name = name, WithDecryption = true }, cancellationToken)).Parameter.Value;
     }
 
     private static byte[] Decode(string? value)
