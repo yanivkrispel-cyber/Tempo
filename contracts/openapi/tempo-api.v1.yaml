@@ -1220,7 +1220,6 @@ paths:
     post:
       tags: [People]
       operationId: importPeople
-      x-tempo-planned: true
       summary: "Check or import people from a file the console has read (`people.import`)"
       description: |
         docs/34 sections 3 to 6. The console reads the CSV file in the browser and sends its rows; the file never
