@@ -1686,6 +1686,141 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/health-declaration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * My declaration's status, the current form, and whether the studio requires it (self)
+         * @description No answers and no names (docs/31 section 9); the member's copy of those is in the export.
+         */
+        get: operations["getMyHealthDeclaration"];
+        put?: never;
+        /**
+         * Sign the current form, for myself or as a guardian (self); replaces my current declaration
+         * @description 400 `health.answers_incomplete`, `health.confirmation_required`, `health.guardian_name_required`;
+         *     409 `health.form_version_stale` (reload the form); 503 `health.key_unavailable`.
+         */
+        post: operations["signMyHealthDeclaration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/health-declaration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        /** A person's declaration status and dates, no answers (`people.view`) */
+        get: operations["getPersonHealthDeclaration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/health-declaration/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A person's current answers and signer names (`health.view`; every read is audited)
+         * @description Writes `health.declaration.viewed` (no content). Sent with `Cache-Control: no-store`; apps must not cache
+         *     it. 404 `health.declaration_not_found` when the status is `missing`; 503 `health.key_unavailable`.
+         */
+        get: operations["getPersonHealthDeclarationAnswers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/people/{personId}/health-declaration/medical-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that a doctor's approval was received (`health.view`); `needs_medical_approval` becomes `signed`
+         * @description 409 `health.no_approval_needed` when the status is not `needs_medical_approval`.
+         */
+        post: operations["recordMedicalApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * My visits this month, my monthly goal and my streak of weeks in this studio (self)
+         * @description Only attended classes count, by the session's start in the studio's time zone (docs/31 section 12).
+         */
+        get: operations["getMyProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/progress/goal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set my monthly goal (1 to 31), or clear it with null (self) */
+        put: operations["setMyMonthlyGoal"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/billing": {
         parameters: {
             query?: never;
@@ -2337,6 +2472,10 @@ export interface components {
             bookings: components["schemas"]["ExportBooking"][];
             /** @description Every pass granted to this person, in start order. No staff note. */
             passes: components["schemas"]["ExportPass"][];
+            /** @description Planned (docs/31 section 11; absent until it is built). Current and replaced declarations. */
+            healthDeclarations?: components["schemas"]["ExportHealthDeclaration"][];
+            /** @description Planned. True when the exporting member lacks `health.view`, so answers and names are null. */
+            healthAnswersWithheld?: boolean;
         };
         ExportBooking: {
             /** Format: uuid */
@@ -2709,6 +2848,8 @@ export interface components {
             passName?: string | null;
             /** @description Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place). */
             entriesLeft?: number | null;
+            /** @description Planned (docs/31 section 5; absent until it is built). The person's declaration status; null when the caller lacks `people.view`. */
+            healthStatus?: components["schemas"]["HealthDeclarationStatus"] | null;
             /** Format: date-time */
             bookedAt: string;
         };
@@ -2843,6 +2984,8 @@ export interface components {
             waitlistCutoffHours: number;
             bookingHorizonDays: number;
             waitlistEnabled: boolean;
+            /** @description Planned (docs/31 section 10; absent until it is built, read absent as false). When true, a member's own booking or waitlist place needs a `signed` declaration, else 409 `health.declaration_required`. */
+            requireHealthDeclaration?: boolean;
             version: string;
         };
         BookingPolicyInput: {
@@ -2850,6 +2993,8 @@ export interface components {
             waitlistCutoffHours: number;
             bookingHorizonDays: number;
             waitlistEnabled: boolean;
+            /** @description Planned (docs/31 section 10). Left out keeps the current value; off by default. */
+            requireHealthDeclaration?: boolean;
         };
         InboxItem: {
             /** Format: uuid */
@@ -3185,6 +3330,136 @@ export interface components {
             /** Format: date-time */
             endsAt?: string | null;
         };
+        /**
+         * @description docs/31 section 4. `signed` includes a "yes" with a recorded medical approval.
+         * @enum {string}
+         */
+        HealthDeclarationStatus: "missing" | "signed" | "needs_medical_approval" | "expired";
+        HealthFormQuestion: {
+            /** @example q1 */
+            id: string;
+            /** @description The question in Hebrew; the platform's draft wording until the lawyer check (P-2). */
+            text: string;
+        };
+        HealthForm: {
+            version: number;
+            /** @example he-IL */
+            locale: string;
+            questions: components["schemas"]["HealthFormQuestion"][];
+        };
+        /** @description Status and dates only; never the answers or the names. */
+        HealthDeclarationStatusView: {
+            status: components["schemas"]["HealthDeclarationStatus"];
+            /**
+             * Format: uuid
+             * @description Null when the status is `missing`.
+             */
+            declarationId?: string | null;
+            formVersion?: number | null;
+            /** @enum {string|null} */
+            signerRole?: "self" | "guardian" | null;
+            /** Format: date-time */
+            signedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description 12 months after `signedAt`.
+             */
+            expiresAt?: string | null;
+            /** Format: date */
+            medicalApprovalOn?: string | null;
+        };
+        MyHealthDeclaration: {
+            declaration: components["schemas"]["HealthDeclarationStatusView"];
+            /** @description The current form, to sign or renew. */
+            form: components["schemas"]["HealthForm"];
+            /** @description The studio's `requireHealthDeclaration`; when true, booking needs `signed`. */
+            required: boolean;
+        };
+        HealthAnswer: {
+            questionId: string;
+            /** @description true is "yes". */
+            answer: boolean;
+        };
+        SignHealthDeclarationRequest: {
+            formVersion: number;
+            /** @description One answer for every question of that version, no more. */
+            answers: components["schemas"]["HealthAnswer"][];
+            /** @description The name as typed by the signer. */
+            signedName: string;
+            /** @enum {string} */
+            signerRole: "self" | "guardian";
+            /** @description Required when `signerRole` is `guardian`. */
+            guardianName?: string | null;
+            /**
+             * @description The confirmation checkbox.
+             * @constant
+             */
+            confirmed: true;
+        };
+        HealthDeclarationAnswers: {
+            /** Format: uuid */
+            declarationId: string;
+            status: components["schemas"]["HealthDeclarationStatus"];
+            /** @description The version this declaration answered, which may be older than the current one. */
+            form: components["schemas"]["HealthForm"];
+            answers: components["schemas"]["HealthAnswer"][];
+            signedName: string;
+            /** @enum {string} */
+            signerRole: "self" | "guardian";
+            guardianName?: string | null;
+            /** Format: date-time */
+            signedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date */
+            medicalApprovalOn?: string | null;
+        };
+        MedicalApprovalRequest: {
+            /**
+             * Format: date
+             * @description Not in the future and not before the declaration was signed.
+             */
+            approvedOn: string;
+        };
+        /** @description Answers and names only when the exporting member holds `health.view`; each such export is audited. */
+        ExportHealthDeclaration: {
+            /** Format: uuid */
+            declarationId: string;
+            formVersion: number;
+            status: components["schemas"]["HealthDeclarationStatus"];
+            /** @enum {string} */
+            signerRole: "self" | "guardian";
+            /** Format: date-time */
+            signedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            supersededAt?: string | null;
+            /** Format: date */
+            medicalApprovalOn?: string | null;
+            answers?: components["schemas"]["HealthAnswer"][] | null;
+            signedName?: string | null;
+            guardianName?: string | null;
+        };
+        MyProgress: {
+            /**
+             * @description This month in the studio's time zone.
+             * @example 2026-10
+             */
+            month: string;
+            /** @example Asia/Jerusalem */
+            timeZone: string;
+            /** @description Attended classes that start this month. */
+            visitsThisMonth: number;
+            /** @description Null until the member sets one; the app hides the goal ring. */
+            monthlyGoal: number | null;
+            /** @description Consecutive Sunday-to-Saturday weeks with an attended class; the current week counts once it has one. */
+            streakWeeks: number;
+        };
+        MonthlyGoalRequest: {
+            /** @description Null clears the goal. */
+            monthlyGoal: number | null;
+        };
     };
     responses: {
         /** @description Unexpected error. */
@@ -3275,6 +3550,18 @@ export interface components {
             headers: {
                 /** @description Seconds until the next attempt is allowed. */
                 "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /**
+         * @description A dependency the operation needs is not available and the API fails closed, e.g.
+         *     `health.key_unavailable` (the health data key cannot be read; docs/31 section 7).
+         */
+        ServiceUnavailable: {
+            headers: {
                 [name: string]: unknown;
             };
             content: {
@@ -6343,6 +6630,206 @@ export interface operations {
                     "application/json": components["schemas"]["DeliveryList"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMyHealthDeclaration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyHealthDeclaration"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    signMyHealthDeclaration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignHealthDeclarationRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyHealthDeclaration"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getPersonHealthDeclaration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthDeclarationStatusView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPersonHealthDeclarationAnswers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthDeclarationAnswers"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    recordMedicalApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MedicalApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthDeclarationStatusView"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getMyProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyProgress"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setMyMonthlyGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonthlyGoalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyProgress"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

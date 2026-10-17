@@ -1,3 +1,13 @@
+# ADR Baseline v3.6 - Change Log (2026-10-17)
+
+The owner chose the $0 path for the health declaration (day board #232).
+
+## Added ADRs
+
+- ADR-0026: health declaration fields are encrypted in the application with AES-256-GCM; the data key is an SSM
+  SecureString under the AWS-managed `aws/ssm` key, so no customer-managed KMS key until revenue. ADR-0021's text
+  is unchanged; ADR-0026 defers its sensitive-data tripwire to the first paying studio. $0.
+
 # ADR Baseline v3.5 - Change Log (2026-10-15)
 
 The owner approved the two-layer quality model and made the repository public (board #89, Wave Q).

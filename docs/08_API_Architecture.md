@@ -61,6 +61,10 @@ Mandatory for payments, invitations, webhooks, imports, file finalization and ex
 
 Use ETag/version + `If-Match` for contested resources.
 
+`If-Match` is optional today on every versioned PUT: without it the last write wins; with a stale version the
+API answers 409 `concurrency.conflict` (decision E-1, day board #232). Making it required (428) on all of them is a
+later contract change.
+
 ## 8. Security
 
 - tenant scope.

@@ -14,6 +14,9 @@ info:
     Phase 4 part one (docs/30_Communications_LLD.md, section 9) adds notification preferences and quiet hours,
     web-push subscriptions, the VAPID public key and the studio's notification settings.
 
+    Pilot readiness (docs/31_Health_Declaration_LLD.md) adds the health declaration (answers encrypted in the
+    application, every read of answers audited) and the member's progress (visits, goal, streak).
+
     **Planned operations.** An operation marked `x-tempo-planned: true` is agreed but not deployed yet; the
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
@@ -83,6 +86,10 @@ tags:
     description: Punch cards and memberships the studio sells and grants (docs/29).
   - name: Notifications
     description: In-app notifications for the caller in one studio.
+  - name: Health declaration
+    description: A person's health declaration in one studio; answers encrypted, every read audited (docs/31).
+  - name: Progress
+    description: The member's visits, monthly goal and streak in one studio (docs/31 section 12).
   - name: Billing
     description: Tempo's plan and subscription for the studio (docs/28).
   - name: Platform
@@ -2358,6 +2365,167 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/me/health-declaration:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Health declaration]
+      operationId: getMyHealthDeclaration
+      x-tempo-planned: true
+      summary: "My declaration's status, the current form, and whether the studio requires it (self)"
+      description: No answers and no names (docs/31 section 9); the member's copy of those is in the export.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyHealthDeclaration" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Health declaration]
+      operationId: signMyHealthDeclaration
+      x-tempo-planned: true
+      summary: "Sign the current form, for myself or as a guardian (self); replaces my current declaration"
+      description: |
+        400 `health.answers_incomplete`, `health.confirmation_required`, `health.guardian_name_required`;
+        409 `health.form_version_stale` (reload the form); 503 `health.key_unavailable`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignHealthDeclarationRequest" }
+      responses:
+        "201":
+          description: Signed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyHealthDeclaration" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/health-declaration:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [Health declaration]
+      operationId: getPersonHealthDeclaration
+      x-tempo-planned: true
+      summary: "A person's declaration status and dates, no answers (`people.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthDeclarationStatusView" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/health-declaration/answers:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [Health declaration]
+      operationId: getPersonHealthDeclarationAnswers
+      x-tempo-planned: true
+      summary: "A person's current answers and signer names (`health.view`; every read is audited)"
+      description: |
+        Writes `health.declaration.viewed` (no content). Sent with `Cache-Control: no-store`; apps must not cache
+        it. 404 `health.declaration_not_found` when the status is `missing`; 503 `health.key_unavailable`.
+      responses:
+        "200":
+          description: OK.
+          headers:
+            Cache-Control:
+              schema: { type: string, examples: [no-store] }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthDeclarationAnswers" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/health-declaration/medical-approval:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    post:
+      tags: [Health declaration]
+      operationId: recordMedicalApproval
+      x-tempo-planned: true
+      summary: "Record that a doctor's approval was received (`health.view`); `needs_medical_approval` becomes `signed`"
+      description: 409 `health.no_approval_needed` when the status is not `needs_medical_approval`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MedicalApprovalRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthDeclarationStatusView" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/me/progress:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Progress]
+      operationId: getMyProgress
+      x-tempo-planned: true
+      summary: "My visits this month, my monthly goal and my streak of weeks in this studio (self)"
+      description: Only attended classes count, by the session's start in the studio's time zone (docs/31 section 12).
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyProgress" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/progress/goal:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    put:
+      tags: [Progress]
+      operationId: setMyMonthlyGoal
+      x-tempo-planned: true
+      summary: "Set my monthly goal (1 to 31), or clear it with null (self)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MonthlyGoalRequest" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyProgress" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/billing:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -2651,6 +2819,14 @@ components:
         Retry-After:
           description: Seconds until the next attempt is allowed.
           schema: { type: integer }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    ServiceUnavailable:
+      description: |
+        A dependency the operation needs is not available and the API fails closed, e.g.
+        `health.key_unavailable` (the health data key cannot be read; docs/31 section 7).
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problem" }
@@ -3351,6 +3527,13 @@ components:
           type: array
           description: Every pass granted to this person, in start order. No staff note.
           items: { $ref: "#/components/schemas/ExportPass" }
+        healthDeclarations:
+          type: array
+          description: Planned (docs/31 section 11; absent until it is built). Current and replaced declarations.
+          items: { $ref: "#/components/schemas/ExportHealthDeclaration" }
+        healthAnswersWithheld:
+          type: boolean
+          description: Planned. True when the exporting member lacks `health.view`, so answers and names are null.
 
     ExportBooking:
       type: object
@@ -3798,6 +3981,13 @@ components:
         entriesLeft:
           type: [integer, "null"]
           description: Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place).
+        healthStatus:
+          description: >-
+            Planned (docs/31 section 5; absent until it is built). The person's declaration status; null when the
+            caller lacks `people.view`.
+          oneOf:
+            - $ref: "#/components/schemas/HealthDeclarationStatus"
+            - type: "null"
         bookedAt: { type: string, format: date-time }
 
     Roster:
@@ -3951,6 +4141,11 @@ components:
         waitlistCutoffHours: { type: integer, minimum: 0, maximum: 24 }
         bookingHorizonDays: { type: integer, minimum: 1, maximum: 56 }
         waitlistEnabled: { type: boolean }
+        requireHealthDeclaration:
+          type: boolean
+          description: >-
+            Planned (docs/31 section 10; absent until it is built, read absent as false). When true, a member's own
+            booking or waitlist place needs a `signed` declaration, else 409 `health.declaration_required`.
         version: { type: string }
 
     BookingPolicyInput:
@@ -3961,6 +4156,9 @@ components:
         waitlistCutoffHours: { type: integer, minimum: 0, maximum: 24 }
         bookingHorizonDays: { type: integer, minimum: 1, maximum: 56 }
         waitlistEnabled: { type: boolean }
+        requireHealthDeclaration:
+          type: boolean
+          description: Planned (docs/31 section 10). Left out keeps the current value; off by default.
 
     InboxItem:
       type: object
@@ -4410,3 +4608,135 @@ components:
         value: { description: "A number, boolean or string, as the key defines." }
         reason: { type: string, minLength: 5, maxLength: 500 }
         endsAt: { type: [string, "null"], format: date-time }
+
+    HealthDeclarationStatus:
+      type: string
+      enum: [missing, signed, needs_medical_approval, expired]
+      description: docs/31 section 4. `signed` includes a "yes" with a recorded medical approval.
+
+    HealthFormQuestion:
+      type: object
+      required: [id, text]
+      properties:
+        id: { type: string, pattern: "^q[0-9]{1,3}$", examples: [q1] }
+        text: { type: string, description: The question in Hebrew; the platform's draft wording until the lawyer check (P-2). }
+
+    HealthForm:
+      type: object
+      required: [version, locale, questions]
+      properties:
+        version: { type: integer, minimum: 1 }
+        locale: { type: string, examples: [he-IL] }
+        questions:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/HealthFormQuestion" }
+
+    HealthDeclarationStatusView:
+      type: object
+      required: [status]
+      description: Status and dates only; never the answers or the names.
+      properties:
+        status: { $ref: "#/components/schemas/HealthDeclarationStatus" }
+        declarationId: { type: [string, "null"], format: uuid, description: Null when the status is `missing`. }
+        formVersion: { type: [integer, "null"] }
+        signerRole: { type: [string, "null"], enum: [self, guardian, null] }
+        signedAt: { type: [string, "null"], format: date-time }
+        expiresAt: { type: [string, "null"], format: date-time, description: 12 months after `signedAt`. }
+        medicalApprovalOn: { type: [string, "null"], format: date }
+
+    MyHealthDeclaration:
+      type: object
+      required: [declaration, form, required]
+      properties:
+        declaration: { $ref: "#/components/schemas/HealthDeclarationStatusView" }
+        form:
+          $ref: "#/components/schemas/HealthForm"
+          description: The current form, to sign or renew.
+        required:
+          type: boolean
+          description: The studio's `requireHealthDeclaration`; when true, booking needs `signed`.
+
+    HealthAnswer:
+      type: object
+      required: [questionId, answer]
+      properties:
+        questionId: { type: string, pattern: "^q[0-9]{1,3}$" }
+        answer: { type: boolean, description: true is "yes". }
+
+    SignHealthDeclarationRequest:
+      type: object
+      required: [formVersion, answers, signedName, signerRole, confirmed]
+      properties:
+        formVersion: { type: integer, minimum: 1 }
+        answers:
+          type: array
+          description: One answer for every question of that version, no more.
+          items: { $ref: "#/components/schemas/HealthAnswer" }
+        signedName: { type: string, minLength: 2, maxLength: 100, description: The name as typed by the signer. }
+        signerRole: { type: string, enum: [self, guardian] }
+        guardianName: { type: [string, "null"], minLength: 2, maxLength: 100, description: Required when `signerRole` is `guardian`. }
+        confirmed: { type: boolean, const: true, description: The confirmation checkbox. }
+
+    HealthDeclarationAnswers:
+      type: object
+      required: [declarationId, form, answers, signedName, signerRole, signedAt, expiresAt, status]
+      properties:
+        declarationId: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/HealthDeclarationStatus" }
+        form:
+          $ref: "#/components/schemas/HealthForm"
+          description: The version this declaration answered, which may be older than the current one.
+        answers:
+          type: array
+          items: { $ref: "#/components/schemas/HealthAnswer" }
+        signedName: { type: string }
+        signerRole: { type: string, enum: [self, guardian] }
+        guardianName: { type: [string, "null"] }
+        signedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        medicalApprovalOn: { type: [string, "null"], format: date }
+
+    MedicalApprovalRequest:
+      type: object
+      required: [approvedOn]
+      properties:
+        approvedOn: { type: string, format: date, description: Not in the future and not before the declaration was signed. }
+
+    ExportHealthDeclaration:
+      type: object
+      required: [declarationId, formVersion, status, signerRole, signedAt, expiresAt]
+      description: Answers and names only when the exporting member holds `health.view`; each such export is audited.
+      properties:
+        declarationId: { type: string, format: uuid }
+        formVersion: { type: integer }
+        status: { $ref: "#/components/schemas/HealthDeclarationStatus" }
+        signerRole: { type: string, enum: [self, guardian] }
+        signedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        supersededAt: { type: [string, "null"], format: date-time }
+        medicalApprovalOn: { type: [string, "null"], format: date }
+        answers:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/HealthAnswer" }
+        signedName: { type: [string, "null"] }
+        guardianName: { type: [string, "null"] }
+
+    MyProgress:
+      type: object
+      required: [month, timeZone, visitsThisMonth, monthlyGoal, streakWeeks]
+      properties:
+        month: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$", examples: ["2026-10"], description: This month in the studio's time zone. }
+        timeZone: { type: string, examples: [Asia/Jerusalem] }
+        visitsThisMonth: { type: integer, minimum: 0, description: Attended classes that start this month. }
+        monthlyGoal: { type: [integer, "null"], minimum: 1, maximum: 31, description: Null until the member sets one; the app hides the goal ring. }
+        streakWeeks:
+          type: integer
+          minimum: 0
+          description: Consecutive Sunday-to-Saturday weeks with an attended class; the current week counts once it has one.
+
+    MonthlyGoalRequest:
+      type: object
+      required: [monthlyGoal]
+      properties:
+        monthlyGoal: { type: [integer, "null"], minimum: 1, maximum: 31, description: Null clears the goal. }
