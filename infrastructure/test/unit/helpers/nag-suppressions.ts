@@ -19,10 +19,10 @@ const LAMBDA_ROLES = [
   "Database/NeonUsageFunction/ServiceRole",
   "Messaging/OutboxWorkerFunction/Function/ServiceRole",
   "Edge/CanaryFunction/ServiceRole",
-  "Canary/CanaryFunction/ServiceRole"
+  "Canary/CanaryFunction/ServiceRole",
 ];
 
-const TRACKED_IN_109 = "Hardening tracked in issue #109 (cdk-nag findings that existed before the gate).";
+const TRACKED_IN_CFR4 = "Needs the custom domain and an ACM certificate; tracked in issue #241 (moved out of #109).";
 
 export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
   {
@@ -30,69 +30,68 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
     reason:
       "No gateway authorizer by design: the API validates both Cognito pools' tokens itself (backend-patterns.md, " +
       "CognitoAuthentication), and ArchitectureTests require every endpoint to declare authorization or be on the public list.",
-    paths: ["Api/HttpApi"]
+    paths: ["Api/HttpApi"],
   },
   {
     id: "AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]",
     reason: "The AWS-managed basic execution policy only allows writing the function's own CloudWatch logs.",
-    paths: LAMBDA_ROLES
+    paths: LAMBDA_ROLES,
   },
   {
     id: "AwsSolutions-IAM5[Resource::*]",
     reason:
       "xray:PutTraceSegments and xray:PutTelemetryRecords (active tracing) and cloudwatch:PutMetricData (pinned to " +
       "the Tempo/Database namespace by a condition) have no resource-level permissions.",
-    paths: LAMBDA_ROLES.filter((path) => !path.startsWith("Edge/"))
+    paths: LAMBDA_ROLES.filter((path) => !path.startsWith("Edge/")),
   },
   {
     id: "AwsSolutions-IAM5[Resource::<NeonUsageFunction64053658.Arn>:*]",
     reason: "EventBridge Scheduler's role may invoke this one function and its versions; CDK adds the :* suffix.",
-    paths: ["Database"]
+    paths: ["Database"],
   },
   {
     id: "AwsSolutions-IAM5[Resource::<CanaryFunctionD1692701.Arn>:*]",
     reason: "EventBridge Scheduler's role may invoke this one function and its versions; CDK adds the :* suffix.",
-    paths: ["Edge", "Canary"]
+    paths: ["Edge", "Canary"],
   },
   {
     id: "AwsSolutions-IAM5[Resource::arn:aws:iam::687239340846:role/cdk-*]",
     reason: "The GitHub OIDC deploy role may only assume the CDK bootstrap roles of its own account (ADR-0011).",
-    paths: ["GitHubOidc/DeploymentRole"]
+    paths: ["GitHubOidc/DeploymentRole"],
   },
   {
     id: "AwsSolutions-IAM5[Resource::arn:aws:iam::000000000000:role/cdk-*]",
     reason: "The GitHub OIDC deploy role may only assume the CDK bootstrap roles of its own account (ADR-0011).",
-    paths: ["GitHubOidc/DeploymentRole"]
+    paths: ["GitHubOidc/DeploymentRole"],
   },
   {
     id: "AwsSolutions-COG2",
     reason:
       "MFA is optional in the customer pool (members sign in without it); the API requires TOTP for studio owners " +
       "(OwnerMfaTests, migration 0007). The operator pool requires MFA.",
-    paths: ["Identity/UserPool"]
+    paths: ["Identity/UserPool"],
   },
   {
     id: "AwsSolutions-COG8",
-    reason: "The Plus feature plan is a recurring charge; $0 until revenue (ADR-0021). Essentials is the chosen tier (ADR-0007).",
-    paths: ["Identity/UserPool", "Identity/OperatorPool"]
+    reason:
+      "The Plus feature plan is a recurring charge; $0 until revenue (ADR-0021). Essentials is the chosen tier (ADR-0007).",
+    paths: ["Identity/UserPool", "Identity/OperatorPool"],
   },
   {
     id: "AwsSolutions-CFR1",
     reason: "No geo restriction on purpose: studio members travel, and the WAF rate rules cover abuse (ADR-0009).",
-    paths: ["Edge/Distribution"]
+    paths: ["Edge/Distribution"],
   },
   {
     id: "AwsSolutions-CFR3",
     reason: "CloudFront standard logs are a paid S3 sink; $0 until revenue (ADR-0021). WAF sampled requests stay on.",
-    paths: ["Edge/Distribution"]
+    paths: ["Edge/Distribution"],
   },
   {
     id: "AwsSolutions-S1",
-    reason: "The PWA bucket is private behind CloudFront origin access and holds only the public build; access logs cost storage (ADR-0021).",
-    paths: ["Edge/PwaBucket"]
+    reason:
+      "The PWA bucket is private behind CloudFront origin access and holds only the public build; access logs cost storage (ADR-0021).",
+    paths: ["Edge/PwaBucket"],
   },
-  { id: "AwsSolutions-CFR4", reason: TRACKED_IN_109, paths: ["Edge/Distribution"] },
-  { id: "AwsSolutions-L1", reason: TRACKED_IN_109, paths: ["Database/NeonUsageFunction", "Edge/CanaryFunction"] },
-  { id: "AwsSolutions-SNS3", reason: TRACKED_IN_109, paths: ["Observability/AlarmTopic", "Edge/AlarmTopic"] },
-  { id: "AwsSolutions-SQS4", reason: TRACKED_IN_109, paths: ["Messaging/WorkQueue"] }
+  { id: "AwsSolutions-CFR4", reason: TRACKED_IN_CFR4, paths: ["Edge/Distribution"] },
 ];

@@ -126,6 +126,13 @@ export interface TempoEnvironmentConfig {
 
   readonly enableDeletionProtection: boolean;
 
+  /**
+   * The edge distribution's id (`E...`), set after the edge stack's first deploy (#124 item 8). When set, only that
+   * distribution may invoke the API's Function URL; until then any distribution of the account may, because the
+   * distribution lives in us-east-1 and naming it from the API stack would be a circular cross-Region reference.
+   */
+  readonly edgeDistributionId?: string;
+
   readonly neon: NeonConfig;
   readonly lambda: LambdaConfig;
   readonly observability: ObservabilityConfig;
@@ -173,6 +180,12 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     errors.push(`accountId must be a 12-digit AWS account id, got "${config.accountId}"`);
   }
 
+  if (config.edgeDistributionId !== undefined && !/^E[A-Z0-9]{8,20}$/.test(config.edgeDistributionId)) {
+    errors.push(
+      `edgeDistributionId must be a CloudFront distribution id (E followed by capitals and digits), got "${config.edgeDistributionId}"`,
+    );
+  }
+
   if (config.region !== "eu-central-1") {
     errors.push(`region must be "eu-central-1" per ADR-0014, got "${config.region}"`);
   }
@@ -181,7 +194,10 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     errors.push(`neon.projectId must be a Neon project id, got "${config.neon.projectId}"`);
   }
 
-  if (config.neon.pooledHost !== undefined && !/^ep-[a-z0-9-]+-pooler\.[a-z0-9.-]+\.neon\.tech$/.test(config.neon.pooledHost)) {
+  if (
+    config.neon.pooledHost !== undefined &&
+    !/^ep-[a-z0-9-]+-pooler\.[a-z0-9.-]+\.neon\.tech$/.test(config.neon.pooledHost)
+  ) {
     errors.push(`neon.pooledHost must be a Neon pooled endpoint host, got "${config.neon.pooledHost}"`);
   }
 
@@ -206,7 +222,7 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     errors.push(
       `cost.monthlyBudgetUsd must be at most ${1 / MIN_BUDGET_THRESHOLD}: the first-cent alert is ` +
         `${firstCentAlertPercent(config.cost.monthlyBudgetUsd)}% of the budget, and CloudFormation ` +
-        `rejects budget thresholds below ${MIN_BUDGET_THRESHOLD}`
+        `rejects budget thresholds below ${MIN_BUDGET_THRESHOLD}`,
     );
   }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(config.cost.alertEmail)) {
@@ -220,7 +236,7 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
     ...config.cognitoCallbackUrls.platformAdminWeb,
     ...config.cognitoLogoutUrls.adminWeb,
     ...config.cognitoLogoutUrls.clientWeb,
-    ...config.cognitoLogoutUrls.platformAdminWeb
+    ...config.cognitoLogoutUrls.platformAdminWeb,
   ]) {
     if (url.includes("*")) {
       errors.push(`wildcard URLs are prohibited, got "${url}"`);
@@ -232,7 +248,9 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
   }
 
   if (config.featureFlags.enableWaf !== config.featureFlags.enableFrontendHosting) {
-    errors.push("featureFlags.enableWaf must equal enableFrontendHosting: the edge stack always attaches the web ACL, which the Free plan covers");
+    errors.push(
+      "featureFlags.enableWaf must equal enableFrontendHosting: the edge stack always attaches the web ACL, which the Free plan covers",
+    );
   }
 
   if (config.featureFlags.enableCustomDomain && (!config.domainName || !config.hostedZoneId)) {
@@ -282,6 +300,12 @@ function isPublicHttpsUrl(url: string): boolean {
   }
   // URL lowercases the scheme and the host.
   const host = parsed.hostname;
-  const local = host === "localhost" || host.endsWith(".localhost") || host.startsWith("127.") || host === "0.0.0.0" || host === "[::1]" || host === "[::]";
+  const local =
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.startsWith("127.") ||
+    host === "0.0.0.0" ||
+    host === "[::1]" ||
+    host === "[::]";
   return parsed.protocol === "https:" && !local;
 }
