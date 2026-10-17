@@ -72,6 +72,13 @@ export default defineConfig({
       dependencies: ["sign-in"],
       use: { ...devices["Pixel 7"], storageState: sessionStatePath },
     },
+    {
+      // SYNC 6, owner reports and deleting a login (day board #253, Y3): a fresh e2e owner and member sign in
+      // through the Hosted UI themselves, so no smoke-user session; both apps at phone width.
+      name: "sync6",
+      testDir: "./specs/sync6",
+      use: { ...devices["Pixel 7"] },
+    },
   ],
   webServer: [
     {
