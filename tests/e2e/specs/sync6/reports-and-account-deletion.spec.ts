@@ -241,6 +241,10 @@ test("2. the owner, the studio's only owner, can't delete their login yet, and t
   const testInfo = test.info();
   await ownerPage.goto(`${adminUrl}/account/security`);
   const card = ownerPage.getByRole("region", { name: "מחיקת החשבון" });
+  await expect(card).toBeVisible();
+  // The console's account page, with its new last card (board "if ahead": axe and 320 px on the profile screens).
+  await expectNoSeriousA11yViolations(ownerPage, testInfo, "console account page");
+  await expectFitsNarrowPhone(ownerPage, testInfo, "console account page");
   await card.getByRole("button", { name: "מחיקת החשבון" }).click();
   const dialog = ownerPage.getByRole("dialog", { name: "מחיקת החשבון" });
   await dialog.getByRole("textbox", { name: /כתובת המייל של החשבון/ }).fill(owner.email);
@@ -374,6 +378,9 @@ test("5. once the class has started, the owner's reports page shows the one visi
 test("6. the member deletes their login, and the person stays on the studio's roster with no login (plan step 4)", async () => {
   const testInfo = test.info();
   await memberPage.goto(`${clientUrl}/profile`);
+  await expect(memberPage.getByRole("button", { name: /מחיקת החשבון/ })).toBeVisible();
+  await expectNoSeriousA11yViolations(memberPage, testInfo, "client-web profile");
+  await expectFitsNarrowPhone(memberPage, testInfo, "client-web profile");
   const before = await call(memberPage, "GET", "/me");
   expect(before.status).toBe(200);
   const raw = await memberPage.evaluate(() => localStorage.getItem("tempo.client-web.session"));
