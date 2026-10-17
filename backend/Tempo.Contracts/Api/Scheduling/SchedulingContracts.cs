@@ -149,7 +149,8 @@ public sealed record BookingResponse(
     PassSummaryResponse? Pass,
     DateTimeOffset CreatedAt,
     string Version,
-    string? CancelledFrom = null);
+    string? CancelledFrom = null,
+    SpotRefResponse? Spot = null);
 
 /// <summary>`MyBooking`: a booking with its session.</summary>
 public sealed record MyBookingResponse(
@@ -164,11 +165,56 @@ public sealed record MyBookingResponse(
     DateTimeOffset CreatedAt,
     string Version,
     SessionResponse Session,
-    string? CancelledFrom = null);
+    string? CancelledFrom = null,
+    SpotRefResponse? Spot = null);
 
 public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Items, Guid? NextBefore);
 
-public sealed record CreateBookingRequest(Guid? PersonId);
+public sealed record CreateBookingRequest(Guid? PersonId, Guid? SpotId = null);
+
+/// <summary>`SpotRef`: the spot a booked place holds (docs/33 section 3).</summary>
+public sealed record SpotRefResponse(Guid Id, string Label);
+
+/// <summary>`RoomSpot`: one spot of a room's layout.</summary>
+public sealed record RoomSpotResponse(Guid Id, string Label, int Row, int Col, string Kind, string Status);
+
+/// <summary>`RoomLayout`: a room's grid, the window, the mirror and its spots.</summary>
+public sealed record RoomLayoutResponse(Guid RoomId, bool SpotSelection, int? Rows, int? Cols, string? WindowSide, bool MirrorFront, IReadOnlyList<RoomSpotResponse> Spots, string Version);
+
+public sealed record RoomSpotInput(Guid? Id, string? Label, int? Row, int? Col, string? Kind, string? Status);
+
+/// <summary>`RoomLayoutRequest`: the whole layout; spots left out are retired.</summary>
+public sealed record RoomLayoutRequest(bool? SpotSelection, int? Rows, int? Cols, string? WindowSide, bool? MirrorFront, IReadOnlyList<RoomSpotInput>? Spots);
+
+/// <summary>`SessionSpot`: a spot as the caller may see it; person, attendance and health only for staff and the instructor.</summary>
+public sealed record SessionSpotResponse(
+    Guid Id,
+    string Label,
+    int Row,
+    int Col,
+    string Kind,
+    string State,
+    Guid? BookingId,
+    PersonRefResponse? Person,
+    string? Attendance,
+    string? HealthStatus);
+
+/// <summary>`SessionSpots`: the room map of one class.</summary>
+public sealed record SessionSpotsResponse(
+    Guid SessionId,
+    Guid? RoomId,
+    bool SpotSelection,
+    int? Rows,
+    int? Cols,
+    string? WindowSide,
+    bool MirrorFront,
+    Guid? MySpotId,
+    Guid? UsualSpotId,
+    IReadOnlyList<SessionSpotResponse> Spots);
+
+public sealed record ChangeSpotRequest(Guid? SpotId);
+
+public sealed record UsualSpotRequest(Guid? SpotId);
 
 public sealed record CancelBookingRequest(bool? ReturnEntry);
 
