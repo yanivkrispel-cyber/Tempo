@@ -96,6 +96,8 @@ export class IdentityStack extends Stack {
     // Read by tools/scripts/smoke-test.mjs from cdk-outputs.json. Ids, not secrets.
     new CfnOutput(this, "UserPoolId", { value: this.userPool.userPoolId });
     new CfnOutput(this, "ClientWebClientId", { value: this.clientWebClient.userPoolClientId });
+    // Read by the deploy workflow to build the web apps (ADR-0027).
+    new CfnOutput(this, "AdminWebClientId", { value: this.adminWebClient.userPoolClientId });
     if (config.featureFlags.enableSmokeTestSignIn) {
       new CfnOutput(this, "SmokeTestParameterPath", { value: smokeTestParameterPath(config) });
     }

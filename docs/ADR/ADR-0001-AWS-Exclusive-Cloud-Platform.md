@@ -88,3 +88,5 @@ Review only if legal, customer-contract, regional-availability or acquisition re
 ## Amendment 2026-10-14: One Exception for the Database
 
 The transactional database is Neon serverless Postgres (ADR-0022). Neon runs on AWS in `eu-central-1`, but Neon is the vendor, so Tempo is no longer AWS-exclusive for this one component. Aurora DSQL, the AWS option chosen under ADR-0021, could not be created for the account. Everything else stays on AWS. Any further non-AWS service needs its own ADR.
+
+On 2026-10-17 AWS refused CloudFront for the account, so the dev web apps are served by Cloudflare Pages (ADR-0027). They are static files with no secrets; the API and the data stay on AWS and Neon.

@@ -3,13 +3,11 @@ name: Deploy Development
 on:
   push:
     branches: [main]
-    # Nothing under these paths reaches the dev stacks: the apps are not deployed
-    # while the edge stack is off (featureFlags.enableFrontendHosting: false), and
-    # docs and agent files never are. workflow_dispatch still deploys on demand.
+    # Docs and agent files never reach dev. The apps do: deploy-web publishes
+    # them to Cloudflare Pages (ADR-0027). workflow_dispatch deploys on demand.
     paths-ignore:
       - "docs/**"
       - "**/*.md"
-      - "apps/**"
       - ".claude/**"
   workflow_dispatch: {}
 
@@ -31,6 +29,10 @@ jobs:
   deploy:
     name: Build, deploy and smoke-test development
     runs-on: ubuntu-latest
+    outputs:
+      api-url: ${{ steps.web-config.outputs.api-url }}
+      admin-client-id: ${{ steps.web-config.outputs.admin-client-id }}
+      client-client-id: ${{ steps.web-config.outputs.client-client-id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -125,6 +127,18 @@ jobs:
           echo "API_URL=$API_URL" >> "$GITHUB_ENV"
           node tools/scripts/smoke-test.mjs --api-url "$API_URL" --environment dev --region ${{ env.AWS_REGION }}
 
+      # Ids and a URL, not secrets: the browser bundle ships them anyway.
+      - name: Hand the API URL and app client ids to deploy-web
+        id: web-config
+        run: |
+          node -e "
+            const outputs = require('./infrastructure/cdk-outputs.json');
+            const identity = outputs['TempoDev-Identity'];
+            console.log('api-url=' + outputs['TempoDev-Api'].HttpApiUrl);
+            console.log('admin-client-id=' + identity.AdminWebClientId);
+            console.log('client-client-id=' + identity.ClientWebClientId);
+          " >> "$GITHUB_OUTPUT"
+
       - name: Publish deployment summary
         if: always()
         run: |
@@ -135,4 +149,105 @@ jobs:
             echo "- Environment: development"
             echo "- API URL: ${API_URL:-unknown}"
             echo "- Result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # The web apps on Cloudflare Pages (ADR-0027): AWS refused CloudFront for this
+  # account, so the edge stack stays off in dev. Runs after the API deployed and
+  # passed its smoke test, so a new screen never reaches an older API.
+  deploy-web:
+    name: Build and publish the web apps to Cloudflare Pages
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_VERSION: "4.147.0"
+      COGNITO_DOMAIN: https://tempo-dev-687239340846.auth.eu-central-1.amazoncognito.com
+      ADMIN_PROJECT: tempo-studio-console
+      CLIENT_PROJECT: tempo-members
+    steps:
+      - name: Check the Cloudflare secrets
+        id: secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set; the web apps were not published"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.secrets.outputs.ready == 'true'
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: steps.secrets.outputs.ready == 'true'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: pnpm install
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build admin-web
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm --filter @tempo/admin-web build
+        env:
+          VITE_API_URL: ${{ needs.deploy.outputs.api-url }}
+          VITE_COGNITO_DOMAIN: ${{ env.COGNITO_DOMAIN }}
+          VITE_COGNITO_CLIENT_ID: ${{ needs.deploy.outputs.admin-client-id }}
+          # The admin-web app client allows the aws.cognito.signin.user.admin scope (identity-stack.ts).
+          VITE_COGNITO_MFA_SETUP: "true"
+
+      - name: Build client-web
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm --filter @tempo/client-web build
+        env:
+          VITE_API_URL: ${{ needs.deploy.outputs.api-url }}
+          VITE_COGNITO_DOMAIN: ${{ env.COGNITO_DOMAIN }}
+          VITE_COGNITO_CLIENT_ID: ${{ needs.deploy.outputs.client-client-id }}
+
+      - name: Write the security headers
+        if: steps.secrets.outputs.ready == 'true'
+        working-directory: infrastructure
+        run: npx ts-node --prefer-ts-exts bin/pages-headers.ts "$API_URL" ../apps/admin-web/dist ../apps/client-web/dist
+        env:
+          API_URL: ${{ needs.deploy.outputs.api-url }}
+
+      # Creates each Pages project on the first run; later runs find it.
+      - name: Publish to Cloudflare Pages
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          projects=$(npx --yes "wrangler@$WRANGLER_VERSION" pages project list)
+          for pair in "$ADMIN_PROJECT:apps/admin-web/dist" "$CLIENT_PROJECT:apps/client-web/dist"; do
+            project="${pair%%:*}"
+            dir="${pair#*:}"
+            if ! echo "$projects" | grep -q "$project"; then
+              npx --yes "wrangler@$WRANGLER_VERSION" pages project create "$project" --production-branch main
+            fi
+            npx --yes "wrangler@$WRANGLER_VERSION" pages deploy "$dir"               --project-name "$project" --branch main --commit-hash "$GITHUB_SHA" --commit-dirty=true
+          done
+
+      # Each app answers on its own address, a deep link falls back to the app (no 404.html, so Pages serves
+      # index.html), and the Content-Security-Policy is on the response.
+      - name: Smoke-test the web apps
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          for project in "$ADMIN_PROJECT" "$CLIENT_PROJECT"; do
+            for path in / /auth/callback; do
+              url="https://$project.pages.dev$path"
+              headers=$(curl --silent --show-error --fail --retry 5 --retry-delay 10 --retry-all-errors --dump-header - --output /dev/null "$url")
+              echo "$headers" | grep -qi '^content-security-policy:.*execute-api' || { echo "::error::$url has no Content-Security-Policy with the API origin"; exit 1; }
+              echo "ok $url"
+            done
+          done
+          {
+            echo "## Web apps"
+            echo ""
+            echo "- Studio console: https://$ADMIN_PROJECT.pages.dev"
+            echo "- Members app: https://$CLIENT_PROJECT.pages.dev"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -112,8 +112,8 @@ describe("Phase 1 routes and database access (docs/26)", () => {
           DATABASE_NAME: "neondb",
           DATABASE_APP_PASSWORD_PARAMETER: "/tempo/dev/db/app-password",
           DATABASE_PLATFORM_PASSWORD_PARAMETER: "/tempo/dev/db/platform-password",
-          ADMIN_APP_URL: "http://localhost:5173",
-          CLIENT_APP_URL: "http://localhost:5174"
+          ADMIN_APP_URL: "https://tempo-studio-console.pages.dev",
+          CLIENT_APP_URL: "https://tempo-members.pages.dev"
         })
       }
     });

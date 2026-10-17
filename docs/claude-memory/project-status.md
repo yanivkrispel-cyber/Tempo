@@ -13,8 +13,10 @@ no secrets, tokens, real people's emails or personal data in code, PRs, issues o
 ## Phase 0 (foundation): closed, except the edge
 
 - Dev deploys from CI on every merge to `main` (`deploy-development.yml`): stacks, migrator and a smoke test.
-  Dev API: `https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com`. Only `apps/**` and docs skip the deploy.
-- Dev edge (CloudFront) stays off until AWS verifies the account (support case 179198465900800). Lambda
+  Dev API: `https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com`. Only docs skip it; `deploy-web` publishes the apps to Cloudflare Pages (ADR-0027).
+- AWS refused CloudFront on 2026-10-17 (case 179198465900800). The dev apps are on Cloudflare Pages (ADR-0027):
+  https://tempo-studio-console.pages.dev and https://tempo-members.pages.dev, published by `deploy-web` in
+  `deploy-development.yml` once the secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID exist. Lambda
   concurrency is still 40 (quota case 179192381800130).
 - Operations (night of 2026-10-15): the dashboard answers the night questions (queue, concurrency, daily jobs,
   canary, Scheduler; #145), the canary checks health every 5 minutes and a signed-in read hourly (#119), the Neon

@@ -70,11 +70,10 @@ const developmentConfig: TempoEnvironmentConfig = {
     githubEnvironment: undefined
   },
 
-  // The edge stack is off in dev until AWS verifies the account for
-  // CloudFront (the first deploy on 2026-10-14 failed: "Your account must be
-  // verified before you can add new CloudFront resources"). The API answers on
-  // its execute-api URL meanwhile. Turn both flags back on once AWS Support
-  // confirms; the edge stack returns before the pilot in any case.
+  // The edge stack is off in dev: AWS refused CloudFront for this account on
+  // 2026-10-17 (support case 179198465900800), with no date. The apps live on
+  // Cloudflare Pages instead and call the API on its execute-api URL
+  // (ADR-0027). Turn both flags back on if AWS later allows CloudFront.
   featureFlags: {
     enableCustomDomain: false,
     enableFrontendHosting: false,
@@ -83,20 +82,25 @@ const developmentConfig: TempoEnvironmentConfig = {
     enableDevCanary: true
   },
 
+  // The Cloudflare Pages sites come first: the API builds invitation and join
+  // links from the first callback of each app (ADR-0027). localhost stays for
+  // developers running the apps on their machines.
   corsAllowedOrigins: [
+    "https://tempo-studio-console.pages.dev",
+    "https://tempo-members.pages.dev",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175"
   ],
 
   cognitoCallbackUrls: {
-    adminWeb: ["http://localhost:5173/auth/callback"],
-    clientWeb: ["http://localhost:5174/auth/callback"],
+    adminWeb: ["https://tempo-studio-console.pages.dev/auth/callback", "http://localhost:5173/auth/callback"],
+    clientWeb: ["https://tempo-members.pages.dev/auth/callback", "http://localhost:5174/auth/callback"],
     platformAdminWeb: ["http://localhost:5175/auth/callback"]
   },
   cognitoLogoutUrls: {
-    adminWeb: ["http://localhost:5173/"],
-    clientWeb: ["http://localhost:5174/"],
+    adminWeb: ["https://tempo-studio-console.pages.dev/", "http://localhost:5173/"],
+    clientWeb: ["https://tempo-members.pages.dev/", "http://localhost:5174/"],
     platformAdminWeb: ["http://localhost:5175/"]
   },
 
