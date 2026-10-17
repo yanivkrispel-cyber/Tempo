@@ -18,6 +18,9 @@
  *   node tools/scripts/e2e-cleanup.mjs [--profile tempo]                       # list only
  *   TEMPO_OPERATOR_TOKEN=… node tools/scripts/e2e-cleanup.mjs --apply           # remove
  *
+ * A Cognito user created in the last hour belongs to a run that may still be going, so it is left alone unless
+ * --all is given. Each studio and login is its own step: one that fails is counted and the rest still run.
+ *
  * Never prints passwords or tokens. The e2e addresses are fictional (example.com).
  */
 
@@ -38,6 +41,8 @@ const DATABASE = "neondb";
 
 const argv = process.argv.slice(2);
 const apply = argv.includes("--apply");
+const all = argv.includes("--all");
+const RECENT_MS = 60 * 60 * 1000;
 const profileIndex = argv.indexOf("--profile");
 const profile = profileIndex >= 0 ? argv[profileIndex + 1] : "tempo";
 const operatorToken = process.env.TEMPO_OPERATOR_TOKEN || null;
@@ -114,6 +119,7 @@ async function call(token, method, route, body) {
 /** Every Cognito user whose address the filter accepts; the server-side prefix filter only narrows the pages. */
 function e2eLogins() {
   const users = [];
+  const cutoff = Date.now() - RECENT_MS;
   let token;
   do {
     const page = awsWithInput(["cognito-idp", "list-users"], {
@@ -123,7 +129,7 @@ function e2eLogins() {
     });
     for (const user of page.Users ?? []) {
       const email = user.Attributes?.find((a) => a.Name === "email")?.Value;
-      if (isE2eEmail(email)) users.push({ username: user.Username, email });
+      if (isE2eEmail(email)) users.push({ username: user.Username, email, recent: new Date(user.UserCreateDate).getTime() > cutoff });
     }
     token = page.PaginationToken;
   } while (token);
@@ -136,10 +142,12 @@ console.log(`Neon before: compute ${before.computeSeconds} s, egress ${before.eg
 const studios = (await sql("SELECT id, slug, display_name, status FROM organizations.organizations WHERE slug LIKE 'e2e-%' ORDER BY created_at"))
   .map((row) => ({ id: row.id, slug: row.slug, displayName: row.display_name, status: row.status }))
   .filter(isE2eStudio);
-const logins = e2eLogins();
+const found = e2eLogins();
+const logins = all ? found : found.filter((l) => !l.recent);
+const recent = found.length - logins.length;
 // Account rows whose Cognito user an earlier run already deleted (P2 F6). DELETE /me needs a sign-in, so these are
 // only listed; they own nothing once their studios are removed.
-const cognitoEmails = new Set(logins.map((l) => l.email.toLowerCase()));
+const cognitoEmails = new Set(found.map((l) => l.email.toLowerCase()));
 const orphans = (await sql("SELECT email FROM identity.user_accounts WHERE email LIKE 'e2e-%' ORDER BY created_at"))
   .map((row) => row.email)
   .filter((email) => isE2eEmail(email) && !cognitoEmails.has(email.toLowerCase()));
@@ -148,6 +156,7 @@ console.log(`\n${studios.length} e2e studio(s):`);
 for (const s of studios) console.log(`  ${s.slug}  ${s.status}  ${s.id}`);
 console.log(`\n${logins.length} e2e login(s):`);
 for (const l of logins) console.log(`  ${l.email}`);
+if (recent > 0) console.log(`  (${recent} more created in the last hour, maybe by a run still going: left alone without --all)`);
 console.log(`
 ${orphans.length} e2e account row(s) with no Cognito user (listed only):`);
 for (const email of orphans) console.log(`  ${email}`);
@@ -161,44 +170,54 @@ if (!apply) {
   }
 
   for (const studio of operatorToken ? studios : []) {
-    if (studio.status === "active") {
-      const suspended = await call(operatorToken, "POST", `/api/v1/platform/organizations/${studio.id}/suspend`, { reason: "e2e cleanup (A4)" });
-      if (suspended.status !== 200) {
-        failures += 1;
-        console.log(`✗ suspend ${studio.slug} → ${suspended.status} ${suspended.json?.code ?? ""}`);
-        continue;
-      }
-    }
-    const removed = await call(operatorToken, "DELETE", `/api/v1/platform/organizations/${studio.id}`, { confirmName: studio.displayName });
-    if (removed.status === 204) {
-      console.log(`✓ removed studio ${studio.slug}`);
-    } else {
+    try {
+      await removeStudio(studio);
+    } catch (error) {
       failures += 1;
-      console.log(`✗ remove ${studio.slug} → ${removed.status} ${removed.json?.code ?? ""}`);
+      console.log(`✗ remove ${studio.slug}: ${error.message.split("\n")[0]}`);
     }
   }
 
   for (const login of logins) {
-    const password = `Tmp-${randomBytes(18).toString("base64url")}9a`;
-    awsWithInput(["cognito-idp", "admin-set-user-password"], { UserPoolId: poolId, Username: login.username, Password: password, Permanent: true });
-    const token = awsWithInput(["cognito-idp", "admin-initiate-auth"], {
-      UserPoolId: poolId,
-      ClientId: clientId,
-      AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
-      AuthParameters: { USERNAME: login.username, PASSWORD: password },
-    }).AuthenticationResult.AccessToken;
-
-    const deleted = await call(token, "DELETE", "/api/v1/me", { confirmEmail: login.email });
-    if (deleted.status === 204) {
-      console.log(`✓ deleted login ${login.email}`);
-    } else if (deleted.status === 404 && deleted.json?.code === "account.not_provisioned") {
-      // Never started a session: there is no account row, only the Cognito user.
-      awsWithInput(["cognito-idp", "admin-delete-user"], { UserPoolId: poolId, Username: login.username });
-      console.log(`✓ deleted Cognito user ${login.email} (no account)`);
-    } else {
+    try {
+      await deleteLogin(login);
+    } catch (error) {
       failures += 1;
-      console.log(`✗ delete ${login.email} → ${deleted.status} ${deleted.json?.code ?? ""}`);
+      console.log(`✗ delete ${login.email}: ${error.message.split("\n")[0]}`);
     }
+  }
+}
+
+async function removeStudio(studio) {
+  if (studio.status === "active") {
+    const suspended = await call(operatorToken, "POST", `/api/v1/platform/organizations/${studio.id}/suspend`, { reason: "e2e cleanup (A4)" });
+    if (suspended.status !== 200) throw new Error(`suspend → ${suspended.status} ${suspended.json?.code ?? ""}`);
+  }
+  const removed = await call(operatorToken, "DELETE", `/api/v1/platform/organizations/${studio.id}`, { confirmName: studio.displayName });
+  if (removed.status !== 204) throw new Error(`DELETE → ${removed.status} ${removed.json?.code ?? ""}`);
+  console.log(`✓ removed studio ${studio.slug}`);
+}
+
+async function deleteLogin(login) {
+  const password = `Tmp-${randomBytes(18).toString("base64url")}9a`;
+  awsWithInput(["cognito-idp", "admin-set-user-password"], { UserPoolId: poolId, Username: login.username, Password: password, Permanent: true });
+  const token = awsWithInput(["cognito-idp", "admin-initiate-auth"], {
+    UserPoolId: poolId,
+    ClientId: clientId,
+    AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+    AuthParameters: { USERNAME: login.username, PASSWORD: password },
+  }).AuthenticationResult?.AccessToken;
+  if (!token) throw new Error("Cognito answered with a challenge instead of a token");
+
+  const deleted = await call(token, "DELETE", "/api/v1/me", { confirmEmail: login.email });
+  if (deleted.status === 204) {
+    console.log(`✓ deleted login ${login.email}`);
+  } else if (deleted.status === 404 && deleted.json?.code === "account.not_provisioned") {
+    // Never started a session: there is no account row, only the Cognito user.
+    awsWithInput(["cognito-idp", "admin-delete-user"], { UserPoolId: poolId, Username: login.username });
+    console.log(`✓ deleted Cognito user ${login.email} (no account)`);
+  } else {
+    throw new Error(`DELETE /me → ${deleted.status} ${deleted.json?.code ?? ""}`);
   }
 }
 
