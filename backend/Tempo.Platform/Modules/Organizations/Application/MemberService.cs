@@ -56,7 +56,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             // Removed members show only when asked for by status.
             await using var command = unitOfWork.Command(
                 """
-                SELECT m.id, m.user_account_id, m.role, m.status, m.created_at, m.version, p.id
+                SELECT m.id, coalesce(m.user_account_id, '00000000-0000-0000-0000-000000000000'), m.role, m.status, m.created_at, m.version, p.id
                 FROM organizations.memberships m
                 LEFT JOIN people.people p ON p.organization_id = m.organization_id AND p.membership_id = m.id
                 WHERE m.organization_id = $1

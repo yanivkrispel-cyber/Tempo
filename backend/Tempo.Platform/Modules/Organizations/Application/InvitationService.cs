@@ -62,7 +62,8 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         """
         i.id, i.email, i.role,
         CASE WHEN i.status = 'pending' AND i.expires_at <= now() THEN 'expired' ELSE i.status END,
-        i.expires_at, i.created_at, i.invited_by_membership_id, m.user_account_id
+        i.expires_at, i.created_at, i.invited_by_membership_id,
+        coalesce(m.user_account_id, '00000000-0000-0000-0000-000000000000')
         """;
 
     private sealed record Row(Guid Id, string Email, MembershipRole Role, InvitationStatus Status, DateTimeOffset ExpiresAt, DateTimeOffset CreatedAt, Guid InvitedBy, Guid InviterAccountId);

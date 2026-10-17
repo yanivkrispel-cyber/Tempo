@@ -246,24 +246,23 @@ below the 50 ms bar. So no index is added. Look again when a studio passes about
 1. Recent sign-in (10 minutes), else 401 `auth.step_up_required`.
 2. `confirmEmail` must equal `identity.user_accounts.email` without case and after trimming, else 400
    `account.confirmation_mismatch`.
-3. In one transaction (platform role, because it crosses studios):
-   1. Lock the caller's live memberships. For each studio where the caller is the owner and no other active
-      owner exists (there is one owner per studio, `ux_memberships_one_owner`), answer 409 `account.sole_owner` with
-      `organizationIds`. Nothing has changed yet.
-   2. Every membership of the account gets `status = 'removed'`, and its `user_account_id` is cleared. The membership
-      row stays: bookings, passes and messages point at it as `booked_by`, `granted_by` and `sent_by`.
-   3. Every `people.people` row with this `user_account_id` gets `user_account_id = NULL`. The record keeps its
-      name, history and `membership_id` (now an ended membership). It is the studio's record. The person can ask
-      the studio to erase it (`erasePerson`), as before.
-   4. Pending ownership transfers to or from the account are cancelled; open invitations accepted by it are left as
-      history.
-   5. The account's push subscriptions, notification preferences and inbox items in every studio are deleted:
-      they serve the login only.
-   6. `identity.external_identities` and `identity.join_attempts` rows go, then `identity.user_accounts`.
-      `organizations.organizations.created_by_user_id` is cleared where it points at the account.
-   7. One audit row per studio and one platform row: `account.deleted`, actor and target the account id, no email,
-      no name.
-4. After the commit: Cognito `AdminDeleteUser` for the caller's `sub` in the customer pool. The Lambda's IAM grant
+3. In one transaction, in the application role as the account (its own memberships and person records are visible
+   in every studio through `memberships_app` and `people_app_select`; each studio's writes run after
+   `SetTenantAsync` for that studio):
+   1. Lock the caller's memberships. For each studio where the caller is the owner (there is one owner per studio,
+      `ux_memberships_one_owner`), answer 409 `account.sole_owner` with `organizationIds`. Nothing has changed yet.
+   2. In each studio where the account has a membership or a person record: pending ownership transfers to or
+      from its memberships are cancelled; every live membership gets `status = 'removed'`; the push subscriptions of
+      its person record are deleted (they are this login's devices); and one audit row `account.deleted` is
+      written, with the account id and no email or name.
+   3. `identity.user_accounts` is deleted. The foreign keys of migration 0022 do the rest in the same statement:
+      `external_identities` and `join_attempts` rows go (`ON DELETE CASCADE`), and `memberships.user_account_id`,
+      `people.people.user_account_id` and `organizations.created_by_user_id` become null (`ON DELETE SET NULL`).
+      The membership row stays, because bookings, passes and messages point at it as `booked_by`, `granted_by` and
+      `sent_by`. The person record keeps its name, history, inbox and preferences: it is the studio's record, and the
+      person can ask the studio to erase it (`erasePerson`), as before.
+   4. One account-level audit row (`organization_id` null) with the number of studios.
+4. After the commit, the API calls Cognito `AdminDeleteUser` for the caller's username in the customer pool. The Lambda's IAM grant
    names that one pool ARN (`cognito-idp:AdminDeleteUser`, no wildcard). If the call fails, the database is already
    clean and the user can't use Tempo anyway (`/me` answers 404 `account.not_provisioned`, and a new
    `POST /session` would make a fresh, empty account); the error is logged and a retry is safe.
@@ -271,7 +270,9 @@ below the 50 ms bar. So no index is added. Look again when a studio passes about
 
 **Migration 0022** makes `organizations.memberships.user_account_id` and
 `organizations.organizations.created_by_user_id` nullable, with `CHECK (user_account_id IS NOT NULL OR status =
-'removed')` on memberships. No `ON DELETE` changes. `AdminDeleteUser` costs nothing (ADR-0021).
+'removed')` on memberships, and sets the `ON DELETE` rules above on the five foreign keys to
+`identity.user_accounts`. Lists that show removed members or old invitations read a deleted login as an empty email.
+`AdminDeleteUser` costs nothing (ADR-0021).
 
 ## 10. Removing a studio (A-3, P2 F4)
 

@@ -131,14 +131,14 @@ describe("API configuration for two pools (ADR-0023)", () => {
     });
   });
 
-  it("the API may read users from the customer pool and nothing else in Cognito", () => {
+  it("the API may read and delete users in the customer pool and do nothing else in Cognito", () => {
     const policies = Object.values(template.findResources("AWS::IAM::Policy"));
     const cognitoStatements = policies
       .flatMap((policy) => policy.Properties.PolicyDocument.Statement as Array<{ Action: string | string[]; Resource: unknown }>)
       .filter((statement) => [statement.Action].flat().some((action) => action.startsWith("cognito-idp:")));
 
     expect(cognitoStatements).toHaveLength(1);
-    expect(cognitoStatements[0].Action).toBe("cognito-idp:AdminGetUser");
+    expect([cognitoStatements[0].Action].flat().sort()).toEqual(["cognito-idp:AdminDeleteUser", "cognito-idp:AdminGetUser"]);
     expect(JSON.stringify(cognitoStatements[0].Resource)).toContain("UserPool");
     expect(JSON.stringify(cognitoStatements[0].Resource)).not.toContain("OperatorPool");
   });

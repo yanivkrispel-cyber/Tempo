@@ -145,11 +145,12 @@ export class ApiStack extends Stack {
     );
 
     // Account provisioning reads the caller's email from Cognito, because
-    // access tokens carry no email claim (Phase 1 LLD section 2.3). Only the
-    // customer pool, and only this one read.
+    // access tokens carry no email claim (Phase 1 LLD section 2.3), and
+    // DELETE /me removes the caller's user (docs/32 section 9). Only the
+    // customer pool, and only these two calls.
     this.apiFunction.function.addToRolePolicy(
       new PolicyStatement({
-        actions: ["cognito-idp:AdminGetUser"],
+        actions: ["cognito-idp:AdminGetUser", "cognito-idp:AdminDeleteUser"],
         resources: [props.userPool.userPoolArn]
       })
     );
