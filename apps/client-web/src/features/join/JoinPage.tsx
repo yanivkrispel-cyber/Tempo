@@ -24,7 +24,7 @@ export function JoinPage() {
 
   if (!isSignedIn) {
     return (
-      <main className="tp-page">
+      <main className="tp-page tp-page--center">
         <div className="tp-card tp-stack">
           <h1>הצטרפות לסטודיו</h1>
           <p className="tp-muted">כדי להצטרף, התחברו או הירשמו.</p>
@@ -71,7 +71,7 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
   const error = me.error ?? preview.error;
   if (error) {
     return (
-      <main className="tp-page tp-stack">
+      <main className="tp-page tp-page--center tp-stack">
         <Banner tone="danger" icon="info">
           {isNotFound(error) ? notFound : errorMessage(error, "לא הצלחנו לטעון את פרטי הסטודיו. נסו שוב.")}
         </Banner>
@@ -84,7 +84,7 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
 
   if (!preview.data) {
     return (
-      <main className="tp-page" aria-busy="true">
+      <main className="tp-page tp-page--center" aria-busy="true">
         <span className="tp-sr-only">טוענים את פרטי הסטודיו…</span>
         <Skeleton height={200} />
       </main>
@@ -92,7 +92,7 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
   }
 
   return (
-    <main className="tp-page">
+    <main className="tp-page tp-page--center">
       <div className="tp-card tp-stack">
         <span className="tp-eyebrow">הצטרפות לסטודיו</span>
         <h1>הצטרפות ל{preview.data.organization.displayName}</h1>

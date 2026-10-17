@@ -30,7 +30,7 @@ export function CallbackPage() {
 
   if (!failed) {
     return (
-      <main className="tp-page" aria-busy="true">
+      <main className="tp-page tp-page--center" aria-busy="true">
         <span className="tp-sr-only">מתחברים…</span>
         <Skeleton height={120} />
       </main>
@@ -38,7 +38,7 @@ export function CallbackPage() {
   }
 
   return (
-    <main className="tp-page tp-stack">
+    <main className="tp-page tp-page--center tp-stack">
       <Banner tone="danger" icon="info">
         {failed === "denied" ? "ההתחברות בוטלה." : "ההתחברות נכשלה. נסו שוב."}
       </Banner>
