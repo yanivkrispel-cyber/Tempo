@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { consoleStudios, meKey, membershipRoleName, useAccount } from "../../account/account";
+import { consoleStudios, meKey, membershipRoleName, studioHome, useAccount } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
@@ -19,7 +19,7 @@ export function SelectStudioPage() {
   const studios = consoleStudios(me);
 
   return (
-    <main className="tp-page tp-stack">
+    <main className="tp-page tp-page--narrow tp-stack">
       <header className="tp-row" style={{ justifyContent: "space-between" }}>
         <h1>הסטודיואים שלך</h1>
         <div className="tp-row">
@@ -39,7 +39,7 @@ export function SelectStudioPage() {
       ) : (
         <nav aria-label="בחירת סטודיו" className="tp-stack">
           {studios.map((membership) => (
-            <Link key={membership.membershipId} to={`/o/${membership.organization.slug}`} className="tp-card tp-row">
+            <Link key={membership.membershipId} to={studioHome(membership)} className="tp-card tp-row">
               <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
                 {membership.organization.displayName.replace(/^סטודיו\s+/, "").charAt(0)}
               </span>

@@ -23,7 +23,7 @@ export function InvitePage() {
 
   if (!isSignedIn) {
     return (
-      <main className="tp-page">
+      <main className="tp-page tp-page--center">
         <div className="tp-card tp-stack">
           <h1>הוזמנת לסטודיו</h1>
           <p className="tp-muted">כדי לראות את ההזמנה ולאשר אותה, התחברו או הירשמו עם כתובת המייל שאליה נשלחה.</p>
@@ -71,7 +71,7 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
   const error = me.error ?? preview.error;
   if (error) {
     return (
-      <main className="tp-page tp-stack">
+      <main className="tp-page tp-page--center tp-stack">
         <Banner tone="danger" icon="info">
           {errorMessage(error, "לא הצלחנו לטעון את ההזמנה. נסו שוב.")}
         </Banner>
@@ -84,7 +84,7 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
 
   if (!preview.data) {
     return (
-      <main className="tp-page" aria-busy="true">
+      <main className="tp-page tp-page--center" aria-busy="true">
         <span className="tp-sr-only">טוענים את ההזמנה…</span>
         <Skeleton height={220} />
       </main>
@@ -93,7 +93,7 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
 
   const { organization, role, invitedByDisplayName, expiresAt } = preview.data;
   return (
-    <main className="tp-page">
+    <main className="tp-page tp-page--center">
       <div className="tp-card tp-stack">
         <span className="tp-eyebrow">הזמנה</span>
         <h1>הוזמנת ל{organization.displayName}</h1>

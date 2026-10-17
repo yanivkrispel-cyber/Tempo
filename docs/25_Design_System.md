@@ -7,14 +7,14 @@
 
 ## 1. Where it lives
 
-| What | Where |
-|---|---|
-| Tokens (source of truth) | `packages/design-system/tokens/tokens.json` |
-| Generated CSS, base layer, primitives | `packages/design-system/css/` |
-| Local specimen (all components, RTL, light/dark) | `packages/design-system/docs/specimen.html` |
-| Browsable reference with live previews | https://claude.ai/artifact/4MSvEKktJR25A76416N5nC |
-| The four candidate directions and why this one | https://claude.ai/artifact/5yhLE2tBY7QfkkDq3ciqou |
-| Reference images the direction was derived from | `C:\Dev\Tempo-Design` (31 images, outside the repo) |
+| What                                             | Where                                               |
+| ------------------------------------------------ | --------------------------------------------------- |
+| Tokens (source of truth)                         | `packages/design-system/tokens/tokens.json`         |
+| Generated CSS, base layer, primitives            | `packages/design-system/css/`                       |
+| Local specimen (all components, RTL, light/dark) | `packages/design-system/docs/specimen.html`         |
+| Browsable reference with live previews           | https://claude.ai/artifact/4MSvEKktJR25A76416N5nC   |
+| The four candidate directions and why this one   | https://claude.ai/artifact/5yhLE2tBY7QfkkDq3ciqou   |
+| Reference images the direction was derived from  | `C:\Dev\Tempo-Design` (31 images, outside the repo) |
 
 **Decision:** The package is consumed by all three apps as `@tempo/design-system`. Apps keep React wrappers in
 `src/shared/design-system/` that render the package's classes; they do not restyle them.
@@ -89,3 +89,25 @@ with these tokens.
 2. New primitive → `components.css` + a block in `docs/specimen.html` + a preview in the reference artifact.
 3. A React wrapper per primitive lands in each app, typed props, no styles. `apps/client-web` has them (date and
    time pickers, dropdown menu, dialog and toasts included); `apps/admin-web` gets its own when its screens start.
+
+## 9. Every screen: phone, tablet, computer (D15)
+
+**Decision (owner, 2026-10-17, #317):** every console (owner, coach, member) works from a phone, a tablet held either
+way and a computer, with every function on each. The layout changes with the width; what a person can do does not.
+
+| Width                                            | Studio console (`admin-web`)                                                                             | Member app (`client-web`)                                                          |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Under 1024px (phones, upright tablets)           | `tp-appbar` on top, the menu in a `tp-drawer`, the most used sections on a `tp-tabbar--fixed` with "עוד" | The page, then the bottom `tp-tabbar--fixed`; from 768px the page is 680px wide    |
+| 1024px and up (tablets held sideways, computers) | The menu as a column at the start (`tp-nav`), the page beside it                                         | `tp-app`: the tabs as a `tp-sidenav` at the start, the page beside it, up to 880px |
+
+- **Touch:** on a coarse pointer every control grows to `--touch-min` (44px); a mouse keeps the compact sizes. A text
+  link that stands alone (a name, "לכל המערכת") gets `tp-hit`; plain links in a table get it on their own. Hover
+  effects apply only where the pointer can hover (`@media (hover: hover)`), so a tapped button never stays lifted.
+- **Tables:** a list that people read row by row is a `tp-table--stack`. When its frame is under 600px it becomes a
+  list of cards: the first cell is the title, the other cells are lines named by their `data-label`, a `tp-table__end`
+  cell sits at the card's top end, `tp-table__actions` is the card's last line, and `data-empty` leaves a cell out.
+- **The week:** seven columns need 900px; narrower, the timetable is a week strip over one day's list (`tp-agenda`).
+- **Dialogs** are bottom sheets under 768px and centered panels above it (already in `tp-dialog`).
+- **Nothing scrolls sideways** at any width, and every new or changed screen is checked at 360px and at 1280px.
+  `pnpm e2e --project=screens` opens every route of both apps at six sizes (`tests/e2e/support/screens.ts`) and fails
+  on sideways scroll or a control under 44px on a touch screen.

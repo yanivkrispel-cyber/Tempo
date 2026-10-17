@@ -45,6 +45,37 @@ export function TabBar({ items, action, label = "ניווט" }: TabBarProps) {
   );
 }
 
+export interface SideNavProps extends TabBarProps {
+  /** Above the links, e.g. the studio's name. */
+  header?: ReactNode;
+}
+
+/**
+ * The tab bar's links as a column at the start, for a computer or a tablet held sideways: each label beside its icon,
+ * and the main action as a full-width button under them.
+ */
+export function SideNav({ items, action, label = "ניווט", header }: SideNavProps) {
+  return (
+    <nav className="tp-sidenav" aria-label={label}>
+      {header}
+      <div className="tp-nav">
+        {items.map((item) => (
+          <NavLink key={item.to} to={item.to} end className="tp-nav__item">
+            <Icon name={item.icon} />
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
+      {action && (
+        <Link to={action.to} className="tp-btn tp-btn--block">
+          <Icon name={action.icon} />
+          {action.label}
+        </Link>
+      )}
+    </nav>
+  );
+}
+
 export interface WeekStripProps {
   days: readonly IsoDate[];
   value: IsoDate;

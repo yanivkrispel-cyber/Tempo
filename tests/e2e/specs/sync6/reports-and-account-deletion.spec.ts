@@ -322,9 +322,15 @@ test("4. a staff member without reports.view finds no reports, and the route and
   try {
     await signIn(memberPage, adminUrl, member);
     await memberPage.goto(admin(""));
+    // On a phone the console keeps its menu in a drawer (D15): the bottom bar, then the full menu.
+    const bar = memberPage.getByRole("navigation", { name: "קיצורי דרך" });
+    await expect(bar.getByRole("link", { name: "מערכת" })).toBeVisible();
+    await expect(bar.getByRole("link", { name: "דוחות" })).toHaveCount(0);
+    await memberPage.getByRole("button", { name: "התפריט של הסטודיו" }).click();
     const nav = memberPage.getByRole("navigation", { name: "ניהול הסטודיו" });
     await expect(nav.getByRole("link", { name: "מערכת שבועית" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "דוחות" })).toHaveCount(0);
+    await memberPage.keyboard.press("Escape");
 
     await memberPage.goto(admin("/reports"));
     await expect(memberPage.getByRole("heading", { level: 1, name: "אין לך גישה לדוחות" })).toBeVisible();
@@ -348,9 +354,10 @@ test("5. once the class has started, the owner's reports page shows the one visi
 
   await ownerPage.goto(admin("/reports"));
   await expect(ownerPage.getByRole("heading", { level: 1, name: "דוחות" })).toBeVisible();
+  // The phone's bottom bar (D15) marks the reports as the page on screen.
   await expect(
-    ownerPage.getByRole("navigation", { name: "ניהול הסטודיו" }).getByRole("link", { name: "דוחות" }),
-  ).toBeVisible();
+    ownerPage.getByRole("navigation", { name: "קיצורי דרך" }).getByRole("link", { name: "דוחות" }),
+  ).toHaveAttribute("aria-current", "page");
   // The default period is the last four full weeks, before this studio existed.
   await expect(ownerPage.getByText("לא התקיימו שיעורים בתקופה הזאת.")).toBeVisible();
 

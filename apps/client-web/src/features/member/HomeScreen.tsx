@@ -75,7 +75,7 @@ function HomeFrame({
   const me = useAccount();
   const firstName = nameOf(me).split(" ")[0];
   return (
-    <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
+    <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.home}`}>
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className="tp-eyebrow">
@@ -178,14 +178,16 @@ function StudioHome({ studio }: { studio: Studio }) {
           <h2 id="day-classes" className={styles.sectionTitle}>
             {dayTitle}
           </h2>
-          <Link to="/book">לכל המערכת</Link>
+          <Link to="/book" className="tp-hit">
+            לכל המערכת
+          </Link>
         </div>
         {sessions.isPending ? (
           <ListSkeleton rows={2} />
         ) : sessions.isError ? (
           <LoadError error={sessions.error} onRetry={() => void sessions.refetch()} />
         ) : dayClasses.length > 0 && day >= today ? (
-          <ul className={styles.list}>
+          <ul className={`${styles.list} ${styles.tiles}`}>
             {dayClasses.map((session) => (
               <li key={session.id}>
                 <EventCard
@@ -222,7 +224,7 @@ function ProgressStats({ progress }: { progress: MyProgress }) {
           <>
             <span className="tp-stat__value">{visits}</span>
             <span className="tp-stat__label">ביקורים החודש</span>
-            <Link to="/profile" className="tp-caption">
+            <Link to="/profile" className="tp-caption tp-hit">
               להגדרת יעד חודשי
             </Link>
           </>

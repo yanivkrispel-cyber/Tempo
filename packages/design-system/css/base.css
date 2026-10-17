@@ -184,6 +184,21 @@ bdi {
     padding-inline: var(--space-8);
   }
 }
+/* A page that is one list and a form (choosing a studio, the account's security): a reading width on a wide screen
+   instead of fields a thousand pixels long. */
+.tp-page--narrow {
+  max-width: 760px;
+}
+/* A page that is one card (signing in, an invitation, a join link): a phone's width in the middle of the screen, on
+   a phone, a tablet or a computer alike. */
+.tp-page--center {
+  min-height: 100dvh;
+  max-width: 528px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+}
 .tp-stack {
   display: flex;
   flex-direction: column;

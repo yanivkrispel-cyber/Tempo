@@ -230,11 +230,13 @@ function FigureCells({ figures }: { figures: ReportFigures }) {
   return (
     <>
       {figureColumns.map((column) => (
-        <td key={column.key} className="tp-num">
+        <td key={column.key} className="tp-num" data-label={column.label}>
           {figures[column.key] as number}
         </td>
       ))}
-      <td className="tp-num">{figures.fillRate === null ? "—" : percent(figures.fillRate)}</td>
+      <td className="tp-num" data-label="תפוסה">
+        {figures.fillRate === null ? "—" : percent(figures.fillRate)}
+      </td>
     </>
   );
 }
@@ -242,7 +244,7 @@ function FigureCells({ figures }: { figures: ReportFigures }) {
 function ClassTypesTable({ rows, totals }: { rows: ReportSummary["classTypes"]; totals: ReportFigures }) {
   return (
     <TableScroll label="לפי סוג שיעור">
-      <table className="tp-table tp-table--compact">
+      <table className="tp-table tp-table--compact tp-table--stack">
         <caption className="tp-sr-only">הנתונים לפי סוג שיעור</caption>
         <thead>
           <tr>

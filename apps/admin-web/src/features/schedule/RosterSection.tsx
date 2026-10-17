@@ -197,7 +197,9 @@ function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowPro
         <Avatar name={name} size="sm" />
         <span className="tp-stack" style={{ gap: 2, minWidth: 0 }}>
           {studio.can("people.view") ? (
-            <Link to={`/o/${studio.slug}/people/${entry.person.id}`}>{name}</Link>
+            <Link to={`/o/${studio.slug}/people/${entry.person.id}`} className="tp-hit">
+              {name}
+            </Link>
           ) : (
             <strong>{name}</strong>
           )}

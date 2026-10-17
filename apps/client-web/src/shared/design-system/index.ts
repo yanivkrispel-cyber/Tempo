@@ -27,12 +27,13 @@ export { Icon } from "./Icon";
 export type { IconName, IconProps } from "./Icon";
 export { ProgressBar, ProgressRing } from "./Progress";
 export type { ProgressBarProps, ProgressRingProps } from "./Progress";
-export { ClassRow, EventCard, FilterChips, shortDate, TabBar, TimeSlot, WeekStrip } from "./Schedule";
+export { ClassRow, EventCard, FilterChips, shortDate, SideNav, TabBar, TimeSlot, WeekStrip } from "./Schedule";
 export type {
   ClassColor,
   ClassRowProps,
   EventCardProps,
   FilterChipsProps,
+  SideNavProps,
   TabBarLink,
   TabBarProps,
   WeekStripProps,

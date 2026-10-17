@@ -94,7 +94,7 @@ export function ClassTypesPage() {
         </EmptyState>
       ) : (
         <TableScroll label="סוגי שיעורים">
-          <table className="tp-table">
+          <table className="tp-table tp-table--stack">
             <caption className="tp-sr-only">סוגי שיעורים</caption>
             <thead>
               <tr>
@@ -114,10 +114,12 @@ export function ClassTypesPage() {
                   <td>
                     <Chip tone={`cat-${classType.color}`}>{classType.name}</Chip>
                   </td>
-                  <td>{categoryLabel(classType.category)}</td>
-                  <td className="tp-num">{minutesLabel(classType.defaultMinutes)}</td>
+                  <td data-label="קטגוריה">{categoryLabel(classType.category)}</td>
+                  <td data-label="משך" className="tp-num">
+                    {minutesLabel(classType.defaultMinutes)}
+                  </td>
                   {manage && (
-                    <td style={{ textAlign: "end" }}>
+                    <td className="tp-table__actions" style={{ textAlign: "end" }}>
                       <span className="tp-row" style={{ gap: 4, justifyContent: "flex-end" }}>
                         <Button
                           variant="ghost"

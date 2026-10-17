@@ -18,6 +18,13 @@ const shapes = {
       <path d="M16 2v4M8 2v4M3 10h18" />
     </>
   ),
+  "calendar-day": (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <rect x="7.5" y="13.5" width="4" height="4" rx="1" />
+    </>
+  ),
   check: <path d="M20 6 9 17l-5-5" />,
   "chevron-down": <path d="m6 9 6 6 6-6" />,
   "chevron-left": <path d="m15 18-6-6 6-6" />,
@@ -74,6 +81,7 @@ const shapes = {
       <path d="m22 7-10 6L2 7" />
     </>
   ),
+  menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   "map-pin": (
     <>
       <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />

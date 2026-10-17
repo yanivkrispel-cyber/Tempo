@@ -8,11 +8,14 @@ import {
   FilterChips,
   IconButton,
   Skeleton,
+  WeekStrip,
   cx,
 } from "../../shared/design-system";
 import { StudioClock } from "../../shared/studio/StudioClock";
+import { useMediaQuery } from "../../shared/useMediaQuery";
 import {
   addDays,
+  dayOfWeek,
   formatDate,
   formatDayMonth,
   fromIsoDate,
@@ -28,6 +31,9 @@ import { NewClassDialog } from "./NewClassDialog";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "./queries";
 
 const allInstructors = "all";
+
+/** Seven columns need a tablet held sideways or a computer; narrower, the week is a strip of days over one day's list. */
+const WEEK_GRID = "(min-width: 900px)";
 
 /** `/o/:slug/schedule`: the week's classes, Sunday to Saturday on the studio's clock (Schedule mockup). */
 export function SchedulePage() {
@@ -46,6 +52,10 @@ function WeekView({ timeZone }: { timeZone: string }) {
   const [creating, setCreating] = useState(false);
   const [announcing, setAnnouncing] = useState(false);
   const manage = studio.can("schedule.manage");
+  const grid = useMediaQuery(WEEK_GRID, true);
+  const [picked, setPicked] = useState<IsoDate | null>(null);
+  // The picked day while it is in the week on screen; else today in this week, else its Sunday.
+  const agendaDay = picked && days.includes(picked) ? picked : days.includes(today) ? today : week;
 
   const goTo = (sunday: IsoDate) => setParams(sunday === startOfWeek(today) ? {} : { week: sunday });
 
@@ -121,7 +131,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
         >
           שיעור קבוע מופיע בלוח לשמונה השבועות הבאים.
         </EmptyState>
-      ) : (
+      ) : grid ? (
         <section className="tp-sched" aria-label="השיעורים לפי ימים">
           <div className="tp-sched__head" aria-hidden="true">
             {days.map((day, index) => (
@@ -149,12 +159,31 @@ function WeekView({ timeZone }: { timeZone: string }) {
             })}
           </div>
         </section>
+      ) : (
+        <section className="tp-agenda" aria-label="השיעורים לפי ימים">
+          <WeekStrip days={days} value={agendaDay} onChange={setPicked} today={today} />
+          <h2 className="tp-agenda__day">
+            יום {weekdayNames[dayOfWeek(agendaDay)]} · {formatDate(agendaDay)}
+            {agendaDay === today && " · היום"}
+          </h2>
+          {byDay(agendaDay).length === 0 ? (
+            <p className="tp-caption tp-muted">אין שיעורים ביום הזה</p>
+          ) : (
+            <ul className="tp-agenda__list">
+              {byDay(agendaDay).map((session) => (
+                <li key={session.id}>
+                  <SessionTile session={session} timeZone={timeZone} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {announcing && <AnnouncementDialog onClose={() => setAnnouncing(false)} />}
       {creating && (
         <NewClassDialog
-          day={week <= today && today <= days[6]! ? today : week}
+          day={!grid && agendaDay >= today ? agendaDay : week <= today && today <= days[6]! ? today : week}
           today={today}
           onClose={() => setCreating(false)}
         />

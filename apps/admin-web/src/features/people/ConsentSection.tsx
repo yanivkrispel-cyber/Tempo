@@ -72,7 +72,7 @@ export function ConsentSection({ person }: { person: PersonDetail }) {
         </div>
       </div>
       <TableScroll label="הסכמות לפי מטרה וערוץ">
-        <table className="tp-table tp-table--compact">
+        <table className="tp-table tp-table--compact tp-table--stack">
           <caption className="tp-sr-only">הסכמות לפי מטרה וערוץ</caption>
           <thead>
             <tr>
@@ -91,7 +91,7 @@ export function ConsentSection({ person }: { person: PersonDetail }) {
                 {channels.map((channel) => {
                   const consent = latest(purpose.value, channel.value);
                   return (
-                    <td key={channel.value}>
+                    <td key={channel.value} data-label={channel.label}>
                       {!consent ? (
                         <span className="tp-muted">לא נבחר</span>
                       ) : (

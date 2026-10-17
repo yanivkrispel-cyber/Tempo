@@ -7,6 +7,7 @@ import { routes } from "../../app/routes";
 import { apiStub, json, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 import { permissionsFor } from "../../test/permissions";
+import { screenWidth } from "../../test/screens";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}`;
@@ -221,6 +222,44 @@ describe("the weekly timetable", () => {
     const nav = screen.getByRole("navigation", { name: "ניהול הסטודיו" });
     expect(within(nav).getByRole("link", { name: "מערכת שבועית" })).toBeInTheDocument();
     expect(within(nav).queryByRole("link", { name: "שיעורים קבועים" })).not.toBeInTheDocument();
+  });
+});
+
+describe("the weekly timetable on a phone (D15)", () => {
+  let restore: () => void;
+  beforeEach(() => {
+    restore = screenWidth(390);
+  });
+  afterEach(() => restore());
+
+  it("shows one day at a time under a strip of the week's days, today first", async () => {
+    renderAt("/o/neshima/schedule", {
+      [`GET ${base}/sessions`]: {
+        items: [
+          session(),
+          session({
+            id: id(11),
+            localDate: "2026-10-15",
+            startsAt: "2026-10-15T04:00:00Z",
+            endsAt: "2026-10-15T04:50:00Z",
+          }),
+        ],
+      },
+    });
+
+    const week = await screen.findByRole("region", { name: "השיעורים לפי ימים" });
+    expect(within(week).getByRole("heading", { level: 2 })).toHaveTextContent("יום רביעי · 14.10.2026 · היום");
+    expect(within(week).getAllByRole("link")).toHaveLength(1);
+    expect(within(week).getByRole("link", { name: /פילאטיס מכשירים/ })).toHaveTextContent("17:30 · דנה אלון");
+    // No seven columns on a phone.
+    expect(screen.queryByRole("region", { name: "יום רביעי 14.10.2026, היום" })).not.toBeInTheDocument();
+
+    await userEvent.click(within(week).getByRole("button", { name: /15 באוקטובר/ }));
+    expect(within(week).getByRole("heading", { level: 2 })).toHaveTextContent("יום חמישי · 15.10.2026");
+    expect(within(week).getByRole("link", { name: /פילאטיס מכשירים/ })).toHaveTextContent("07:00");
+
+    await userEvent.click(within(week).getByRole("button", { name: /16 באוקטובר/ }));
+    expect(within(week).getByText("אין שיעורים ביום הזה")).toBeInTheDocument();
   });
 });
 

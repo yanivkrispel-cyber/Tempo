@@ -250,3 +250,28 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* On a computer (the app frame, D15): the next class beside the month's figures, then the week and the day's classes
+   two by two. The figures are later in the page, so the grid fills the hole beside the next class with them. */
+@media (min-width: 1024px) {
+  .home {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-auto-flow: row dense;
+    align-items: stretch;
+  }
+  .home > * {
+    grid-column: 1 / -1;
+  }
+  .home > .next {
+    grid-column: 1;
+  }
+  .home > .stats {
+    grid-column: 2;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
