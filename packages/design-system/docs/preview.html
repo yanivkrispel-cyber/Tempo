@@ -603,6 +603,180 @@
           </div>
         </section>
 
+        <section class="pv-cell tp-card" aria-labelledby="pv-kpi">
+          <header>
+            <h2 id="pv-kpi">אריח מדד</h2>
+            <code>.tp-kpi</code>
+            <span class="tp-caption tp-muted"
+              >ערך, תווית והשינוי לעומת התקופה הקודמת, במילים ועם חץ. מי שמשתמש ברכיב קובע אם עלייה היא חדשות
+              טובות.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch">
+            <div class="tp-kpis" role="group" aria-label="מדדי התקופה">
+              <div class="tp-card tp-card--sm tp-kpi">
+                <p class="tp-kpi__label">ביקורים</p>
+                <p class="tp-kpi__value"><bdi>45</bdi></p>
+                <p class="tp-kpi__change tp-kpi__change--good">
+                  <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M12 19V5M5 12l7-7 7 7" /></svg
+                  ><span>עלייה של <bdi>12%</bdi> לעומת התקופה הקודמת</span>
+                </p>
+              </div>
+              <div class="tp-card tp-card--sm tp-kpi">
+                <p class="tp-kpi__label">שיעור תפוסה</p>
+                <p class="tp-kpi__value"><bdi>70%</bdi></p>
+                <p class="tp-kpi__change tp-kpi__change--bad">
+                  <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M12 5v14M19 12l-7 7-7-7" /></svg
+                  ><span>ירידה של <bdi>3.5%</bdi> לעומת התקופה הקודמת</span>
+                </p>
+              </div>
+              <div class="tp-card tp-card--sm tp-kpi">
+                <p class="tp-kpi__label">חברים פעילים</p>
+                <p class="tp-kpi__value"><bdi>9</bdi></p>
+                <p class="tp-kpi__change">ללא שינוי לעומת התקופה הקודמת</p>
+              </div>
+              <div class="tp-card tp-card--sm tp-kpi">
+                <p class="tp-kpi__label">חברים חדשים</p>
+                <p class="tp-kpi__value"><bdi>2</bdi></p>
+                <p class="tp-kpi__change">אין תקופה קודמת להשוואה</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pv-cell tp-card" aria-labelledby="pv-bars">
+          <header>
+            <h2 id="pv-bars">גרף עמודות שבועי</h2>
+            <code>.tp-bars</code>
+            <span class="tp-caption tp-muted"
+              >סדרה אחת, השבוע הישן משמאל. הציור מוסתר מקורא המסך, שמקבל את אותם נתונים כטבלה. הערך מוצג לשבוע האחרון
+              ולשבוע שהעכבר עליו.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch">
+            <figure class="tp-bars" aria-labelledby="pv-bars-caption">
+              <figcaption id="pv-bars-caption" class="tp-bars__caption">ביקורים לפי שבוע</figcaption>
+              <div class="tp-bars__plot" dir="ltr" aria-hidden="true">
+                <svg viewBox="0 0 320 168" focusable="false">
+                  <g>
+                    <line class="tp-bars__axis" x1="28" x2="320" y1="146" y2="146"></line>
+                    <text class="tp-bars__tick" x="22" y="146" dy="0.32em" text-anchor="end">0</text>
+                  </g>
+                  <g>
+                    <line class="tp-bars__grid" x1="28" x2="320" y1="82" y2="82"></line>
+                    <text class="tp-bars__tick" x="22" y="82" dy="0.32em" text-anchor="end">10</text>
+                  </g>
+                  <g>
+                    <line class="tp-bars__grid" x1="28" x2="320" y1="18" y2="18"></line>
+                    <text class="tp-bars__tick" x="22" y="18" dy="0.32em" text-anchor="end">20</text>
+                  </g>
+                  <g class="tp-bars__col">
+                    <title>השבוע של 20.9: 12</title>
+                    <rect class="tp-bars__hit" x="28" y="18" width="73" height="128"></rect>
+                    <path
+                      class="tp-bars__bar"
+                      d="M52.5,146V73.2Q52.5,69.2 56.5,69.2H72.5Q76.5,69.2 76.5,73.2V146Z"
+                    ></path>
+                    <text class="tp-bars__value" x="64.5" y="64.2" text-anchor="middle">12</text>
+                    <text class="tp-bars__tick" x="64.5" y="162" text-anchor="middle" direction="rtl">20.9</text>
+                  </g>
+                  <g class="tp-bars__col">
+                    <title>השבוע של 27.9: 0</title>
+                    <rect class="tp-bars__hit" x="101" y="18" width="73" height="128"></rect>
+                    <text class="tp-bars__value" x="137.5" y="141" text-anchor="middle">0</text>
+                    <text class="tp-bars__tick" x="137.5" y="162" text-anchor="middle" direction="rtl">27.9</text>
+                  </g>
+                  <g class="tp-bars__col">
+                    <title>השבוע של 4.10: 18</title>
+                    <rect class="tp-bars__hit" x="174" y="18" width="73" height="128"></rect>
+                    <path
+                      class="tp-bars__bar"
+                      d="M198.5,146V34.8Q198.5,30.8 202.5,30.8H218.5Q222.5,30.8 222.5,34.8V146Z"
+                    ></path>
+                    <text class="tp-bars__value" x="210.5" y="25.8" text-anchor="middle">18</text>
+                    <text class="tp-bars__tick" x="210.5" y="162" text-anchor="middle" direction="rtl">4.10</text>
+                  </g>
+                  <g class="tp-bars__col tp-bars__col--latest">
+                    <title>השבוע של 11.10: 15</title>
+                    <rect class="tp-bars__hit" x="247" y="18" width="73" height="128"></rect>
+                    <path class="tp-bars__bar" d="M271.5,146V54Q271.5,50 275.5,50H291.5Q295.5,50 295.5,54V146Z"></path>
+                    <text class="tp-bars__value" x="283.5" y="45" text-anchor="middle">15</text>
+                    <text class="tp-bars__tick" x="283.5" y="162" text-anchor="middle" direction="rtl">11.10</text>
+                  </g>
+                </svg>
+              </div>
+              <table class="tp-table tp-table--compact tp-sr-only">
+                <caption class="tp-sr-only">
+                  ביקורים לפי שבוע
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">שבוע</th>
+                    <th scope="col" class="tp-num">ביקורים</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">השבוע של 20.9</th>
+                    <td class="tp-num"><bdi>12</bdi></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">השבוע של 27.9</th>
+                    <td class="tp-num"><bdi>0</bdi></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">השבוע של 4.10</th>
+                    <td class="tp-num"><bdi>18</bdi></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">השבוע של 11.10</th>
+                    <td class="tp-num"><bdi>15</bdi></td>
+                  </tr>
+                </tbody>
+              </table>
+            </figure>
+          </div>
+        </section>
+
+        <section class="pv-cell tp-card" aria-labelledby="pv-rows">
+          <header>
+            <h2 id="pv-rows">שורות קישור</h2>
+            <code>.tp-rows .tp-row</code>
+            <span class="tp-caption tp-muted"
+              >רשימת דוח קצרה: שורה אחת לכל אדם, כל השורה קישור לכרטיס שלו, ועובדה קצרה בסופה.</span
+            >
+          </header>
+          <div class="pv-stage pv-stage--stretch">
+            <ul class="tp-rows" aria-label="כרטיסיות שמסתיימות בקרוב">
+              <li>
+                <a class="tp-row" href="#pv-rows">
+                  <span class="tp-row__main"
+                    ><span class="tp-row__title">דנה לדוגמה</span
+                    ><span class="tp-row__meta">כרטיסייה של עשר כניסות</span></span
+                  >
+                  <span class="tp-row__aside">נשארה כניסה אחת</span>
+                  <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </a>
+              </li>
+              <li>
+                <a class="tp-row" href="#pv-rows">
+                  <span class="tp-row__main"
+                    ><span class="tp-row__title">יואב לדוגמה</span><span class="tp-row__meta">מנוי חודשי</span></span
+                  >
+                  <span class="tp-row__aside">מסתיים בעוד 3 ימים</span>
+                  <svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
+
         <section class="pv-cell tp-card" aria-labelledby="pv-tabbar">
           <header>
             <h2 id="pv-tabbar">סרגל לשוניות תחתון</h2>
