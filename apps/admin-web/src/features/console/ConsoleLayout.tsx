@@ -6,6 +6,7 @@ import { Button, ButtonLink, EmptyState, Icon, IconButton, cx, type IconName } f
 import { useMediaQuery, WIDE_SCREEN } from "../../shared/useMediaQuery";
 import { IncomingTransferBanner } from "../ownership/Ownership";
 import { securityPath } from "../security/SecurityPage";
+import { CommandPalette, useCommandPalette } from "./CommandPalette";
 import styles from "./console.module.css";
 import { ConsoleNotices } from "./ConsoleNotices";
 import { StudioContext, type Studio } from "./studio";
@@ -91,6 +92,7 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
   const { client } = useAuth();
   const wide = useMediaQuery(WIDE_SCREEN, true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const palette = useCommandPalette();
   // A tablet turned sideways while the menu is open keeps the menu on screen, so it is no longer "open".
   const open = !wide && menuOpen;
   const opener = useRef<HTMLElement | null>(null);
@@ -138,6 +140,7 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
             <StudioLogo studio={studio} />
             <span>{studio.displayName}</span>
           </span>
+          <IconButton icon="search" label="חיפוש" onClick={() => palette.setOpen(true)} />
         </header>
       )}
 
@@ -161,6 +164,15 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
           </div>
           {!wide && <IconButton icon="close" label="סגירת התפריט" onClick={closeMenu} />}
         </div>
+        {wide && (
+          <button type="button" className={styles.search} onClick={() => palette.setOpen(true)}>
+            <Icon name="search" />
+            <span>חיפוש</span>
+            <kbd className="tp-kbd" dir="ltr">
+              Ctrl K
+            </kbd>
+          </button>
+        )}
         <nav className="tp-nav" aria-label="ניהול הסטודיו">
           {visible.map((section) => (
             // The timetable stays current on a class's own page (schedule/sessions/...).
@@ -196,6 +208,8 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
         <IncomingTransferBanner />
         <Outlet />
       </div>
+
+      {palette.open && <CommandPalette sections={visible} onClose={() => palette.setOpen(false)} />}
 
       {!wide && (
         <nav className={cx("tp-tabbar tp-tabbar--fixed", styles.tabbar)} aria-label="קיצורי דרך" inert={open}>
