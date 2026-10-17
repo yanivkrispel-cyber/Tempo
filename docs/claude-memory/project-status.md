@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-10-16, morning (after night board #136; day board #176).
+Updated 2026-10-17, evening (day board #232, DAY-PLAN-5: pilot readiness).
 
 ## In one paragraph
 
@@ -74,13 +74,31 @@ provisional defaults, so steps 1 to 4 and 6 are built on board #176. D-1, D-2 an
 wording) wait for Kris, so step 5 (email, SES) is not built. Every piece stays inside ADR-0021: VAPID keys in SSM
 standard parameters, the reminder job inside the existing Scheduler pattern, no paid push service.
 
+## Pilot readiness (2026-10-17, board #232)
+
+`docs/31_Health_Declaration_LLD.md` and ADR-0026 (#233). What a real studio needs and what still blocks it:
+`docs/runbooks/pilot-readiness.md`.
+
+| Piece | PR |
+|---|---|
+| Member progress: visits this month, monthly goal, streak of weeks (migration 0017) | #235; screens #236 |
+| Health declaration: answers and names AES-256-GCM in the app, key in SSM `/tempo/<env>/health/data-key/<v>` under `aws/ssm` (no CMK), status for `people.view`, answers for `health.view` (owner) with an audited read, medical approval, the booking gate on the booking policy, roster status, erase, export, merge, retention after 90 days (migration 0018) | #239, #244; screens #237, #238 |
+| Live checks on dev: H5 (`tools/scripts/health-live-check.mjs`, 17/17) and Playwright `sync5` (6/6) | #248, #247 |
+| #124 and #109 closed (Function URL pinned by `edgeDistributionId` once the edge exists; CFR4 moved to #241, the role scope check to #245) | #242 |
+| #208 follow-ups: WAF `URL_DECODE`, the bare `\r`, one return-entry helper, the drill's error, nag over every stack | #243 |
+
+- The dev health key exists (created 2026-10-17 with `tools/scripts/health-data-key.mjs`). A version is never
+  overwritten; rotation is a new version (docs/31 section 7.1).
+- Migrations on dev: up to 0018; 0019 is the next free number.
+- #186 (Actions bump) is not merged: Semgrep wants SHA-pinned actions, a workflow change for Kris.
+
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in
 with the Hosted UI and TOTP enrollment, studios, members, invitations, roles, people, consent, owner transfer,
 duplicates, export, erase, timetable, booking, waitlist, inbox, passes, moves, messages, calendar files, freezes,
-the plan card). Only client-web's home goal and streak and the health declaration are still sample data
-(`features/member/sample.ts`). Member render code reads time from `features/member/clock.tsx`, never `Date.now()`
+the plan card). Since 2026-10-17 nothing is sample data: the home goal and streak and the health declaration are on the API, and
+`features/member/sample.ts` is gone (#236, #237). Member render code reads time from `features/member/clock.tsx`, never `Date.now()`
 (the `react-hooks/purity` lint rule). The console fits a phone (#171). #164 (axe contrast) is open.
 
 ## Open items for Kris
@@ -95,7 +113,9 @@ the plan card). Only client-web's home goal and streak and the health declaratio
 | `docs/29` C-9 to C-13 | Defaults apply unless Kris objects |
 | #97 dev self sign-up and a Neon usage alarm | It gated the full load test (B5) |
 | #96, #123, #122, #115 | Kris decides; nobody else touches them |
-| Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot |
+| Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot; P-2 now also covers the health form's wording and its retention (docs/31) |
+| A production copy of the health data key | docs/31 section 15 |
+| #186: SHA-pin the GitHub Actions, or accept Semgrep's finding | Workflow change |
 | Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
 
 ## Who works on what
