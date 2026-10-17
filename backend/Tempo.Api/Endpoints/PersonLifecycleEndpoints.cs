@@ -11,7 +11,7 @@ namespace Tempo.Api.Endpoints;
 /// Duplicate candidates and merge, export and erasure (docs/27 sections 4.6,
 /// 4.7 and 6). Export and erase need a sign-in within ten minutes.
 /// </summary>
-public static class PersonLifecycleEndpoints
+public static partial class PersonLifecycleEndpoints
 {
     public static IEndpointRouteBuilder MapPersonLifecycleEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -37,10 +37,15 @@ public static class PersonLifecycleEndpoints
         return Results.Ok(ToResponse(resolved));
     }
 
-    private static async Task<IResult> ExportAsync(HttpContext httpContext, Guid personId, IPersonLifecycleService lifecycle, TimeProvider clock)
+    private static async Task<IResult> ExportAsync(HttpContext httpContext, Guid personId, IPersonLifecycleService lifecycle, TimeProvider clock, ILoggerFactory loggers)
     {
         StepUp.Require(httpContext, clock);
         var export = await lifecycle.ExportAsync(TenantRouteFilter.Current(httpContext), personId, httpContext.RequestAborted);
+        if (export.HealthAnswersWithheldReason == PersonExportView.HealthKeyUnavailable)
+        {
+            LogHealthKeyUnavailable(loggers.CreateLogger(typeof(PersonLifecycleEndpoints)));
+        }
+
         return Results.Ok(new PersonExportResponse(
             export.ExportedAt,
             new ExportOrganizationResponse(export.OrganizationId, export.OrganizationName),
@@ -60,7 +65,8 @@ public static class PersonLifecycleEndpoints
                 h.Answers is null ? null : [.. h.Answers.Select(a => new HealthAnswerResponse(a.QuestionId, a.Answer))],
                 h.SignedName,
                 h.GuardianName))],
-            export.HealthAnswersWithheld));
+            export.HealthAnswersWithheld,
+            export.HealthAnswersWithheldReason));
     }
 
     private static async Task<IResult> EraseAsync(HttpContext httpContext, Guid personId, ErasePersonRequest request, IPersonLifecycleService lifecycle, TimeProvider clock)
@@ -72,4 +78,8 @@ public static class PersonLifecycleEndpoints
 
     private static DuplicateCandidateResponse ToResponse(DuplicateCandidateView d) =>
         new(d.Id, d.Reason, d.Status, PeopleEndpoints.ToResponse(d.PersonA), PeopleEndpoints.ToResponse(d.PersonB), d.CreatedAt, d.Version.ToString(CultureInfo.InvariantCulture));
+
+    // A-5: no person, studio or declaration content, only that the key was not readable.
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Export sent with health answers withheld: the health data key could not be read")]
+    private static partial void LogHealthKeyUnavailable(ILogger logger);
 }

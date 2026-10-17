@@ -2565,8 +2565,15 @@ export interface components {
             passes: components["schemas"]["ExportPass"][];
             /** @description Current and replaced declarations, oldest first (docs/31 section 11). */
             healthDeclarations?: components["schemas"]["ExportHealthDeclaration"][];
-            /** @description True when the exporting member lacks `health.view`, so answers and names are null. */
+            /** @description True when answers and names are null; `healthAnswersWithheldReason` says why. */
             healthAnswersWithheld?: boolean;
+            /**
+             * @description `no_health_view` when the exporting member lacks `health.view`; `health_key_unavailable` when the health
+             *     data key could not be read (docs/32 section 11, A-5): the rest of the export is complete. Null when the
+             *     answers are included.
+             * @enum {string|null}
+             */
+            healthAnswersWithheldReason?: "no_health_view" | "health_key_unavailable" | null;
         };
         ExportBooking: {
             /** Format: uuid */

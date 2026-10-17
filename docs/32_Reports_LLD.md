@@ -295,10 +295,13 @@ below the 50 ms bar. So no index is added. Look again when a studio passes about
 ## 11. The export without the health key (A-5, #239 note 2)
 
 When the data key can't be read (SSM down, a missing version), `exportPerson` still returns 200 with everything
-else. Each health declaration keeps its status and dates, `answers` is `null`, and the export's `healthAnswers`
-part says `"withheld": "health_key_unavailable"`. The log gets one warning with the person id and the key version,
-never an answer. The test makes the key provider throw and expects 200 with the withheld reason (it fails today with
-503).
+else. The service decrypts every declaration first. If any key read fails, it withholds **all** answers and names,
+so the export never mixes opened and closed declarations, and it writes no `health.declaration.viewed` audit row.
+Each declaration keeps its status and dates. `healthAnswersWithheld` is true and the new
+`healthAnswersWithheldReason` is `health_key_unavailable`; it is `no_health_view` when the exporter lacks
+`health.view`, and null when the answers are included. The API logs one warning that says only that the key was not
+readable: no person, studio or answer. The test removes the key and expects 200 with the reason. Before A3 the same
+call answered 503 `health.key_unavailable`.
 
 ## 12. The e2e cleanup (A-4)
 
