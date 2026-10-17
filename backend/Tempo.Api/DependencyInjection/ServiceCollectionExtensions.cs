@@ -38,6 +38,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMembershipDirectory, MembershipDirectory>();
         services.AddSingleton<ICognitoUserReader, CognitoUserReader>();
         services.AddSingleton<IAccountService, AccountService>();
+        services.AddSingleton<ICognitoUserDeleter, CognitoUserDeleter>();
+        services.AddSingleton<IAccountDeletionService, AccountDeletionService>();
         services.AddSingleton<IAccountProfiles, AccountProfiles>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<IMemberService, MemberService>();

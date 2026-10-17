@@ -172,7 +172,6 @@ paths:
     delete:
       tags: [Account]
       operationId: deleteMe
-      x-tempo-planned: true
       summary: Delete my login (recent sign-in, typed confirmation)
       description: |
         docs/32 section 9 (A-1, A-2). In one transaction every membership ends, the account row is removed and each

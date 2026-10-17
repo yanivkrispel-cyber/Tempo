@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Mvc;
 using Tempo.Api.ErrorHandling;
 using Tempo.Api.Middleware;
 using Tempo.Api.Tenancy;
@@ -11,9 +12,9 @@ namespace Tempo.Api.Endpoints;
 
 /// <summary>
 /// The account routes of docs/26 section 8.1 that need no studio:
-/// POST /api/v1/session, GET /api/v1/me and PATCH /api/v1/me.
+/// POST /api/v1/session, GET /api/v1/me and PATCH /api/v1/me; and DELETE /api/v1/me (docs/32 section 9).
 /// </summary>
-public static class AccountEndpoints
+public static partial class AccountEndpoints
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -30,6 +31,10 @@ public static class AccountEndpoints
         account.MapPatch("/me", UpdateMeAsync)
             .WithName("updateMe")
             .Produces<MeResponse>();
+
+        account.MapDelete("/me", DeleteMeAsync)
+            .WithName("deleteMe")
+            .Produces(StatusCodes.Status204NoContent);
 
         return endpoints;
     }
@@ -108,6 +113,41 @@ public static class AccountEndpoints
     /// The sign-in behind a validated customer access token. Cognito access
     /// tokens carry `username` (what AdminGetUser takes) and `auth_time`.
     /// </summary>
+    /// <summary>
+    /// A-1 and A-2: a recent sign-in, the email typed, then the database in one transaction and the Cognito user
+    /// after it. A failed Cognito call is logged and the answer is still 204: the login reaches nothing any more.
+    /// </summary>
+    private static async Task<IResult> DeleteMeAsync(
+        HttpContext httpContext,
+        [FromBody] DeleteMeRequest request,
+        IAccountDeletionService deletion,
+        ICognitoUserDeleter cognito,
+        TimeProvider clock,
+        ILoggerFactory loggers)
+    {
+        var signIn = SignInOf(httpContext);
+        if (signIn is null)
+        {
+            return Unauthorized(httpContext);
+        }
+
+        StepUp.Require(httpContext, clock);
+        await deletion.DeleteMineAsync(signIn, request.ConfirmEmail, httpContext.RequestAborted);
+        try
+        {
+            await cognito.DeleteAsync(signIn.Issuer, signIn.Username, CancellationToken.None);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogCognitoDeleteFailed(loggers.CreateLogger(typeof(AccountEndpoints)), e);
+        }
+
+        return Results.NoContent();
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The account is deleted but its Cognito user is not; deleting it again is safe")]
+    private static partial void LogCognitoDeleteFailed(ILogger logger, Exception exception);
+
     private static SignIn? SignInOf(HttpContext httpContext)
     {
         var user = httpContext.User;

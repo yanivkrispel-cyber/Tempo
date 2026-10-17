@@ -34,3 +34,6 @@ public sealed record MyOrganizationResponse(Guid Id, string Slug, string Display
 
 /// <summary>PATCH /api/v1/me (`UpdateMeRequest`). At least one field.</summary>
 public sealed record UpdateMeRequest(string? DisplayName, string? Locale);
+
+/// <summary>`DeleteMeRequest` (docs/32 section 9): the account's email, typed by the person.</summary>
+public sealed record DeleteMeRequest(string? ConfirmEmail);
