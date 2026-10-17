@@ -9,8 +9,10 @@ import { useProfile } from "./data";
 import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
 import { EditNameDialog } from "./EditNameDialog";
+import { GoalDialog } from "./GoalDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
+import { useMyProgress } from "./progress";
 import styles from "./member.module.css";
 import { StudioNotices } from "./StudioNotices";
 
@@ -23,10 +25,12 @@ export function ProfileScreen() {
   const me = useAccount();
   const [editing, setEditing] = useState(false);
   const [details, setDetails] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
   const soon = () => toast.show({ message: "האפשרות הזו תגיע בקרוב" });
   const studios = activeMemberships(me);
   const studio = studios[0];
   const studioProfile = useStudioProfile(studio?.organization.id);
+  const progress = useMyProgress(studio?.organization.id);
 
   if (!profile.data) {
     return (
@@ -107,6 +111,24 @@ export function ProfileScreen() {
             <hr className="tp-divider" />
           </>
         )}
+        {studio && progress.data && (
+          <>
+            <button type="button" className="tp-setting" onClick={() => setGoalOpen(true)}>
+              <span className={styles.settingText}>
+                <span>יעד חודשי</span>
+                <span className="tp-caption">
+                  {progress.data.monthlyGoal === null
+                    ? "לא הוגדר"
+                    : progress.data.monthlyGoal === 1
+                      ? "שיעור אחד בחודש"
+                      : `${progress.data.monthlyGoal} שיעורים בחודש`}
+                </span>
+              </span>
+              <Icon name="chevron-left" />
+            </button>
+            <hr className="tp-divider" />
+          </>
+        )}
         <div className="tp-setting">
           <span>הצהרת בריאות</span>
           {healthDeclarationSigned ? <Chip tone="success">נחתמה</Chip> : <Chip tone="warning">חסרה</Chip>}
@@ -137,6 +159,13 @@ export function ProfileScreen() {
       </Button>
 
       <EditNameDialog open={editing} onClose={() => setEditing(false)} name={me.displayName ?? ""} />
+      {goalOpen && studio && progress.data && (
+        <GoalDialog
+          organizationId={studio.organization.id}
+          goal={progress.data.monthlyGoal}
+          onClose={() => setGoalOpen(false)}
+        />
+      )}
       {details && studio && studioProfile.data && (
         <MyDetailsDialog
           organizationId={studio.organization.id}

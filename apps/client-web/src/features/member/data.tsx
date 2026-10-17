@@ -17,7 +17,7 @@ function useSampleApi(): SampleApi {
   return api;
 }
 
-/** The goal, the streak and the health declaration: sample data until the API serves them. */
+/** The health declaration: sample data until the API serves it (H2). */
 export function useProfile() {
   const api = useSampleApi();
   return useQuery({ queryKey: ["member", "profile"], queryFn: api.profile });

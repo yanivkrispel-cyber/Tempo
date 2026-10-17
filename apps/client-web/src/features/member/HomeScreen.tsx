@@ -15,10 +15,10 @@ import {
 import { nameOf, useAccount } from "../../account/account";
 import { addDays, dayOfWeek, startOfWeek, type IsoDate } from "../../shared/utilities/dates";
 import { freeSpots, myState, waitText } from "./bookingState";
-import { useProfile } from "./data";
 import { dayName, relativeDay } from "./format";
 import styles from "./member.module.css";
 import { metaLine } from "./passText";
+import { streakText, useMyProgress, type MyProgress } from "./progress";
 import {
   useInbox,
   useSessions,
@@ -99,8 +99,7 @@ function StudioHome({ studio }: { studio: Studio }) {
   const week = Array.from({ length: 7 }, (_, offset) => addDays(startOfWeek(today), offset));
   const upcoming = useUpcomingBookings(studio.id);
   const sessions = useSessions(studio.id, startOfWeek(today), addDays(startOfWeek(today), 6));
-  // The goal and the streak stay sample data until attendance stats exist.
-  const profile = useProfile();
+  const progress = useMyProgress(studio.id);
 
   const next = upcoming.data?.find((booking) => booking.status === "booked");
   const dayClasses = (sessions.data ?? []).filter(
@@ -208,27 +207,40 @@ function StudioHome({ studio }: { studio: Studio }) {
         )}
       </section>
 
-      {profile.data && (
-        <section aria-label="ההתקדמות שלך" className={styles.stats}>
-          <Card small className={styles.stat}>
-            <ProgressRing
-              size="sm"
-              value={profile.data.visitsThisMonth}
-              max={profile.data.monthlyGoal}
-              label={`ביקורים החודש, מתוך יעד של ${profile.data.monthlyGoal}`}
-            >
-              {profile.data.visitsThisMonth}
-            </ProgressRing>
-            <span className="tp-stat__label">ביקורים החודש</span>
-          </Card>
-          <Card small tone="base" className={styles.stat}>
-            <span className="tp-icon-tile tp-icon-tile--sm">
-              <Icon name="check" />
-            </span>
-            <span className="tp-stat__label">{profile.data.streakWeeks} שבועות ברצף עם שלושה שיעורים</span>
-          </Card>
-        </section>
-      )}
+      {progress.data && <ProgressStats progress={progress.data} />}
     </HomeFrame>
+  );
+}
+
+/** Visits this month (against the goal, once the member set one) and the streak of weeks (docs/31 section 12). */
+function ProgressStats({ progress }: { progress: MyProgress }) {
+  const { visitsThisMonth: visits, monthlyGoal: goal, streakWeeks } = progress;
+  return (
+    <section aria-label="ההתקדמות שלך" className={styles.stats}>
+      <Card small className={styles.stat}>
+        {goal === null ? (
+          <>
+            <span className="tp-stat__value">{visits}</span>
+            <span className="tp-stat__label">ביקורים החודש</span>
+            <Link to="/profile" className="tp-caption">
+              להגדרת יעד חודשי
+            </Link>
+          </>
+        ) : (
+          <>
+            <ProgressRing size="sm" value={visits} max={goal} label={`ביקורים החודש: ${visits} מתוך יעד של ${goal}`}>
+              {visits}
+            </ProgressRing>
+            <span className="tp-stat__label">ביקורים החודש, מתוך {goal}</span>
+          </>
+        )}
+      </Card>
+      <Card small tone="base" className={styles.stat}>
+        <span className="tp-icon-tile tp-icon-tile--sm">
+          <Icon name="check" />
+        </span>
+        <span className="tp-stat__label">{streakText(streakWeeks)}</span>
+      </Card>
+    </section>
   );
 }
