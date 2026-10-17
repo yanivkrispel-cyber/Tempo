@@ -7,6 +7,7 @@ import { useApi } from "../../api/ApiProvider";
 import { forgetPushOnSignOut } from "../../account/push";
 import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
+import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { EditNameDialog } from "./EditNameDialog";
 import { useMyHealthDeclaration } from "./health";
 import { GoalDialog } from "./GoalDialog";
@@ -25,6 +26,7 @@ export function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [details, setDetails] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const soon = () => toast.show({ message: "האפשרות הזו תגיע בקרוב" });
   const studios = activeMemberships(me);
   const studio = studios[0];
@@ -134,6 +136,14 @@ export function ProfileScreen() {
           <span>שפה</span>
           <span className="tp-muted">עברית</span>
         </div>
+        <hr className="tp-divider" />
+        <button type="button" className="tp-setting" onClick={() => setDeleting(true)}>
+          <span className={styles.settingText}>
+            <span>מחיקת החשבון</span>
+            <span className="tp-caption">ההתחברות נמחקת, הרשומה בסטודיו נשארת</span>
+          </span>
+          <Icon name="chevron-left" />
+        </button>
       </Card>
 
       <Button
@@ -157,6 +167,7 @@ export function ProfileScreen() {
           onClose={() => setGoalOpen(false)}
         />
       )}
+      {deleting && <DeleteAccountDialog onClose={() => setDeleting(false)} />}
       {details && studio && studioProfile.data && (
         <MyDetailsDialog
           organizationId={studio.organization.id}

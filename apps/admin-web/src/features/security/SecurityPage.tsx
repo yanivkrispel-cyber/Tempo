@@ -25,6 +25,7 @@ import {
   Skeleton,
   useToast,
 } from "../../shared/design-system";
+import { DeleteAccountCard } from "./DeleteAccount";
 import { QrCode } from "./QrCode";
 import styles from "./security.module.css";
 
@@ -116,6 +117,8 @@ export function SecurityPage() {
           הגדרת אימות דו־שלבי עדיין לא הופעלה בסביבה הזו. נסו שוב בקרוב, או פנו לצוות Tempo.
         </EmptyState>
       )}
+
+      <DeleteAccountCard />
     </main>
   );
 }
