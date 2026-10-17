@@ -124,6 +124,20 @@ export interface StudioOptions {
   frozenUntil?: string;
   /** The member's progress (docs/31 section 12); 6 visits, no goal and a 3-week streak by default. */
   progress?: Partial<Schemas["MyProgress"]>;
+  /** The member's health declaration (docs/31): signed, not required, by default. */
+  health?: { status?: Schemas["HealthDeclarationStatus"]; required?: boolean; formVersion?: number };
+}
+
+/** A generic two-question form: no real health questions, not even in tests. */
+export function healthForm(version = 1): Schemas["HealthForm"] {
+  return {
+    version,
+    locale: "he-IL",
+    questions: [
+      { id: "q1", text: `שאלה ראשונה לדוגמה, גרסה ${version}?` },
+      { id: "q2", text: `שאלה שנייה לדוגמה, גרסה ${version}?` },
+    ],
+  };
 }
 
 /** The studio's state and the stub routes that read and change it. */
@@ -155,6 +169,28 @@ export function createStudio(options: StudioOptions = {}) {
   const bookings = new Map<string, Booking>();
   const inbox = options.inbox ?? [];
   const policy = { ...defaultPolicy, ...options.policy };
+  const health = {
+    status: "signed" as Schemas["HealthDeclarationStatus"],
+    required: false,
+    formVersion: 1,
+    ...options.health,
+  };
+  const myHealth = (): Schemas["MyHealthDeclaration"] => ({
+    declaration:
+      health.status === "missing"
+        ? { status: "missing" }
+        : {
+            status: health.status,
+            declarationId: "0199e5a1-0000-7000-8000-000000000951",
+            formVersion: 1,
+            signerRole: "self",
+            signedAt: health.status === "expired" ? "2025-10-01T07:00:00Z" : "2026-10-01T07:00:00Z",
+            expiresAt: health.status === "expired" ? "2026-10-01T07:00:00Z" : "2027-10-01T07:00:00Z",
+            medicalApprovalOn: null,
+          },
+    form: healthForm(health.formVersion),
+    required: health.required,
+  });
 
   const live = () => passes.find((pass) => pass.status === "active" && (pass.entriesLeft ?? 1) > 0);
   const summary = (pass: Pass): Schemas["PassSummary"] => ({
@@ -215,6 +251,8 @@ export function createStudio(options: StudioOptions = {}) {
   };
 
   function book(target: Session): Response {
+    // The gate (docs/31 H-5): the member's own booking or waitlist place needs a signed declaration.
+    if (health.required && health.status !== "signed") return problem(409, "health.declaration_required");
     if (target.myBooking) return problem(409, "booking.duplicate");
     if (!live()) return problem(409, "booking.no_valid_pass");
     if (target.bookedCount < target.capacity) {
@@ -290,6 +328,24 @@ export function createStudio(options: StudioOptions = {}) {
       json({ items: mine(new URL(request.url).searchParams.get("scope")), nextBefore: null }),
     [`GET ${base}/me/passes`]: () => json({ items: passes }),
     [`GET ${base}/me/progress`]: () => json(progress),
+    [`GET ${base}/me/health-declaration`]: () => json(myHealth()),
+    // The server's rules (docs/31 section 9): the current version, every question answered, the confirmation, the
+    // guardian's name for a guardian. Any "yes" needs a medical approval.
+    [`POST ${base}/me/health-declaration`]: async (request: Request) => {
+      const body = (await request.json()) as Schemas["SignHealthDeclarationRequest"];
+      if (body.formVersion !== health.formVersion) return problem(409, "health.form_version_stale");
+      const ids = healthForm(health.formVersion).questions.map((question) => question.id);
+      if (body.answers.length !== ids.length || !ids.every((id) => body.answers.some((a) => a.questionId === id)))
+        return problem(400, "health.answers_incomplete");
+      if (body.confirmed !== true) return problem(400, "health.confirmation_required");
+      if (body.signerRole === "guardian" && !body.guardianName) return problem(400, "health.guardian_name_required");
+      health.status = body.answers.some((answer) => answer.answer) ? "needs_medical_approval" : "signed";
+      const signed = myHealth();
+      signed.declaration.signedAt = testNow.toISOString();
+      signed.declaration.expiresAt = "2027-10-13T09:00:00Z";
+      signed.declaration.signerRole = body.signerRole;
+      return json(signed, 201);
+    },
     // The server's rule (G-1): a whole number from 1 to 31, or null to clear.
     [`PUT ${base}/me/progress/goal`]: async (request: Request) => {
       const { monthlyGoal } = (await request.json()) as { monthlyGoal: number | null };
@@ -331,7 +387,7 @@ END:VCALENDAR
     };
   }
 
-  return { routes, sessions, passes, inbox, bookings, progress };
+  return { routes, sessions, passes, inbox, bookings, progress, health };
 }
 
 /** History rows on this morning's class, which has ended: attended, cancelled late, and cancelled by the studio. */

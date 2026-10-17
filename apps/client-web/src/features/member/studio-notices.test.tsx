@@ -5,7 +5,7 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, problem, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { createStudio, testNow, testToday } from "../../test/studio";
+import { createStudio, testNow } from "../../test/studio";
 
 const studio = sampleMe.memberships[0]!;
 const profilePath = `GET /api/v1/organizations/${studio.organization.id}/me/profile`;
@@ -18,7 +18,7 @@ function renderAt(url: string, routesForApi: Record<string, unknown> = {}) {
       auth={signedInAuth()}
       apiUrl="https://api.test"
       fetch={api.fetch}
-      today={testToday}
+
       now={testNow}
     />,
   );

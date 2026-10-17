@@ -85,6 +85,7 @@ export function Signature({ value, onChange, confirmation, showErrors = false, d
       <Field label={guardian ? "השם המלא של המתאמן/ת" : "שם מלא"} error={errors.signedName} required>
         <Input
           autoComplete={guardian ? "off" : "name"}
+          maxLength={100}
           value={value.signedName}
           disabled={disabled}
           onChange={(event) => set({ signedName: event.target.value })}
@@ -94,6 +95,7 @@ export function Signature({ value, onChange, confirmation, showErrors = false, d
         <Field label="השם המלא של ההורה או האפוטרופוס" error={errors.guardianName} required>
           <Input
             autoComplete="name"
+            maxLength={100}
             value={value.guardianName}
             disabled={disabled}
             onChange={(event) => set({ guardianName: event.target.value })}

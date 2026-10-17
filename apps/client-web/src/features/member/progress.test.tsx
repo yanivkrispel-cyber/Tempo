@@ -6,7 +6,7 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { createStudio, testNow, testToday, type StudioOptions } from "../../test/studio";
+import { createStudio, testNow, type StudioOptions } from "../../test/studio";
 import { streakText } from "./progress";
 
 function renderAt(url: string, options: StudioOptions = {}) {
@@ -19,7 +19,7 @@ function renderAt(url: string, options: StudioOptions = {}) {
         auth={signedInAuth()}
         apiUrl="https://api.test"
         fetch={api.fetch}
-        today={testToday}
+
         now={testNow}
       />
     </div>,

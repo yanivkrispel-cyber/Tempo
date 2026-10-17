@@ -24,7 +24,7 @@ const invitation = {
 function renderAt(url: string, auth: AuthClient, routesForApi: Record<string, unknown>) {
   const api = apiStub({ "POST /api/v1/session": sampleMe, ...routesForApi });
   const router = createMemoryRouter(routes, { initialEntries: [url] });
-  render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} today="2026-10-13" />);
+  render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} />);
   return { router, api };
 }
 

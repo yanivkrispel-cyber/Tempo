@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Avatar, Button, Card, Chip, Icon, IconButton, Skeleton, useToast } from "../../shared/design-system";
+import { Avatar, Button, Card, HealthStatusChip, Icon, IconButton, useToast } from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useApi } from "../../api/ApiProvider";
 import { forgetPushOnSignOut } from "../../account/push";
-import { useProfile } from "./data";
 import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
 import { EditNameDialog } from "./EditNameDialog";
+import { useMyHealthDeclaration } from "./health";
 import { GoalDialog } from "./GoalDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
@@ -17,7 +17,6 @@ import styles from "./member.module.css";
 import { StudioNotices } from "./StudioNotices";
 
 export function ProfileScreen() {
-  const profile = useProfile();
   const toast = useToast();
   const auth = useAuth();
   const api = useApi();
@@ -31,18 +30,8 @@ export function ProfileScreen() {
   const studio = studios[0];
   const studioProfile = useStudioProfile(studio?.organization.id);
   const progress = useMyProgress(studio?.organization.id);
+  const health = useMyHealthDeclaration(studio?.organization.id);
 
-  if (!profile.data) {
-    return (
-      <main className={`tp-page tp-page--tabbar ${styles.screen}`} aria-busy="true">
-        <Skeleton height={56} />
-        <Skeleton height={300} />
-      </main>
-    );
-  }
-
-  // The health declaration stays sample data until the studio API has it; the passes and the rest are real.
-  const { healthDeclarationSigned } = profile.data;
   const name = nameOf(me);
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.profile}`}>
@@ -129,11 +118,19 @@ export function ProfileScreen() {
             <hr className="tp-divider" />
           </>
         )}
-        <div className="tp-setting">
-          <span>הצהרת בריאות</span>
-          {healthDeclarationSigned ? <Chip tone="success">נחתמה</Chip> : <Chip tone="warning">חסרה</Chip>}
-        </div>
-        <hr className="tp-divider" />
+        {studio && (
+          <>
+            <Link to="/profile/health" className="tp-setting">
+              <span>הצהרת בריאות</span>
+              {health.data ? (
+                <HealthStatusChip status={health.data.declaration.status} />
+              ) : (
+                <Icon name="chevron-left" />
+              )}
+            </Link>
+            <hr className="tp-divider" />
+          </>
+        )}
         <button type="button" className="tp-setting" onClick={soon}>
           <span>קבלות ותשלומים</span>
           <Icon name="chevron-left" />
