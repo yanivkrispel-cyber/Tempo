@@ -44,7 +44,7 @@ public sealed class PeopleImportEndpointTests : IDisposable
     public async Task AnAdmin_ReachesTheService_WithTheRowsAsSent()
     {
         GivenMembership(SystemRoles.Admin);
-        imports.ImportAsync(Arg.Any<TenantContext>(), true, Arg.Any<IReadOnlyList<ImportRowInput>>(), Arg.Any<CancellationToken>())
+        imports.ImportAsync(Arg.Any<TenantContext>(), true, Arg.Any<IReadOnlyList<ImportRowInput>>(), Arg.Any<CancellationToken>(), null)
             .Returns(new ImportResult(true, null, new ImportTotals(1, 1, 0, 0, 0, 0), [new ImportRowOutcome(2, "valid")]));
 
         var response = await PostAsync(new { dryRun = true, rows = new[] { new { line = 2, displayName = " Noa ", email = "noa@example.com" } } });
@@ -52,19 +52,21 @@ public sealed class PeopleImportEndpointTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).Should().Contain("\"outcome\":\"valid\"");
         await imports.Received(1).ImportAsync(
-            Arg.Any<TenantContext>(), true, Arg.Is<IReadOnlyList<ImportRowInput>>(rows => rows.Single().DisplayName == " Noa "), Arg.Any<CancellationToken>());
+            Arg.Any<TenantContext>(), true, Arg.Is<IReadOnlyList<ImportRowInput>>(rows => rows.Single().DisplayName == " Noa "), Arg.Any<CancellationToken>(), null);
     }
 
     [Fact]
-    public async Task ABatchTag_IsRefusedUntilTagsExist()
+    public async Task ABatchTag_IsPassedToTheService()
     {
         GivenMembership(SystemRoles.Admin);
+        var tag = Guid.CreateVersion7();
+        imports.ImportAsync(Arg.Any<TenantContext>(), true, Arg.Any<IReadOnlyList<ImportRowInput>>(), Arg.Any<CancellationToken>(), tag)
+            .Returns(new ImportResult(true, null, new ImportTotals(1, 1, 0, 0, 0, 0), [new ImportRowOutcome(2, "valid")]));
 
-        var response = await PostAsync(new { dryRun = true, tagId = Guid.CreateVersion7(), rows = new[] { new { line = 2, displayName = "Noa", email = "noa@example.com" } } });
+        var response = await PostAsync(new { dryRun = true, tagId = tag, rows = new[] { new { line = 2, displayName = "Noa", email = "noa@example.com" } } });
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("import.tag_unavailable");
-        imports.ReceivedCalls().Should().BeEmpty();
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await imports.Received(1).ImportAsync(Arg.Any<TenantContext>(), true, Arg.Any<IReadOnlyList<ImportRowInput>>(), Arg.Any<CancellationToken>(), tag);
     }
 
     private async Task<HttpResponseMessage> PostAsync(object body)

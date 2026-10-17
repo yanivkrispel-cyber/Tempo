@@ -39,7 +39,7 @@ public sealed record ImportResult(bool DryRun, Guid? ImportId, ImportTotals Tota
 /// </summary>
 public interface IPeopleImportService
 {
-    Task<ImportResult> ImportAsync(TenantContext tenant, bool dryRun, IReadOnlyList<ImportRowInput> rows, CancellationToken cancellationToken);
+    Task<ImportResult> ImportAsync(TenantContext tenant, bool dryRun, IReadOnlyList<ImportRowInput> rows, CancellationToken cancellationToken, Guid? tagId = null);
 }
 
 public sealed class PeopleImportService(IDataSourceProvider dataSources, TimeProvider clock) : IPeopleImportService
@@ -59,7 +59,7 @@ public sealed class PeopleImportService(IDataSourceProvider dataSources, TimePro
 
     private sealed record CheckedRow(int Index, int Line, string DisplayName, string? GivenName, string? FamilyName, string? Phone, string? Email, DateOnly? BirthDate);
 
-    public async Task<ImportResult> ImportAsync(TenantContext tenant, bool dryRun, IReadOnlyList<ImportRowInput> rows, CancellationToken cancellationToken)
+    public async Task<ImportResult> ImportAsync(TenantContext tenant, bool dryRun, IReadOnlyList<ImportRowInput> rows, CancellationToken cancellationToken, Guid? tagId = null)
     {
         if (rows.Count == 0 || rows.Count > MaxRows)
         {
@@ -105,6 +105,16 @@ public sealed class PeopleImportService(IDataSourceProvider dataSources, TimePro
             await lockStudio.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        // The batch tag (I-8) must be one of this studio's tags, on a dry run too.
+        if (tagId is { } tag)
+        {
+            await using var findTag = unitOfWork.Command("SELECT 1 FROM people.tags WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, tag);
+            if (await findTag.ExecuteScalarAsync(cancellationToken) is null)
+            {
+                throw new DomainRuleViolationException(ViolationKind.NotFound, "tag.not_found", "Tag not found.", "tagId");
+            }
+        }
+
         // 3. Matches in the studio, in one query.
         var existing = await ExistingAsync(unitOfWork, tenant.OrganizationId, good, cancellationToken);
         var toCreate = new List<CheckedRow>();
@@ -129,7 +139,7 @@ public sealed class PeopleImportService(IDataSourceProvider dataSources, TimePro
         if (!dryRun && toCreate.Count > 0)
         {
             importId = Guid.CreateVersion7();
-            await CreateAsync(unitOfWork, tenant, importId.Value, toCreate, ids, cancellationToken);
+            await CreateAsync(unitOfWork, tenant, importId.Value, toCreate, ids, tagId, cancellationToken);
         }
 
         foreach (var row in toCreate)
@@ -155,7 +165,7 @@ public sealed class PeopleImportService(IDataSourceProvider dataSources, TimePro
             await AuditWriter.WriteAsync(
                 unitOfWork,
                 new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, "people.imported", "organization", tenant.OrganizationId, tenant.CorrelationId,
-                    new { importId = id, rows = totals.Rows, created = totals.Created, exists = totals.Exists, duplicateInFile = totals.DuplicateInFile, invalid = totals.Invalid }),
+                    new { importId = id, rows = totals.Rows, created = totals.Created, exists = totals.Exists, duplicateInFile = totals.DuplicateInFile, invalid = totals.Invalid, tagged = tagId is null ? 0 : totals.Created }),
                 cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
         }
@@ -317,7 +327,7 @@ public sealed class PeopleImportService(IDataSourceProvider dataSources, TimePro
     }
 
     /// <summary>Section 5 steps 5 to 7: a fixed number of statements, whatever the number of rows.</summary>
-    private static async Task CreateAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid importId, List<CheckedRow> rows, Dictionary<int, Guid> ids, CancellationToken cancellationToken)
+    private static async Task CreateAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid importId, List<CheckedRow> rows, Dictionary<int, Guid> ids, Guid? tagId, CancellationToken cancellationToken)
     {
         var org = tenant.OrganizationId;
         var personIds = rows.Select(r => ids[r.Index]).ToArray();
@@ -353,6 +363,21 @@ public sealed class PeopleImportService(IDataSourceProvider dataSources, TimePro
             contacts.Select(c => c.Id).ToArray(),
             contacts.Select(c => c.Type).ToArray(),
             contacts.Select(c => c.Value!).ToArray());
+
+        // The batch tag on every created person (I-8); a new person has no other tag, so the per-person limit holds.
+        if (tagId is { } tag)
+        {
+            await ExecuteAsync(
+                unitOfWork,
+                """
+                INSERT INTO people.person_tags (organization_id, person_id, tag_id, created_at)
+                SELECT $1, p.id, $2, now() FROM unnest($3::uuid[]) AS p(id)
+                """,
+                cancellationToken,
+                org,
+                tag,
+                personIds);
+        }
 
         // Name and birth date against every other live person, the other new ones included (docs/27 section 4.6).
         await ExecuteAsync(

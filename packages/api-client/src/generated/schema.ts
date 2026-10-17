@@ -2728,7 +2728,7 @@ export interface components {
             dryRun: boolean;
             /**
              * Format: uuid
-             * @description Every person the import creates gets this tag (I-8, from I3). Must exist in the studio.
+             * @description Every person the import creates gets this tag (I-8). It must be one of the studio's tags (404 `tag.not_found`).
              */
             tagId?: string | null;
             rows: components["schemas"]["ImportRow"][];
