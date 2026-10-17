@@ -66,7 +66,8 @@ public static partial class PersonLifecycleEndpoints
                 h.SignedName,
                 h.GuardianName))],
             export.HealthAnswersWithheld,
-            export.HealthAnswersWithheldReason));
+            export.HealthAnswersWithheldReason,
+            [.. (export.Buddies ?? []).Select(b => new BuddyResponse(b.PersonId, b.DisplayName, b.Since))]));
     }
 
     private static async Task<IResult> EraseAsync(HttpContext httpContext, Guid personId, ErasePersonRequest request, IPersonLifecycleService lifecycle, TimeProvider clock)

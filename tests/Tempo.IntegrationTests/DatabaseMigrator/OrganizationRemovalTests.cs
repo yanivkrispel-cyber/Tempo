@@ -172,6 +172,9 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO scheduling.member_goals (organization_id, person_id, monthly_goal, updated_at) VALUES (org, person, 8, now());
                 INSERT INTO scheduling.room_spots (organization_id, room_id, id, label, row_index, col_index, kind, status, created_at, updated_at) VALUES (org, room, spot, '1', 0, 0, 'reformer', 'active', now(), now());
                 INSERT INTO scheduling.spot_preferences (organization_id, person_id, room_id, spot_id, updated_at) VALUES (org, person, room, spot, now());
+                INSERT INTO people.buddy_codes (organization_id, person_id, code_hash, expires_at, created_at) VALUES (org, person, decode('00', 'hex'), now(), now());
+                INSERT INTO people.buddy_links (organization_id, person_low, person_high, created_at) VALUES (org, least(person, other_person), greatest(person, other_person), now());
+                INSERT INTO people.buddy_attempts (organization_id, person_id, attempted_at) VALUES (org, person, now());
 
                 INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, created_at) VALUES (org, gen_random_uuid(), person, 'booking.confirmed', now());
                 INSERT INTO notifications.session_messages (organization_id, id, session_id, sent_by, body, recipients, created_at) VALUES (org, gen_random_uuid(), session, owner_membership, 'שיעור מבוטל', 1, now());
