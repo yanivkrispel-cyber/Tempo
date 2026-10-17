@@ -67,6 +67,8 @@ public static partial class PersonLifecycleEndpoints
                 h.GuardianName))],
             export.HealthAnswersWithheld,
             export.HealthAnswersWithheldReason,
+            export.Tags ?? [],
+            [.. (export.Notes ?? []).Select(n => new ExportNoteResponse(n.Body, n.CreatedAt, n.AuthorRole))],
             [.. (export.Buddies ?? []).Select(b => new BuddyResponse(b.PersonId, b.DisplayName, b.Since))]));
     }
 

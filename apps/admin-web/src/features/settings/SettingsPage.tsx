@@ -10,6 +10,7 @@ import { useStudio } from "../console/studio";
 import { BookingPolicyCard } from "./BookingPolicyCard";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PlanCard } from "./PlanCard";
+import { TagsCard } from "./TagsCard";
 import { TemplatesCard } from "./TemplatesCard";
 
 type Organization = Schemas["Organization"];
@@ -23,11 +24,12 @@ const timeZones = [{ value: "Asia/Jerusalem", label: "ישראל (Asia/Jerusalem
 
 /**
  * `/o/:slug/settings`: the studio's name, language and time zone (GET and PATCH /organizations/{id}), the health
- * gate of its booking policy, its notification settings, the words of its notifications and its plan.
+ * gate of its booking policy, its notification settings, the words of its notifications, its tags and its plan.
  */
 export function SettingsPage() {
   const api = useApi();
-  const { organizationId } = useStudio();
+  const studio = useStudio();
+  const { organizationId } = studio;
   const organization = useQuery({
     queryKey: ["studio", organizationId, "organization"],
     queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } })),
@@ -52,6 +54,7 @@ export function SettingsPage() {
       <BookingPolicyCard />
       <NotificationSettingsCard />
       <TemplatesCard />
+      {studio.can("people.tags.manage") && <TagsCard />}
       <PlanCard />
     </>
   );

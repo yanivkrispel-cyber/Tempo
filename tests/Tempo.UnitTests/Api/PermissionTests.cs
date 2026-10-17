@@ -110,9 +110,10 @@ public sealed class PermissionTests : IDisposable
         string[] staff =
         [
             Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage,
-            Permissions.ScheduleView, Permissions.BookingsManage, Permissions.AttendanceMark, Permissions.PassesView
+            Permissions.ScheduleView, Permissions.BookingsManage, Permissions.AttendanceMark, Permissions.PassesView,
+            Permissions.PeopleNotesView, Permissions.PeopleNotesManage
         ];
-        SystemRoles.Admin.Permissions.Should().HaveCount(19).And.NotContain(ownerOnly).And.Contain(Permissions.ReportsView);
+        SystemRoles.Admin.Permissions.Should().HaveCount(24).And.NotContain(ownerOnly).And.Contain(Permissions.ReportsView).And.Contain(Permissions.PeopleImport);
         SystemRoles.Staff.Permissions.Should().BeEquivalentTo(staff);
         SystemRoles.Client.Permissions.Should().BeEquivalentTo(Permissions.OrganizationView, Permissions.ScheduleView);
     }

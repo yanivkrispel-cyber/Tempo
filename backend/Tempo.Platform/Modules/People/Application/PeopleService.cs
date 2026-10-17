@@ -22,6 +22,7 @@ public sealed record PersonView(
     Guid? MergedIntoId,
     DateTimeOffset CreatedAt,
     long Version,
+    IReadOnlyList<PersonTagView>? Tags = null,
     Guid? AvatarMediaId = null);
 
 public sealed record ContactPointView(Guid Id, string Type, string Value, bool IsPrimary, bool Verified, long Version);
@@ -46,7 +47,7 @@ public sealed record PersonDetailView(
 
 public sealed record PersonPage(IReadOnlyList<PersonView> Items, Guid? NextBefore);
 
-public sealed record PeopleQuery(string? Text, string? Status, Guid? Before, int Limit);
+public sealed record PeopleQuery(string? Text, string? Status, Guid? Before, int Limit, Guid? Tag = null);
 
 public sealed record NewPerson(string? DisplayName, string? GivenName, string? FamilyName, DateOnly? BirthDate, string? Email, string? Phone);
 
@@ -137,6 +138,8 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
                               WHERE c.organization_id = p.organization_id AND c.person_id = p.id
                                 AND c.value ILIKE '%' || $3 || '%'))
               AND ($4::uuid IS NULL OR p.id < $4)
+              AND ($6::uuid IS NULL OR EXISTS (SELECT 1 FROM people.person_tags pt
+                                               WHERE pt.organization_id = p.organization_id AND pt.person_id = p.id AND pt.tag_id = $6))
             ORDER BY p.id DESC
             LIMIT $5
             """,
@@ -144,9 +147,10 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
             query.Status,
             text is null ? null : EscapeLike(text),
             query.Before,
-            limit + 1);
+            limit + 1,
+            query.Tag);
         var rows = await ReadPeopleAsync(command, cancellationToken);
-        var page = rows.Take(limit).ToList();
+        var page = await WithTagsAsync(unitOfWork, tenant.OrganizationId, [.. rows.Take(limit)], cancellationToken);
         return new PersonPage(page, rows.Count > limit ? page[^1].Id : null);
     }
 
@@ -462,6 +466,8 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
             person = (await ReadPeopleAsync(command, cancellationToken)).SingleOrDefault() ?? throw PersonNotFound();
         }
 
+        person = (await WithTagsAsync(unitOfWork, organizationId, [person], cancellationToken))[0];
+
         var contacts = await ContactsAsync(unitOfWork, organizationId, personId, cancellationToken);
 
         var consents = new List<ConsentView>();
@@ -568,6 +574,13 @@ public sealed class PeopleService(IDataSourceProvider dataSources) : IPeopleServ
         }
 
         return people;
+    }
+
+    /// <summary>Each person with their tags, read in one query (docs/34 section 7).</summary>
+    private static async Task<List<PersonView>> WithTagsAsync(UnitOfWork unitOfWork, Guid organizationId, List<PersonView> people, CancellationToken cancellationToken)
+    {
+        var tags = await PeopleTagsAndNotesService.TagsOfAsync(unitOfWork, organizationId, [.. people.Select(p => p.Id)], cancellationToken);
+        return [.. people.Select(p => p with { Tags = tags.GetValueOrDefault(p.Id) ?? [] })];
     }
 
     private static async Task LockWritablePersonAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, CancellationToken cancellationToken)
