@@ -12,6 +12,7 @@ using Tempo.Platform.Modules.Notifications.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Billing;
 using Tempo.Platform.Modules.People.Application;
+using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Scheduling.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 using Tempo.Platform.Modules.PlatformAdmin;
@@ -59,6 +60,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
         services.AddSingleton(sp => new VapidKeySource(key => sp.GetRequiredService<IConfiguration>()[key], needsPrivateKey: false));
         services.AddSingleton<IConsentService, ConsentService>();
+        services.AddSingleton<IHealthDataKeys>(sp => new HealthDataKeys(key => sp.GetRequiredService<IConfiguration>()[key]));
+        services.AddSingleton<IHealthDeclarationService, HealthDeclarationService>();
         services.AddSingleton<IPersonLifecycleService, PersonLifecycleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
         services.AddSingleton<IInvitationService, InvitationService>();

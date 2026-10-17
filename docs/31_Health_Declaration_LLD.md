@@ -141,18 +141,20 @@ Out, and where it goes:
 - **Fail closed:** a missing parameter, a wrong key or a failed tag answers 503 `health.key_unavailable` for answer
   reads and signing. It never returns partial data or falls back to another version. Status reads do not need the
   key (`has_yes` is plaintext), so the front desk keeps working.
-- **IAM:** the API's role gets `ssm:GetParameter` on `parameter/tempo/{env}/health/data-key/*` only. The `aws/ssm`
-  key policy already lets the account's principals decrypt through SSM, so no `kms:*` statement is added. The worker
-  gets nothing: it never reads answers.
+- **IAM:** the API's role gets `ssm:GetParameter` on the exact readable versions,
+  `parameter/tempo/{env}/health/data-key/1` today (`HEALTH_DATA_KEY_READABLE_VERSIONS` in
+  `infrastructure/lib/api/health-parameters.ts`), with no wildcard. The `aws/ssm` key policy already lets the
+  account's principals decrypt through SSM, so no `kms:*` statement is added. The worker gets nothing: it never reads
+  answers (the retention job deletes rows without opening them).
 
 ### 7.1 Key life cycle
 
-1. **Create** once per environment: `node tools/scripts/health-data-key.mjs create --env dev --profile tempo`. The
-   script generates the key with `crypto.randomBytes(32)`, writes version 1 as a SecureString with
-   `--overwrite false`, and prints only the parameter name. CloudFormation cannot create SecureStrings, so this is a
+1. **Create** once per environment: `node tools/scripts/health-data-key.mjs --environment dev --profile tempo`. The
+   script generates the key with `crypto.randomBytes(32)`, writes version 1 as a SecureString that is never
+   overwritten, and prints only the parameter name. CloudFormation cannot create SecureStrings, so this is a
    person's step, as with the VAPID keys.
-2. **Rotate** (planned, not built in part one): the script writes version `n+1`; a deploy sets
-   `HEALTH_DATA_KEY_CURRENT_VERSION`; new signatures use it; a re-encrypt command rewrites old rows to the new
+2. **Rotate** (planned, not built in part one): the script writes version `n+1` (`--version n+1`); a deploy adds it
+   to the readable versions and sets `HEALTH_DATA_KEY_CURRENT_VERSION`; new signatures use it; a re-encrypt command rewrites old rows to the new
    version; when no row holds version `n`, its parameter is deleted. Rotation is due when a person with access to
    the key leaves, or at the move to a customer-managed key.
 3. **Lose:** without the parameter the answers cannot be read. Statuses still work. Members sign again. Before
@@ -197,6 +199,7 @@ Errors:
 | `health.declaration_required` | 409 | The gate is on and the member's own booking or waitlist place has no `signed` status |
 | `health.form_version_stale` | 409 | The member signed a version that is no longer current; the app reloads the form |
 | `health.answers_incomplete` | 400 | A question of that version has no answer, or an unknown question id |
+| `health.signed_name_invalid` | 400 | The member's name is not 2 to 100 characters, or has control characters |
 | `health.confirmation_required` | 400 | `confirmed` is not true |
 | `health.guardian_name_required` | 400 | Signer role `guardian` without the guardian's name |
 | `health.no_approval_needed` | 409 | Medical approval recorded on a status other than `needs_medical_approval` |
@@ -204,8 +207,8 @@ Errors:
 
 - Validation: signed name and guardian's name 2 to 100 characters after trimming, no control characters; the approval
   date not in the future and not before the declaration was signed.
-- The signed name is what the member typed. It is not compared with the person record; staff see it with the
-  answers.
+- `signedName` is the member's full name, whose declaration it is. `guardianName` is the guardian who signs, only
+  for `signerRole: guardian`. Neither is compared with the person record; staff see both with the answers.
 
 ## 10. The booking gate (H-5)
 
@@ -227,6 +230,9 @@ Errors:
   `health.view`. Without it the export lists the declarations without answers or names and says so in
   `healthAnswersWithheld: true`. A decrypting export writes one `health.declaration.viewed` event per declaration,
   with `purpose: export`. The export goes to the person; the person's own copy is the reason it exists.
+- **Merge** (docs/27 section 4.6): the merged record's declarations move to the survivor. The ciphertext is bound to
+  the declaration, not the person, so it still opens. If both had a current declaration, the newer signature stays
+  current and the older one is replaced (and retention deletes it 90 days later).
 - **Retention** (H-8): the daily retention job deletes declarations whose `superseded_at` is more than 90 days
   ago. `RetentionPolicy.Default` gains `ReplacedHealthDeclarationDays = 90`, provisional until P-2.
 - **Audit events** (ids, versions and counts only; never an answer, a name or ciphertext):
@@ -237,7 +243,10 @@ Errors:
 | `health.declaration.viewed` | declaration id, purpose `view` or `export` |
 | `health.medical_approval.recorded` | declaration id, the date |
 | `booking.health_gate_bypassed` | booking id, person id, status |
-| `health.declarations.deleted` | count, reason `retention` (erase uses `person.erased`) |
+| `person.erased` | gains `healthDeclarations`, the count deleted |
+
+The retention job is not a member's action, so it writes no audit event: the worker logs the count of replaced
+declarations it deleted, with the other retention counts.
 
 ## 12. Member progress (G-1 to G-3)
 

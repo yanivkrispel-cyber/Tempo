@@ -1,3 +1,4 @@
+using Tempo.Contracts.Api.Health;
 using Tempo.Contracts.Api.Authorization;
 
 namespace Tempo.Contracts.Api.People;
@@ -97,7 +98,23 @@ public sealed record PersonExportResponse(
     PersonDetailResponse Person,
     IReadOnlyList<ConsentResponse> ConsentHistory,
     IReadOnlyList<ExportBookingResponse> Bookings,
-    IReadOnlyList<ExportPassResponse> Passes);
+    IReadOnlyList<ExportPassResponse> Passes,
+    IReadOnlyList<ExportHealthDeclarationResponse> HealthDeclarations,
+    bool HealthAnswersWithheld);
+
+/// <summary>`ExportHealthDeclaration`: answers and names only when the exporting member holds `health.view` (docs/31 section 11).</summary>
+public sealed record ExportHealthDeclarationResponse(
+    Guid DeclarationId,
+    int FormVersion,
+    string Status,
+    string SignerRole,
+    DateTimeOffset SignedAt,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset? SupersededAt,
+    DateOnly? MedicalApprovalOn,
+    IReadOnlyList<HealthAnswerResponse>? Answers,
+    string? SignedName,
+    string? GuardianName);
 
 /// <summary>The body of erase (`ReasonRequest`).</summary>
 public sealed record ErasePersonRequest(string? Reason);

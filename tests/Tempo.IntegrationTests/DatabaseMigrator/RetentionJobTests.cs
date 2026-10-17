@@ -55,8 +55,8 @@ public sealed class RetentionJobTests(PostgresFixture postgres) : IClassFixture<
         var first = await job.RunAsync(CancellationToken.None);
         var second = await job.RunAsync(CancellationToken.None);
 
-        first.Should().Be((3, 1, 2, 1));
-        second.Should().Be((0, 0, 0, 0), "running twice changes nothing");
+        first.Should().Be((3, 1, 2, 1, 0));
+        second.Should().Be((0, 0, 0, 0, 0), "running twice changes nothing");
         (await db.AsMasterAsync("SELECT count(*) FROM organizations.invitations WHERE organization_id = $1", owner.OrganizationId)).Should().Be(3L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE organization_id = $1", owner.OrganizationId)).Should().Be(2L);
         (await db.AsMasterAsync("SELECT count(*) FROM notifications.requests WHERE organization_id = $1", owner.OrganizationId)).Should().Be(1L);

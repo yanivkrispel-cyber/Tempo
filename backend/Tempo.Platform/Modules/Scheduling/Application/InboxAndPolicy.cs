@@ -5,7 +5,8 @@ using Tempo.Platform.Modules.Audit;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
-public sealed record BookingPolicyView(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, long Version);
+/// <summary><paramref name="RequireHealthDeclaration"/> is always set on a read; on an update, null keeps the current value (docs/31 section 10).</summary>
+public sealed record BookingPolicyView(int FreeCancelHours, int WaitlistCutoffHours, int BookingHorizonDays, bool WaitlistEnabled, long Version, bool? RequireHealthDeclaration = null);
 
 /// <summary><paramref name="Text"/> is the staff message for a `session.message` item (docs/29 section 16.2) or the text of a `studio.announcement`; null for every other kind.</summary>
 public sealed record InboxItemView(Guid Id, string Kind, Guid? SessionId, Guid? BookingId, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, DateTimeOffset? SessionStartsAt = null, string? ClassTypeName = null, string? Text = null, Guid? PassId = null, string? Title = null, string? Body = null);
@@ -50,15 +51,16 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
             throw new DomainRuleViolationException(ViolationKind.Conflict, "concurrency.conflict", "Someone changed this in the meantime. Reload and try again.");
         }
 
+        var requireHealthDeclaration = policy.RequireHealthDeclaration ?? current.RequireHealthDeclaration ?? false;
         await using (var upsert = unitOfWork.Command(
             """
-            INSERT INTO scheduling.booking_policies (organization_id, free_cancel_hours, waitlist_cutoff_hours, booking_horizon_days, waitlist_enabled, updated_at, version)
-            VALUES ($1, $2, $3, $4, $5, now(), 1)
+            INSERT INTO scheduling.booking_policies (organization_id, free_cancel_hours, waitlist_cutoff_hours, booking_horizon_days, waitlist_enabled, require_health_declaration, updated_at, version)
+            VALUES ($1, $2, $3, $4, $5, $6, now(), 1)
             ON CONFLICT (organization_id) DO UPDATE
             SET free_cancel_hours = $2, waitlist_cutoff_hours = $3, booking_horizon_days = $4, waitlist_enabled = $5,
-                updated_at = now(), version = scheduling.booking_policies.version + 1
+                require_health_declaration = $6, updated_at = now(), version = scheduling.booking_policies.version + 1
             """,
-            tenant.OrganizationId, policy.FreeCancelHours, policy.WaitlistCutoffHours, policy.BookingHorizonDays, policy.WaitlistEnabled))
+            tenant.OrganizationId, policy.FreeCancelHours, policy.WaitlistCutoffHours, policy.BookingHorizonDays, policy.WaitlistEnabled, requireHealthDeclaration))
         {
             await upsert.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -66,7 +68,7 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
         await AuditWriter.WriteAsync(
             unitOfWork,
             new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, "booking_policy.updated", "organization", tenant.OrganizationId, tenant.CorrelationId,
-                new { policy.FreeCancelHours, policy.WaitlistCutoffHours, policy.BookingHorizonDays, policy.WaitlistEnabled }),
+                new { policy.FreeCancelHours, policy.WaitlistCutoffHours, policy.BookingHorizonDays, policy.WaitlistEnabled, RequireHealthDeclaration = requireHealthDeclaration }),
             cancellationToken);
         var updated = await ReadPolicyAsync(unitOfWork, tenant.OrganizationId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
@@ -160,14 +162,14 @@ public sealed class StudioSettingsService(IDataSourceProvider dataSources) : ISt
         await using var command = unitOfWork.Command(
             """
             SELECT coalesce(p.free_cancel_hours, 6), coalesce(p.waitlist_cutoff_hours, 2), coalesce(p.booking_horizon_days, 14),
-                   coalesce(p.waitlist_enabled, true), coalesce(p.version, 0)
+                   coalesce(p.waitlist_enabled, true), coalesce(p.version, 0), coalesce(p.require_health_declaration, false)
             FROM (SELECT 1) one
             LEFT JOIN scheduling.booking_policies p ON p.organization_id = $1
             """,
             organizationId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         await reader.ReadAsync(cancellationToken);
-        return new BookingPolicyView(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetBoolean(3), reader.GetInt64(4));
+        return new BookingPolicyView(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetBoolean(3), reader.GetInt64(4), reader.GetBoolean(5));
     }
 
     private static async Task<Guid?> MyPersonAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)

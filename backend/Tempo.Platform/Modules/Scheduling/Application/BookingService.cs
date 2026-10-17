@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.Notifications.Application;
 using Tempo.Platform.Modules.Scheduling.Domain;
 
@@ -55,7 +56,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
 {
     private sealed record SessionFacts(Guid Id, DateOnly LocalDate, DateTimeOffset StartsAt, string Status, string Category);
 
-    private sealed record Policy(int FreeCancelHours, int WaitlistCutoffHours, int HorizonDays, bool WaitlistEnabled);
+    private sealed record Policy(int FreeCancelHours, int WaitlistCutoffHours, int HorizonDays, bool WaitlistEnabled, bool RequireHealthDeclaration);
 
     public async Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken)
     {
@@ -90,6 +91,16 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
             }
         }
 
+        // The health declaration gate (docs/31 section 10, H-5): a member's own place needs `signed`; staff booking on
+        // someone's behalf goes through and is audited below.
+        var healthStatus = policy.RequireHealthDeclaration
+            ? await HealthStatus.OfPersonAsync(unitOfWork, tenant.OrganizationId, person, now, cancellationToken)
+            : HealthStatus.SignedStatus;
+        if (personId is null && healthStatus != HealthStatus.SignedStatus)
+        {
+            throw Conflict("health.declaration_required", "Sign the studio's health declaration before booking.");
+        }
+
         var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, person, session, lockRows: true, cancellationToken)
             ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, person, session, "No punch card or membership is valid for this class.", cancellationToken);
         var bookingId = Guid.CreateVersion7();
@@ -119,6 +130,12 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation && e.ConstraintName == "ux_bookings_one_live")
         {
             throw Conflict("booking.duplicate", "Already booked or waiting for this class.");
+        }
+
+        if (healthStatus != HealthStatus.SignedStatus)
+        {
+            // Staff booked someone without a signed declaration while the gate is on (H-5): allowed, and on record.
+            await AuditAsync(unitOfWork, tenant, "booking.health_gate_bypassed", bookingId, new { personId = person, status = healthStatus }, cancellationToken);
         }
 
         var booking = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, bookingId)).Single();
@@ -676,14 +693,15 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
     {
         await using var command = unitOfWork.Command(
             """
-            SELECT coalesce(p.free_cancel_hours, 6), coalesce(p.waitlist_cutoff_hours, 2), coalesce(p.booking_horizon_days, 14), coalesce(p.waitlist_enabled, true)
+            SELECT coalesce(p.free_cancel_hours, 6), coalesce(p.waitlist_cutoff_hours, 2), coalesce(p.booking_horizon_days, 14), coalesce(p.waitlist_enabled, true),
+                   coalesce(p.require_health_declaration, false)
             FROM (SELECT 1) one
             LEFT JOIN scheduling.booking_policies p ON p.organization_id = $1
             """,
             organizationId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         await reader.ReadAsync(cancellationToken);
-        return new Policy(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetBoolean(3));
+        return new Policy(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetBoolean(3), reader.GetBoolean(4));
     }
 
     private static async Task<Guid> MyPersonIdAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)

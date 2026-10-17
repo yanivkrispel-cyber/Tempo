@@ -39,6 +39,7 @@ public static class Problems
         ViolationKind.Conflict => StatusCodes.Status409Conflict,
         ViolationKind.Gone => StatusCodes.Status410Gone,
         ViolationKind.TooManyRequests => StatusCodes.Status429TooManyRequests,
+        ViolationKind.ServiceUnavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status400BadRequest
     };
 

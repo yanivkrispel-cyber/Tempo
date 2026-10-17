@@ -1703,8 +1703,10 @@ export interface paths {
         put?: never;
         /**
          * Sign the current form, for myself or as a guardian (self); replaces my current declaration
-         * @description 400 `health.answers_incomplete`, `health.confirmation_required`, `health.guardian_name_required`;
-         *     409 `health.form_version_stale` (reload the form); 503 `health.key_unavailable`.
+         * @description `signedName` is the member's full name (whose declaration it is); `guardianName` is the guardian who signs,
+         *     only for `signerRole: guardian`. 400 `health.answers_incomplete`, `health.confirmation_required`,
+         *     `health.signed_name_invalid`, `health.guardian_name_required`; 409 `health.form_version_stale` (reload the
+         *     form); 503 `health.key_unavailable`.
          */
         post: operations["signMyHealthDeclaration"];
         delete?: never;
@@ -2472,9 +2474,9 @@ export interface components {
             bookings: components["schemas"]["ExportBooking"][];
             /** @description Every pass granted to this person, in start order. No staff note. */
             passes: components["schemas"]["ExportPass"][];
-            /** @description Planned (docs/31 section 11; absent until it is built). Current and replaced declarations. */
+            /** @description Current and replaced declarations, oldest first (docs/31 section 11). */
             healthDeclarations?: components["schemas"]["ExportHealthDeclaration"][];
-            /** @description Planned. True when the exporting member lacks `health.view`, so answers and names are null. */
+            /** @description True when the exporting member lacks `health.view`, so answers and names are null. */
             healthAnswersWithheld?: boolean;
         };
         ExportBooking: {
@@ -2848,7 +2850,7 @@ export interface components {
             passName?: string | null;
             /** @description Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place). */
             entriesLeft?: number | null;
-            /** @description Planned (docs/31 section 5; absent until it is built). The person's declaration status; null when the caller lacks `people.view`. */
+            /** @description The person's declaration status (docs/31 section 5); null when the caller lacks `people.view`. */
             healthStatus?: components["schemas"]["HealthDeclarationStatus"] | null;
             /** Format: date-time */
             bookedAt: string;
@@ -2984,7 +2986,7 @@ export interface components {
             waitlistCutoffHours: number;
             bookingHorizonDays: number;
             waitlistEnabled: boolean;
-            /** @description Planned (docs/31 section 10; absent until it is built, read absent as false). When true, a member's own booking or waitlist place needs a `signed` declaration, else 409 `health.declaration_required`. */
+            /** @description docs/31 section 10. When true, a member's own booking or waitlist place needs a `signed` declaration, else 409 `health.declaration_required`; staff booking for someone else is allowed and audited. Always sent since H2; optional in the schema only so older app fixtures keep compiling. */
             requireHealthDeclaration?: boolean;
             version: string;
         };
@@ -2993,7 +2995,7 @@ export interface components {
             waitlistCutoffHours: number;
             bookingHorizonDays: number;
             waitlistEnabled: boolean;
-            /** @description Planned (docs/31 section 10). Left out keeps the current value; off by default. */
+            /** @description docs/31 section 10. Left out keeps the current value; off by default. */
             requireHealthDeclaration?: boolean;
         };
         InboxItem: {
@@ -3384,11 +3386,11 @@ export interface components {
             formVersion: number;
             /** @description One answer for every question of that version, no more. */
             answers: components["schemas"]["HealthAnswer"][];
-            /** @description The name as typed by the signer. */
+            /** @description The member's full name, as typed. */
             signedName: string;
             /** @enum {string} */
             signerRole: "self" | "guardian";
-            /** @description Required when `signerRole` is `guardian`. */
+            /** @description The guardian who signs; required when `signerRole` is `guardian`. */
             guardianName?: string | null;
             /**
              * @description The confirmation checkbox.
@@ -3535,7 +3537,8 @@ export interface components {
          * @description `organization.slug_taken`, `organization.creation_limit`, `concurrency.conflict`,
          *     `ownership.transfer_pending`, `ownership.transfer_stale` (roles changed since the offer; it is cancelled),
          *     `person.has_login`, `person.merge_both_have_login`, `person.read_only` (anonymized or merged),
-         *     `contact_point.verified` (the sign-in email changes only with the account), `relationship.exists`.
+         *     `contact_point.verified` (the sign-in email changes only with the account), `relationship.exists`,
+         *     `health.declaration_required`, `health.form_version_stale`, `health.no_approval_needed`.
          */
         Conflict: {
             headers: {
