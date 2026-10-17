@@ -1,5 +1,6 @@
 // node --test tools/scripts/lib/tools.test.mjs
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { demoMemberEmail, isDemoMember } from "./demo-members.mjs";
@@ -97,4 +98,22 @@ test("--keep keeps the branch", async () => {
   );
   assert.equal(result, "br-2");
   assert.deepEqual(deleted, []);
+});
+
+const root = new URL("../../../", import.meta.url);
+
+test("every local compose service runs with no-new-privileges (#115)", () => {
+  const compose = readFileSync(new URL("docker-compose.local.yml", root), "utf8").replace(/\r\n/g, "\n");
+  const services = compose.split(/^services:$/m)[1].split(/^volumes:$/m)[0];
+  const blocks = services.split(/^ {2}(?=[a-z][\w-]*:$)/m).filter((block) => block.trim());
+  assert.ok(blocks.length >= 2, "found the services");
+  for (const block of blocks) {
+    assert.match(block, /security_opt:\s*\n\s*- no-new-privileges:true/, `${block.split(":")[0]} has no-new-privileges`);
+  }
+});
+
+test("the pnpm supply-chain settings stay on (#115, W-3)", () => {
+  const workspace = readFileSync(new URL("pnpm-workspace.yaml", root), "utf8").replace(/\r\n/g, "\n");
+  assert.match(workspace, /^minimumReleaseAge: \d+$/m);
+  assert.match(workspace, /^blockExoticSubdeps: true$/m);
 });
