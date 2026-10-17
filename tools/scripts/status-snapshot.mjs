@@ -26,6 +26,7 @@
 
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -222,6 +223,7 @@ function main() {
   );
 }
 
-if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, "/")}` || process.argv[1]?.endsWith("status-snapshot.mjs")) {
+// Run only as a script: importing the module (tests) must not call GitHub. Works on Windows and Linux paths.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

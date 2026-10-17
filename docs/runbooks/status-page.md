@@ -55,7 +55,20 @@ The lane that posts the EVENING (or whoever closes a board) also does this:
    itself does not change). Ofir's sessions need edit access to the artifact for this: Kris gives it from the
    page's Share menu.
 
-A new board issue gets the `board` label and a `<!-- status-board -->` comment with `he:`, `summary:` and `until:`.
+A new board issue gets the `board` label and a comment that starts with the block below, each key on its own line
+(a one-line `<!-- status-board -->` marker has no keys, so the page would show the English title). #321's first
+comment is an example.
+
+```text
+<!-- status-board
+he: לוח ערב 7: כל מסך בטלפון ובמחשב, ייבוא מתאמנים, הערות ותגיות
+summary: one or two Hebrew sentences on what the board does.
+until: 17.10 בשעה 23:30
+-->
+[STATUS-PAGE] Hebrew name and summary of this board for the status page (docs/runbooks/status-page.md).
+```
+
+`tools/scripts/lib/status-snapshot.test.mjs` pins how these blocks and task lists are read.
 
 ## Adding an epic
 
