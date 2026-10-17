@@ -10,9 +10,10 @@ The pilot runs on the development environment. Production waits for revenue (ADR
 
 ## Verdict
 
-A studio can run end to end on dev today, with the apps started locally against the dev API. Three things stop a
-real pilot on the internet, and all three need Kris: the Cloudflare Pages secrets (ADR-0027, AWS refused CloudFront),
-the health form's wording with the lawyer (P-2), and the consent texts (P-4).
+A studio can run end to end on dev today, and since #310 the apps are on the internet as well:
+https://tempo-studio-console.pages.dev and https://tempo-members.pages.dev (Cloudflare Pages, ADR-0027; AWS refused
+CloudFront). Two things stop a real pilot, and both need Kris: the health form's wording with the lawyer (P-2), and
+the consent texts (P-4).
 
 Since board #253 the console has owner reports, a person can delete their own login, and the operator can remove
 a suspended studio. The last two close P2 F6 and F4 once Kris registers as operator (Kris's list, step 1).
@@ -34,11 +35,11 @@ a suspended studio. The last two close P2 F6 and F4 once Kris registers as opera
 | 11 | Notifications: inbox, web push, reminders, templates, announcements | done on dev; email waits for the domain (D-1) | docs/30 steps 1 to 4, 6, 7 (#176, #208) |
 | 12 | Attendance and the member's progress (visits, goal, streak) | done on dev | #95; P1 #235, X1 #236 |
 | 13 | Export and erase, including the health declaration; the export still goes out, answers withheld, when the health key can't be read | done on dev | #61 to #90; #239; A3 #264 |
-| 13a | Owner reports: weekly figures, per class type, active and new members; passes ending soon and members at risk (`reports.view`, migration 0021) | done on dev (API); the console page is Y1 | R2 #259; Y0 #256, Y1 #257 |
-| 13b | A person deletes their own login; each studio keeps the person record and its history (migration 0022) | done on dev (API, live check 5/5); the screen is Y2 | A1 #262, #267; Y2 #258 |
+| 13a | Owner reports: weekly figures, per class type, active and new members; passes ending soon and members at risk (`reports.view`, migration 0021) | done on dev, API and console page | R2 #259; Y0 #256, Y1 #257 |
+| 13b | A person deletes their own login; each studio keeps the person record and its history (migration 0022) | done on dev, API (live check 5/5) and both apps; Playwright `sync6` 6/6 | A1 #262, #267; Y2 #258; Y3 #261 |
 | 13c | The operator removes a suspended studio and every row it owns (migration 0023) | built; **needs the operator** (Kris's step 1) | A2 #263 |
 | 14 | Consent texts shown to members | **blocked on Kris**: P-4 | docs/27 section 15 |
-| 15 | The apps on the internet (Cloudflare Pages, ADR-0027) | **blocked on Kris**: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; AWS refused CloudFront on 2026-10-17 | `deploy-web` in `deploy-development.yml` |
+| 15 | The apps on the internet (Cloudflare Pages, ADR-0027; AWS refused CloudFront on 2026-10-17) | done on dev: `deploy-web` publishes and smoke-tests both apps on every deploy since the secrets were set | #310 |
 
 ## Found in the pilot dry run (P2)
 
@@ -75,6 +76,7 @@ member is erased after its run. Neither is real health data.
 | `trustPolicy: no-downgrade` for pnpm: the frozen install fails on `semver@6.3.1` and `undici-types@6.20.0` (trust downgrade) | #115 |
 | `minimumReleaseAge` is one day, not Semgrep's seven: seven rejects 9 lock entries from this week | #265 |
 | A removed studio's rows stay in Neon's point-in-time history until it ages out (6 h on the Free plan); the production deletion promise must say so | A2 review, #263 |
+| Until #261, `expectFitsNarrowPhone` could not fail on the Pixel 7 projects (`innerWidth` grows with a page that is too wide), so the next sync2 to sync5 and design-system runs may show sideways scroll that was always there | Y3 #261 |
 | Where `admin-web` lives beside `client-web` on the one distribution | K2's CSP review, #232 |
 | A production copy of the health data key (offline backup, or not) | docs/31 section 15 |
 
@@ -82,7 +84,7 @@ member is erased after its run. Neither is real health data.
 
 1. Register as the first operator (`tools/scripts/register-operator.ps1`, MFA).
 2. The health form's wording and the retention rule with the lawyer (P-2); the consent texts (P-4).
-3. The Cloudflare token (Pages: Edit only) and account id as GitHub secrets (ADR-0027); AWS refused CloudFront on 2026-10-17.
+3. Done: the Cloudflare secrets are set and `deploy-web` publishes both apps (#310).
 4. IAM grants so CI's smoke test can sign in; confirm the canary's SNS email.
 5. #115: `trustPolicy` for pnpm (exclude the two packages, refresh their lock entries, or accept the finding). The
    Actions pins of #186 are done (W1 #254).
