@@ -70,8 +70,11 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
 
 6. **Every screen on every device** (`specs/screens/`, project `screens`, D15 and #317): opens every route of both
    apps at six sizes, from a 360px phone through both tablet orientations to a 1920px desktop
-   (`support/screens.ts`), signed in as the smoke user, and reads only. It fails when a page scrolls sideways, or when
-   a control on a touch screen is under 44px. Run it alone (`pnpm e2e --project=screens`, about ten minutes);
+   (`support/screens.ts`), signed in as the smoke user, and reads only. It fails when a page scrolls sideways, when
+   a control on a touch screen is under 44px, or when axe finds something serious at 360 or 1280px, the two widths D15
+   names. `console-menu.spec.ts` goes through the console's drawer and bottom bar on a phone by keyboard and by touch:
+   closed, the drawer takes no focus; open, focus stays in it; closed again, focus is back on the button that opened
+   it. Run it alone (`pnpm e2e --project=screens`, about twelve minutes);
    `E2E_SCREENSHOTS=1` also keeps a full-page picture of each screen and a `fit.jsonl` summary in
    `test-results/screens/`. To check the published dev sites instead of local servers, set
    `E2E_ADMIN_URL=https://tempo-studio-console.pages.dev` and `E2E_CLIENT_URL=https://tempo-members.pages.dev`.

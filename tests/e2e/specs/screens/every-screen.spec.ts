@@ -2,6 +2,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { Api } from "../../support/api";
+import { expectNoSeriousA11yViolations } from "../../support/axe";
 import { adminUrl, clientUrl, hasSession, noSessionMessage, sessionStatePath, studioSlug } from "../../support/env";
 import {
   SCREENS,
@@ -15,8 +16,8 @@ import {
 import { sessionsBetween, studioDay } from "../../support/studio";
 
 // D15 (docs/claude-memory/decisions.md, #317): every screen of both apps works on a phone, a tablet and a computer.
-// Each route opens at every size in SCREENS; nothing may scroll sideways, and on touch screens every control is at
-// least 44px. Read-only: it only opens screens in the smoke studio.
+// Each route opens at every size in SCREENS; nothing may scroll sideways, on touch screens every control is at least
+// 44px, and at 360 and 1280px axe finds nothing serious. Read-only: it only opens screens in the smoke studio.
 // Each test opens one route at all six sizes.
 test.describe.configure({ timeout: 180_000 });
 
@@ -93,6 +94,9 @@ for (const route of routes) {
         await keepScreenshot(page, route.app, route.name, screen);
         expect.soft(fit.overflow, `${label} scrolls sideways`).toBeLessThanOrEqual(0);
         expect.soft(fit.smallTargets, `${label} has controls under 44px`).toEqual([]);
+        // axe at the two widths D15 names: the phone layout and the computer one (the console's seven-column week,
+        // for one, is only drawn from 900px, and no other spec audits it since SYNC 2 moved to the phone).
+        if (screen.audit) await expectNoSeriousA11yViolations(page, testInfo, label);
       } finally {
         await context.close();
       }

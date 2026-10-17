@@ -15,6 +15,9 @@ public sealed record DuplicateCandidatePage(IReadOnlyList<DuplicateCandidateView
 /// <summary>One booking as the data subject sees it in their export: the class, when, and what became of the place.</summary>
 public sealed record ExportBookingView(Guid Id, Guid SessionId, string ClassName, DateTimeOffset StartsAt, string Status, bool LateCancel, string? CancelReason, DateTimeOffset CreatedAt);
 
+/// <summary>A staff note in the export: the author by role, never by name (docs/34 section 9).</summary>
+public sealed record ExportNoteView(string Body, DateTimeOffset CreatedAt, string AuthorRole);
+
 /// <summary>One pass in the export; no note, because erase clears it and the export is about the person, not staff remarks.</summary>
 public sealed record ExportPassView(Guid Id, string ProductName, string Kind, DateOnly StartsOn, DateOnly EndsOn, int? Entries, int EntriesUsed, string Status, DateTimeOffset CreatedAt);
 
@@ -28,7 +31,9 @@ public sealed record PersonExportView(
     IReadOnlyList<ExportPassView> Passes,
     IReadOnlyList<ExportHealthDeclarationView> HealthDeclarations,
     bool HealthAnswersWithheld,
-    string? HealthAnswersWithheldReason = null)
+    string? HealthAnswersWithheldReason = null,
+    IReadOnlyList<string>? Tags = null,
+    IReadOnlyList<ExportNoteView>? Notes = null)
 {
     /// <summary>The exporter lacks `health.view`.</summary>
     public const string NoHealthView = "no_health_view";
@@ -289,9 +294,25 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
                 answers?.GuardianName));
         }
 
+        // Tags and staff notes (docs/34 section 9): the person's copy of what the studio keeps about them.
+        var tags = (await PeopleTagsAndNotesService.TagsOfAsync(unitOfWork, tenant.OrganizationId, [personId], cancellationToken))
+            .GetValueOrDefault(personId)?.Select(t => t.Name).ToList() ?? [];
+        var notes = new List<ExportNoteView>();
+        await using (var command = unitOfWork.Command(
+            "SELECT body, created_at, author_role FROM people.person_notes WHERE organization_id = $1 AND person_id = $2 ORDER BY id",
+            tenant.OrganizationId,
+            personId))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                notes.Add(new ExportNoteView(reader.GetString(0), await reader.GetFieldValueAsync<DateTimeOffset>(1, cancellationToken), reader.GetString(2)));
+            }
+        }
+
         await AuditAsync(unitOfWork, tenant, "person.exported", "person", personId, new { }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, reason is not null, reason);
+        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, reason is not null, reason, tags, notes);
     }
 
     public async Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken)
@@ -364,6 +385,9 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             cancellationToken,
             org, personId);
 
+        // Staff notes and tag links go (docs/34 section 9): a note can say anything about the person.
+        await ExecuteAsync(unitOfWork, "DELETE FROM people.person_notes WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
+        await ExecuteAsync(unitOfWork, "DELETE FROM people.person_tags WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
         // A pass note is the only free text in scheduling (docs/29 section 7).
         await ExecuteAsync(unitOfWork, "UPDATE scheduling.passes SET note = NULL WHERE organization_id = $1 AND person_id = $2 AND note IS NOT NULL", cancellationToken, org, personId);
         // The member's own monthly goal goes (docs/31 section 12).
@@ -495,6 +519,19 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             "DELETE FROM people.person_relationships WHERE organization_id = $1 AND (from_person_id = $2 OR to_person_id = $2)",
             cancellationToken,
             org, merged);
+
+        // Staff notes and tags move to the survivor; a tag the survivor has already is not doubled (docs/34 section 9).
+        await ExecuteAsync(unitOfWork, "UPDATE people.person_notes SET person_id = $2 WHERE organization_id = $1 AND person_id = $3", cancellationToken, org, survivor, merged);
+        await ExecuteAsync(
+            unitOfWork,
+            """
+            INSERT INTO people.person_tags (organization_id, person_id, tag_id, created_at)
+            SELECT organization_id, $2, tag_id, created_at FROM people.person_tags WHERE organization_id = $1 AND person_id = $3
+            ON CONFLICT (organization_id, person_id, tag_id) DO NOTHING
+            """,
+            cancellationToken,
+            org, survivor, merged);
+        await ExecuteAsync(unitOfWork, "DELETE FROM people.person_tags WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
 
         // Other open pairs with the merged record are settled by this merge.
         await ExecuteAsync(

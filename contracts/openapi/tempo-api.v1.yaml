@@ -911,7 +911,7 @@ paths:
         - name: tag
           in: query
           required: false
-          description: Only people with this tag (docs/34 section 7). Honoured once N1 is live.
+          description: Only people with this tag (docs/34 section 7).
           schema: { type: string, format: uuid }
         - name: status
           in: query
@@ -1220,7 +1220,6 @@ paths:
     post:
       tags: [People]
       operationId: importPeople
-      x-tempo-planned: true
       summary: "Check or import people from a file the console has read (`people.import`)"
       description: |
         docs/34 sections 3 to 6. The console reads the CSV file in the browser and sends its rows; the file never
@@ -1251,7 +1250,6 @@ paths:
     get:
       tags: [People]
       operationId: listTags
-      x-tempo-planned: true
       summary: "The studio's tags, by name, with how many people have each (`people.view`)"
       responses:
         "200":
@@ -1265,7 +1263,6 @@ paths:
     post:
       tags: [People]
       operationId: createTag
-      x-tempo-planned: true
       summary: "Add a tag (`people.tags.manage`)"
       description: A name already used in the studio, ignoring case, is 409 `tag.name_taken`; a 101st tag is 409 `tag.limit_reached`.
       requestBody:
@@ -1292,7 +1289,6 @@ paths:
     patch:
       tags: [People]
       operationId: updateTag
-      x-tempo-planned: true
       summary: "Rename or recolour a tag (`people.tags.manage`)"
       parameters:
         - $ref: "#/components/parameters/IfMatch"
@@ -1315,7 +1311,6 @@ paths:
     delete:
       tags: [People]
       operationId: deleteTag
-      x-tempo-planned: true
       summary: "Delete a tag and take it off everyone (`people.tags.manage`)"
       responses:
         "204": { description: Deleted. }
@@ -1331,7 +1326,6 @@ paths:
     post:
       tags: [People]
       operationId: tagPerson
-      x-tempo-planned: true
       summary: "Put a tag on a person (`people.manage`)"
       description: Putting a tag the person already has changes nothing (200). A 21st tag on one person is 409 `person.tag_limit_reached`.
       responses:
@@ -1347,7 +1341,6 @@ paths:
     delete:
       tags: [People]
       operationId: untagPerson
-      x-tempo-planned: true
       summary: "Take a tag off a person (`people.manage`)"
       responses:
         "200":
@@ -1366,7 +1359,6 @@ paths:
     get:
       tags: [People]
       operationId: listPersonNotes
-      x-tempo-planned: true
       summary: "Staff notes on a person, newest first (`people.notes.view`)"
       parameters:
         - $ref: "#/components/parameters/Before"
@@ -1383,7 +1375,6 @@ paths:
     post:
       tags: [People]
       operationId: addPersonNote
-      x-tempo-planned: true
       summary: "Add a staff note (`people.notes.manage`)"
       description: Plain text, 1 to 1,000 characters. Not for health information (docs/34 section 8). The person gets notes in their export.
       requestBody:
@@ -1410,7 +1401,6 @@ paths:
     delete:
       tags: [People]
       operationId: deletePersonNote
-      x-tempo-planned: true
       summary: "Delete a note: your own (`people.notes.manage`) or anyone's (`people.notes.moderate`)"
       responses:
         "204": { description: Deleted. }
@@ -3705,7 +3695,7 @@ components:
         mergedIntoId: { type: [string, "null"], format: uuid }
         tags:
           type: array
-          description: The person's tags, by name (docs/34 section 7). Sent once N1 is live; absent before.
+          description: The person's tags, by name (docs/34 section 7).
           items: { $ref: "#/components/schemas/PersonTag" }
         createdAt: { type: string, format: date-time }
         version: { type: string, description: Send back in `If-Match` when updating. }
@@ -3904,11 +3894,11 @@ components:
           description: True when answers and names are null; `healthAnswersWithheldReason` says why.
         tags:
           type: array
-          description: The names of the person's tags (docs/34 section 9). Sent once N1 is live.
+          description: The names of the person's tags (docs/34 section 9).
           items: { type: string }
         notes:
           type: array
-          description: Staff notes on the person, oldest first, the author by role only (docs/34 section 9). Sent once N1 is live.
+          description: Staff notes on the person, oldest first, the author by role only (docs/34 section 9).
           items: { $ref: "#/components/schemas/ExportNote" }
         healthAnswersWithheldReason:
           type: [string, "null"]
@@ -3927,7 +3917,7 @@ components:
         tagId:
           type: [string, "null"]
           format: uuid
-          description: "Every person the import creates gets this tag (I-8, from I3). Must exist in the studio."
+          description: "Every person the import creates gets this tag (I-8). It must be one of the studio's tags (404 `tag.not_found`)."
         rows:
           type: array
           minItems: 1
@@ -3942,12 +3932,12 @@ components:
         displayName: { type: [string, "null"], maxLength: 100, description: "Empty means given and family names joined." }
         givenName: { type: [string, "null"], maxLength: 100 }
         familyName: { type: [string, "null"], maxLength: 100 }
-        phone: { type: [string, "null"], maxLength: 40, examples: ["050-0000001"] }
+        phone: { type: [string, "null"], maxLength: 40, description: "Israeli local or with a country code, as `createPerson` reads it." }
         email: { type: [string, "null"], maxLength: 254 }
         birthDate:
           type: [string, "null"]
           maxLength: 20
-          description: "`dd/mm/yyyy`, `d.m.yyyy` or `yyyy-mm-dd`, as the file has it."
+          description: "`dd/mm/yyyy` (or `d/m/yyyy`), `d.m.yyyy` or `yyyy-mm-dd`, as the file has it."
 
     ImportPeopleResult:
       type: object
