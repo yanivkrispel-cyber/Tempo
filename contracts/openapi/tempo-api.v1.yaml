@@ -85,6 +85,8 @@ tags:
     description: Rooms, class types, weekly classes, sessions and the booking policy (docs/29).
   - name: Bookings
     description: Booking, cancelling, the waitlist, roster and attendance (docs/29).
+  - name: Buddies
+    description: Members who agreed to see each other on room maps (docs/33 section 4).
   - name: Passes
     description: Punch cards and memberships the studio sells and grants (docs/29).
   - name: Notifications
@@ -1468,6 +1470,81 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/buddy-code:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Buddies]
+      operationId: createBuddyCode
+      summary: "A new one-time buddy code to share (self)"
+      description: |
+        Replaces the caller's previous code. The code is shown once, lives 48 hours and links once (docs/33
+        section 4, D18). Whoever enters it becomes the caller's buddy: each then sees the other on room maps.
+      responses:
+        "200":
+          description: The code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuddyCode" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/buddies:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Buddies]
+      operationId: listMyBuddies
+      summary: "The caller's buddies (self)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuddyList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Buddies]
+      operationId: linkBuddy
+      summary: "Become buddies by entering a friend's code (self)"
+      description: |
+        404 `buddy.invalid_code` for a wrong or expired code (counted: five in an hour answer 429
+        `buddy.too_many_attempts`), 409 `buddy.self` for one's own code, 409 `buddy.limit` past 20 buddies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkBuddyRequest" }
+      responses:
+        "200":
+          description: Linked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Buddy" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/organizations/{organizationId}/me/buddies/{personId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    delete:
+      tags: [Buddies]
+      operationId: unlinkBuddy
+      summary: "Stop being buddies (either side)"
+      responses:
+        "204": { description: Unlinked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -3791,6 +3868,10 @@ components:
           type: array
           description: Current and replaced declarations, oldest first (docs/31 section 11).
           items: { $ref: "#/components/schemas/ExportHealthDeclaration" }
+        buddies:
+          type: array
+          description: The person's buddies (docs/33 section 4), oldest link first.
+          items: { $ref: "#/components/schemas/Buddy" }
         healthAnswersWithheld:
           type: boolean
           description: True when answers and names are null; `healthAnswersWithheldReason` says why.
@@ -4286,10 +4367,13 @@ components:
         row: { type: integer }
         col: { type: integer }
         kind: { $ref: "#/components/schemas/SpotKind" }
-        state: { type: string, enum: [free, taken, mine, maintenance] }
+        state:
+          type: string
+          enum: [free, taken, mine, buddy, maintenance]
+          description: "`buddy`: a buddy of the caller holds it (D18); `person` then names them, for members too."
         bookingId: { type: [string, "null"], format: uuid, description: "The caller's own booking on it, or any booking for staff." }
         person:
-          description: Who holds it; staff and the instructor only.
+          description: Who holds it; staff and the instructor, and a member for a buddy's spot.
           oneOf:
             - $ref: "#/components/schemas/PersonRef"
             - type: "null"
@@ -4318,6 +4402,35 @@ components:
         spots:
           type: array
           items: { $ref: "#/components/schemas/SessionSpot" }
+
+    Buddy:
+      type: object
+      required: [personId, displayName, since]
+      properties:
+        personId: { type: string, format: uuid }
+        displayName: { type: string }
+        since: { type: string, format: date-time }
+
+    BuddyList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Buddy" }
+
+    BuddyCode:
+      type: object
+      required: [code, expiresAt]
+      properties:
+        code: { type: string, pattern: "^[A-Z2-9]{4}-[A-Z2-9]{4}$", examples: ["K7QM-X3RT"] }
+        expiresAt: { type: string, format: date-time }
+
+    LinkBuddyRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: "The 8 letters and digits; spaces, dashes and case are ignored." }
 
     ChangeSpotRequest:
       type: object

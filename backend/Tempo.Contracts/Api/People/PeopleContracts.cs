@@ -101,7 +101,18 @@ public sealed record PersonExportResponse(
     IReadOnlyList<ExportPassResponse> Passes,
     IReadOnlyList<ExportHealthDeclarationResponse> HealthDeclarations,
     bool HealthAnswersWithheld,
-    string? HealthAnswersWithheldReason);
+    string? HealthAnswersWithheldReason,
+    IReadOnlyList<BuddyResponse>? Buddies = null);
+
+/// <summary>`Buddy`: a member linked by mutual consent (docs/33 section 4).</summary>
+public sealed record BuddyResponse(Guid PersonId, string DisplayName, DateTimeOffset Since);
+
+public sealed record BuddyListResponse(IReadOnlyList<BuddyResponse> Items);
+
+/// <summary>`BuddyCode`: shown once to the member who shares it.</summary>
+public sealed record BuddyCodeResponse(string Code, DateTimeOffset ExpiresAt);
+
+public sealed record LinkBuddyRequest(string? Code);
 
 /// <summary>`ExportHealthDeclaration`: answers and names only when the exporting member holds `health.view` (docs/31 section 11).</summary>
 public sealed record ExportHealthDeclarationResponse(

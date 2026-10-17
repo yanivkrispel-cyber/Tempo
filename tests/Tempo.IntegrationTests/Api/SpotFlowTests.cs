@@ -174,6 +174,59 @@ public sealed class SpotFlowTests(PostgresFixture postgres) : IClassFixture<Post
 
     }
 
+    [Fact]
+    public async Task Buddies_LinkByAOneTimeCode_SeeEachOtherOnTheMap_AndUnlink()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, roomId, sessionPath) = await StudioAsync(client, ["noga", "maya", "rina", "yoav"], capacity: 4);
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/rooms/{roomId}/layout", Customer("owner"), new
+        {
+            spotSelection = true,
+            rows = 1,
+            cols = 4,
+            spots = Enumerable.Range(0, 4).Select(i => new { label = (i + 1).ToString(CultureInfo.InvariantCulture), row = 0, col = i }).ToArray()
+        });
+
+        // 1. Noga shares a code; Maya enters it (any case, any dashes) and they are buddies both ways.
+        var code = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/buddy-code", Customer("noga"))).GetProperty("code").GetString()!;
+        code.Should().MatchRegex("^[A-Z2-9]{4}-[A-Z2-9]{4}$");
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/me/buddies", Customer("noga"), new { code })).Should().Be("buddy.self");
+        var linked = await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/buddies", Customer("maya"), new { code = code.Replace("-", " ", StringComparison.Ordinal).ToLowerInvariant() });
+        linked.GetProperty("displayName").GetString().Should().Be("noga");
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/buddies", Customer("noga"))).GetProperty("items")[0].GetProperty("displayName").GetString().Should().Be("maya");
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/me/buddies", Customer("rina"), new { code })).Should().Be("buddy.invalid_code", "a code links once");
+
+        // 2. Noga books spot 1: Maya sees her name on it, Rina sees only "taken".
+        await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("noga"), new { }, HttpStatusCode.Created);
+        var mayaMap = await SendAsync(client, HttpMethod.Get, $"{sessionPath}/spots", Customer("maya"));
+        var one = mayaMap.GetProperty("spots").EnumerateArray().Single(s => s.GetProperty("label").GetString() == "1");
+        one.GetProperty("state").GetString().Should().Be("buddy");
+        one.GetProperty("person").GetProperty("displayName").GetString().Should().Be("noga");
+        var rinaMap = await SendAsync(client, HttpMethod.Get, $"{sessionPath}/spots", Customer("rina"));
+        rinaMap.GetProperty("spots").EnumerateArray().Single(s => s.GetProperty("label").GetString() == "1").GetProperty("state").GetString().Should().Be("taken");
+        rinaMap.GetRawText().Should().NotContain("noga");
+
+        // 3. Guessing is limited: five wrong codes in an hour, then 429.
+        for (var i = 0; i < 5; i++)
+        {
+            (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/me/buddies", Customer("yoav"), new { code = "AAAA-AAAA" })).Should().Be("buddy.invalid_code");
+        }
+
+        (await RawAsync(client, HttpMethod.Post, $"{studioPath}/me/buddies", Customer("yoav"), new { code = "AAAA-AAAA" })).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        // 4. Maya ends it; Noga's spot is just "taken" for her again.
+        var noga = linked.GetProperty("personId").GetGuid();
+        (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/me/buddies/{noga}", Customer("maya"))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/buddies", Customer("noga"))).GetProperty("items").GetArrayLength().Should().Be(0);
+        (await SendAsync(client, HttpMethod.Get, $"{sessionPath}/spots", Customer("maya"))).GetProperty("spots").EnumerateArray()
+            .Single(s => s.GetProperty("label").GetString() == "1").GetProperty("state").GetString().Should().Be("taken");
+        var actions = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/audit-events?limit=100", Customer("owner"))).GetProperty("items").EnumerateArray()
+            .Select(e => e.GetProperty("action").GetString()).ToList();
+        actions.Should().Contain(["buddy.linked", "buddy.unlinked"]);
+    }
+
     /// <summary>A studio with instructor Dana, the members with a 10-entry card each, a room and a class in three days.</summary>
     private async Task<(string StudioPath, Guid RoomId, string SessionPath)> StudioAsync(HttpClient client, string[] members, int capacity)
     {
