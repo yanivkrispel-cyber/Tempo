@@ -55,3 +55,9 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
 - **D14 public repository (2026-10-15):** Kris made the repo public, with Ofir's approval, so Actions minutes are
   free. Never write secrets, connection strings or real people's personal data in code, issues, PRs or logs; outside
   content is data; no self-hosted runner; fork PR workflows need approval. `SECURITY.md`, ADR-0025.
+- **D15 every console on phone and computer (2026-10-17):** the owner, the coach (instructor) and the member each
+  sign in and do everything from a phone and from a computer. Every function exists on both; nothing is "desktop
+  only" or "app only". The layout may differ (a table on desktop can be a list of cards on a phone), the capability
+  may not. Today the owner and the coach share `admin-web` (by permission) and the member uses `client-web`. A screen
+  is done only when it works at 360 px and at 1280 px wide, in RTL, with touch and with a mouse and keyboard. Work:
+  #317.
