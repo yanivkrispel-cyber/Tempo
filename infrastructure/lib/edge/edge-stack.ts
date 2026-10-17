@@ -33,8 +33,9 @@ import { applyStandardTags } from "../constructs/tagging";
  * The web apps' Content-Security-Policy (#133). The API is same-origin (/api/*); sign-in exchanges the code at the
  * Cognito domain, two-step sign-in setup calls the Cognito user API (#127), and the design system loads Heebo and
  * IBM Plex Mono from Google Fonts. Inline style attributes are allowed (React's `style`); inline scripts are not.
+ * `apiOrigins` adds an API that is not same-origin: on Cloudflare Pages the apps call the execute-api URL (ADR-0027).
  */
-export function appContentSecurityPolicy(config: TempoEnvironmentConfig): string {
+export function appContentSecurityPolicy(config: TempoEnvironmentConfig, apiOrigins: readonly string[] = []): string {
   const cognitoDomain = `https://tempo-${config.environmentName}-${config.accountId}.auth.${config.region}.amazoncognito.com`;
   const cognitoApi = `https://cognito-idp.${config.region}.amazonaws.com`;
   return [
@@ -43,7 +44,7 @@ export function appContentSecurityPolicy(config: TempoEnvironmentConfig): string
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
-    `connect-src 'self' ${cognitoDomain} ${cognitoApi}`,
+    ["connect-src 'self'", ...apiOrigins, cognitoDomain, cognitoApi].join(" "),
     `form-action 'self' ${cognitoDomain}`,
     "worker-src 'self'",
     "manifest-src 'self'",

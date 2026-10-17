@@ -10,7 +10,7 @@ The pilot runs on the development environment. Production waits for revenue (ADR
 ## Verdict
 
 A studio can run end to end on dev today, with the apps started locally against the dev API. Three things stop a
-real pilot on the internet, and all three need Kris: the edge (CloudFront) waiting on the AWS account verification,
+real pilot on the internet, and all three need Kris: the Cloudflare Pages secrets (ADR-0027, AWS refused CloudFront),
 the health form's wording with the lawyer (P-2), and the consent texts (P-4).
 
 ## The studio's path
@@ -31,7 +31,7 @@ the health form's wording with the lawyer (P-2), and the consent texts (P-4).
 | 12 | Attendance and the member's progress (visits, goal, streak) | done on dev | #95; P1 #235, X1 #236 |
 | 13 | Export and erase, including the health declaration | done on dev | #61 to #90; #239 |
 | 14 | Consent texts shown to members | **blocked on Kris**: P-4 | docs/27 section 15 |
-| 15 | The apps on the internet (CloudFront) | **blocked on AWS and Kris**: account verification for the dev edge; then `edgeDistributionId` (#242) | support case 179198465900800 |
+| 15 | The apps on the internet (Cloudflare Pages, ADR-0027) | **blocked on Kris**: the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; AWS refused CloudFront on 2026-10-17 | `deploy-web` in `deploy-development.yml` |
 
 ## Found in the pilot dry run (P2)
 
@@ -76,7 +76,7 @@ member is erased after its run. Neither is real health data.
 
 1. Register as the first operator (`tools/scripts/register-operator.ps1`, MFA).
 2. The health form's wording and the retention rule with the lawyer (P-2); the consent texts (P-4).
-3. The AWS account verification for the dev edge; then put the distribution id in `infrastructure/config/development.ts` (`edgeDistributionId`, #242).
+3. The Cloudflare token (Pages: Edit only) and account id as GitHub secrets (ADR-0027); AWS refused CloudFront on 2026-10-17.
 4. IAM grants so CI's smoke test can sign in; confirm the canary's SNS email.
 5. #186: SHA-pin the Actions, or accept the Semgrep finding for GitHub's own actions.
 6. After registering as operator, suspend the six `e2e-p2-…` studios on dev (P2 F4), and decide how a login's account is removed (F6).

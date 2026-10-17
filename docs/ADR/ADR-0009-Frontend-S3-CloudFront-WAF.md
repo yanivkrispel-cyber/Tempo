@@ -1,6 +1,6 @@
 # ADR-0009: S3, CloudFront, WAF and Route 53 for Web Delivery
 
-- **Status:** Accepted, amended on 2026-10-13 (WAF in every environment through the CloudFront Free plan)
+- **Status:** Accepted, amended on 2026-10-13 (WAF in every environment through the CloudFront Free plan); dev is served by Cloudflare Pages while AWS refuses CloudFront (ADR-0027, 2026-10-17)
 - **Date:** 2026-07-30
 - **Owners:** Frontend Architecture, Platform Engineering, Security
 - **Related:** ADR-0001, ADR-0004, ADR-0021

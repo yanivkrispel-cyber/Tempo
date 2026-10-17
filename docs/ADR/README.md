@@ -2,7 +2,7 @@
 
 - **Version:** 3.6
 - **Date:** 2026-10-17
-- **Cloud Decision:** AWS, except the database (Neon on AWS eu-central-1, ADR-0022)
+- **Cloud Decision:** AWS, except the database (Neon on AWS eu-central-1, ADR-0022) and the dev web apps (Cloudflare Pages, ADR-0027)
 - **Architecture Direction:** Serverless-first modular monolith
 - **Backend Runtime:** .NET 10
 - **Primary Region:** eu-central-1
@@ -19,7 +19,7 @@
 
 | ADR | Decision | Status |
 |---|---|---|
-| ADR-0001 | AWS as the Exclusive Cloud Platform | Accepted, amended 2026-10-14: Neon is the one exception |
+| ADR-0001 | AWS as the Exclusive Cloud Platform | Accepted, amended 2026-10-14 and 2026-10-17: Neon and Cloudflare Pages are the exceptions |
 | ADR-0002 | Serverless-First Compute with AWS Lambda | Accepted |
 | ADR-0003 | Modular Monolith with Event-Driven Boundaries | Accepted |
 | ADR-0004 | Amazon API Gateway HTTP API for Public APIs | Accepted, amended 2026-10-13: CloudFront + Function URL |
@@ -27,7 +27,7 @@
 | ADR-0006 | Shared-Schema Multi-Tenancy with Defense in Depth | Accepted, amended 2026-10-14: structural isolation plus RLS |
 | ADR-0007 | Amazon Cognito for Authentication Behind an Internal Identity Boundary | Accepted, amended 2026-10-14: two user pools (ADR-0023) |
 | ADR-0008 | SQS, EventBridge and Transactional Outbox for Asynchronous Work | Accepted, amended 2026-10-13: one work queue |
-| ADR-0009 | S3, CloudFront, WAF and Route 53 for Web Delivery | Accepted, amended 2026-10-13: WAF in every environment |
+| ADR-0009 | S3, CloudFront, WAF and Route 53 for Web Delivery | Accepted, amended 2026-10-13: WAF in every environment; dev on Cloudflare Pages (ADR-0027) |
 | ADR-0010 | AWS CDK in TypeScript for Infrastructure as Code | Accepted |
 | ADR-0011 | GitHub Actions with AWS OIDC for CI/CD | Accepted |
 | ADR-0012 | CloudWatch-Centered Observability with OpenTelemetry | Accepted, amended 2026-10-13: alarm budget |
@@ -45,6 +45,7 @@
 | ADR-0024 | Frontend Toolchain for the Tempo Web Apps | Accepted |
 | ADR-0025 | Two-Layer Quality: Gates Block, Agents Advise | Proposed |
 | ADR-0026 | Field-Level Encryption Without a Customer-Managed Key Until Revenue | Accepted |
+| ADR-0027 | Web Apps on Cloudflare Pages While CloudFront Is Refused | Accepted |
 
 ## Decision Summary
 
