@@ -28,8 +28,8 @@ export interface IdentityStackProps extends StackProps {
  * Two pools (ADR-0023). `users` holds studio owners, admins, staff and
  * clients: self sign-up is on because studio owners onboard themselves, and
  * a new account gets no tenant access until Tempo grants it. `operators`
- * holds the Tempo team: no self sign-up, MFA required (TOTP only) and short
- * sessions. The API accepts each pool's tokens only on its own routes.
+ * holds the Tempo team: no self sign-up, MFA (TOTP only; required, or optional
+ * where `operatorMfa` says so, dev only) and short sessions. The API accepts each pool's tokens only on its own routes.
  */
 export class IdentityStack extends Stack {
   public readonly userPool: UserPool;
@@ -120,7 +120,7 @@ export class IdentityStack extends Stack {
         requireSymbols: true,
         tempPasswordValidity: Duration.days(1)
       },
-      mfa: Mfa.REQUIRED,
+      mfa: config.operatorMfa === "required" ? Mfa.REQUIRED : Mfa.OPTIONAL,
       mfaSecondFactor: { otp: true, sms: false },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
       deletionProtection: config.enableDeletionProtection,

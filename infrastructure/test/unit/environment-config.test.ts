@@ -10,6 +10,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     domainName: undefined,
     hostedZoneId: undefined,
     enableDeletionProtection: false,
+    operatorMfa: "optional",
     neon: { projectId: "wild-darkness-22822656" },
     lambda: {
       apiMemoryMb: 1024,
@@ -136,6 +137,20 @@ describe("validateEnvironmentConfig", () => {
     expect(() =>
       validateEnvironmentConfig(baseConfig({ featureFlags: { enableCustomDomain: true, enableFrontendHosting: false, enableWaf: false } }))
     ).toThrow(/domainName/);
+  });
+
+  it("rejects production with optional operator MFA", () => {
+    expect(() =>
+      validateEnvironmentConfig(
+        baseConfig({
+          environmentName: "prod",
+          enableDeletionProtection: true,
+          operatorMfa: "optional",
+          observability: { enableTracing: true, logRetentionDays: 90, alarmsEnabled: true, alarmNotificationsEnabled: true, alarmEmail: "a@b.com" },
+          github: { owner: "x", ownerId: 1, repo: "y", repoId: 2, allowedBranch: "main", githubEnvironment: "production" }
+        })
+      )
+    ).toThrow(/production requires operatorMfa/);
   });
 
   it("rejects production with alarms turned off", () => {

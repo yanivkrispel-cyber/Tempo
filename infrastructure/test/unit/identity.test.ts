@@ -29,9 +29,9 @@ function clientNamesOf(template: Template, poolLogicalIdValue: string): string[]
 }
 
 describe.each([
-  ["dev", dev],
-  ["prod", prod]
-] as const)("Identity pools in %s (ADR-0023)", (env, stage) => {
+  ["dev", dev, "OPTIONAL"],
+  ["prod", prod, "ON"]
+] as const)("Identity pools in %s (ADR-0023)", (env, stage, operatorMfa) => {
   const template = stackTemplate(stage, "Identity");
 
   it("has exactly two user pools", () => {
@@ -46,11 +46,11 @@ describe.each([
     });
   });
 
-  it("the operator pool requires MFA with TOTP only and no self sign-up", () => {
+  it(`the operator pool has MFA ${operatorMfa} with TOTP only and no self sign-up`, () => {
     template.hasResourceProperties("AWS::Cognito::UserPool", {
       UserPoolName: `tempo-${env}-operators`,
       AdminCreateUserConfig: { AllowAdminCreateUserOnly: true },
-      MfaConfiguration: "ON",
+      MfaConfiguration: operatorMfa,
       EnabledMfas: ["SOFTWARE_TOKEN_MFA"]
     });
   });

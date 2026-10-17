@@ -68,8 +68,10 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
     id: "AwsSolutions-COG2",
     reason:
       "MFA is optional in the customer pool (members sign in without it); the API requires TOTP for studio owners " +
-      "(OwnerMfaTests, migration 0007). The operator pool requires MFA.",
-    paths: ["Identity/UserPool"]
+      "(OwnerMfaTests, migration 0007). The operator pool requires MFA except on dev, where `operatorMfa` is " +
+      "optional for the testing phase (ADR-0023 amendment); config validation refuses that in production and " +
+      "identity.test.ts asserts MFA ON for prod.",
+    paths: ["Identity/UserPool", "Identity/OperatorPool"]
   },
   {
     id: "AwsSolutions-COG8",

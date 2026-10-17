@@ -127,6 +127,12 @@ export interface TempoEnvironmentConfig {
   readonly enableDeletionProtection: boolean;
 
   /**
+   * MFA on the operator pool (ADR-0023). `required` makes every operator set up TOTP at the first sign-in;
+   * `optional` lets the team sign in with a password alone while testing on dev. Production must be `required`.
+   */
+  readonly operatorMfa: "required" | "optional";
+
+  /**
    * The edge distribution's id (`E...`), set after the edge stack's first deploy (#124 item 8). When set, only that
    * distribution may invoke the API's Function URL; until then any distribution of the account may, because the
    * distribution lives in us-east-1 and naming it from the API stack would be a circular cross-Region reference.
@@ -254,6 +260,9 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
   if (config.environmentName === "prod") {
     if (!config.enableDeletionProtection) {
       errors.push("production requires enableDeletionProtection = true");
+    }
+    if (config.operatorMfa !== "required") {
+      errors.push("production requires operatorMfa = \"required\"");
     }
     if (!config.observability.alarmsEnabled) {
       errors.push("production requires observability.alarmsEnabled = true");
