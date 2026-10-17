@@ -20,6 +20,9 @@ info:
     Owner reports (docs/32_Reports_LLD.md) add the studio's weekly figures and two lists, and removing a login
     (`DELETE /me`) and, for the operator, a suspended studio.
 
+    Member import, tags and staff notes (docs/34_Member_Import_Notes_and_Tags_LLD.md) add a checked import of
+    people from a file the console reads, the studio's tags, and staff notes on a person.
+
     **Planned operations.** An operation marked `x-tempo-planned: true` is agreed but not deployed yet; the
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
@@ -905,6 +908,11 @@ paths:
           required: false
           description: Matches name, email or phone (any part).
           schema: { type: string, minLength: 2, maxLength: 100 }
+        - name: tag
+          in: query
+          required: false
+          description: Only people with this tag (docs/34 section 7). Honoured once N1 is live.
+          schema: { type: string, format: uuid }
         - name: status
           in: query
           required: false
@@ -1203,6 +1211,210 @@ paths:
               schema: { $ref: "#/components/schemas/PersonDetail" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/StepUpOrUnauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/import:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [People]
+      operationId: importPeople
+      x-tempo-planned: true
+      summary: "Check or import people from a file the console has read (`people.import`)"
+      description: |
+        docs/34 sections 3 to 6. The console reads the CSV file in the browser and sends its rows; the file never
+        reaches the server. At most 1,000 rows (more is 400 `import.too_many_rows`). Every row gets one outcome:
+        `valid` (dry run) or `created`; `exists` (a person in this studio already has that email or phone, nothing
+        changes); `duplicate_in_file` (an earlier row has the same email or phone); `invalid` (with `field` and
+        `code`). `dryRun: true` writes nothing. `dryRun: false` creates every `created` row in one transaction with
+        `source = import`; an invalid row never blocks the others. No consent is recorded and nothing is sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportPeopleRequest" }
+      responses:
+        "200":
+          description: The outcome of every row and the totals.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportPeopleResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/tags:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [People]
+      operationId: listTags
+      x-tempo-planned: true
+      summary: "The studio's tags, by name, with how many people have each (`people.view`)"
+      responses:
+        "200":
+          description: Every tag (at most 100).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TagList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [People]
+      operationId: createTag
+      x-tempo-planned: true
+      summary: "Add a tag (`people.tags.manage`)"
+      description: A name already used in the studio, ignoring case, is 409 `tag.name_taken`; a 101st tag is 409 `tag.limit_reached`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTagRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tag" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/tags/{tagId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/TagId"
+    patch:
+      tags: [People]
+      operationId: updateTag
+      x-tempo-planned: true
+      summary: "Rename or recolour a tag (`people.tags.manage`)"
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateTagRequest" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tag" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [People]
+      operationId: deleteTag
+      x-tempo-planned: true
+      summary: "Delete a tag and take it off everyone (`people.tags.manage`)"
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/tags/{tagId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+      - $ref: "#/components/parameters/TagId"
+    post:
+      tags: [People]
+      operationId: tagPerson
+      x-tempo-planned: true
+      summary: "Put a tag on a person (`people.manage`)"
+      description: Putting a tag the person already has changes nothing (200). A 21st tag on one person is 409 `person.tag_limit_reached`.
+      responses:
+        "200":
+          description: The person's tags now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonTagList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [People]
+      operationId: untagPerson
+      x-tempo-planned: true
+      summary: "Take a tag off a person (`people.manage`)"
+      responses:
+        "200":
+          description: The person's tags now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonTagList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/notes:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+    get:
+      tags: [People]
+      operationId: listPersonNotes
+      x-tempo-planned: true
+      summary: "Staff notes on a person, newest first (`people.notes.view`)"
+      parameters:
+        - $ref: "#/components/parameters/Before"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of notes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonNotePage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [People]
+      operationId: addPersonNote
+      x-tempo-planned: true
+      summary: "Add a staff note (`people.notes.manage`)"
+      description: Plain text, 1 to 1,000 characters. Not for health information (docs/34 section 8). The person gets notes in their export.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePersonNoteRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonNote" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/people/{personId}/notes/{noteId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/PersonId"
+      - $ref: "#/components/parameters/NoteId"
+    delete:
+      tags: [People]
+      operationId: deletePersonNote
+      x-tempo-planned: true
+      summary: "Delete a note: your own (`people.notes.manage`) or anyone's (`people.notes.moderate`)"
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -2835,6 +3047,16 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    TagId:
+      name: tagId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    NoteId:
+      name: noteId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     IfMatch:
       name: If-Match
       in: header
@@ -3481,6 +3703,10 @@ components:
         primaryEmail: { type: [string, "null"], format: email }
         primaryPhone: { type: [string, "null"], description: E.164, examples: ["+972501234567"] }
         mergedIntoId: { type: [string, "null"], format: uuid }
+        tags:
+          type: array
+          description: The person's tags, by name (docs/34 section 7). Sent once N1 is live; absent before.
+          items: { $ref: "#/components/schemas/PersonTag" }
         createdAt: { type: string, format: date-time }
         version: { type: string, description: Send back in `If-Match` when updating. }
 
@@ -3676,6 +3902,14 @@ components:
         healthAnswersWithheld:
           type: boolean
           description: True when answers and names are null; `healthAnswersWithheldReason` says why.
+        tags:
+          type: array
+          description: The names of the person's tags (docs/34 section 9). Sent once N1 is live.
+          items: { type: string }
+        notes:
+          type: array
+          description: Staff notes on the person, oldest first, the author by role only (docs/34 section 9). Sent once N1 is live.
+          items: { $ref: "#/components/schemas/ExportNote" }
         healthAnswersWithheldReason:
           type: [string, "null"]
           enum: [no_health_view, health_key_unavailable, null]
@@ -3683,6 +3917,168 @@ components:
             `no_health_view` when the exporting member lacks `health.view`; `health_key_unavailable` when the health
             data key could not be read (docs/32 section 11, A-5): the rest of the export is complete. Null when the
             answers are included.
+
+    ImportPeopleRequest:
+      type: object
+      required: [dryRun, rows]
+      description: docs/34 section 4. Cells are sent as the file has them, trimmed; the API validates and normalizes.
+      properties:
+        dryRun: { type: boolean, description: True checks every row and writes nothing. }
+        tagId:
+          type: [string, "null"]
+          format: uuid
+          description: "Every person the import creates gets this tag (I-8, from I3). Must exist in the studio."
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/ImportRow" }
+
+    ImportRow:
+      type: object
+      required: [line]
+      properties:
+        line: { type: integer, minimum: 1, description: "The row's line in the file, echoed in the result." }
+        displayName: { type: [string, "null"], maxLength: 100, description: "Empty means given and family names joined." }
+        givenName: { type: [string, "null"], maxLength: 100 }
+        familyName: { type: [string, "null"], maxLength: 100 }
+        phone: { type: [string, "null"], maxLength: 40, examples: ["050-0000001"] }
+        email: { type: [string, "null"], maxLength: 254 }
+        birthDate:
+          type: [string, "null"]
+          maxLength: 20
+          description: "`dd/mm/yyyy`, `d.m.yyyy` or `yyyy-mm-dd`, as the file has it."
+
+    ImportPeopleResult:
+      type: object
+      required: [dryRun, totals, rows]
+      properties:
+        dryRun: { type: boolean }
+        importId: { type: [string, "null"], format: uuid, description: "Null on a dry run; the id in the `people.imported` audit entry." }
+        totals: { $ref: "#/components/schemas/ImportTotals" }
+        rows:
+          type: array
+          description: One outcome per row, in the order sent.
+          items: { $ref: "#/components/schemas/ImportRowResult" }
+
+    ImportTotals:
+      type: object
+      required: [rows, valid, created, exists, duplicateInFile, invalid]
+      properties:
+        rows: { type: integer }
+        valid: { type: integer, description: Rows that would be created (dry run) or were created. }
+        created: { type: integer, description: Zero on a dry run. }
+        exists: { type: integer }
+        duplicateInFile: { type: integer }
+        invalid: { type: integer }
+
+    ImportRowResult:
+      type: object
+      required: [line, outcome]
+      properties:
+        line: { type: integer }
+        outcome:
+          type: string
+          enum: [valid, created, exists, duplicate_in_file, invalid]
+        personId:
+          type: [string, "null"]
+          format: uuid
+          description: The created person (`created`) or the one already in the studio (`exists`).
+        duplicateOfLine: { type: [integer, "null"], description: "`duplicate_in_file`: the earlier line." }
+        possibleDuplicate:
+          type: boolean
+          description: "`valid` or `created`, but another person has the same name and birth date: flagged for the duplicates page, not merged."
+        field:
+          type: [string, "null"]
+          enum: [display_name, phone, email, birth_date, contact, null]
+          description: "`invalid`: the field at fault (`contact` when there is neither phone nor email)."
+        code:
+          type: [string, "null"]
+          description: "`invalid`: `required`, `too_long`, `phone.invalid`, `email.invalid`, `birth_date.invalid` or `contact.required`."
+
+    Tag:
+      type: object
+      required: [id, name, color, peopleCount, createdAt, version]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 30, examples: [ייבוא 17.10] }
+        color: { type: integer, minimum: 1, maximum: 6, description: One of six tones the design system draws. }
+        peopleCount: { type: integer, description: People who have the tag now. }
+        createdAt: { type: string, format: date-time }
+        version: { type: string }
+
+    TagList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Tag" }
+
+    CreateTagRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 30 }
+        color: { type: integer, minimum: 1, maximum: 6 }
+
+    UpdateTagRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 30 }
+        color: { type: integer, minimum: 1, maximum: 6 }
+
+    PersonTag:
+      type: object
+      required: [id, name, color]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        color: { type: integer, minimum: 1, maximum: 6 }
+
+    PersonTagList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PersonTag" }
+
+    PersonNote:
+      type: object
+      required: [id, body, createdAt, authorRole, mine]
+      properties:
+        id: { type: string, format: uuid }
+        body: { type: string, minLength: 1, maxLength: 1000 }
+        createdAt: { type: string, format: date-time }
+        authorMembershipId: { type: [string, "null"], format: uuid, description: Null once the author's membership is gone. }
+        authorName: { type: [string, "null"], description: "The author's display name in this studio; null once their membership is gone." }
+        authorRole: { type: string, description: "The author's system role when they wrote it: owner, admin or staff (a custom role shows as staff)." }
+        mine: { type: boolean, description: The caller wrote it. }
+
+    PersonNotePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PersonNote" }
+        nextBefore: { type: [string, "null"], format: uuid }
+
+    CreatePersonNoteRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 1000 }
+
+    ExportNote:
+      type: object
+      required: [body, createdAt, authorRole]
+      properties:
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        authorRole: { type: string, description: "The author by role, never by name (docs/34 section 9)." }
 
     ExportBooking:
       type: object
