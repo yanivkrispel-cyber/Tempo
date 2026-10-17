@@ -12,7 +12,7 @@ import { useMyHealthDeclaration } from "./health";
 import { GoalDialog } from "./GoalDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
-import { useMyProgress } from "./progress";
+import { goalText, useMyProgress } from "./progress";
 import styles from "./member.module.css";
 import { StudioNotices } from "./StudioNotices";
 
@@ -105,13 +105,7 @@ export function ProfileScreen() {
             <button type="button" className="tp-setting" onClick={() => setGoalOpen(true)}>
               <span className={styles.settingText}>
                 <span>יעד חודשי</span>
-                <span className="tp-caption">
-                  {progress.data.monthlyGoal === null
-                    ? "לא הוגדר"
-                    : progress.data.monthlyGoal === 1
-                      ? "שיעור אחד בחודש"
-                      : `${progress.data.monthlyGoal} שיעורים בחודש`}
-                </span>
+                <span className="tp-caption">{goalText(progress.data.monthlyGoal)}</span>
               </span>
               <Icon name="chevron-left" />
             </button>

@@ -33,6 +33,7 @@ const messages: Record<string, string> = {
   "health.form_version_stale": "הטופס עודכן בינתיים. עברו על השאלות שוב וחתמו.",
   "health.answers_incomplete": "צריך לענות על כל השאלות.",
   "health.confirmation_required": "צריך לאשר לפני החתימה.",
+  "health.signed_name_invalid": "צריך לכתוב שם מלא, בין 2 ל-100 תווים.",
   "health.guardian_name_required": "צריך לכתוב את השם המלא של ההורה או האפוטרופוס.",
   "health.key_unavailable": "אי אפשר לשמור את ההצהרה כרגע. נסו שוב בעוד כמה דקות.",
   "billing.restricted": "ההרשמה לשיעורים בסטודיו מושהית כרגע. אפשר עדיין לראות ולבטל הזמנות קיימות.",

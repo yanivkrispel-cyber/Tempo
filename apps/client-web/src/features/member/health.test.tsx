@@ -126,6 +126,25 @@ describe("signing the declaration (docs/31 H-2, H-3)", () => {
     expect(signs(api)).toHaveLength(1);
   });
 
+  it("explains a name the server refuses", async () => {
+    const studio = createStudio({ health: { status: "missing" } });
+    const key = Object.keys(studio.routes).find(
+      (route) => route.startsWith("POST") && route.endsWith("/me/health-declaration"),
+    )!;
+    renderAt(
+      "/profile/health",
+      { health: { status: "missing" } },
+      { [key]: problem(400, "health.signed_name_invalid") },
+    );
+    await screen.findByRole("heading", { name: "מילוי ההצהרה" });
+    await answer(/שאלה ראשונה/, "לא");
+    await answer(/שאלה שנייה/, "לא");
+    await userEvent.type(screen.getByRole("textbox", { name: /^שם מלא/ }), "חבר דוגמה");
+    await userEvent.click(screen.getByRole("checkbox", { name: /קראתי את השאלות/ }));
+    await userEvent.click(screen.getByRole("button", { name: "חתימה ושליחה" }));
+    expect(await screen.findByText("צריך לכתוב שם מלא, בין 2 ל-100 תווים.")).toBeInTheDocument();
+  });
+
   it("says so when the server cannot store it now (fail closed, 503)", async () => {
     const studio = createStudio({ health: { status: "missing" } });
     const key = Object.keys(studio.routes).find(
