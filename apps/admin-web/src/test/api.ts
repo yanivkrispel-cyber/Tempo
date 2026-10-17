@@ -18,6 +18,7 @@ export const sampleMe: Me = {
         "billing.manage",
         "billing.view",
         "consent.manage",
+        "health.view",
         "members.invite.admin",
         "members.invite.staff",
         "members.manage",

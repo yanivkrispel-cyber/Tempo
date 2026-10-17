@@ -14,6 +14,7 @@ import {
   Dialog,
   EmptyState,
   Field,
+  HealthStatusChip,
   Select,
   Skeleton,
   Tabs,
@@ -206,6 +207,10 @@ function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowPro
           </span>
         </span>
         {entry.passName && <Chip tone="neutral">{entry.passName}</Chip>}
+        {/* A mark only where the front desk has to act: missing, expired, waiting for a medical approval. */}
+        {entry.healthStatus != null && entry.healthStatus !== "signed" && (
+          <HealthStatusChip status={entry.healthStatus} compact />
+        )}
         {entry.entriesLeft != null && (
           <Chip tone={entry.entriesLeft <= 1 ? "warning" : "neutral"}>{entriesLeftText(entry.entriesLeft)}</Chip>
         )}

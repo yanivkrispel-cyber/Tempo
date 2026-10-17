@@ -25,6 +25,7 @@ import { useStudio } from "../console/studio";
 import { PassesSection } from "../passes/PassesSection";
 import { ConsentSection } from "./ConsentSection";
 import { DeliveriesSection } from "./DeliveriesSection";
+import { HealthSection } from "./HealthSection";
 import { EraseDialog } from "./EraseDialog";
 import { ExportButton } from "./ExportButton";
 import { InvitePersonDialog } from "./InvitePersonDialog";
@@ -165,6 +166,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
 
       <ContactPoints person={person} writable={writable} />
       {studio.can("passes.view") && <PassesSection person={person} />}
+      {studio.can("people.view") && <HealthSection person={person} />}
       <ConsentSection person={person} />
       <RelationshipsSection person={person} writable={writable} />
       {studio.can("people.view") && <DeliveriesSection personId={person.id} />}

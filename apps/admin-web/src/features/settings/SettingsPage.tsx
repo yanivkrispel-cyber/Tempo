@@ -7,6 +7,7 @@ import { errorMessage } from "../../api/errors";
 import { Banner, Button, Card, Field, Input, Select, Skeleton, useToast } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
+import { BookingPolicyCard } from "./BookingPolicyCard";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PlanCard } from "./PlanCard";
 import { TemplatesCard } from "./TemplatesCard";
@@ -21,8 +22,8 @@ const locales = [
 const timeZones = [{ value: "Asia/Jerusalem", label: "ישראל (Asia/Jerusalem)" }];
 
 /**
- * `/o/:slug/settings`: the studio's name, language and time zone (GET and PATCH /organizations/{id}), its
- * notification settings, the words of its notifications and its plan.
+ * `/o/:slug/settings`: the studio's name, language and time zone (GET and PATCH /organizations/{id}), the health
+ * gate of its booking policy, its notification settings, the words of its notifications and its plan.
  */
 export function SettingsPage() {
   const api = useApi();
@@ -48,6 +49,7 @@ export function SettingsPage() {
         // Keyed by version: after a save the form starts again from what the API returned.
         <SettingsForm key={organization.data.version} organization={organization.data} />
       )}
+      <BookingPolicyCard />
       <NotificationSettingsCard />
       <TemplatesCard />
       <PlanCard />
