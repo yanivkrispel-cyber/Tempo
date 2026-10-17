@@ -98,8 +98,9 @@ describe("deleting my account (A-1, A-2)", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "מחיקת החשבון" }));
     expect(await within(dialog).findByText(/צריך לאמת שוב את הזהות/)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole("button", { name: "התחברות מחדש" }));
-    // The Hosted UI's logout leads back to the sign-in with the password asked again.
-    expect(redirect).toHaveBeenCalledWith(expect.stringMatching(/\/logout\?/));
+    // The Hosted UI's logout leads back to the sign-in with the password asked again. signIn is async (it builds the
+    // logout URL first), so the redirect comes after the click resolves.
+    await waitFor(() => expect(redirect).toHaveBeenCalledWith(expect.stringMatching(/\/logout\?/)));
   });
 
   it("compares the email without case and spaces at the ends", () => {
