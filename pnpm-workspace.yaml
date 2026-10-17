@@ -7,6 +7,15 @@ packages:
 # installs from esbuild's optionalDependencies, so it is not needed.
 allowBuilds:
   esbuild: false
+# Supply chain (#115, W-3): a version must be a day old before it installs (pnpm 11's default, written down), and
+# a dependency of a dependency may not come from a git URL or a tarball. `trustPolicy: no-downgrade` is left out:
+# with it the frozen install fails on semver@6.3.1 and undici-types@6.20.0 (trust downgrade), which needs a
+# person's look before anything is excluded.
+# One day, not Semgrep's suggested seven: with 10080 the frozen install rejects 9 lock entries published this
+# week (postcss 8.5.30 among them). Raise it when the lock has settled.
+# nosemgrep: package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
+minimumReleaseAge: 1440
+blockExoticSubdeps: true
 minimumReleaseAgeExclude:
   - aws-cdk-lib@2.262.2
   - aws-cdk@2.1134.0
