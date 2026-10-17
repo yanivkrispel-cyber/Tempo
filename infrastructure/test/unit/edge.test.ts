@@ -6,7 +6,7 @@ import {
   CANARY_INTERVAL_MINUTES,
   GENERAL_RATE_LIMIT,
   GUESSABLE_INPUT_PATHS,
-  HEALTH_PATH,
+  HEALTH_PATH
 } from "../../lib/edge/edge-stack";
 import { dev, devWithEdge, prod } from "./helpers/synth";
 
@@ -24,7 +24,7 @@ describe("Development without the edge stack", () => {
 
 describe.each([
   ["dev with edge", devWithEdge],
-  ["prod", prod],
+  ["prod", prod]
 ] as const)("Edge on the CloudFront Free plan (%s; ADR-0004, ADR-0009 amendments)", (_name, stage) => {
   const edge = stackOf(stage, "Edge");
   const template = Template.fromStack(edge);
@@ -41,7 +41,7 @@ describe.each([
     // The Free plan allows five rules and no rule groups of our own.
     expect(acl[0].Properties.Rules).toHaveLength(5);
     template.hasResourceProperties("AWS::CloudFront::Distribution", {
-      DistributionConfig: Match.objectLike({ WebACLId: { "Fn::GetAtt": [Match.anyValue(), "Arn"] } }),
+      DistributionConfig: Match.objectLike({ WebACLId: { "Fn::GetAtt": [Match.anyValue(), "Arn"] } })
     });
   });
 
@@ -64,9 +64,8 @@ describe.each([
     expect(scope).not.toContain('"Type":"NONE"');
     expect(scope.match(/"Type":"LOWERCASE"/g)).toHaveLength(GUESSABLE_INPUT_PATHS.length * 2);
     // ... and URL-decodes it before that (#208), so /api/v1/%6Aoin is limited as /api/v1/join.
-    expect(scope.match(/\{"Priority":0,"Type":"URL_DECODE"\},\{"Priority":1,"Type":"LOWERCASE"\}/g)).toHaveLength(
-      GUESSABLE_INPUT_PATHS.length * 2,
-    );
+    const decodeThenLowercase = /\{"Priority":0,"Type":"URL_DECODE"\},\{"Priority":1,"Type":"LOWERCASE"\}/g;
+    expect(scope.match(decodeThenLowercase)).toHaveLength(GUESSABLE_INPUT_PATHS.length * 2);
     expect(scope).not.toContain("/api/v1/auth/");
   });
 
@@ -74,9 +73,7 @@ describe.each([
     const plans = Object.values(template.findResources("AWS::PricingPlanManager::Subscription"));
     expect(plans).toHaveLength(1);
     expect(plans[0].Properties).toMatchObject({ PlanFamily: "CloudFront", PlanTier: "FREE" });
-    const covered = (plans[0].Properties.ResourceArns as Array<Record<string, unknown>>).map((arn) =>
-      JSON.stringify(arn),
-    );
+    const covered = (plans[0].Properties.ResourceArns as Array<Record<string, unknown>>).map((arn) => JSON.stringify(arn));
     const distributionId = Object.keys(template.findResources("AWS::CloudFront::Distribution"))[0];
     const aclId = Object.keys(template.findResources("AWS::WAFv2::WebACL"))[0];
     expect(covered.some((arn) => arn.includes(distributionId))).toBe(true);
@@ -108,14 +105,11 @@ describe.each([
 
   it("sends /api/* uncached to the API Function URL through a signing origin access control", () => {
     template.hasResourceProperties("AWS::CloudFront::OriginAccessControl", {
-      OriginAccessControlConfig: Match.objectLike({
-        OriginAccessControlOriginType: "lambda",
-        SigningBehavior: "always",
-      }),
+      OriginAccessControlConfig: Match.objectLike({ OriginAccessControlOriginType: "lambda", SigningBehavior: "always" })
     });
     const distribution = Object.values(template.findResources("AWS::CloudFront::Distribution"))[0];
     const apiBehavior = distribution.Properties.DistributionConfig.CacheBehaviors.find(
-      (b: { PathPattern: string }) => b.PathPattern === "/api/*",
+      (b: { PathPattern: string }) => b.PathPattern === "/api/*"
     );
     expect(apiBehavior.ViewerProtocolPolicy).toBe("https-only");
     // Managed CachingDisabled policy.
@@ -128,8 +122,8 @@ describe.each([
         BlockPublicAcls: true,
         BlockPublicPolicy: true,
         IgnorePublicAcls: true,
-        RestrictPublicBuckets: true,
-      },
+        RestrictPublicBuckets: true
+      }
     });
   });
 
@@ -139,7 +133,7 @@ describe.each([
       api.hasResourceProperties("AWS::Lambda::Permission", {
         Action: action,
         Principal: "cloudfront.amazonaws.com",
-        SourceArn: Match.anyValue(),
+        SourceArn: Match.anyValue()
       });
     }
   });
@@ -147,10 +141,10 @@ describe.each([
   it("runs a canary every five minutes that calls the health endpoint through CloudFront", () => {
     template.hasResourceProperties("AWS::Scheduler::Schedule", {
       ScheduleExpression: `rate(${CANARY_INTERVAL_MINUTES} minutes)`,
-      Target: Match.objectLike({ RetryPolicy: { MaximumRetryAttempts: 0 } }),
+      Target: Match.objectLike({ RetryPolicy: { MaximumRetryAttempts: 0 } })
     });
     const canary = Object.values(template.findResources("AWS::Lambda::Function")).find((fn) =>
-      JSON.stringify(fn.Properties.Environment ?? {}).includes(HEALTH_PATH),
+      JSON.stringify(fn.Properties.Environment ?? {}).includes(HEALTH_PATH)
     );
     expect(canary).toBeDefined();
     expect(JSON.stringify(canary?.Properties.Environment.Variables.HEALTH_URL)).toContain("DomainName");
@@ -161,10 +155,7 @@ describe.each([
 describe("Edge alarms (ADR-0012 amendment)", () => {
   it("production alarms on CloudFront 5xx and canary failure and notifies a topic in us-east-1", () => {
     const template = Template.fromStack(stackOf(prod, "Edge"));
-    template.hasResourceProperties("AWS::CloudWatch::Alarm", {
-      Namespace: "AWS/CloudFront",
-      MetricName: "5xxErrorRate",
-    });
+    template.hasResourceProperties("AWS::CloudWatch::Alarm", { Namespace: "AWS/CloudFront", MetricName: "5xxErrorRate" });
     template.hasResourceProperties("AWS::CloudWatch::Alarm", { MetricName: "Errors", TreatMissingData: "breaching" });
     template.resourceCountIs("AWS::SNS::Topic", 1);
   });

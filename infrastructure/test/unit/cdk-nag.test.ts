@@ -37,9 +37,9 @@ function validate(): { violations: Violation[]; unmatched: string[]; stacks: str
   const devWithEdge = new TempoStage(app, "NagTempoDev", {
     config: {
       ...developmentConfig,
-      featureFlags: { ...developmentConfig.featureFlags, enableFrontendHosting: true, enableWaf: true },
+      featureFlags: { ...developmentConfig.featureFlags, enableFrontendHosting: true, enableWaf: true }
     },
-    buildVersion: "test-sha",
+    buildVersion: "test-sha"
   });
   const prod = new TempoStage(app, "NagTempoProd", { config: productionConfig, buildVersion: "test-sha" });
   const stacks = [devWithEdge, prod].flatMap((stage) => stage.node.findAll().filter(Stack.isStack));
@@ -75,22 +75,21 @@ const result = validate();
 describe("cdk-nag AwsSolutions (ADR-0025)", () => {
   it("dev and prod have no unacknowledged finding", () => {
     const findings = new Set(
-      result.violations.flatMap((v) =>
-        v.violatingResources.map((r) => `${v.ruleName} at ${r.constructPath ?? r.resourceLogicalId}`),
-      ),
+      result.violations.flatMap((v) => v.violatingResources.map((r) => `${v.ruleName} at ${r.constructPath ?? r.resourceLogicalId}`))
     );
 
     expect([...findings].filter((finding) => !finding.includes(`/${COVERAGE_PROBE}/`))).toEqual([]);
   });
 
   it("checks every stack of both stages", () => {
+    const probe = `/${COVERAGE_PROBE}/`;
     const probed = new Set(
       result.violations.flatMap((v) =>
         v.violatingResources
           .map((r) => r.constructPath ?? "")
-          .filter((path) => path.includes(`/${COVERAGE_PROBE}/`))
-          .map((path) => path.slice(0, path.indexOf(`/${COVERAGE_PROBE}/`))),
-      ),
+          .filter((path) => path.includes(probe))
+          .map((path) => path.slice(0, path.indexOf(probe)))
+      )
     );
 
     expect(result.stacks).toContain("NagTempoDev/Canary");
