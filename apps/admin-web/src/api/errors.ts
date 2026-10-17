@@ -38,6 +38,8 @@ const messages: Record<string, string> = {
   "relationship.exists": "הקשר הזה כבר רשום.",
   "relationship.self": "אי אפשר לקשר אדם לעצמו.",
   "consent.invalid": "הבחירה לא תקינה. בדקו את המטרה, הערוץ והגרסה.",
+  // Member import from a file (docs/34 section 4).
+  "import.too_many_rows": "אפשר לייבא עד 1,000 שורות בכל פעם. פצלו את הקובץ לכמה קבצים.",
   // Scheduling and passes (docs/29 section 9).
   "person.not_found": "האדם לא נמצא.",
   "room.not_found": "החדר לא נמצא.",

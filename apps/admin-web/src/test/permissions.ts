@@ -22,6 +22,7 @@ export const permissionsFor = {
     "people.merge",
     "people.export",
     "people.erase",
+    "people.import",
     "consent.manage",
     "health.view",
     "ownership.transfer",

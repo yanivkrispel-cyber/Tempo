@@ -48,6 +48,7 @@ const routes: { app: "admin-web" | "client-web"; name: string; url: () => string
   { app: "admin-web", name: "roles", url: () => console_("/roles") },
   { app: "admin-web", name: "people", url: () => console_("/people") },
   { app: "admin-web", name: "person", url: () => console_(`/people/${personId}`) },
+  { app: "admin-web", name: "people-import", url: () => console_("/people/import") },
   { app: "admin-web", name: "duplicates", url: () => console_("/duplicates") },
   { app: "admin-web", name: "schedule", url: () => console_("/schedule") },
   { app: "admin-web", name: "session", url: () => console_(`/schedule/sessions/${sessionId}`) },

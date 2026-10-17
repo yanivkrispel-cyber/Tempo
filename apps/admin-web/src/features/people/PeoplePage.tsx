@@ -7,6 +7,7 @@ import { errorMessage, hasCode } from "../../api/errors";
 import {
   Banner,
   Button,
+  ButtonLink,
   Chip,
   DateInput,
   Dialog,
@@ -41,11 +42,19 @@ export function PeoplePage() {
           <span className="tp-eyebrow">ניהול</span>
           <h1>אנשים</h1>
         </div>
-        {studio.can("people.manage") && (
-          <Button icon="plus" onClick={() => setAdding(true)}>
-            אדם חדש
-          </Button>
-        )}
+        <div className="tp-row" style={{ gap: 8 }}>
+          {/* Importing a member list from a file (docs/34, I-1): owners and admins. */}
+          {studio.can("people.import") && (
+            <ButtonLink to="import" variant="secondary" icon="upload">
+              ייבוא מקובץ
+            </ButtonLink>
+          )}
+          {studio.can("people.manage") && (
+            <Button icon="plus" onClick={() => setAdding(true)}>
+              אדם חדש
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="tp-row" style={{ justifyContent: "space-between" }}>
