@@ -6,8 +6,8 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { createStudio, testNow, testToday, type StudioOptions } from "../../test/studio";
-import { streakText } from "./progress";
+import { createStudio, testNow, type StudioOptions } from "../../test/studio";
+import { goalText, streakText } from "./progress";
 
 function renderAt(url: string, options: StudioOptions = {}) {
   const studio = createStudio(options);
@@ -19,7 +19,7 @@ function renderAt(url: string, options: StudioOptions = {}) {
         auth={signedInAuth()}
         apiUrl="https://api.test"
         fetch={api.fetch}
-        today={testToday}
+
         now={testNow}
       />
     </div>,
@@ -53,6 +53,12 @@ describe("progress on the member home (docs/31 section 12)", () => {
     expect(within(stats).queryByRole("progressbar")).not.toBeInTheDocument();
     expect(within(stats).getByRole("link", { name: "להגדרת יעד חודשי" })).toHaveAttribute("href", "/profile");
     expect(stats).toHaveTextContent("עוד אין רצף שבועי");
+  });
+
+  it("says the goal in words: none, one class, several", () => {
+    expect(goalText(null)).toBe("לא הוגדר");
+    expect(goalText(1)).toBe("שיעור אחד בחודש");
+    expect(goalText(12)).toBe("12 שיעורים בחודש");
   });
 
   it("says the streak in words for one week and for several", () => {

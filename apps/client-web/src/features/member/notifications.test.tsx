@@ -32,7 +32,6 @@ function renderAt(path: string, routesForApi: Record<string, unknown> = {}) {
       auth={signedInAuth()}
       apiUrl="https://api.test"
       fetch={api.fetch}
-      today="2026-10-16"
     />,
   );
   return api;

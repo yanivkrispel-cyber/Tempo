@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { Banner, Button, Dialog, Icon, useToast } from "../../shared/design-system";
-import { errorMessage } from "../../api/errors";
+import { errorMessage, hasCode } from "../../api/errors";
 import { formatDate, type IsoDate } from "../../shared/utilities/dates";
 import { freeCancelDeadline, freeSpots, noPassText, waitText } from "./bookingState";
 import { relativeDay } from "./format";
@@ -99,13 +100,20 @@ export function BookingSheet({
               </div>
             )}
           </SessionDetails>
-          {error !== null && (
-            <Banner tone="danger" icon="info" className={styles.sheetNote}>
-              {errorMessage(
-                error,
-                waitlist ? "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב." : "ההרשמה לא הצליחה. נסו שוב.",
-              )}
+          {hasCode(error, "health.declaration_required") ? (
+            <Banner tone="warning" icon="info" className={styles.sheetNote}>
+              הסטודיו מבקש הצהרת בריאות חתומה לפני ההרשמה לשיעורים.{" "}
+              <Link to="/profile/health">למילוי הצהרת הבריאות</Link>
             </Banner>
+          ) : (
+            error !== null && (
+              <Banner tone="danger" icon="info" className={styles.sheetNote}>
+                {errorMessage(
+                  error,
+                  waitlist ? "ההצטרפות לרשימת ההמתנה לא הצליחה. נסו שוב." : "ההרשמה לא הצליחה. נסו שוב.",
+                )}
+              </Banner>
+            )
           )}
           {!pass && (
             <Banner tone="warning" icon="info" className={styles.sheetNote}>

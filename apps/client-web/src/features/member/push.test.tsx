@@ -66,7 +66,7 @@ function renderAt(path: string, routesForApi: Record<string, unknown>) {
   });
   const auth = signedInAuth();
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} today="2026-10-16" />);
+  render(<App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} />);
   return { api, auth, router };
 }
 

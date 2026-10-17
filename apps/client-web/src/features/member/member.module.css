@@ -225,3 +225,28 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* The health declaration (docs/31 section 13). */
+.healthStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.healthStatus p {
+  margin: 0;
+  line-height: 1.55;
+}
+.healthForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.healthForm > p {
+  margin: 0;
+}
+.healthActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

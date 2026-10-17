@@ -15,7 +15,6 @@ import {
   pastBookings,
   sessionIds,
   testNow,
-  testToday,
   type StudioOptions,
 } from "../../test/studio";
 
@@ -25,7 +24,7 @@ function renderAt(url: string, { auth = signedInAuth(), ...options }: StudioOpti
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   render(
     <div dir="rtl">
-      <App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} today={testToday} now={testNow} />
+      <App router={router} auth={auth} apiUrl="https://api.test" fetch={api.fetch} now={testNow} />
     </div>,
   );
   return { router, studio, api };
@@ -87,7 +86,7 @@ describe("member home", () => {
         auth={signedInAuth()}
         apiUrl="https://api.test"
         fetch={apiStub(studio.routes).fetch}
-        today={testToday}
+
         now={testNow}
       />,
     );
@@ -720,7 +719,7 @@ describe("profile", () => {
 
     expect(await screen.findByRole("switch", { name: "התראות בדחיפה" })).toBeChecked();
     expect(screen.getByRole("link", { name: /העדפות התראות/ })).toHaveAttribute("href", "/profile/notifications");
-    expect(screen.getByText("נחתמה")).toHaveClass("tp-chip--success");
+    expect(await screen.findByText("הצהרת בריאות חתומה")).toHaveClass("tp-chip--success");
   });
 
   it("says when the passes could not be read, and retries", async () => {
@@ -735,7 +734,7 @@ describe("profile", () => {
         auth={signedInAuth()}
         apiUrl="https://api.test"
         fetch={apiStub(studio.routes).fetch}
-        today={testToday}
+
         now={testNow}
       />,
     );

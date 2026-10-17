@@ -17,7 +17,6 @@ function renderProfile(routesForApi: Record<string, unknown> = {}) {
       auth={signedInAuth()}
       apiUrl="https://api.test"
       fetch={api.fetch}
-      today="2026-10-13"
     />,
   );
   return api;

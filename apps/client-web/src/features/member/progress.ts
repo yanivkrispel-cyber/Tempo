@@ -47,6 +47,12 @@ export function useSetMonthlyGoal(organizationId: string) {
   });
 }
 
+/** "לא הוגדר", "שיעור אחד בחודש", "12 שיעורים בחודש". */
+export function goalText(goal: number | null): string {
+  if (goal === null) return "לא הוגדר";
+  return goal === 1 ? "שיעור אחד בחודש" : `${goal} שיעורים בחודש`;
+}
+
 /** "שבוע אחד ברצף", "6 שבועות ברצף"; nothing to boast about yet at zero. */
 export function streakText(weeks: number): string {
   if (weeks <= 0) return "עוד אין רצף שבועי";

@@ -10,7 +10,7 @@ import { signedInAuth } from "../test/auth";
 function renderAt(url: string, routesForApi: Record<string, unknown>) {
   const api = apiStub(routesForApi);
   const router = createMemoryRouter(routes, { initialEntries: [url] });
-  render(<App router={router} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} today="2026-10-13" />);
+  render(<App router={router} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} />);
   return { router, api };
 }
 
