@@ -17,7 +17,11 @@ export async function expectFitsNarrowPhone(
   const size = page.viewportSize();
   await page.setViewportSize(NARROW_PHONE);
   try {
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    // The layout viewport (clientWidth), not window.innerWidth: on an emulated phone innerWidth grows to fit a page
+    // that is too wide, so the old comparison never saw sideways scrolling on the Pixel 7 projects.
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
     expect(overflow, `${screen} scrolls sideways at ${NARROW_PHONE.width}px`).toBeLessThanOrEqual(0);
     await expectNoSeriousA11yViolations(page, testInfo, `${screen} at ${NARROW_PHONE.width}px`, include);
   } finally {

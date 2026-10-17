@@ -104,7 +104,8 @@ async function phone(browser: Browser): Promise<Page> {
 
 /** The Hosted UI's form, when it shows one: a page that still has a Cognito session goes straight back. */
 async function hostedUi(page: Page, user: User, app: string) {
-  const form = page.locator('input[name="username"]:visible');
+  // Two copies of the form when the Hosted UI's CSS is late (see auth.setup.ts): wait for one, use the first shown.
+  const form = page.locator('input[name="username"]:visible').first();
   const back = (url: URL) => url.origin === app && !url.pathname.startsWith("/auth/") && url.pathname !== "/login";
   // Whichever comes first; the other wait is dropped, so its timeout must not fail the test later.
   const shown = form.waitFor({ timeout: 30_000 });
@@ -113,9 +114,13 @@ async function hostedUi(page: Page, user: User, app: string) {
   returned.catch(() => undefined);
   await Promise.race([shown, returned]);
   if (await form.isVisible()) {
-    await form.fill(user.email);
-    await page.locator('input[name="password"]:visible').fill(user.password);
-    await page.locator('input[name="signInSubmitButton"]:visible').click();
+    const shownForm = page
+      .locator("form")
+      .filter({ has: page.locator('input[name="username"]:visible') })
+      .first();
+    await shownForm.locator('input[name="username"]').fill(user.email);
+    await shownForm.locator('input[name="password"]').fill(user.password);
+    await shownForm.locator('input[name="signInSubmitButton"]').click();
   }
   await page.waitForURL(back, { timeout: 30_000 });
 }
