@@ -1,11 +1,47 @@
 {
+  "id": "/",
   "name": "Tempo · ניהול הסטודיו",
   "short_name": "Tempo ניהול",
+  "description": "ניהול הסטודיו: היום, המערכת, המתאמנים והכניסה בדלת.",
   "lang": "he",
   "dir": "rtl",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f5f4f2",
-  "theme_color": "#f5f4f2"
+  "background_color": "#fbfaf8",
+  "theme_color": "#fbfaf8",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/today-narrow.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "היום בסטודיו, בטלפון"
+    },
+    {
+      "src": "/screenshots/today-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "היום בסטודיו, במחשב"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "היום בסטודיו",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "סריקת כניסה",
+      "url": "/?open=scan",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
 }

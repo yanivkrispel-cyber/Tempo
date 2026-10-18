@@ -65,6 +65,15 @@ describe("the day in the studio (D15, the coach's screen)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" })).toBeInTheDocument();
   });
 
+  it("opens the door scan from the installed app's shortcut, and closing it drops the shortcut", async () => {
+    const { router } = renderAt("/?open=scan", () => []);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/o/neshima/today"));
+    expect(await screen.findByRole("dialog", { name: "סריקת כניסה" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "סריקת כניסה" })).not.toBeInTheDocument());
+    expect(router.state.location.search).toBe("");
+  });
+
   it("puts the coach's own classes first, each opening its roster", async () => {
     const mine = session({ id: id(11), instructor: { membershipId: studio.membershipId, displayName: "דנה כהן" } });
     const other = session({
