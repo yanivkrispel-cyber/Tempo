@@ -291,6 +291,46 @@ describe("the room layout (docs/33 section 3.2)", () => {
       ],
     });
   });
+
+  it("starts a room never mapped with spot selection on and one reformer per place (D20)", async () => {
+    const { api } = renderAt("/o/neshima/rooms", {
+      [`GET ${base}/rooms`]: {
+        items: [{ id: id(2), name: "חדר המכשירים", defaultCapacity: 5, status: "active", version: "1" }],
+      },
+      [`GET ${base}/rooms/${id(2)}/layout`]: {
+        roomId: id(2),
+        spotSelection: false,
+        rows: null,
+        cols: null,
+        windowSide: null,
+        mirrorFront: false,
+        spots: [],
+        version: "1",
+      },
+      [`PUT ${base}/rooms/${id(2)}/layout`]: (request: Request) =>
+        request.json().then((body) => json({ ...body, roomId: id(2), version: "2" })),
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "מפת החדר חדר המכשירים" }));
+    const dialog = await screen.findByRole("dialog", { name: /מפת החדר/ });
+    expect(await within(dialog).findByRole("checkbox", { name: "המתאמנים בוחרים מכשיר כשהם נרשמים" })).toBeChecked();
+    await userEvent.click(within(dialog).getByRole("button", { name: "שמירה" }));
+
+    await waitFor(() => expect(api.requests.some((request) => request.method === "PUT")).toBe(true));
+    const body = api.bodies[api.requests.findIndex((request) => request.method === "PUT")] as {
+      spotSelection: boolean;
+      rows: number;
+      cols: number;
+      spots: { label: string; row: number; col: number }[];
+    };
+    expect(body).toMatchObject({ spotSelection: true, rows: 2, cols: 3 });
+    expect(body.spots.map((spot) => [spot.label, spot.row, spot.col])).toEqual([
+      ["1", 0, 0],
+      ["2", 0, 1],
+      ["3", 0, 2],
+      ["4", 1, 0],
+      ["5", 1, 1],
+    ]);
+  });
 });
 
 describe("the command palette (P8)", () => {

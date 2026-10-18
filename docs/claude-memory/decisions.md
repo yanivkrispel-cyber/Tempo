@@ -73,3 +73,7 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   linked through a one-time code; everyone else is "taken". Either side ends the link. docs/33 section 4.
 - **D19 check-in code now, phone wallets later (2026-10-17):** a rotating QR in the member app, scanned by staff.
   Apple Wallet (US$99 a year) and Google Wallet wait until there is revenue. docs/33 section 8.
+- **D20 the room map is on by default (2026-10-18):** Ofir asked that spot selection be the default. A room never
+  mapped opens its map with "המתאמנים בוחרים מכשיר" on and one reformer per place (grid as square as fits, up to
+  12×12), and a new room opens its map right after it is created. Nothing changes until the owner saves; the server
+  default (`spot_selection false`, docs/33 X-1) stays, so a room nobody mapped still books without spots.
