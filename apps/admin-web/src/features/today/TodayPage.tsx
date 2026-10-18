@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/errors";
 import {
   Avatar,
@@ -32,6 +32,7 @@ import {
 } from "../console/experience";
 import { useStudio } from "../console/studio";
 import { priceLabel } from "../passes/queries";
+import { ScanDialog } from "../schedule/LiveRoom";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "../schedule/queries";
 import styles from "./today.module.css";
 
@@ -60,6 +61,9 @@ function DayView({ timeZone }: { timeZone: string }) {
   // The feed hides when it can't load (a role without it, or an API without it) rather than showing an error box.
   const activity = useActivity(reports && studio.can("people.view"));
   const feed = reports && studio.can("people.view") && !activity.isError;
+  // The installed app's "door scan" shortcut: the server finds the class whose check-in is open.
+  const [params, setParams] = useSearchParams();
+  const scanning = params.get("open") === "scan" && studio.can("attendance.mark");
 
   const all = [...(sessions.data ?? [])].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const mine = all.filter((session) => session.instructor?.membershipId === studio.membership.membershipId);
@@ -77,6 +81,7 @@ function DayView({ timeZone }: { timeZone: string }) {
 
   return (
     <>
+      {scanning && <ScanDialog onClose={() => setParams({}, { replace: true })} />}
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className="tp-eyebrow tp-num">

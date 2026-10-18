@@ -8,6 +8,7 @@ import { Banner, Button, Card, Field, Input, Select, Skeleton, useToast } from "
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { BookingPolicyCard } from "./BookingPolicyCard";
+import { InstallAppCard } from "./InstallAppCard";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PlanCard } from "./PlanCard";
 import { TagsCard } from "./TagsCard";
@@ -56,6 +57,7 @@ export function SettingsPage() {
       <TemplatesCard />
       {studio.can("people.tags.manage") && <TagsCard />}
       <PlanCard />
+      <InstallAppCard />
     </>
   );
 }
