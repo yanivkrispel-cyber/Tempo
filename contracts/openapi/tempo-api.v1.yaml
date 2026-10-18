@@ -5229,14 +5229,9 @@ components:
 
     MediaUploadTicket:
       type: object
-      required: [mediaId, uploadUrl, uploadForm, maxBytes, contentType, expiresAt]
+      required: [mediaId, uploadForm, maxBytes, contentType, expiresAt]
       properties:
         mediaId: { type: string, format: uuid }
-        uploadUrl:
-          type: string
-          format: uri
-          deprecated: true
-          description: "The old presigned PUT, which cannot cap the size. Use `uploadForm`; this goes away (#345)."
         uploadForm: { $ref: "#/components/schemas/MediaUploadForm" }
         maxBytes: { type: integer, description: "S3 refuses a larger file (400 `EntityTooLarge`)." }
         contentType: { type: string }

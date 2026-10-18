@@ -70,13 +70,13 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("owner"), new { purpose = "class_cover", ownerId = classTypeId, contentType = "image/png", bytes = 100 }, HttpStatusCode.Created);
         var bogus = ticket.GetProperty("mediaId").GetGuid();
 
-        // The ticket is a presigned POST whose policy caps the size at S3 (#345); the PUT stays until the apps move.
+        // The ticket is a presigned POST whose policy caps the size at S3 (#345); there is no PUT any more.
         ticket.GetProperty("maxBytes").GetInt32().Should().Be(MediaService.MaxUploadBytes);
         var form = ticket.GetProperty("uploadForm");
         form.GetProperty("url").GetString().Should().StartWith("https://media.test/");
         form.GetProperty("fields").GetProperty("key").GetString().Should().Be(MediaKeys.Incoming(StudioOf(studioPath), bogus));
         form.GetProperty("fields").GetProperty("Content-Type").GetString().Should().Be("image/png");
-        ticket.GetProperty("uploadUrl").GetString().Should().EndWith("?put");
+        ticket.TryGetProperty("uploadUrl", out _).Should().BeFalse();
         store.Upload(MediaKeys.Incoming(StudioOf(studioPath), bogus), "<script>alert(1)</script> this is not a png"u8.ToArray());
         var refused = await RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{bogus}/finalize", Customer("owner"));
         refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -199,7 +199,7 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
     {
         var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer(who), new { purpose, ownerId, contentType = "image/png", bytes = file.Length }, HttpStatusCode.Created);
         var id = ticket.GetProperty("mediaId").GetGuid();
-        ticket.GetProperty("uploadUrl").GetString().Should().Contain(MediaKeys.Incoming(StudioOf(studioPath), id));
+        ticket.GetProperty("uploadForm").GetProperty("fields").GetProperty("key").GetString().Should().Be(MediaKeys.Incoming(StudioOf(studioPath), id));
         store.Upload(MediaKeys.Incoming(StudioOf(studioPath), id), file);
         return await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{id}/finalize", Customer(who));
     }

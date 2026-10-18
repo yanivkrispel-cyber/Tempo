@@ -16,9 +16,6 @@ public interface IMediaStore
     /// <summary>False when no bucket is configured (local runs): the upload routes answer 503 media.unavailable.</summary>
     bool Available { get; }
 
-    /// <summary>Deprecated: the old upload, which cannot cap the size. Removed once the apps POST (#345, H-1b).</summary>
-    Uri PresignPut(string key, string contentType, TimeSpan lifetime);
-
     /// <summary>A browser form upload to <paramref name="key"/>: S3 refuses another key, another content type, an empty file or one over <paramref name="maxBytes"/>.</summary>
     PresignedForm PresignPost(string key, string contentType, long maxBytes, TimeSpan lifetime);
 
@@ -80,16 +77,6 @@ public static class MediaKeys
 public sealed class S3MediaStore(IAmazonS3 s3, string bucket) : IMediaStore
 {
     public bool Available => true;
-
-    public Uri PresignPut(string key, string contentType, TimeSpan lifetime) =>
-        new(s3.GetPreSignedURL(new GetPreSignedUrlRequest
-        {
-            BucketName = bucket,
-            Key = key,
-            Verb = HttpVerb.PUT,
-            ContentType = contentType,
-            Expires = DateTime.UtcNow.Add(lifetime)
-        }));
 
     public PresignedForm PresignPost(string key, string contentType, long maxBytes, TimeSpan lifetime)
     {
@@ -170,8 +157,6 @@ public sealed class UnavailableMediaStore : IMediaStore
 {
     public bool Available => false;
 
-    public Uri PresignPut(string key, string contentType, TimeSpan lifetime) => throw Unavailable();
-
     public PresignedForm PresignPost(string key, string contentType, long maxBytes, TimeSpan lifetime) => throw Unavailable();
 
     public Uri PresignGet(string key, TimeSpan lifetime) => throw Unavailable();
@@ -194,8 +179,6 @@ public sealed class InMemoryMediaStore : IMediaStore
     public bool Available => true;
 
     public IReadOnlyCollection<string> Keys => [.. objects.Keys];
-
-    public Uri PresignPut(string key, string contentType, TimeSpan lifetime) => new($"https://media.test/{key}?put");
 
     public PresignedForm PresignPost(string key, string contentType, long maxBytes, TimeSpan lifetime) =>
         new(new Uri($"https://media.test/{key}?post"), new Dictionary<string, string> { ["key"] = key, ["Content-Type"] = contentType });
