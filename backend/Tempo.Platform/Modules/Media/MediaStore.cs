@@ -102,7 +102,10 @@ public sealed class S3MediaStore(IAmazonS3 s3, string bucket) : IMediaStore
             await response.ResponseStream.CopyToAsync(buffer, cancellationToken);
             return buffer.ToArray();
         }
-        catch (AmazonS3Exception e) when (e.StatusCode == System.Net.HttpStatusCode.NotFound)
+        // The API's role may read and delete objects but not list the bucket, so S3 answers 403 AccessDenied, not 404,
+        // for a key nobody uploaded (board #347, 2026-10-18). Both mean "not there"; finalize then answers 409.
+        catch (AmazonS3Exception e) when (e.StatusCode == System.Net.HttpStatusCode.NotFound
+            || (e.StatusCode == System.Net.HttpStatusCode.Forbidden && e.ErrorCode == "AccessDenied"))
         {
             return null;
         }
