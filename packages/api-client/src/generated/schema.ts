@@ -1238,7 +1238,7 @@ export interface paths {
          * @description docs/33 section 6.3. A class cover needs `schedule.manage`, the studio cover `organization.settings.manage`,
          *     an instructor photo is the instructor's own or `schedule.manage`, an avatar is the person's own or
          *     `people.manage`. Returns a presigned PUT that lives 10 minutes. 503 `media.unavailable` where no bucket is
-         *     configured.
+         *     configured. 429 `rate_limited` after 20 tickets from one membership within an hour.
          */
         post: operations["startMediaUpload"];
         delete?: never;
@@ -7272,6 +7272,7 @@ export interface operations {
             402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     finalizeMediaUpload: {

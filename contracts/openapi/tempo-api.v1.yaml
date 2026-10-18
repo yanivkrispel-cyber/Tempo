@@ -1769,7 +1769,7 @@ paths:
         docs/33 section 6.3. A class cover needs `schedule.manage`, the studio cover `organization.settings.manage`,
         an instructor photo is the instructor's own or `schedule.manage`, an avatar is the person's own or
         `people.manage`. Returns a presigned PUT that lives 10 minutes. 503 `media.unavailable` where no bucket is
-        configured.
+        configured. 429 `rate_limited` after 20 tickets from one membership within an hour.
       requestBody:
         required: true
         content:
@@ -1786,6 +1786,7 @@ paths:
         "402": { $ref: "#/components/responses/Restricted" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/organizations/{organizationId}/media/uploads/{mediaId}/finalize:
     parameters:
