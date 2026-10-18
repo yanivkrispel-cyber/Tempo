@@ -296,8 +296,12 @@ waitlisted members on the class screen and in the home card. Migration 0028. Aud
   starts within the next 30 minutes or is running (or the given `sessionId`), marks it `attended`
   (docs/29 6.4) and returns the person's name, avatar, spot label and health-declaration state for the scanner
   screen. A code that was already accepted in its window is accepted again but does nothing new (idempotent).
-- Errors: `checkin.invalid_code`, `checkin.no_booking`, `checkin.too_early`. Five invalid scans from one staff
-  member in a minute return `429`.
+- Errors: `checkin.invalid_code`, `checkin.no_booking`, `checkin.too_early`. Who may scan is checked before the
+  code is read. Every scan is recorded (and committed) before the code is checked and forgotten when the code is
+  valid; past five invalid scans from one staff member in a minute, or ten of one person's code by anyone in an
+  hour, the answer is `429 checkin.too_many_attempts` (#345, migration 0030). A person whose code was capped can't
+  be scanned for up to an hour, even with the right code: the door asks them to wait or marks attendance by hand on
+  the roster. Six valid scans from one device in the same instant can make the sixth a 429 for a moment.
 - Audit: `booking.checked_in` (booking id, method `code`).
 
 ### 8.2 Apps
