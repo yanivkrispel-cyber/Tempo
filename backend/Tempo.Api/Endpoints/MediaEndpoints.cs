@@ -46,20 +46,21 @@ public static class MediaEndpoints
 
 /// <summary>
 /// Turns a picture id into a short-lived URL for a response; null when there is no picture or no bucket. The
-/// store is the request's own (set by <see cref="UseMediaLinks"/>), so test hosts with different stores never mix.
+/// store is the request's own (set by <see cref="UseMediaLinks"/>), so test hosts with different stores never mix,
+/// and the studio is the request's tenant: every route that returns pictures is a tenant route.
 /// </summary>
 public static class MediaLinks
 {
-    private static readonly AsyncLocal<IMediaStore?> Current = new();
+    private static readonly AsyncLocal<HttpContext?> Current = new();
     private static readonly IMediaStore None = new UnavailableMediaStore();
 
-    private static IMediaStore Store => Current.Value ?? None;
+    private static IMediaStore Store => Current.Value?.RequestServices.GetRequiredService<IMediaStore>() ?? None;
 
-    /// <summary>Makes the request's picture store the one <see cref="Url"/> signs with.</summary>
+    /// <summary>Makes the request's picture store and studio the ones <see cref="Url"/> signs with.</summary>
     public static IApplicationBuilder UseMediaLinks(this IApplicationBuilder app) =>
         app.Use((context, next) =>
         {
-            Current.Value = context.RequestServices.GetRequiredService<IMediaStore>();
+            Current.Value = context;
             return next(context);
         });
 
@@ -71,7 +72,8 @@ public static class MediaLinks
             return null;
         }
 
-        var key = small ? MediaKeys.Small(id) : MediaKeys.Large(id);
+        var organizationId = TenantRouteFilter.Current(Current.Value!).OrganizationId;
+        var key = small ? MediaKeys.Small(organizationId, id) : MediaKeys.Large(organizationId, id);
         return Store.PresignGet(key, MediaKeys.UrlLifetime);
     }
 }

@@ -35,14 +35,43 @@ public interface IMediaStore
 /// <summary>A presigned POST: send every field as is, then the file last as `file`, as `multipart/form-data` to <see cref="Url"/>.</summary>
 public sealed record PresignedForm(Uri Url, IReadOnlyDictionary<string, string> Fields);
 
-/// <summary>The object keys of one picture, from its id alone, so a URL never needs a database read (ids are UUIDv7 and every URL is presigned).</summary>
+/// <summary>
+/// The object keys of one picture, from its studio and its id, so a URL never needs a database read (every URL is
+/// presigned). Pictures created from <see cref="StudioPrefixSince"/> on live under their studio's id (#345, H-3,
+/// defense in depth); older ones keep the key they were written with. The id is a UUIDv7, which carries its
+/// creation time, so writing and reading follow the same rule.
+/// </summary>
 public static class MediaKeys
 {
-    public static string Incoming(Guid mediaId) => $"incoming/{mediaId:D}";
+    /// <summary>Later than the deploy that brings this rule, so nothing written by the old code is looked for under a new key.</summary>
+    public static readonly DateTimeOffset StudioPrefixSince = new(2026, 10, 20, 0, 0, 0, TimeSpan.Zero);
 
-    public static string Large(Guid mediaId) => $"media/{mediaId:D}/large.webp";
+    public static string Incoming(Guid organizationId, Guid mediaId) => $"incoming/{Scope(organizationId, mediaId)}";
 
-    public static string Small(Guid mediaId) => $"media/{mediaId:D}/small.webp";
+    public static string Large(Guid organizationId, Guid mediaId) => $"media/{Scope(organizationId, mediaId)}/large.webp";
+
+    public static string Small(Guid organizationId, Guid mediaId) => $"media/{Scope(organizationId, mediaId)}/small.webp";
+
+    private static string Scope(Guid organizationId, Guid mediaId) =>
+        CreatedAt(mediaId) >= StudioPrefixSince ? $"{organizationId:D}/{mediaId:D}" : $"{mediaId:D}";
+
+    /// <summary>The time inside a UUIDv7 (its first 48 bits, Unix milliseconds); the minimum for any other kind of id.</summary>
+    private static DateTimeOffset CreatedAt(Guid id)
+    {
+        var bytes = id.ToByteArray(bigEndian: true);
+        if (bytes[6] >> 4 != 7)
+        {
+            return DateTimeOffset.MinValue;
+        }
+
+        var milliseconds = 0L;
+        for (var i = 0; i < 6; i++)
+        {
+            milliseconds = (milliseconds << 8) | bytes[i];
+        }
+
+        return DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
+    }
 
     /// <summary>How long a picture URL in a response works; the apps cache the image as long.</summary>
     public static readonly TimeSpan UrlLifetime = TimeSpan.FromHours(6);
