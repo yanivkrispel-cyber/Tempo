@@ -5,13 +5,13 @@ using Tempo.Platform.Modules.Audit;
 
 namespace Tempo.Platform.Modules.Media;
 
-public sealed record UploadTicketView(Guid MediaId, Uri UploadUrl, string ContentType, DateTimeOffset ExpiresAt);
+public sealed record UploadTicketView(Guid MediaId, Uri UploadUrl, PresignedForm UploadForm, int MaxBytes, string ContentType, DateTimeOffset ExpiresAt);
 
 public sealed record MediaView(Guid Id, string Purpose, Guid OwnerId, int Width, int Height);
 
 /// <summary>
 /// Pictures (docs/33 section 6): a class type's cover, the studio's cover, an instructor's photo, a person's avatar.
-/// The app asks for an upload ticket, PUTs the file to S3 itself, then finalizes; the API re-encodes it and points
+/// The app asks for an upload ticket, POSTs the file to S3 itself, then finalizes; the API re-encodes it and points
 /// the owner at it. Who may set each kind of picture is the same rule that lets them edit its owner.
 /// </summary>
 public interface IMediaService
@@ -29,7 +29,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
     public const int MaxUploadBytes = 8 * 1024 * 1024;
     private static readonly TimeSpan UploadLifetime = TimeSpan.FromMinutes(10);
 
-    /// <summary>Upload tickets one membership may take in an hour. The presigned PUT cannot cap the object's size, so this bounds what a caller can leave in incoming/.</summary>
+    /// <summary>Upload tickets one membership may take in an hour: with the POST's size cap, this bounds what a caller can leave in incoming/.</summary>
     public const int UploadsPerHour = 20;
     private static readonly string[] Purposes = ["class_cover", "instructor_photo", "studio_cover", "avatar"];
     private static readonly string[] ContentTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -67,7 +67,14 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
         }
 
         await unitOfWork.CommitAsync(cancellationToken);
-        return new UploadTicketView(id, store.PresignPut(MediaKeys.Incoming(id), contentType, UploadLifetime), contentType, clock.GetUtcNow().Add(UploadLifetime));
+        var key = MediaKeys.Incoming(id);
+        return new UploadTicketView(
+            id,
+            store.PresignPut(key, contentType, UploadLifetime),
+            store.PresignPost(key, contentType, MaxUploadBytes, UploadLifetime),
+            MaxUploadBytes,
+            contentType,
+            clock.GetUtcNow().Add(UploadLifetime));
     }
 
     private static async Task CheckUploadRateAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)

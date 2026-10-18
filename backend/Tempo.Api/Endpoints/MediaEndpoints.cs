@@ -28,7 +28,7 @@ public static class MediaEndpoints
         var ticket = await media.StartUploadAsync(tenant, request.Purpose, request.OwnerId, request.ContentType, request.Bytes, httpContext.RequestAborted);
         return Results.Created(
             $"/api/v1/organizations/{tenant.OrganizationId}/media/uploads/{ticket.MediaId}",
-            new MediaUploadTicketResponse(ticket.MediaId, ticket.UploadUrl, ticket.ContentType, ticket.ExpiresAt));
+            new MediaUploadTicketResponse(ticket.MediaId, ticket.UploadUrl, new MediaUploadFormResponse(ticket.UploadForm.Url, ticket.UploadForm.Fields), ticket.MaxBytes, ticket.ContentType, ticket.ExpiresAt));
     }
 
     private static async Task<IResult> FinalizeAsync(HttpContext httpContext, Guid mediaId, IMediaService media)

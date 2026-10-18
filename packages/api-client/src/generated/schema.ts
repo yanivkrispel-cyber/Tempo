@@ -1237,8 +1237,10 @@ export interface paths {
          * Start uploading a picture (who may depends on the purpose)
          * @description docs/33 section 6.3. A class cover needs `schedule.manage`, the studio cover `organization.settings.manage`,
          *     an instructor photo is the instructor's own or `schedule.manage`, an avatar is the person's own or
-         *     `people.manage`. Returns a presigned PUT that lives 10 minutes. 503 `media.unavailable` where no bucket is
-         *     configured. 429 `rate_limited` after 20 tickets from one membership within an hour.
+         *     `people.manage`. Returns a presigned POST (`uploadForm`) that lives 10 minutes; its signed policy makes S3
+         *     refuse an empty file or one over `maxBytes` (8 MB), another content type or another key (#345). 503
+         *     `media.unavailable` where no bucket is configured. 429 `rate_limited` after 20 tickets from one membership
+         *     within an hour.
          */
         post: operations["startMediaUpload"];
         delete?: never;
@@ -3902,12 +3904,28 @@ export interface components {
             mediaId: string;
             /**
              * Format: uri
-             * @description PUT the file here with the same Content-Type, within 10 minutes.
+             * @deprecated
+             * @description The old presigned PUT, which cannot cap the size. Use `uploadForm`; this goes away (#345).
              */
             uploadUrl: string;
+            uploadForm: components["schemas"]["MediaUploadForm"];
+            /** @description S3 refuses a larger file (400 `EntityTooLarge`). */
+            maxBytes: number;
             contentType: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        /**
+         * @description A presigned POST. Send `multipart/form-data` to `url`: every entry of `fields` as is, then the file last,
+         *     named `file`, within 10 minutes. S3 answers 204, or 400 with an XML `Code` of `EntityTooLarge` or
+         *     `EntityTooSmall`.
+         */
+        MediaUploadForm: {
+            /** Format: uri */
+            url: string;
+            fields: {
+                [key: string]: string;
+            };
         };
         Media: {
             /** Format: uuid */
