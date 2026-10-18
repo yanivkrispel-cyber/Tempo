@@ -97,6 +97,41 @@ public sealed class PersistenceTests(PostgresFixture postgres) : IClassFixture<P
         (await command.ExecuteScalarAsync()).Should().Be(string.Empty);
     }
 
+    [Fact]
+    public async Task UnitOfWork_ReplacesPooledConnections_TheServerClosedMeanwhile()
+    {
+        // On dev (board #347, 2026-10-18 18:59) a Lambda thawed after Neon had suspended its compute, took pooled
+        // connections the server had closed, and answered 500 (EndOfStreamException). Here the server closes them.
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var pids = new List<int>();
+        var open = new List<UnitOfWork>();
+        for (var i = 0; i < 3; i++)
+        {
+            var unitOfWork = await UnitOfWork.BeginAsync(db, DatabaseRole.Application, null, null, CancellationToken.None);
+            await using var pid = unitOfWork.Command("SELECT pg_backend_pid()");
+            pids.Add((int)(await pid.ExecuteScalarAsync())!);
+            open.Add(unitOfWork);
+        }
+
+        foreach (var unitOfWork in open)
+        {
+            await unitOfWork.DisposeAsync();
+        }
+
+        foreach (var pid in pids)
+        {
+            await db.AsMasterAsync("SELECT pg_terminate_backend($1)", pid);
+        }
+
+        await Task.Delay(TimeSpan.FromMilliseconds(300));
+        for (var i = 0; i < 3; i++)
+        {
+            await using var next = await UnitOfWork.BeginAsync(db, DatabaseRole.Application, null, null, CancellationToken.None);
+            await using var probe = next.Command("SELECT 1");
+            (await probe.ExecuteScalarAsync()).Should().Be(1);
+        }
+    }
+
     private static async Task<long> CountMembershipsAsync(UnitOfWork unitOfWork)
     {
         await using var command = unitOfWork.Command("SELECT count(*) FROM organizations.memberships");
