@@ -1,9 +1,9 @@
-/* Tempo design system — base layer (Neo-Tactile Soft UI, matched to reference 9d607248).
+/* Tempo design system — base layer (Warm Glass v1.0, D16; colors from reference 9d607248).
    Load order in every app: tokens.css → base.css → components.css → app styles.
    Logical properties only, so the same CSS serves RTL (Hebrew, the default) and LTR.
    Set dir="rtl" lang="he" (or dir="ltr") on <html>. */
 
-@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 *,
 *::before,

@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { formatDate, type IsoDate } from "../utilities/dates";
 import { cx } from "./cx";
@@ -26,14 +26,15 @@ export interface TabBarProps {
 /** The phone app's bottom navigation, fixed to the screen; the current page gets aria-current. */
 export function TabBar({ items, action, label = "ניווט" }: TabBarProps) {
   const middle = Math.ceil(items.length / 2);
+  const compact = useCompactOnScroll();
   const link = (item: TabBarLink) => (
     <NavLink key={item.to} to={item.to} end className="tp-tabbar__item">
       <Icon name={item.icon} />
-      {item.label}
+      <span>{item.label}</span>
     </NavLink>
   );
   return (
-    <nav className="tp-tabbar tp-tabbar--fixed" aria-label={label}>
+    <nav className={cx("tp-tabbar tp-tabbar--fixed", compact && "tp-tabbar--compact")} aria-label={label}>
       {items.slice(0, middle).map(link)}
       {action && (
         <Link to={action.to} className="tp-tabbar__fab" aria-label={action.label}>
@@ -43,6 +44,26 @@ export function TabBar({ items, action, label = "ניווט" }: TabBarProps) {
       {items.slice(middle).map(link)}
     </nav>
   );
+}
+
+/**
+ * The floating tab bar gives the page room while it scrolls down and comes back as soon as it scrolls up (P1, as
+ * iOS does). Labels stay in the accessibility tree; only their text is hidden.
+ */
+function useCompactOnScroll(): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - last) < 8) return;
+      setCompact(y > 80 && y > last);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return compact;
 }
 
 export interface SideNavProps extends TabBarProps {
@@ -82,10 +103,12 @@ export interface WeekStripProps {
   onChange: (day: IsoDate) => void;
   today?: IsoDate;
   label?: string;
+  /** Days with a booking get a dot under the date. */
+  marked?: ReadonlySet<IsoDate>;
 }
 
 /** Seven days in a well; each button is named by its full date ("יום רביעי, 14 באוקטובר"). */
-export function WeekStrip({ days, value, onChange, today, label = "ימי השבוע" }: WeekStripProps) {
+export function WeekStrip({ days, value, onChange, today, label = "ימי השבוע", marked }: WeekStripProps) {
   return (
     <div role="group" aria-label={label} className="tp-week">
       {days.map((day) => (
@@ -94,11 +117,16 @@ export function WeekStrip({ days, value, onChange, today, label = "ימי השב
           type="button"
           className="tp-week__day"
           aria-pressed={day === value}
-          aria-label={`${fullDate.format(asDate(day))}${day === today ? ", היום" : ""}`}
+          aria-label={`${fullDate.format(asDate(day))}${day === today ? ", היום" : ""}${marked?.has(day) ? ", יש לך שיעור" : ""}`}
           onClick={() => onChange(day)}
         >
           {weekdayNarrow.format(asDate(day))}
-          <b>{Number(day.slice(8, 10))}</b>
+          <b style={day === today ? { color: "var(--brand-ink)" } : undefined}>{Number(day.slice(8, 10))}</b>
+          <span
+            className="tp-week__dot"
+            style={marked?.has(day) ? undefined : { background: "transparent" }}
+            aria-hidden="true"
+          />
         </button>
       ))}
     </div>

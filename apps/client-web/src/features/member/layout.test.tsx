@@ -50,6 +50,8 @@ describe("the member app on every screen (D15)", () => {
     expect(within(nav).getByRole("link", { name: "בית" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "התראות" })).toHaveAttribute("href", "/inbox");
     expect(document.querySelector(".tp-tabbar")).toBeNull();
-    expect(await screen.findByRole("heading", { level: 1, name: "היי נגה" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^(בוקר טוב|צהריים טובים|ערב טוב), נגה$/ }),
+    ).toBeInTheDocument();
   });
 });

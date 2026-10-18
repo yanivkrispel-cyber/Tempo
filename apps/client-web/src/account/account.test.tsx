@@ -18,7 +18,9 @@ describe("the account step after sign-in", () => {
   it("starts the session once with the access token before showing the member screens", async () => {
     const { api } = renderAt("/", { "POST /api/v1/session": sampleMe });
     expect(screen.getByText("טוענים את החשבון…")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { level: 1, name: "היי נגה" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^(בוקר טוב|צהריים טובים|ערב טוב), נגה$/ }),
+    ).toBeInTheDocument();
 
     // The session comes first and once; the home screen then reads the studio.
     expect(api.requests.filter((request) => request.url.endsWith("/api/v1/session"))).toHaveLength(1);
@@ -38,7 +40,9 @@ describe("the account step after sign-in", () => {
 describe("home on the real account", () => {
   it("greets the member by their own first name and shows their studio, or none", async () => {
     renderAt("/", { "POST /api/v1/session": { ...sampleMe, displayName: "דנה כהן", memberships: [] } });
-    expect(await screen.findByRole("heading", { level: 1, name: "היי דנה" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^(בוקר טוב|צהריים טובים|ערב טוב), דנה$/ }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/סטודיו נשימה/)).not.toBeInTheDocument();
   });
 });

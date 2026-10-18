@@ -13,6 +13,8 @@ import { useMyHealthDeclaration } from "./health";
 import { GoalDialog } from "./GoalDialog";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
+import { BuddiesCard } from "./BuddiesCard";
+import { useMyProfile, useUploadPicture } from "./experience";
 import { goalText, useMyProgress } from "./progress";
 import styles from "./member.module.css";
 import { StudioNotices } from "./StudioNotices";
@@ -33,12 +35,45 @@ export function ProfileScreen() {
   const studioProfile = useStudioProfile(studio?.organization.id);
   const progress = useMyProgress(studio?.organization.id);
   const health = useMyHealthDeclaration(studio?.organization.id);
+  const myProfile = useMyProfile(studio?.organization.id ?? "");
+  const upload = useUploadPicture(studio?.organization.id ?? "");
 
   const name = nameOf(me);
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.profile}`}>
       <header className={styles.header}>
-        <Avatar name={name} size="lg" />
+        {studio && myProfile.data ? (
+          <label className={styles.avatarPick} aria-label="החלפת התמונה שלי">
+            <Avatar name={name} src={myProfile.data.avatarUrl ?? undefined} size="lg" />
+            <span className={styles.avatarEdit} aria-hidden="true">
+              <Icon name="camera" />
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="tp-sr-only"
+              disabled={upload.isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file || !myProfile.data) return;
+                if (file.size > 8 * 1024 * 1024) {
+                  toast.show({ tone: "danger", message: "התמונה גדולה מ-8 מגה. נסו תמונה קטנה יותר." });
+                  return;
+                }
+                upload.mutate(
+                  { purpose: "avatar", ownerId: myProfile.data.id, file },
+                  {
+                    onSuccess: () => toast.show({ tone: "success", message: "התמונה עודכנה" }),
+                    onError: () => toast.show({ tone: "danger", message: "לא הצלחנו לעדכן את התמונה. נסו שוב." }),
+                  },
+                );
+              }}
+            />
+          </label>
+        ) : (
+          <Avatar name={name} size="lg" />
+        )}
         <div className={styles.heading}>
           <h1 className={styles.title}>{name}</h1>
           <span className="tp-ltr tp-muted" dir="ltr">
@@ -50,6 +85,7 @@ export function ProfileScreen() {
       <StudioNotices />
 
       {studio && <PassesCard organizationId={studio.organization.id} />}
+      {studio && <BuddiesCard organizationId={studio.organization.id} />}
 
       <Card as="section" small className={styles.studio} aria-label="הסטודיו שלך">
         {studio ? (

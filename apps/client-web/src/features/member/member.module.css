@@ -32,9 +32,8 @@
   min-width: 0;
 }
 .title {
-  font-size: 28px;
-  line-height: 34px;
-  font-weight: 800;
+  font-size: 30px;
+  line-height: 36px;
 }
 .sectionHead {
   display: flex;
@@ -274,4 +273,234 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Warm Glass home (D16, docs/design/mockups/premium-2026-10-17/Main.dc.html) */
+.meLink {
+  border-radius: 999px;
+  flex: none;
+}
+.meLink > span {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--rose);
+}
+.heroLink {
+  color: #ffffff;
+  text-decoration: none;
+}
+.heroLink:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+.heroPanel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px;
+  border-radius: 28px;
+  color: var(--ink);
+}
+.heroPanelText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.heroPanelText .tp-caption,
+.heroPanelText :global(.tp-caption) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heroDate {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-raise-sm);
+  line-height: 1;
+}
+.heroDate :global(.tp-display) {
+  font-size: 22px;
+}
+.heroDate small {
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+.heroActions {
+  display: flex;
+  gap: 10px;
+  padding-inline: 8px;
+}
+.dayHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  padding-top: 4px;
+}
+.pace {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.paceStats {
+  display: flex;
+  gap: 28px;
+}
+.paceStats > span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.paceStats b {
+  font-size: 40px;
+  line-height: 40px;
+  font-weight: 300;
+}
+.passHead {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.passHead h3 {
+  font-size: 17px;
+  line-height: 22px;
+  color: #ffffff;
+}
+.passBody {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 18px;
+}
+.passBody b {
+  font-size: 58px;
+  line-height: 50px;
+}
+.classHero {
+  min-height: 300px;
+}
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow:
+    var(--shadow-raise),
+    inset 0 0 0 1px color-mix(in srgb, var(--rose) 45%, transparent);
+}
+.instructor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.instructorHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.instructorHead > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+.instructorLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.doneCheck {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, var(--brand-light), var(--brand));
+  box-shadow:
+    0 0 0 8px #cfe1d4b3,
+    0 16px 30px -12px #46604be6;
+}
+.done :global(.tp-ticket) {
+  width: 100%;
+}
+.ticketBody {
+  padding: 16px;
+}
+.ticketFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 10px;
+  margin: 0;
+}
+.ticketFacts dd {
+  margin: 0;
+  font-weight: 600;
+}
+.avatarPick {
+  position: relative;
+  flex: none;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.avatarPick:focus-within {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--focus);
+}
+.avatarEdit {
+  position: absolute;
+  bottom: -2px;
+  inset-inline-end: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--on-brand);
+  background: var(--brand);
+  box-shadow: 0 0 0 2px var(--canvas);
+}
+.avatarEdit svg {
+  width: 13px;
+  height: 13px;
+}
+.buddy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.buddyCode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.buddyCode :global(.tp-display) {
+  font-size: 28px;
+  letter-spacing: 0.08em;
+}
+.buddyForm {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.buddyForm > :first-child {
+  flex: 1;
 }

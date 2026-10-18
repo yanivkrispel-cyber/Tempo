@@ -2888,3 +2888,987 @@ button.tp-tabbar__item {
     margin-block: -14px;
   }
 }
+
+/* =================================================================== Warm Glass (v1.0)
+   D16, 2026-10-17: the premium evolution of Neo-Tactile (docs/25 section 2). Paper cards with a long soft lift
+   instead of a slab on every control; glass for what floats above content; wells only for tactile things; one
+   deep-sage pill per screen; Frank Ruhl Libre for moments. This layer re-dresses the primitives above and adds the
+   premium components. The approved screens: docs/design/mockups/premium-2026-10-17. */
+:root {
+  --tp-slab: var(--surface);
+  --tp-sand-slab: var(--surface);
+  --tp-btn-gradient: linear-gradient(180deg, var(--brand-light) 0%, var(--brand) 58%, var(--brand-pressed) 100%);
+  --tp-spring: cubic-bezier(0.3, 1.35, 0.5, 1);
+  --tp-glass-blur: blur(24px) saturate(1.8);
+}
+
+/* Display type for moments: greetings, class names, big numbers (P8). Page titles take it too. */
+h1,
+.tp-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.tp-display--light {
+  font-weight: 300;
+}
+.tp-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons: pills. The primary is deep sage (white on it 5.2:1); a finger gets 52px. */
+.tp-btn {
+  border-radius: var(--radius-pill);
+  padding-inline: 22px;
+}
+.tp-btn--sm {
+  border-radius: var(--radius-pill);
+}
+.tp-btn--lg {
+  border-radius: var(--radius-pill);
+  min-height: 52px;
+}
+/* icon-only stays a square tile with no side padding, round in Warm Glass */
+.tp-btn.tp-btn--icon {
+  padding-inline: 0;
+  border-radius: var(--radius-pill);
+}
+.tp-btn--icon.tp-btn--lg {
+  min-height: 0;
+}
+.tp-btn--secondary {
+  background: var(--surface);
+  box-shadow: var(--shadow-raise-sm);
+}
+.tp-btn--ink {
+  color: #ffffff;
+  background: linear-gradient(180deg, #3a322d, var(--ink));
+  box-shadow:
+    inset 0 1px 0 #ffffff29,
+    0 10px 22px -12px #00000099;
+}
+.tp-btn--glass {
+  color: #ffffff;
+  background: var(--glass-dark);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+  box-shadow:
+    inset 0 1px 0 #ffffff57,
+    inset 0 0 0 1px #ffffff29;
+}
+.tp-btn--white {
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: 0 8px 22px -10px #00000080;
+}
+@media (pointer: coarse) {
+  .tp-btn--lg,
+  .tp-btn--primary-touch {
+    min-height: 52px;
+  }
+}
+
+/* Cards are paper. */
+.tp-card {
+  border-radius: 24px;
+}
+@media (min-width: 768px) {
+  .tp-card {
+    border-radius: 26px;
+  }
+}
+
+/* Materials */
+.tp-paper {
+  background: var(--surface);
+  box-shadow: var(--shadow-raise);
+}
+.tp-well {
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-sunken);
+}
+.tp-glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+  box-shadow: var(--shadow-glass);
+}
+.tp-glass-dark {
+  color: #ffffff;
+  background: var(--glass-dark);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+  box-shadow:
+    inset 0 1px 0 #ffffff57,
+    inset 0 0 0 1px #ffffff29;
+}
+
+/* The tab bar floats as glass (P1); the current tab is a sage lens; it shrinks while the page scrolls down. */
+.tp-tabbar {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+  box-shadow: var(--shadow-glass);
+  border-radius: 32px;
+  padding: 6px;
+  transition: padding var(--duration-base) var(--tp-spring);
+}
+.tp-tabbar__item {
+  border-radius: 26px;
+  flex: 1;
+  width: auto;
+  height: 52px;
+}
+.tp-tabbar__item[aria-current="page"] {
+  color: var(--brand-ink);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  box-shadow: inset 0 0 0 1px #ffffff99;
+}
+.tp-tabbar__fab {
+  border-radius: var(--radius-pill);
+  margin-top: 0;
+}
+.tp-tabbar--compact .tp-tabbar__item {
+  height: 44px;
+}
+.tp-tabbar--compact .tp-tabbar__item > span {
+  display: none;
+}
+.tp-appbar {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+  box-shadow: 0 0.5px 0 var(--line);
+}
+
+/* The console's side menu is quiet (P6): muted items, the current one on paper. */
+.tp-nav__item {
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 14px;
+}
+@media (pointer: fine) {
+  .tp-nav__item {
+    min-height: 40px;
+  }
+}
+.tp-nav__item[aria-current="page"] {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-raise-sm);
+}
+.tp-nav__item[aria-current="page"] .tp-icon {
+  color: var(--brand-ink);
+}
+.tp-rail,
+.tp-sidenav {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The week strip: a well, the chosen day rises as paper, a dot under days with a booking. */
+.tp-week {
+  border-radius: 22px;
+}
+.tp-week__day {
+  border-radius: 16px;
+  min-height: 62px;
+  transition:
+    transform var(--duration-base) var(--tp-spring),
+    box-shadow var(--duration-base) var(--tp-ease);
+}
+.tp-week__day[aria-pressed="true"] {
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+.tp-week__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+/* ---------------------------------------------------------------- Live dot */
+.tp-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #a7dcb0;
+  flex: none;
+  animation: tp-pulse 2s ease-out infinite;
+}
+.tp-live--sage {
+  background: var(--brand);
+}
+@keyframes tp-pulse {
+  0% {
+    box-shadow: 0 0 0 0 #a7dcb0cc;
+  }
+  70% {
+    box-shadow: 0 0 0 9px #a7dcb000;
+  }
+  100% {
+    box-shadow: 0 0 0 0 #a7dcb000;
+  }
+}
+
+/* ---------------------------------------------------------------- Hero (P2)
+   One important thing at the top: a photo under a warm scrim, white display type, glass on it. */
+.tp-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 34px;
+  min-height: 420px;
+  box-shadow: var(--shadow-float);
+  color: #ffffff;
+  background: linear-gradient(160deg, var(--taupe), var(--taupe-deep));
+  isolation: isolate;
+}
+.tp-hero__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.tp-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    #18130f52 0%,
+    #18130f00 24%,
+    #18130f00 40%,
+    #18130f8c 68%,
+    var(--scrim-photo) 100%
+  );
+}
+.tp-hero__top {
+  position: absolute;
+  top: 14px;
+  inset-inline: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.tp-hero__body {
+  position: absolute;
+  bottom: 12px;
+  inset-inline: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tp-hero__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-inline: 8px;
+}
+.tp-hero__title {
+  font-family: var(--font-display);
+  font-size: 42px;
+  line-height: 46px;
+  font-weight: 400;
+  color: #ffffff;
+}
+.tp-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  opacity: 0.92;
+}
+.tp-hero .tp-chip {
+  color: #ffffff;
+}
+.tp-hero .tp-chip.tp-glass-dark {
+  height: 32px;
+}
+
+/* The countdown ring in the hero's glass panel. */
+.tp-ring-count {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  color: var(--ink);
+}
+.tp-ring-count svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.tp-ring-count__track {
+  fill: none;
+  stroke: #2b24201f;
+  stroke-width: 4;
+}
+.tp-ring-count__value {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s var(--tp-ease);
+}
+.tp-ring-count__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.tp-ring-count__label small {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  line-height: 12px;
+  color: var(--ink-muted);
+}
+
+/* --------------------------------------------------------- Row with a cover (P7) */
+.tp-cover-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-raise);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform var(--duration-base) var(--tp-spring);
+}
+@media (hover: hover) {
+  .tp-cover-row:hover {
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+}
+.tp-cover-row--mine {
+  box-shadow:
+    var(--shadow-raise),
+    0 0 0 1.5px var(--sage);
+}
+.tp-cover {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  object-fit: cover;
+  flex: none;
+  background: linear-gradient(160deg, var(--sand), var(--sand-deep));
+}
+.tp-cover-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tp-cover-row__title {
+  font-weight: 600;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tp-cover-row__meta {
+  font-size: 13px;
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tp-cover-row__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+.tp-cover-row__time {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ Pace dots */
+.tp-pace {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+}
+.tp-pace__week {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 5px;
+  padding-block: 6px;
+  border-radius: 10px;
+}
+.tp-pace__week--now {
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+}
+.tp-pace__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1px 2px #2b242024;
+}
+.tp-pace__dot--done {
+  background: var(--sage-light);
+  box-shadow: none;
+}
+.tp-pace__dot--goal {
+  background: var(--brand);
+  box-shadow: none;
+}
+.tp-pace__dot--booked {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+
+/* ----------------------------------------------------- Pass card (wallet-style) */
+.tp-passcard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  padding: 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #71907a 0%, var(--brand) 48%, #455d4a 100%);
+  box-shadow:
+    inset 0 1px 0 #ffffff47,
+    0 18px 34px -18px #344839d9;
+}
+.tp-passcard__pips {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 16px;
+}
+.tp-passcard__pip {
+  height: 5px;
+  border-radius: 3px;
+  background: #ffffffeb;
+}
+.tp-passcard__pip--used {
+  background: #ffffff42;
+}
+
+/* -------------------------------------------------------------- Room map (P3)
+   A room seen from above: the mirror wall at the front, the instructor's spot, light from the window side, and
+   the spots as tactile tiles. The grid takes the room's rows and columns from --tp-cols. */
+.tp-room {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  padding: 14px 14px 16px;
+  background:
+    repeating-linear-gradient(90deg, #a4968912 0 1px, transparent 1px 38px), linear-gradient(180deg, #efe9e2, #e8e0d7);
+  box-shadow: var(--shadow-sunken);
+}
+.tp-room__light {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 140px;
+  pointer-events: none;
+  background: linear-gradient(to right, #fff4d6d9, #fff4d600);
+}
+.tp-room__light:dir(rtl) {
+  background: linear-gradient(to left, #fff4d6d9, #fff4d600);
+}
+.tp-room__light--end {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  background: linear-gradient(to left, #fff4d6d9, #fff4d600);
+}
+.tp-room__light--end:dir(rtl) {
+  background: linear-gradient(to right, #fff4d6d9, #fff4d600);
+}
+.tp-room__mirror {
+  height: 6px;
+  border-radius: 3px;
+  margin-inline: 6px;
+  background: linear-gradient(90deg, #d5dadd, #f6f7f8 30%, #cfd6da 55%, #f6f7f8 80%, #d5dadd);
+  box-shadow: 0 1px 2px #2b24201f;
+}
+.tp-room__front {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-block: 10px;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.tp-room__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--tp-cols, 5), minmax(0, 1fr));
+  gap: 12px 11px;
+}
+.tp-spot {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 104px;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  border-radius: 16px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  color: var(--ink-muted);
+  background: var(--surface);
+  box-shadow:
+    inset 0 1px 0 #ffffffe6,
+    0 0 0 1px #2b242014,
+    0 7px 14px -8px #2b24206b;
+  transition:
+    transform 0.35s var(--tp-spring),
+    box-shadow var(--duration-base) var(--tp-ease),
+    background var(--duration-base) var(--tp-ease);
+}
+@media (hover: hover) {
+  .tp-spot:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+}
+.tp-spot__rail {
+  position: absolute;
+  top: 9px;
+  bottom: 27px;
+  inset-inline: 9px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, var(--surface-sunken), var(--sand));
+  box-shadow: inset 0 1px 2px #2b242024;
+}
+.tp-spot__head {
+  position: absolute;
+  top: 13px;
+  inset-inline: 0;
+  margin: 0 auto;
+  width: 18px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--sand-deep);
+}
+.tp-spot__carriage {
+  position: absolute;
+  top: 21px;
+  inset-inline: 13px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px #2b242033,
+    inset 0 1px 0 #ffffffe6;
+}
+.tp-spot__bar {
+  position: absolute;
+  bottom: 33px;
+  inset-inline: 12px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--taupe);
+}
+.tp-spot__label {
+  position: absolute;
+  bottom: 7px;
+  inset-inline: 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tp-spot__who {
+  position: absolute;
+  top: 22px;
+  inset-inline: 0;
+  margin: 0 auto;
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+.tp-spot__mark {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--canvas);
+}
+.tp-spot__mark .tp-icon {
+  width: 12px;
+  height: 12px;
+}
+.tp-spot__mark--usual {
+  background: var(--rose-soft);
+  color: var(--rose-ink);
+}
+.tp-spot__mark--in {
+  background: var(--brand);
+  color: var(--on-brand);
+  animation: tp-pop 0.4s var(--tp-spring);
+}
+.tp-spot__mark--flag {
+  inset-inline-end: auto;
+  inset-inline-start: -5px;
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+}
+.tp-spot__name {
+  display: block;
+  margin-top: 6px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tp-spot--taken,
+.tp-spot--buddy {
+  cursor: default;
+  background: #ddd3ca;
+  box-shadow:
+    inset 0 2px 5px #2b242029,
+    inset 0 -1px 0 #ffffff80;
+}
+.tp-spot--buddy {
+  box-shadow:
+    inset 0 2px 5px #2b242029,
+    0 0 0 1.5px var(--rose);
+}
+.tp-spot--taken > :not(.tp-spot__label):not(.tp-spot__who),
+.tp-spot--buddy > :not(.tp-spot__label):not(.tp-spot__who):not(.tp-spot__mark) {
+  opacity: 0.42;
+}
+.tp-spot--selected,
+.tp-spot[aria-pressed="true"] {
+  color: #ffffff;
+  background: linear-gradient(180deg, #6b8a70, var(--brand));
+  box-shadow:
+    inset 0 1px 0 #ffffff4d,
+    0 0 0 4px #cfe1d4f2,
+    0 16px 26px -12px #46604be6;
+  transform: translateY(-3px) scale(1.04);
+}
+.tp-spot--selected .tp-spot__rail,
+.tp-spot[aria-pressed="true"] .tp-spot__rail {
+  background: #ffffff29;
+  box-shadow: none;
+}
+.tp-spot--selected .tp-spot__head,
+.tp-spot[aria-pressed="true"] .tp-spot__head {
+  background: #ffffff80;
+}
+.tp-spot--selected .tp-spot__bar,
+.tp-spot[aria-pressed="true"] .tp-spot__bar {
+  background: #ffffffbf;
+}
+.tp-spot--in {
+  box-shadow:
+    inset 0 1px 0 #ffffffe6,
+    0 0 0 2px var(--sage),
+    0 7px 14px -8px #2b24206b;
+}
+.tp-spot--waiting {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #776a5f8c;
+}
+.tp-spot--waiting .tp-spot__who {
+  opacity: 0.55;
+}
+.tp-spot--free-staff {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+.tp-spot--maintenance {
+  cursor: default;
+  background: repeating-linear-gradient(135deg, #a4968924 0 6px, transparent 6px 12px), #e6ded5;
+  box-shadow: inset 0 1px 3px #2b24201f;
+}
+@keyframes tp-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---------------------------------------------------------- Slide to confirm (P4)
+   A well with a raised sage knob; drag it to the end, or press it (keyboard, screen readers, a plain tap). */
+.tp-slide {
+  position: relative;
+  height: 60px;
+  border-radius: 30px;
+  padding: 4px;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-sunken);
+  display: flex;
+}
+.tp-slide__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline-start: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  color: transparent;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--ink-muted) 0%,
+    var(--ink-muted) 40%,
+    #ffffff 50%,
+    var(--ink-muted) 60%,
+    var(--ink-muted) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: tp-shimmer 2.8s linear infinite;
+}
+.tp-slide__knob {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  touch-action: none;
+  cursor: grab;
+  color: var(--on-brand);
+  background: var(--tp-btn-gradient);
+  box-shadow: var(--shadow-brand);
+  display: grid;
+  place-items: center;
+  transition: transform 0.35s var(--tp-spring);
+}
+.tp-slide__knob--drag {
+  transition: none;
+  cursor: grabbing;
+}
+@keyframes tp-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/* -------------------------------------------------------------- Ticket and QR */
+.tp-ticket {
+  overflow: hidden;
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: var(--shadow-raise);
+}
+.tp-ticket__photo {
+  position: relative;
+  height: 96px;
+}
+.tp-ticket__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tp-qr {
+  display: block;
+  padding: 6px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px #2b24201a;
+}
+.tp-check-draw {
+  stroke-dasharray: 48;
+  animation: tp-draw 0.6s 0.25s both;
+}
+@keyframes tp-draw {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.tp-rise {
+  animation: tp-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes tp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------- Heat cells */
+.tp-heat {
+  display: grid;
+  grid-template-columns: 44px repeat(var(--tp-days, 6), minmax(0, 1fr));
+  gap: 5px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.tp-heat__cell {
+  height: 30px;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+.tp-heat__cell--1 {
+  background: var(--brand-soft);
+}
+.tp-heat__cell--2 {
+  background: #cfdccd;
+}
+.tp-heat__cell--3 {
+  background: var(--sage-light);
+}
+.tp-heat__cell--4 {
+  background: var(--sage);
+}
+.tp-heat__cell--hot {
+  background: var(--rose);
+}
+
+/* --------------------------------------------------- Insight card and activity row */
+.tp-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-raise);
+}
+.tp-insight__tile {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.tp-activity {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 20px;
+}
+.tp-activity time {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* --------------------------------------------------------- Command palette */
+.tp-cmdk {
+  position: fixed;
+  inset-inline: 16px;
+  top: 12vh;
+  z-index: var(--z-modal);
+  max-width: 640px;
+  margin-inline: auto;
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+  box-shadow: var(--shadow-glass), var(--shadow-float);
+}
+.tp-cmdk__input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  padding: 18px 20px;
+  font: inherit;
+  font-size: 17px;
+  background: transparent;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.tp-cmdk__list {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tp-cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding-inline: 12px;
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.tp-cmdk__item[aria-selected="true"],
+.tp-cmdk__item:focus-visible {
+  background: var(--surface);
+  box-shadow: var(--shadow-raise-sm);
+}
+.tp-kbd {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 0 var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-live,
+  .tp-slide__label,
+  .tp-check-draw,
+  .tp-rise,
+  .tp-spot__mark--in {
+    animation: none;
+  }
+  .tp-spot,
+  .tp-slide__knob,
+  .tp-week__day,
+  .tp-tabbar,
+  .tp-cover-row {
+    transition: none;
+  }
+}
