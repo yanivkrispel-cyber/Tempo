@@ -19,6 +19,24 @@ const kinds: { value: Kind; label: string }[] = [
 const sizes = Array.from({ length: 12 }, (_, index) => index + 1);
 
 /**
+ * A room that was never mapped starts with spot selection on and one reformer per place, front row first, in a grid
+ * as close to square as fits (D20 in docs/claude-memory/decisions.md). Nothing is saved until the owner saves.
+ */
+function firstDraft(capacity: number) {
+  const count = Math.min(Math.max(capacity, 1), 144);
+  const cols = Math.min(12, Math.ceil(Math.sqrt(count)));
+  const rows = Math.ceil(count / cols);
+  const spots: Spot[] = Array.from({ length: count }, (_, index) => ({
+    label: String(index + 1),
+    row: Math.floor(index / cols),
+    col: index % cols,
+    kind: "reformer",
+    status: "active",
+  }));
+  return { rows, cols, spots };
+}
+
+/**
  * The room's floor (docs/33 section 3.2): rows and columns as the room is drawn, the spots in their cells, the window
  * and the mirror. A tap on an empty cell adds a spot; a tap on a spot sends it to maintenance, and another tap takes it
  * out. Saving replaces the whole layout; a spot keeps its bookings as long as it stays.
@@ -43,14 +61,19 @@ export function RoomLayoutDialog({ room, onClose }: { room: Room; onClose: () =>
 function Editor({ room, layout, onClose }: { room: Room; layout: RoomLayout; onClose: () => void }) {
   const toast = useToast();
   const save = useSaveRoomLayout(room.id);
-  const [spotSelection, setSpotSelection] = useState(layout.spotSelection);
-  const [rows, setRows] = useState(layout.rows ?? 3);
-  const [cols, setCols] = useState(layout.cols ?? 4);
+  const [draft] = useState(() =>
+    layout.rows == null && layout.spots.length === 0 ? firstDraft(room.defaultCapacity) : null,
+  );
+  const [spotSelection, setSpotSelection] = useState(draft ? true : layout.spotSelection);
+  const [rows, setRows] = useState(draft?.rows ?? layout.rows ?? 3);
+  const [cols, setCols] = useState(draft?.cols ?? layout.cols ?? 4);
   const [windowSide, setWindowSide] = useState<WindowSide>(layout.windowSide ?? null);
   const [mirrorFront, setMirrorFront] = useState(layout.mirrorFront);
   const [kind, setKind] = useState<Kind>(layout.spots[0]?.kind ?? "reformer");
-  const [spots, setSpots] = useState<Spot[]>(() =>
-    layout.spots.map(({ id, label, row, col, kind, status }) => ({ id, label, row, col, kind, status })),
+  const [spots, setSpots] = useState<Spot[]>(
+    () =>
+      draft?.spots ??
+      layout.spots.map(({ id, label, row, col, kind, status }) => ({ id, label, row, col, kind, status })),
   );
 
   const inside = spots.filter((spot) => spot.row < rows && spot.col < cols);

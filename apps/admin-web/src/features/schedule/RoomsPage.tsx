@@ -122,7 +122,13 @@ export function RoomsPage() {
       )}
 
       {mapping && <RoomLayoutDialog room={mapping} onClose={() => setMapping(null)} />}
-      {editing && <RoomDialog room={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
+      {editing && (
+        <RoomDialog
+          room={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onCreated={(room) => setMapping(room)}
+        />
+      )}
     </>
   );
 }
@@ -175,7 +181,16 @@ function ArchiveButton({ room }: { room: Room }) {
   );
 }
 
-function RoomDialog({ room, onClose }: { room: Room | null; onClose: () => void }) {
+/** A new room goes straight on to its map (D20), so spot selection is the path of least effort. */
+function RoomDialog({
+  room,
+  onClose,
+  onCreated,
+}: {
+  room: Room | null;
+  onClose: () => void;
+  onCreated: (room: Room) => void;
+}) {
   const api = useApi();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -199,10 +214,11 @@ function RoomDialog({ room, onClose }: { room: Room | null; onClose: () => void 
             api.POST("/api/v1/organizations/{organizationId}/rooms", { params: { path: { organizationId } }, body }),
           );
     },
-    onSuccess: async () => {
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: scheduleKeys.all(organizationId) });
       toast.show({ tone: "success", icon: "check", message: room ? "החדר נשמר" : "החדר נוסף" });
       onClose();
+      if (!room) onCreated(saved);
     },
   });
 
