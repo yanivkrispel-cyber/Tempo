@@ -68,6 +68,7 @@ try
     app.MapScheduleEndpoints();
     app.MapPassEndpoints();
     app.MapBookingEndpoints();
+    app.MapSpotEndpoints();
     app.MapProgressEndpoints();
     app.MapReportEndpoints();
     app.MapHealthDeclarationEndpoints();

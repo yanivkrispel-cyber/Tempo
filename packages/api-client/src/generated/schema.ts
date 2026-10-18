@@ -1052,6 +1052,109 @@ export interface paths {
         patch: operations["updateRoom"];
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/rooms/{roomId}/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A room's spots: grid, window, mirror (`schedule.view`)
+         * @description docs/33 section 3. Archived spots are left out.
+         */
+        get: operations["getRoomLayout"];
+        /**
+         * Replace a room's layout (`schedule.manage`)
+         * @description The whole layout in one request (docs/33 section 3.2). A spot with an `id` keeps its bookings; a spot without
+         *     one is new; an existing spot left out is retired. 409 `room.spot_in_use` when a spot leaving service holds a
+         *     place in a future class, 409 `room.spots_below_booked` when a future class has more places booked than the
+         *     active spots. With `spotSelection` on, future places without a spot get one (usual spot first); turning it
+         *     off clears the spots of future places.
+         */
+        put: operations["saveRoomLayout"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/sessions/{sessionId}/spots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The room map of one class (`schedule.view`)
+         * @description Every active or maintenance spot with its state for the caller: `free`, `taken`, `mine` or `maintenance`
+         *     (docs/33 section 3.4). A member never sees who holds another spot. Staff with `bookings.manage` and the
+         *     class's instructor also get `bookingId`, `person`, `attendance` (the booking status) and `healthStatus`.
+         *     A class whose room has no spot selection answers `spotSelection: false` and no spots.
+         */
+        get: operations["getSessionSpots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/bookings/{bookingId}/spot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the spot of a booked place (self before the class, or `bookings.manage`)
+         * @description 409 `booking.spot_unavailable` when the spot is taken, under maintenance or not in the class's room.
+         */
+        put: operations["changeBookingSpot"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/spot-preferences/{roomId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set or clear the caller's usual spot in a room (self)
+         * @description A booking without a chosen spot takes the usual spot when it is free (docs/33 X-3).
+         */
+        put: operations["setUsualSpot"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/class-types": {
         parameters: {
             query?: never;
@@ -3175,6 +3278,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             version: string;
+            /** @description The spot this place holds in a room with spot selection (docs/33 section 3); null otherwise. */
+            spot?: components["schemas"]["SpotRef"] | null;
         };
         CreateBookingRequest: {
             /**
@@ -3182,6 +3287,127 @@ export interface components {
              * @description Book someone else (`bookings.manage`). Omit to book yourself.
              */
             personId?: string;
+            /**
+             * Format: uuid
+             * @description The spot to take in a room with spot selection. Omit to get the usual spot when free, else the first
+             *     free one. 400 `booking.spot_not_offered` in a room without spots; 409 `booking.spot_unavailable` when
+             *     it is taken. Ignored when the class is full and the booking joins the waitlist.
+             */
+            spotId?: string;
+        };
+        SpotRef: {
+            /** Format: uuid */
+            id: string;
+            /** @example 6 */
+            label: string;
+        };
+        /** @enum {string} */
+        SpotKind: "reformer" | "mat" | "bike" | "tower" | "chair" | "place";
+        RoomSpot: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            row: number;
+            col: number;
+            kind: components["schemas"]["SpotKind"];
+            /** @enum {string} */
+            status: "active" | "maintenance";
+        };
+        RoomLayout: {
+            /** Format: uuid */
+            roomId: string;
+            /** @description Members pick a spot when they book. */
+            spotSelection: boolean;
+            rows?: number | null;
+            cols?: number | null;
+            /**
+             * @description The wall with the window, as the room is drawn (start is the right side in Hebrew).
+             * @enum {string|null}
+             */
+            windowSide?: "start" | "end" | "back" | null;
+            /** @description A mirror wall at the front, where the instructor stands. */
+            mirrorFront: boolean;
+            spots: components["schemas"]["RoomSpot"][];
+            version: string;
+        };
+        RoomLayoutRequest: {
+            spotSelection?: boolean;
+            rows?: number | null;
+            cols?: number | null;
+            /** @enum {string|null} */
+            windowSide?: "start" | "end" | "back" | null;
+            mirrorFront?: boolean;
+            spots: {
+                /**
+                 * Format: uuid
+                 * @description Keep this existing spot. Omit for a new spot.
+                 */
+                id?: string;
+                label: string;
+                row: number;
+                col: number;
+                kind?: components["schemas"]["SpotKind"];
+                /**
+                 * @default active
+                 * @enum {string}
+                 */
+                status: "active" | "maintenance";
+            }[];
+        };
+        SessionSpot: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            row: number;
+            col: number;
+            kind: components["schemas"]["SpotKind"];
+            /** @enum {string} */
+            state: "free" | "taken" | "mine" | "maintenance";
+            /**
+             * Format: uuid
+             * @description The caller's own booking on it, or any booking for staff.
+             */
+            bookingId?: string | null;
+            /** @description Who holds it; staff and the instructor only. */
+            person?: components["schemas"]["PersonRef"] | null;
+            /**
+             * @description The holder's booking status; staff and the instructor only.
+             * @enum {string|null}
+             */
+            attendance?: "booked" | "attended" | "no_show" | null;
+            /**
+             * @description The holder's health declaration status, never answers; staff and the instructor only.
+             * @enum {string|null}
+             */
+            healthStatus?: "signed" | "missing" | "expired" | "needs_medical_approval" | null;
+        };
+        SessionSpots: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            roomId?: string | null;
+            spotSelection: boolean;
+            rows?: number | null;
+            cols?: number | null;
+            /** @enum {string|null} */
+            windowSide?: "start" | "end" | "back" | null;
+            mirrorFront: boolean;
+            /** Format: uuid */
+            mySpotId?: string | null;
+            /** Format: uuid */
+            usualSpotId?: string | null;
+            spots: components["schemas"]["SessionSpot"][];
+        };
+        ChangeSpotRequest: {
+            /** Format: uuid */
+            spotId: string;
+        };
+        UsualSpotRequest: {
+            /**
+             * Format: uuid
+             * @description Null clears the usual spot.
+             */
+            spotId: string | null;
         };
         MoveBookingRequest: {
             /**
@@ -6101,6 +6327,154 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getRoomLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomLayout"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveRoomLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomLayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomLayout"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getSessionSpots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionSpots"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    changeBookingSpot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeSpotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    setUsualSpot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                roomId: components["parameters"]["RoomId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsualSpotRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listClassTypes: {

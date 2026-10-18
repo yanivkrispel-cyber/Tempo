@@ -36,7 +36,7 @@ public static class BookingEndpoints
         IBookingService bookings)
     {
         var tenant = TenantRouteFilter.Current(httpContext);
-        var booking = await bookings.BookAsync(tenant, sessionId, request?.PersonId, httpContext.RequestAborted);
+        var booking = await bookings.BookAsync(tenant, sessionId, request?.PersonId, httpContext.RequestAborted, request?.SpotId);
         return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/bookings/{booking.Id}", ToResponse(booking));
     }
 
@@ -85,7 +85,7 @@ public static class BookingEndpoints
             [.. page.Items.Select(i =>
             {
                 var b = ToResponse(i.Booking);
-                return new MyBookingResponse(b.Id, b.SessionId, b.Person, b.Status, b.WaitlistPosition, b.LateCancel, b.CancelReason, b.Pass, b.CreatedAt, b.Version, ScheduleEndpoints.ToResponse(i.Session), b.CancelledFrom);
+                return new MyBookingResponse(b.Id, b.SessionId, b.Person, b.Status, b.WaitlistPosition, b.LateCancel, b.CancelReason, b.Pass, b.CreatedAt, b.Version, ScheduleEndpoints.ToResponse(i.Session), b.CancelledFrom, b.Spot);
             })],
             page.NextBefore);
 
@@ -101,5 +101,6 @@ public static class BookingEndpoints
             b.Pass is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
             b.CreatedAt,
             b.Version.ToString(CultureInfo.InvariantCulture),
-            b.CancelledFrom);
+            b.CancelledFrom,
+            b.Spot is { } spot ? new SpotRefResponse(spot.Id, spot.Label) : null);
 }

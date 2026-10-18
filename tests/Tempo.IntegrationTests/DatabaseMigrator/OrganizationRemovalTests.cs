@@ -125,6 +125,7 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 other_person uuid := gen_random_uuid();
                 custom_role uuid := gen_random_uuid();
                 room uuid := gen_random_uuid();
+                spot uuid := gen_random_uuid();
                 class_type uuid := gen_random_uuid();
                 template uuid := gen_random_uuid();
                 session uuid := gen_random_uuid();
@@ -174,6 +175,8 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO scheduling.bookings (organization_id, id, session_id, person_id, status, booked_by, created_at, updated_at) VALUES (org, booking, session, person, 'booked', owner_membership, now(), now());
                 INSERT INTO scheduling.pass_uses (organization_id, id, pass_id, booking_id, status, created_at, updated_at) VALUES (org, gen_random_uuid(), pass, booking, 'held', now(), now());
                 INSERT INTO scheduling.member_goals (organization_id, person_id, monthly_goal, updated_at) VALUES (org, person, 8, now());
+                INSERT INTO scheduling.room_spots (organization_id, room_id, id, label, row_index, col_index, kind, status, created_at, updated_at) VALUES (org, room, spot, '1', 0, 0, 'reformer', 'active', now(), now());
+                INSERT INTO scheduling.spot_preferences (organization_id, person_id, room_id, spot_id, updated_at) VALUES (org, person, room, spot, now());
 
                 INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, created_at) VALUES (org, gen_random_uuid(), person, 'booking.confirmed', now());
                 INSERT INTO notifications.session_messages (organization_id, id, session_id, sent_by, body, recipients, created_at) VALUES (org, gen_random_uuid(), session, owner_membership, 'שיעור מבוטל', 1, now());
