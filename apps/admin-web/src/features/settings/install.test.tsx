@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -89,5 +89,24 @@ describe("installing the console from the settings (P-3)", () => {
     await screen.findByRole("heading", { level: 1, name: "הגדרות הסטודיו" });
     offerInstall();
     expect(screen.queryByRole("button", { name: /התקנת האפליקציה/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("a prompt the browser rejects", () => {
+  it("does not leave the row offering a prompt that is gone", async () => {
+    renderSettings();
+    await screen.findByRole("heading", { level: 1, name: "הגדרות הסטודיו" });
+    const event = Object.assign(new Event("beforeinstallprompt", { cancelable: true }), {
+      prompt: vi.fn(() => Promise.reject(new Error("NotAllowedError"))),
+      userChoice: new Promise(() => {}),
+    });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /התקנת האפליקציה/ }));
+    expect(event.prompt).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "האפליקציה בטלפון ובמחשב" })).not.toBeInTheDocument(),
+    );
   });
 });

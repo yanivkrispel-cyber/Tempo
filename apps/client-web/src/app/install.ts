@@ -66,10 +66,16 @@ async function promptInstall(): Promise<"accepted" | "dismissed" | null> {
   const event = deferred;
   if (!event) return null;
   deferred = null;
-  await event.prompt();
-  const { outcome } = await event.userChoice;
-  notify();
-  return outcome;
+  try {
+    await event.prompt();
+    const { outcome } = await event.userChoice;
+    return outcome;
+  } catch {
+    return null;
+  } finally {
+    // Even when the browser rejects: the row then stops offering a prompt that is gone.
+    notify();
+  }
 }
 
 export function useInstall(): { way: InstallWay; prompt: typeof promptInstall } {
