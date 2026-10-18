@@ -129,6 +129,14 @@ session's Studio Experience LLD (#322, open).
 - Fictional phones in tests: libphonenumber rejects `050-00000xx` and `050-1234567`; tests that need a valid number use
   a few `050-23456xx` values.
 
+## Premium redesign (approved 2026-10-17, D16 to D19)
+
+Kris approved the "Warm Glass" mockups and the redesign, and asked that every capability they show exists first.
+Plan and design: `docs/33_Studio_Experience_LLD.md` (capability matrix C1 to C25, steps E0 to E10, migrations 0026
+to 0029): rooms with spots and the usual spot, buddies, instructor profiles (bio, Instagram, playlist), pictures on
+S3, the instructor's note, the check-in QR, owner insights (sales and forecast, occupancy, suggestions, activity,
+search), progress weeks. Then the design system v1.0 and the two apps.
+
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in

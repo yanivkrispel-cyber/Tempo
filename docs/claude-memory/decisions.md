@@ -61,3 +61,15 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   may not. Today the owner and the coach share `admin-web` (by permission) and the member uses `client-web`. A screen
   is done only when it works at 360 px and at 1280 px wide, in RTL, with touch and with a mouse and keyboard. Work:
   #317.
+- **D16 premium look, "Warm Glass" (2026-10-17):** Kris approved the premium mockups ("הדיזיין החדש מצוין") and
+  the redesign. The reference image's colors stay; glass, paper, photos, Frank Ruhl Libre with IBM Plex Sans Hebrew
+  and one deep-sage action per screen replace the soft-shadow-everywhere look. The eight principles are in
+  `docs/25_Design_System.md` section 2; the mockups in `docs/design/mockups/premium-2026-10-17/`. Every capability a
+  mockup shows must exist in the product (`docs/33_Studio_Experience_LLD.md`).
+- **D17 pictures on S3 (2026-10-17):** one private S3 bucket per environment for class covers, instructor photos, the
+  studio cover and avatars, served by presigned URLs (CloudFront is refused). About US$0.10 a month at pilot size;
+  Kris chose S3 over Cloudflare R2 and the database. Images are re-encoded on upload (docs/33 X-7).
+- **D18 buddies by mutual consent (2026-10-17):** a member sees another member on the room map only after both
+  linked through a one-time code; everyone else is "taken". Either side ends the link. docs/33 section 4.
+- **D19 check-in code now, phone wallets later (2026-10-17):** a rotating QR in the member app, scanned by staff.
+  Apple Wallet (US$99 a year) and Google Wallet wait until there is revenue. docs/33 section 8.
