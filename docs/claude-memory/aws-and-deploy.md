@@ -45,6 +45,6 @@
 | Limit | Value |
 |---|---|
 | Lambda memory | Capped at 512 MB in this account; dev config uses 512 (PR #20). |
-| Lambda concurrency | 40 now; quota case 179192381800130 asks for 1000. |
+| Lambda concurrency | 40 now; quota case 179192381800130 asks for 1000. Dev reserves 20 for the API (10 throttled parallel e2e runs on 2026-10-18 with 503s) and 5 for the outbox worker; 15 stay unreserved. |
 | CloudFront | Refused on 2026-10-17 (case 179198465900800), no date. Dev apps are on Cloudflare Pages (ADR-0027). |
 | Aurora DSQL | `CreateCluster` blocked account-wide (case 179195875300741). No longer needed after the move to Neon. |
