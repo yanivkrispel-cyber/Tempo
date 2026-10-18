@@ -1429,8 +1429,10 @@ export interface paths {
         /**
          * Scan a member's code at the door (`attendance.mark`, or the class's instructor)
          * @description Marks the booking of the class whose check-in is open attended; scanning again is harmless
-         *     (`alreadyCheckedIn`). 400 `checkin.invalid_code` (five a minute, then 429), 409 `checkin.too_early` or
-         *     `checkin.no_booking`.
+         *     (`alreadyCheckedIn`). 403 before the code is read when the caller is neither staff with `attendance.mark`
+         *     nor the instructor of a class whose check-in is open (or of `sessionId`). 400 `checkin.invalid_code`; 429
+         *     `checkin.too_many_attempts` after five invalid scans by the caller in a minute, or ten of one person's code
+         *     by anyone in an hour (#345). Valid scans never count. 409 `checkin.too_early` or `checkin.no_booking`.
          */
         post: operations["checkIn"];
         delete?: never;
