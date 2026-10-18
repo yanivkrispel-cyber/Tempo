@@ -11,6 +11,7 @@ import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { EditNameDialog } from "./EditNameDialog";
 import { useMyHealthDeclaration } from "./health";
 import { GoalDialog } from "./GoalDialog";
+import { InstallAppRow } from "./InstallApp";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
 import { BuddiesCard } from "./BuddiesCard";
@@ -163,6 +164,7 @@ export function ProfileScreen() {
             <hr className="tp-divider" />
           </>
         )}
+        <InstallAppRow />
         <button type="button" className="tp-setting" onClick={soon}>
           <span>קבלות ותשלומים</span>
           <Icon name="chevron-left" />

@@ -16,6 +16,7 @@ import { addDays, dayOfWeek, formatDate, startOfWeek, type IsoDate } from "../..
 import { freeSpots, myState, waitText } from "./bookingState";
 import { useInstructors, useMyProfile } from "./experience";
 import { dayName, relativeDay } from "./format";
+import { InstallAppCard } from "./InstallApp";
 import styles from "./member.module.css";
 import { metaLine } from "./passText";
 import { CheckinPass, CountdownRing } from "./Premium";
@@ -225,6 +226,9 @@ function StudioHome({ studio }: { studio: Studio }) {
           </div>
         </section>
       )}
+
+      {/* After a booking, never on the first visit (board #347, P-3). */}
+      {next && <InstallAppCard />}
 
       <WeekStrip days={week} value={day} onChange={setDay} today={today} marked={bookedDays} />
 
