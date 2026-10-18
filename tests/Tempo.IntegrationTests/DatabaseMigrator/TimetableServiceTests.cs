@@ -51,7 +51,9 @@ public sealed class TimetableServiceTests(PostgresFixture postgres) : IClassFixt
         var owner = await StudioAsync(db);
         var timetable = new TimetableService(db, TimeProvider.System);
         var (classType, _) = await BasicsAsync(timetable, owner);
-        var change = await timetable.CreateTemplateAsync(owner, new NewTemplate(classType.Id, 0, new TimeOnly(7, 0), 60, null, null, 10, null, null), CancellationToken.None);
+        // Two days ahead, so the first session is never earlier today (a fixed Sunday 07:00 failed every Sunday morning).
+        var weekday = ((int)DateTime.UtcNow.DayOfWeek + 2) % 7;
+        var change = await timetable.CreateTemplateAsync(owner, new NewTemplate(classType.Id, weekday, new TimeOnly(7, 0), 60, null, null, 10, null, null), CancellationToken.None);
         var booked = (Guid)(await db.AsMasterAsync("SELECT id FROM scheduling.sessions WHERE template_id = $1 ORDER BY starts_at LIMIT 1", change.Template.Id))!;
         var person = (Guid)(await db.AsMasterAsync("SELECT id FROM people.people WHERE organization_id = $1", owner.OrganizationId))!;
         await db.AsMasterAsync(

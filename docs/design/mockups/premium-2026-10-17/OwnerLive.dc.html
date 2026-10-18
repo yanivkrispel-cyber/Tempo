@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>שיעור חי · בעלת הסטודיו</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="premium.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500&amp;family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#f5f4f2}
+a{color:#46604b}a:hover{color:#2b2420}
+</style>
+</helmet>
+<div class="tp" dir="rtl" lang="he" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: radial-gradient(130% 50% at 20% 0%, #eef3ec 0%, #f5f4f2 60%); font-size: 15px; line-height: 22px;">
+  <div class="scroll-hide" style="position: absolute; inset: 0; overflow-y: auto; padding: 54px 16px 120px; display: flex; flex-direction: column; gap: 14px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <a class="btn btn-icon btn-paper" href="OwnerDashboard.dc.html" aria-label="חזרה ללוח הבקרה"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+      <span class="chip chip-sage" style="height: 32px;"><span class="live-dot" style="background: #56735b;"></span>בשיעור עכשיו</span>
+      <button class="btn btn-icon btn-paper" type="button" aria-label="עוד פעולות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg></button>
+    </div>
+
+    <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 4px 4px 0;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <h1 class="serif" style="font-size: 32px; line-height: 36px; font-weight: 400;">פילאטיס מכשירים</h1>
+        <span style="font-size: 14px; color: var(--ink-2);">09:30 · עם דנה · חדר המכשירים</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end;">
+        <span class="serif num" dir="ltr" style="font-size: 34px; line-height: 36px; font-weight: 300;">{{clock}}</span>
+        <span style="font-size: 12px; color: var(--ink-3);">מתוך 50 דקות</span>
+      </div>
+    </header>
+    <div class="bar" style="height: 5px; margin: 0 4px;"><i style="width: {{progress}}; background: linear-gradient(90deg, #98ae98, #56735b);"></i></div>
+
+    <section class="paper" aria-labelledby="att-h" style="border-radius: 24px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <span class="serif num" style="font-size: 38px; line-height: 38px; font-weight: 300;">{{arrived}}</span>
+        <span id="att-h" style="font-size: 14px; color: var(--ink-2);">מתוך {{booked}} הגיעו</span>
+      </div>
+      <div class="well" role="group" aria-label="תצוגה" style="display: flex; gap: 2px; padding: 4px; border-radius: 14px;">
+        <button class="nav nav--on" type="button" style="height: 32px; border: 0; font-family: var(--sans); cursor: pointer;">מפה</button>
+        <button class="nav" type="button" style="height: 32px; border: 0; background: transparent; font-family: var(--sans); cursor: pointer;">רשימה</button>
+      </div>
+    </section>
+
+    <section class="room" aria-label="מפת החדר. נגיעה במכשיר מסמנת הגעה" style="padding-bottom: 36px;">
+      <div class="room__light" aria-hidden="true"></div>
+      <div style="position: relative; display: flex; flex-direction: column; gap: 10px;">
+        <div class="room__mirror" aria-hidden="true"></div>
+        <div class="room__grid" style="row-gap: 30px;">
+          <sc-for list="{{spots}}" as="s" hint-placeholder-count="10">
+            <div style="position: relative;">
+              <button class="{{s.cls}}" type="button" aria-label="{{s.label}}" disabled="{{s.off}}" onClick="{{s.toggle}}">
+                <span class="ref__rail"></span>
+                <span class="ref__head"></span>
+                <span class="ref__bar"></span>
+                <sc-if value="{{s.photo}}" hint-placeholder-val="{{false}}"><img class="av ref__who" src="{{s.img}}" alt=""></sc-if>
+                <sc-if value="{{s.initials}}" hint-placeholder-val="{{true}}"><span class="av-init ref__who" style="background: #fbfaf8; box-shadow: 0 1px 2px rgba(43,36,32,0.2);">{{s.init}}</span></sc-if>
+                <sc-if value="{{s.isFree}}" hint-placeholder-val="{{false}}"><span class="ref__who" style="display: flex; align-items: center; justify-content: center; color: var(--sage-ink);"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></sc-if>
+                <sc-if value="{{s.off}}" hint-placeholder-val="{{false}}"><span class="ref__who" style="display: flex; align-items: center; justify-content: center; color: var(--ink-3);"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg></span></sc-if>
+                <sc-if value="{{s.in}}" hint-placeholder-val="{{true}}"><span class="ref__badge"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px; stroke-width: 3;"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+                <sc-if value="{{s.flag}}" hint-placeholder-val="{{false}}"><span class="ref__flag" title="חסרה הצהרת בריאות"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px; stroke-width: 2.6;"><path d="M12 7v6M12 17h.01"></path></svg></span></sc-if>
+                <span class="ref__num">{{s.num}}</span>
+              </button>
+              <span style="position: absolute; top: 108px; inset-inline: -6px; text-align: center; font-size: 11px; line-height: 14px; font-weight: 600; color: {{s.nameColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{s.name}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 0 4px; font-size: 12px; color: var(--ink-2);">
+      <span style="display: inline-flex; align-items: center; gap: 5px;"><i style="width: 10px; height: 10px; border-radius: 999px; background: #56735b;"></i>הגיעה</span>
+      <span style="display: inline-flex; align-items: center; gap: 5px;"><i style="width: 10px; height: 10px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px #776a5f;"></i>עוד לא</span>
+      <span style="display: inline-flex; align-items: center; gap: 5px;"><i style="width: 10px; height: 10px; border-radius: 999px; background: #f4e9d4; box-shadow: inset 0 0 0 1.5px #c9a056;"></i>חסרה הצהרת בריאות</span>
+    </div>
+
+    <sc-if value="{{waiting}}" hint-placeholder-val="{{true}}">
+      <section class="paper" aria-label="רשימת המתנה" style="border-radius: 24px; padding: 14px; display: flex; align-items: center; gap: 12px;">
+        <span class="av-init" style="width: 42px; height: 42px; font-size: 16px; background: var(--sage-soft); color: var(--sage-ink);">ע</span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+          <span style="font-size: 15px; font-weight: 600;">עדי ל. ממתינה</span>
+          <span style="font-size: 12px; line-height: 16px; color: var(--ink-2);">מכשיר 5 התפנה עכשיו</span>
+        </div>
+        <button class="btn btn-sage btn-sm" type="button" onClick="{{promote}}">שיבוץ למכשיר 5</button>
+      </section>
+    </sc-if>
+    <sc-if value="{{promoted}}" hint-placeholder-val="{{false}}">
+      <section class="paper" aria-live="polite" style="border-radius: 24px; padding: 14px; display: flex; align-items: center; gap: 12px; animation: tp-rise 0.4s cubic-bezier(0.2,0.8,0.2,1);">
+        <span style="width: 42px; height: 42px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(180deg, #6b8a70, #56735b); flex: none;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+        <div style="display: flex; flex-direction: column;">
+          <span style="font-size: 15px; font-weight: 600;">עדי שובצה למכשיר 5</span>
+          <span style="font-size: 12px; line-height: 16px; color: var(--ink-2);">קיבלה הודעה בטלפון, הכניסה ירדה מהכרטיסייה שלה</span>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+
+  <div style="position: absolute; bottom: 20px; inset-inline: 16px; display: flex; gap: 10px; z-index: 5;">
+    <button class="btn btn-sage" type="button" style="flex: 1; height: 58px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path><path d="M7 12h10"></path></svg>סריקת כרטיס כניסה</button>
+    <button class="btn btn-icon glass" type="button" aria-label="הודעה לכל המשתתפות" style="width: 58px; height: 58px; color: var(--ink);"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { inside: { 1: true, 2: true, 4: true, 6: true, 7: true, 8: true, 9: true }, promoted: false, sec: 12 * 60 + 40 };
+  }
+  componentDidMount() {
+    this.timer = setInterval(() => this.setState({ sec: Math.min(3000, this.state.sec + 1) }), 1000);
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+  renderVals() {
+    const P = {
+      roni: '/_blob/41d1bc6c09cf55ac087ca3d4dad02f6a',
+      shira: '/_blob/1d4de241dcb40cee41bbf0706439117d',
+      maya: '/_blob/b1ddba297a3f3c4b9f7a92ea1ec2c89a'
+    };
+    const people = {
+      1: ['הילה ד.'], 2: ['רוני א.', 'roni'], 3: ['תמר ש.'], 4: ['שירה ל.', 'shira'],
+      6: ['מאיה כ.', 'maya'], 7: ['ליאת מ.'], 8: ['אורית ב.'], 9: ['גלית ר.']
+    };
+    if (this.state.promoted) people[5] = ['עדי ל.'];
+    const inside = this.state.inside;
+    const spots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+      const p = people[n];
+      const off = n === 10;
+      const isIn = !!(p && inside[n]);
+      let cls = 'ref';
+      if (off) cls += ' ref--off';
+      else if (!p) cls += ' ref--empty';
+      else if (isIn) cls += ' ref--in';
+      else cls += ' ref--wait';
+      const name = off ? 'בתחזוקה' : p ? p[0] : 'פנוי';
+      return {
+        num: String(n), cls, off, in: isIn, name,
+        photo: !!(p && p[1]), img: p && p[1] ? P[p[1]] : '',
+        initials: !!(p && !p[1]), init: p ? p[0].charAt(0) : '',
+        isFree: !p && !off,
+        flag: n === 8,
+        nameColor: isIn ? '#2b2420' : '#776a5f',
+        label: 'מכשיר ' + n + ', ' + name + (p ? (isIn ? ', הגיעה' : ', עוד לא הגיעה') : ''),
+        toggle: () => p && this.setState({ inside: { ...inside, [n]: !inside[n] } })
+      };
+    });
+    const booked = Object.keys(people).length;
+    const arrived = Object.keys(people).filter((k) => inside[k]).length;
+    const s = this.state.sec;
+    return {
+      spots,
+      booked: String(booked),
+      arrived: String(arrived),
+      clock: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'),
+      progress: Math.min(100, (s / 3000) * 100).toFixed(1) + '%',
+      waiting: !this.state.promoted,
+      promoted: this.state.promoted,
+      promote: () => this.setState({ promoted: true })
+    };
+  }
+}
+</script>
+</body>
+</html>
