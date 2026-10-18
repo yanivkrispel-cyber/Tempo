@@ -1,11 +1,41 @@
 {
+  "id": "/",
   "name": "Tempo",
   "short_name": "Tempo",
+  "description": "השיעורים, הכרטיסייה וכרטיס הכניסה שלך לסטודיו, בטלפון.",
   "lang": "he",
   "dir": "rtl",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ece9e4",
-  "theme_color": "#ece9e4"
+  "orientation": "portrait",
+  "background_color": "#fbfaf8",
+  "theme_color": "#fbfaf8",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home-narrow.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "המסך הראשי: השיעור הבא והשבוע"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "השיעורים שלי",
+      "url": "/bookings",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "כרטיס הכניסה",
+      "url": "/?open=checkin",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
 }

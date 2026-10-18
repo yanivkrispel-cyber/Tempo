@@ -80,6 +80,11 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
     {
+      // Board #347, O1: both apps install on a phone, by Chrome's own check; no sign-in.
+      name: "pwa",
+      testDir: "./specs/pwa",
+    },
+    {
       // SYNC 7, member import, notes and tags (day board #321, Z3): a fresh e2e owner at 1280px and a staff member at
       // 360px sign in through the Hosted UI themselves; each sizes its own context (support/screens.ts).
       name: "sync7",
