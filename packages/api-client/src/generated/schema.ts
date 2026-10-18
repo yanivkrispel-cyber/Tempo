@@ -1155,6 +1155,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/buddy-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A new one-time buddy code to share (self)
+         * @description Replaces the caller's previous code. The code is shown once, lives 48 hours and links once (docs/33
+         *     section 4, D18). Whoever enters it becomes the caller's buddy: each then sees the other on room maps.
+         */
+        post: operations["createBuddyCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/buddies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The caller's buddies (self) */
+        get: operations["listMyBuddies"];
+        put?: never;
+        /**
+         * Become buddies by entering a friend's code (self)
+         * @description 404 `buddy.invalid_code` for a wrong or expired code (counted: five in an hour answer 429
+         *     `buddy.too_many_attempts`), 409 `buddy.self` for one's own code, 409 `buddy.limit` past 20 buddies.
+         */
+        post: operations["linkBuddy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/buddies/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop being buddies (either side) */
+        delete: operations["unlinkBuddy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/class-types": {
         parameters: {
             query?: never;
@@ -2811,6 +2878,8 @@ export interface components {
             passes: components["schemas"]["ExportPass"][];
             /** @description Current and replaced declarations, oldest first (docs/31 section 11). */
             healthDeclarations?: components["schemas"]["ExportHealthDeclaration"][];
+            /** @description The person's buddies (docs/33 section 4), oldest link first. */
+            buddies?: components["schemas"]["Buddy"][];
             /** @description True when answers and names are null; `healthAnswersWithheldReason` says why. */
             healthAnswersWithheld?: boolean;
             /** @description The names of the person's tags (docs/34 section 9). */
@@ -3361,14 +3430,17 @@ export interface components {
             row: number;
             col: number;
             kind: components["schemas"]["SpotKind"];
-            /** @enum {string} */
-            state: "free" | "taken" | "mine" | "maintenance";
+            /**
+             * @description `buddy`: a buddy of the caller holds it (D18); `person` then names them, for members too.
+             * @enum {string}
+             */
+            state: "free" | "taken" | "mine" | "buddy" | "maintenance";
             /**
              * Format: uuid
              * @description The caller's own booking on it, or any booking for staff.
              */
             bookingId?: string | null;
-            /** @description Who holds it; staff and the instructor only. */
+            /** @description Who holds it; staff and the instructor, and a member for a buddy's spot. */
             person?: components["schemas"]["PersonRef"] | null;
             /**
              * @description The holder's booking status; staff and the instructor only.
@@ -3397,6 +3469,26 @@ export interface components {
             /** Format: uuid */
             usualSpotId?: string | null;
             spots: components["schemas"]["SessionSpot"][];
+        };
+        Buddy: {
+            /** Format: uuid */
+            personId: string;
+            displayName: string;
+            /** Format: date-time */
+            since: string;
+        };
+        BuddyList: {
+            items: components["schemas"]["Buddy"][];
+        };
+        BuddyCode: {
+            /** @example K7QM-X3RT */
+            code: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        LinkBuddyRequest: {
+            /** @description The 8 letters and digits; spaces, dashes and case are ignored. */
+            code: string;
         };
         ChangeSpotRequest: {
             /** Format: uuid */
@@ -6473,6 +6565,112 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createBuddyCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The code. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuddyCode"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMyBuddies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuddyList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    linkBuddy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkBuddyRequest"];
+            };
+        };
+        responses: {
+            /** @description Linked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Buddy"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    unlinkBuddy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                personId: components["parameters"]["PersonId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unlinked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };

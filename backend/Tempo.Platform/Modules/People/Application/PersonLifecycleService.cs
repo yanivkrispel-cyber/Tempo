@@ -33,7 +33,8 @@ public sealed record PersonExportView(
     bool HealthAnswersWithheld,
     string? HealthAnswersWithheldReason = null,
     IReadOnlyList<string>? Tags = null,
-    IReadOnlyList<ExportNoteView>? Notes = null)
+    IReadOnlyList<ExportNoteView>? Notes = null,
+    IReadOnlyList<BuddyView>? Buddies = null)
 {
     /// <summary>The exporter lacks `health.view`.</summary>
     public const string NoHealthView = "no_health_view";
@@ -241,6 +242,26 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
             }
         }
 
+        // Buddies are the person's own choice, so they are part of what we hold about them (docs/33 section 4.2).
+        var buddies = new List<BuddyView>();
+        await using (var command = unitOfWork.Command(
+            """
+            SELECT p.id, p.display_name, l.created_at
+            FROM people.buddy_links l
+            JOIN people.people p ON p.organization_id = l.organization_id AND p.id = CASE WHEN l.person_low = $2 THEN l.person_high ELSE l.person_low END
+            WHERE l.organization_id = $1 AND (l.person_low = $2 OR l.person_high = $2)
+            ORDER BY l.created_at
+            """,
+            tenant.OrganizationId,
+            personId))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                buddies.Add(new BuddyView(reader.GetGuid(0), reader.GetString(1), await reader.GetFieldValueAsync<DateTimeOffset>(2, cancellationToken)));
+            }
+        }
+
         string organizationName;
         await using (var org = unitOfWork.Command("SELECT display_name FROM organizations.organizations WHERE id = $1", tenant.OrganizationId))
         {
@@ -312,7 +333,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
 
         await AuditAsync(unitOfWork, tenant, "person.exported", "person", personId, new { }, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, reason is not null, reason, tags, notes);
+        return new PersonExportView(now, tenant.OrganizationId, organizationName, detail, history, bookings, passes, declarations, reason is not null, reason, tags, notes, buddies);
     }
 
     public async Task<PersonDetailView> EraseAsync(TenantContext tenant, Guid personId, string reason, CancellationToken cancellationToken)
@@ -394,6 +415,8 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
         // So does the usual spot in each room (docs/33 section 3).
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.spot_preferences WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, personId);
+        // Buddy codes, links and wrong guesses go (docs/33 section 4.2).
+        await BuddyService.ForgetAsync(unitOfWork, org, personId, cancellationToken);
         // Every health declaration goes, current and replaced (docs/31 section 11); the audit keeps the count only.
         int healthDeclarations;
         await using (var deleteHealth = unitOfWork.Command("DELETE FROM people.health_declarations WHERE organization_id = $1 AND person_id = $2", org, personId))
@@ -604,6 +627,8 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
         // The survivor keeps its usual spots; the merged record's go.
         await ExecuteAsync(unitOfWork, "DELETE FROM scheduling.spot_preferences WHERE organization_id = $1 AND person_id = $2", cancellationToken, org, merged);
+        // So do its buddies: a link was a consent between two records, and the survivor gave none.
+        await BuddyService.ForgetAsync(unitOfWork, org, merged, cancellationToken);
         // Health declarations follow the survivor (their ciphertext is bound to the declaration, not the person). Of
         // two current ones, the newer signature stays current and the older is replaced (docs/31 section 11).
         await ExecuteAsync(

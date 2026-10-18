@@ -17,8 +17,9 @@ public sealed record RoomLayoutInput(bool SpotSelection, int? Rows, int? Cols, s
 
 /// <summary>
 /// One spot as the caller may see it (docs/33 section 3.4). <paramref name="State"/> is free, taken, mine or
-/// maintenance. <paramref name="Person"/>, <paramref name="Attendance"/> and <paramref name="HealthStatus"/> are
-/// filled only for staff and the class's instructor; a member never learns who holds another spot (X-4).
+/// maintenance, or buddy when a buddy of the caller holds it (D18). <paramref name="Person"/>, <paramref name="Attendance"/>
+/// and <paramref name="HealthStatus"/> are filled for staff and the class's instructor; a member sees only a buddy's
+/// name, never who else holds a spot (X-4).
 /// </summary>
 public sealed record SessionSpotView(
     Guid Id,
@@ -202,8 +203,10 @@ public sealed partial class BookingService : ISpotService
         }
 
         Guid? usual = null;
+        var buddies = new HashSet<Guid>();
         if (me is { } person)
         {
+            buddies = await BuddyService.BuddyIdsAsync(unitOfWork, tenant.OrganizationId, person, cancellationToken);
             await using var preference = unitOfWork.Command("SELECT spot_id FROM scheduling.spot_preferences WHERE organization_id = $1 AND person_id = $2 AND room_id = $3", tenant.OrganizationId, person, room);
             usual = await preference.ExecuteScalarAsync(cancellationToken) as Guid?;
         }
@@ -225,6 +228,16 @@ public sealed partial class BookingService : ISpotService
             }
 
             var state = holder.PersonId == me ? "mine" : "taken";
+            if (state == "taken" && buddies.Contains(holder.PersonId))
+            {
+                state = "buddy";
+                if (!staff)
+                {
+                    spots.Add(new SessionSpotView(spot.Id, spot.Label, spot.Row, spot.Col, spot.Kind, state, null, new PersonRefView(holder.PersonId, holder.Name)));
+                    continue;
+                }
+            }
+
             spots.Add(staff
                 ? new SessionSpotView(spot.Id, spot.Label, spot.Row, spot.Col, spot.Kind, state, holder.BookingId, new PersonRefView(holder.PersonId, holder.Name), holder.Status,
                     await HealthStatus.OfPersonAsync(unitOfWork, tenant.OrganizationId, holder.PersonId, now, cancellationToken))
