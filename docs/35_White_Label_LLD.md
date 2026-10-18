@@ -83,8 +83,11 @@ own icon needs a manifest per studio.
 
 - Why the API and not a Cloudflare Pages Function: the brand lives in the database and S3 already, it keeps
   everything that reads customer data on AWS (ADR-0001), and Pages stays static files with no secrets (ADR-0027).
-  The manifest is cross-origin, which Chrome allows with CORS; `start_url` and `scope` stay on the members app's
-  origin, as the browser requires. The install gate of board #347 K2 (`pwa-check.mjs`) gets a mode that checks one
+  The manifest is cross-origin, which Chrome allows with CORS. A manifest's `start_url`, `scope` and `id` resolve
+  against the manifest's own URL, and Chrome drops a `start_url` or `scope` on another origin than the page, so the
+  API writes them **absolute, on the members app's origin** (`CLIENT_APP_URL`, already in its config): for example
+  `"start_url": "https://<members app>/s/<slug>/"`. A relative `/s/<slug>/` would point at the API host and the
+  studio's app would not install; WL4's test checks the three are absolute and same-origin with the members app. The install gate of board #347 K2 (`pwa-check.mjs`) gets a mode that checks one
   studio's manifest the same way.
 - The service worker (`/sw.js`, push only, P-4 of board #347) keeps scope `/`, so one push subscription serves every
   installed studio icon on that phone. A notification carries its studio, and a tap opens `/s/<slug>/...`.
