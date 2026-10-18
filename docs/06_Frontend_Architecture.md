@@ -87,6 +87,8 @@ Define tokens, primitives, patterns, responsiveness, RTL/LTR, accessibility and 
 
 **Decision:** tokens and CSS primitives live in `packages/design-system` (`@tempo/design-system`) and are consumed by all three apps; see `25_Design_System.md` for the direction, themes, RTL and accessibility rules. Each app's `shared/design-system/` holds only React wrappers over those primitives.
 
+**Decision (D16, 2026-10-17):** screens follow the "Warm Glass" direction and its eight principles (`25` section 2): one hero at the top of a home screen, controls floating in glass above content, real photos, one primary action per view. A screen may show only capabilities the API provides (`33_Studio_Experience_LLD.md` section 1).
+
 ## 7. White Label
 
 Allowed: logo, constrained palette, app name, supported font preset, legal links.  
