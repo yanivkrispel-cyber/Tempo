@@ -125,6 +125,42 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         actions.Should().Contain(["media.uploaded", "media.removed", "staff_profile.updated", "session.note_updated"]);
     }
 
+    [Fact]
+    public async Task UploadTickets_AreCapped_PerMembership_AndHugePictures_AreRefused()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, _, _) = await StudioAsync(client, ["noga"], capacity: 4);
+        var nogaId = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/profile", Customer("noga"))).GetProperty("id").GetGuid();
+        var ticket = new { purpose = "avatar", ownerId = nogaId, contentType = "image/png", bytes = 100 };
+
+        // A picture over 12 MP is refused at finalize: decoding it could exhaust the function's memory.
+        (await UploadRawAsync(client, studioPath, "noga", nogaId, Png(4000, 4000))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // That ticket counts too: the 21st within the hour is refused.
+        for (var i = 1; i < MediaService.UploadsPerHour; i++)
+        {
+            await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("noga"), ticket, HttpStatusCode.Created);
+        }
+
+        var limited = await RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("noga"), ticket);
+        limited.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        limited.Headers.RetryAfter.Should().NotBeNull();
+
+        // The cap is per membership: the owner still gets a ticket.
+        var studioId = Guid.Parse(studioPath.Split('/')[^1]);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("owner"), new { purpose = "studio_cover", ownerId = studioId, contentType = "image/png", bytes = 100 }, HttpStatusCode.Created);
+    }
+
+    private async Task<HttpResponseMessage> UploadRawAsync(HttpClient client, string studioPath, string who, Guid ownerId, byte[] file)
+    {
+        var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer(who), new { purpose = "avatar", ownerId, contentType = "image/png", bytes = file.Length }, HttpStatusCode.Created);
+        var id = ticket.GetProperty("mediaId").GetGuid();
+        store.Upload(MediaKeys.Incoming(id), file);
+        return await RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{id}/finalize", Customer(who));
+    }
+
     private async Task<JsonElement> UploadAsync(HttpClient client, string studioPath, string who, string purpose, Guid ownerId, byte[] file)
     {
         var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer(who), new { purpose, ownerId, contentType = "image/png", bytes = file.Length }, HttpStatusCode.Created);

@@ -28,6 +28,9 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 {
     public const int MaxUploadBytes = 8 * 1024 * 1024;
     private static readonly TimeSpan UploadLifetime = TimeSpan.FromMinutes(10);
+
+    /// <summary>Upload tickets one membership may take in an hour. The presigned PUT cannot cap the object's size, so this bounds what a caller can leave in incoming/.</summary>
+    public const int UploadsPerHour = 20;
     private static readonly string[] Purposes = ["class_cover", "instructor_photo", "studio_cover", "avatar"];
     private static readonly string[] ContentTypes = ["image/jpeg", "image/png", "image/webp"];
 
@@ -51,6 +54,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await CheckOwnerAsync(unitOfWork, tenant, kind, owner, cancellationToken);
+        await CheckUploadRateAsync(unitOfWork, tenant, cancellationToken);
         var id = Guid.CreateVersion7();
         await using (var insert = unitOfWork.Command(
             """
@@ -64,6 +68,25 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
         await unitOfWork.CommitAsync(cancellationToken);
         return new UploadTicketView(id, store.PresignPut(MediaKeys.Incoming(id), contentType, UploadLifetime), contentType, clock.GetUtcNow().Add(UploadLifetime));
+    }
+
+    private static async Task CheckUploadRateAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)
+    {
+        await using var count = unitOfWork.Command(
+            "SELECT count(*), min(created_at) FROM media.media_objects WHERE organization_id = $1 AND created_by = $2 AND created_at > now() - interval '1 hour'",
+            tenant.OrganizationId, tenant.MembershipId);
+        await using var reader = await count.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
+        if (reader.GetInt64(0) < UploadsPerHour)
+        {
+            return;
+        }
+
+        var retryAfter = reader.GetFieldValue<DateTimeOffset>(1).AddHours(1) - DateTimeOffset.UtcNow;
+        throw new DomainRuleViolationException(ViolationKind.TooManyRequests, "rate_limited", "Too many uploads. Try again later.")
+        {
+            RetryAfter = retryAfter > TimeSpan.Zero ? retryAfter : TimeSpan.FromSeconds(1)
+        };
     }
 
     public async Task<MediaView> FinalizeAsync(TenantContext tenant, Guid mediaId, CancellationToken cancellationToken)

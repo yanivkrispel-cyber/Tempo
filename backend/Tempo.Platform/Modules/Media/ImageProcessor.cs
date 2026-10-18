@@ -14,7 +14,8 @@ public static class ImageProcessor
 {
     public const int LargeSide = 1600;
     public const int SmallSide = 400;
-    private const long MaxPixels = 40_000_000;
+    // The bitmap is held up to three times (decode, orient, resize) in a 512 MB Lambda; 12 MP is about 48 MB a copy.
+    private const long MaxPixels = 12_000_000;
     private const int Quality = 82;
 
     public static ProcessedImage? Process(byte[] bytes)
