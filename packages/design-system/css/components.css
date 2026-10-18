@@ -1516,6 +1516,7 @@ button.tp-setting {
   max-width: 460px;
 }
 .tp-toast__tile {
+  flex: none;
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
@@ -1543,6 +1544,8 @@ button.tp-setting {
 }
 .tp-toast__close {
   margin-inline-start: auto;
+  /* A long message must not squeeze the button below its size. */
+  flex: none;
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
@@ -2622,6 +2625,10 @@ a.tp-row:focus-visible {
   }
   .tp-week__day {
     width: var(--touch-min);
+  }
+  .tp-toast__close {
+    width: var(--touch-min);
+    height: var(--touch-min);
   }
   button.tp-chip,
   a.tp-chip {
