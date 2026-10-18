@@ -91,6 +91,12 @@ export default defineConfig({
       testDir: "./specs/sync7",
     },
     {
+      // SYNC 8, E10 buddies, spots and check-in (day board #347, O4): a fresh e2e owner at 1280px and 360px and two
+      // members at 360px sign in through the Hosted UI themselves; each sizes its own context (support/screens.ts).
+      name: "sync8",
+      testDir: "./specs/sync8",
+    },
+    {
       // D15 (#317): every screen of both apps on phones, tablets and computers. Each test sizes its own contexts
       // (support/screens.ts). E2E_SCREENSHOTS=1 also keeps a full-page picture of each for review.
       name: "screens",
