@@ -18,6 +18,7 @@ import {
   Textarea,
   useToast,
 } from "../../shared/design-system";
+import { PictureField } from "../../shared/PictureField";
 import { useStudio } from "../console/studio";
 import {
   categoryLabel,
@@ -367,6 +368,16 @@ function ClassTypeDialog({
             rows={3}
           />
         </Field>
+        {classType ? (
+          <PictureField
+            label="תמונת שער"
+            purpose="class_cover"
+            ownerId={classType.id}
+            url={classType.coverSmallUrl ?? classType.coverUrl}
+          />
+        ) : (
+          <p className="tp-caption">תמונת שער לשיעור אפשר להוסיף אחרי השמירה.</p>
+        )}
         {save.isError && (
           <Banner tone="danger" icon="info">
             {errorMessage(save.error, "לא הצלחנו לשמור. נסו שוב.")}

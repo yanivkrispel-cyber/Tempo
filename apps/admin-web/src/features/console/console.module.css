@@ -77,3 +77,27 @@ html:has(.scrim) {
     padding: 0;
   }
 }
+
+/* The search field in the menu: opens the command palette (Ctrl K). */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding-inline: 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-sunken);
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.search span {
+  flex: 1;
+  text-align: start;
+}
+.search:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-sunken), var(--shadow-focus);
+}

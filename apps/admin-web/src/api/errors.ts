@@ -97,6 +97,26 @@ const messages: Record<string, string> = {
   "report.period_too_long": "דוח מכסה עד 92 ימים. קצרו את התקופה.",
   "startsOn.invalid": "ההקפאה מתחילה היום או אחר כך.",
   "endsOn.invalid": "ההקפאה נמשכת בין יום אחד ל־90 ימים.",
+  // Rooms with spots, check-in, pictures and instructor profiles (docs/33).
+  "room.spot_in_use": "מכשיר שיוצא מהשימוש תפוס בשיעור עתידי. העבירו את המתאמנים למכשיר אחר קודם.",
+  "room.spots_below_booked": "בשיעור עתידי רשומים יותר אנשים ממספר המכשירים הפעילים.",
+  "layout.invalid": "פריסת החדר לא תקינה. בדקו את מספר השורות והטורים.",
+  "layout.duplicate_cell": "בכל משבצת יכול לעמוד מכשיר אחד בלבד.",
+  "layout.duplicate_label": "לכל מכשיר צריך שם אחר.",
+  "booking.spot_unavailable": "המכשיר הזה תפוס או בתחזוקה. בחרו מכשיר אחר.",
+  "booking.spot_not_offered": "בחדר הזה לא בוחרים מכשירים.",
+  "spot.not_found": "המכשיר לא נמצא.",
+  "checkin.invalid_code": "הקוד לא תקף. בקשו לפתוח את כרטיס הכניסה מחדש.",
+  "checkin.too_early": "הצ׳ק־אין לשיעור עוד לא נפתח. הוא נפתח חצי שעה לפני ההתחלה.",
+  "checkin.no_booking": "אין הרשמה לשיעור שהצ׳ק־אין שלו פתוח עכשיו.",
+  "checkin.too_many_attempts": "יותר מדי ניסיונות. נסו שוב בעוד דקה.",
+  "media.unavailable": "העלאת תמונות לא זמינה כרגע.",
+  "media.too_large": "התמונה גדולה מדי. אפשר עד 8 מגה.",
+  "media.type": "אפשר להעלות תמונות JPEG, PNG או WebP.",
+  "media.not_an_image": "הקובץ הזה לא נראה כמו תמונה.",
+  "instructor.not_found": "המדריך או המדריכה לא נמצאו.",
+  "instagram.invalid": "שם המשתמש באינסטגרם לא תקין.",
+  "playlist.invalid": "קישור לפלייליסט צריך להיות מ־Spotify, Apple Music או YouTube Music.",
 };
 
 /** The sentence for a Problem code, when the app has one. */
