@@ -182,3 +182,15 @@ describe("The tripwire alerts the owner in production only", () => {
     expect(JSON.stringify(publish[0].Resource)).toContain("tempo-prod-alarms");
   });
 });
+
+describe("the media bucket takes browser uploads only from the apps (docs/33 section 6, #345)", () => {
+  const template = stackTemplate("Api");
+
+  it("CORS allows the presigned POST (and the old PUT) from the app origins, never a wildcard", () => {
+    const [bucket] = Object.values(template.findResources("AWS::S3::Bucket", { Properties: { CorsConfiguration: Match.anyValue() } }));
+    const [rule] = bucket.Properties.CorsConfiguration.CorsRules;
+    expect(rule.AllowedMethods).toEqual(["PUT", "POST"]);
+    expect(rule.AllowedOrigins.length).toBeGreaterThan(0);
+    expect(rule.AllowedOrigins).not.toContain("*");
+  });
+});
