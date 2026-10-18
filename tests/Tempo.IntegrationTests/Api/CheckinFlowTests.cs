@@ -100,6 +100,72 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
         actions.Count(a => a == "booking.checked_in").Should().Be(1);
     }
 
+    [Fact]
+    public async Task InvalidScans_AreCapped_PerScanner_InParallel_AndPerPerson_AfterTheStaffCheck()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, roomId, _) = await StudioAsync(client, ["noga", "maya", "lior"], capacity: 4);
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var classTypeId = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/class-types", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var dana = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/instructors", Customer("noga"))).GetProperty("items")[0].GetProperty("membershipId").GetGuid();
+        await JoinByInvitationAsync(client, studioPath, "eli", "admin");
+        await JoinByInvitationAsync(client, studioPath, "tal", "admin");
+        var local = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow.AddMinutes(20), israel);
+        var created = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+        {
+            classTypeId,
+            localDate = local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            localStart = local.ToString("HH:mm", CultureInfo.InvariantCulture),
+            instructorMembershipId = dana,
+            roomId,
+            capacity = 4
+        }, HttpStatusCode.Created);
+        var soon = $"{studioPath}/sessions/{created.GetProperty("id").GetGuid()}";
+        await SendAsync(client, HttpMethod.Post, $"{soon}/bookings", Customer("noga"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{soon}/bookings", Customer("maya"), null, HttpStatusCode.Created);
+        async Task<string> CodeAsync(string member) => (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/checkin-code", Customer(member))).GetProperty("code").GetString()!;
+        static string Forged(string code) => code[..^6] + (code[^6..] == "000000" ? "000001" : "000000");
+        async Task<HttpStatusCode> ScanAsync(string scanner, string code) =>
+            (await RawAsync(client, HttpMethod.Post, $"{studioPath}/checkins", Customer(scanner), new { code })).StatusCode;
+
+        // 1. A member may not scan at all: refused before the code is looked at, and never counted.
+        var noga = await CodeAsync("noga");
+        for (var i = 0; i < 7; i++)
+        {
+            (await ScanAsync("maya", Forged(noga))).Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        // 2. Valid scans don't count against the scanner: four bad, two good, the fifth bad, then the limit.
+        for (var i = 0; i < 4; i++)
+        {
+            (await ScanAsync("owner", Forged(noga))).Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        (await ScanAsync("owner", await CodeAsync("noga"))).Should().Be(HttpStatusCode.OK);
+        (await ScanAsync("owner", await CodeAsync("maya"))).Should().Be(HttpStatusCode.OK);
+        (await ScanAsync("owner", Forged(noga))).Should().Be(HttpStatusCode.BadRequest);
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/checkins", Customer("owner"), new { code = Forged(noga) })).Should().Be("checkin.too_many_attempts");
+
+        // 3. Per person, across scanners: Noga's code has six invalid scans so far; Dana adds four, the eleventh is
+        //    refused although Dana herself is under her own limit, and so is Eli's first. Maya's code is untouched.
+        for (var i = 0; i < 4; i++)
+        {
+            (await ScanAsync("dana", Forged(noga))).Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        (await ScanAsync("dana", Forged(noga))).Should().Be(HttpStatusCode.TooManyRequests);
+        (await ScanAsync("eli", Forged(noga))).Should().Be(HttpStatusCode.TooManyRequests);
+        (await ScanAsync("eli", Forged(await CodeAsync("maya")))).Should().Be(HttpStatusCode.BadRequest);
+
+        // 4. Twelve invalid scans at once from one scanner: no more than five get as far as checking the code.
+        var lior = Forged(await CodeAsync("lior"));
+        var parallel = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => ScanAsync("tal", lior)));
+        parallel.Count(s => s == HttpStatusCode.BadRequest).Should().BeInRange(1, 5);
+        parallel.Count(s => s == HttpStatusCode.TooManyRequests).Should().Be(12 - parallel.Count(s => s == HttpStatusCode.BadRequest));
+    }
+
     /// <summary>A studio with instructor Dana, the members with a 10-entry card each, a room and a class in three days.</summary>
     private async Task<(string StudioPath, Guid RoomId, string SessionPath)> StudioAsync(HttpClient client, string[] members, int capacity)
     {
