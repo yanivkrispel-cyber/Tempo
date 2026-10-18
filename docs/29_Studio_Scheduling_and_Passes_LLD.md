@@ -47,6 +47,7 @@ Out of scope, and where it goes:
 | Moving a booking to another session ("העברה לשיעור" in the mockup), messages to the registered | after the skeleton |
 | Pausing a membership, family passes, pass transfer | after the skeleton |
 | Multiple locations | the model has rooms only; `location` arrives with Phase 6 |
+| Spots in a room, buddies, instructor profiles, check-in codes, pictures | `33_Studio_Experience_LLD.md` (2026-10-17) |
 
 ## 2. Constraints that shape this design
 
