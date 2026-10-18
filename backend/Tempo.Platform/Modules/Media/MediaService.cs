@@ -5,7 +5,7 @@ using Tempo.Platform.Modules.Audit;
 
 namespace Tempo.Platform.Modules.Media;
 
-public sealed record UploadTicketView(Guid MediaId, Uri UploadUrl, PresignedForm UploadForm, int MaxBytes, string ContentType, DateTimeOffset ExpiresAt);
+public sealed record UploadTicketView(Guid MediaId, PresignedForm UploadForm, int MaxBytes, string ContentType, DateTimeOffset ExpiresAt);
 
 public sealed record MediaView(Guid Id, string Purpose, Guid OwnerId, int Width, int Height);
 
@@ -70,7 +70,6 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
         var key = MediaKeys.Incoming(tenant.OrganizationId, id);
         return new UploadTicketView(
             id,
-            store.PresignPut(key, contentType, UploadLifetime),
             store.PresignPost(key, contentType, MaxUploadBytes, UploadLifetime),
             MaxUploadBytes,
             contentType,

@@ -262,8 +262,8 @@ ALTER TABLE people.people                ADD COLUMN avatar_media_id uuid;
    `schedule.manage`; avatar: self or `people.manage`), type in `image/jpeg|png|webp`, size up to 8 MB; inserts a
    `pending` row and returns a presigned `POST` (`uploadForm`) for `incoming/<org>/<id>` that lives 10 minutes. Its
    signed policy pins the key and content type and carries `content-length-range` 1 to 8 MB, so S3 itself refuses
-   a bigger file (#345, H-1 on board #347; the old presigned `PUT`, which could not cap the size, goes away once
-   the apps POST).
+   a bigger file (#345, H-1 on board #347). The presigned `PUT`, which could not cap the size, is gone (H-1b), and
+   the bucket's CORS allows `POST` only.
 2. The app uploads directly to S3 as `multipart/form-data`: the form's fields, then the file last as `file`.
 3. `POST /media/uploads/{id}/finalize`: the API reads the object, checks the magic bytes, decodes it (SkiaSharp,
    MIT; decode errors reject), rejects anything over 40 megapixels, re-encodes to WebP at 1600 and 400 pixels on the

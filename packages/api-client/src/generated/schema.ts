@@ -3904,12 +3904,6 @@ export interface components {
         MediaUploadTicket: {
             /** Format: uuid */
             mediaId: string;
-            /**
-             * Format: uri
-             * @deprecated
-             * @description The old presigned PUT, which cannot cap the size. Use `uploadForm`; this goes away (#345).
-             */
-            uploadUrl: string;
             uploadForm: components["schemas"]["MediaUploadForm"];
             /** @description S3 refuses a larger file (400 `EntityTooLarge`). */
             maxBytes: number;
