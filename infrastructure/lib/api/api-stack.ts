@@ -99,7 +99,7 @@ export class ApiStack extends Stack {
       ],
       cors: [
         {
-          allowedMethods: [HttpMethods.PUT, HttpMethods.POST],
+          allowedMethods: [HttpMethods.POST],
           allowedOrigins: [...config.corsAllowedOrigins],
           allowedHeaders: ["content-type"],
           maxAge: 3600

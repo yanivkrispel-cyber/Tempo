@@ -53,16 +53,16 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         cover.GetProperty("width").GetInt32().Should().Be(1600);
         cover.GetProperty("height").GetInt32().Should().Be(1067);
         var coverId = cover.GetProperty("id").GetGuid();
-        store.Keys.Should().Contain([MediaKeys.Large(coverId), MediaKeys.Small(coverId)]).And.NotContain(MediaKeys.Incoming(coverId));
-        var small = await store.ReadAsync(MediaKeys.Small(coverId), int.MaxValue, CancellationToken.None);
+        store.Keys.Should().Contain([MediaKeys.Large(StudioOf(studioPath), coverId), MediaKeys.Small(StudioOf(studioPath), coverId)]).And.NotContain(MediaKeys.Incoming(StudioOf(studioPath), coverId));
+        var small = await store.ReadAsync(MediaKeys.Small(StudioOf(studioPath), coverId), int.MaxValue, CancellationToken.None);
         small![8..12].Should().Equal("WEBP"u8.ToArray());
         var types = await SendAsync(client, HttpMethod.Get, $"{studioPath}/class-types", Customer("noga"));
-        types.GetProperty("items")[0].GetProperty("coverSmallUrl").GetString().Should().Contain(MediaKeys.Small(coverId));
-        (await SendAsync(client, HttpMethod.Get, sessionPath, Customer("noga"))).GetProperty("classType").GetProperty("coverUrl").GetString().Should().Contain(MediaKeys.Large(coverId));
+        types.GetProperty("items")[0].GetProperty("coverSmallUrl").GetString().Should().Contain(MediaKeys.Small(StudioOf(studioPath), coverId));
+        (await SendAsync(client, HttpMethod.Get, sessionPath, Customer("noga"))).GetProperty("classType").GetProperty("coverUrl").GetString().Should().Contain(MediaKeys.Large(StudioOf(studioPath), coverId));
 
         // A new cover replaces the old one and deletes its objects.
         var second = (await UploadAsync(client, studioPath, "owner", "class_cover", classTypeId, Png(800, 800))).GetProperty("id").GetGuid();
-        store.Keys.Should().Contain(MediaKeys.Large(second)).And.NotContain(MediaKeys.Large(coverId));
+        store.Keys.Should().Contain(MediaKeys.Large(StudioOf(studioPath), second)).And.NotContain(MediaKeys.Large(StudioOf(studioPath), coverId));
 
         // 2. A member can't set a class cover; a file that isn't a picture is refused at finalize.
         (await RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("noga"), new { purpose = "class_cover", ownerId = classTypeId, contentType = "image/png", bytes = 100 }))
@@ -70,17 +70,17 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("owner"), new { purpose = "class_cover", ownerId = classTypeId, contentType = "image/png", bytes = 100 }, HttpStatusCode.Created);
         var bogus = ticket.GetProperty("mediaId").GetGuid();
 
-        // The ticket is a presigned POST whose policy caps the size at S3 (#345); the PUT stays until the apps move.
+        // The ticket is a presigned POST whose policy caps the size at S3 (#345); there is no PUT any more.
         ticket.GetProperty("maxBytes").GetInt32().Should().Be(MediaService.MaxUploadBytes);
         var form = ticket.GetProperty("uploadForm");
         form.GetProperty("url").GetString().Should().StartWith("https://media.test/");
-        form.GetProperty("fields").GetProperty("key").GetString().Should().Be(MediaKeys.Incoming(bogus));
+        form.GetProperty("fields").GetProperty("key").GetString().Should().Be(MediaKeys.Incoming(StudioOf(studioPath), bogus));
         form.GetProperty("fields").GetProperty("Content-Type").GetString().Should().Be("image/png");
-        ticket.GetProperty("uploadUrl").GetString().Should().EndWith("?put");
-        store.Upload(MediaKeys.Incoming(bogus), "<script>alert(1)</script> this is not a png"u8.ToArray());
+        ticket.TryGetProperty("uploadUrl", out _).Should().BeFalse();
+        store.Upload(MediaKeys.Incoming(StudioOf(studioPath), bogus), "<script>alert(1)</script> this is not a png"u8.ToArray());
         var refused = await RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{bogus}/finalize", Customer("owner"));
         refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        store.Keys.Should().NotContain(MediaKeys.Incoming(bogus));
+        store.Keys.Should().NotContain(MediaKeys.Incoming(StudioOf(studioPath), bogus));
 
         // 3. Dana writes her profile; a link that is not a music service is refused; she sets her own photo.
         var dana = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/instructors", Customer("noga"))).GetProperty("items")[0].GetProperty("membershipId").GetGuid();
@@ -161,11 +161,37 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("owner"), new { purpose = "studio_cover", ownerId = studioId, contentType = "image/png", bytes = 100 }, HttpStatusCode.Created);
     }
 
+    [Fact]
+    public async Task TwoFinalizes_OfOneUpload_PointTheOwnerOnce()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, _, _) = await StudioAsync(client, ["noga"], capacity: 4);
+        var nogaId = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/profile", Customer("noga"))).GetProperty("id").GetGuid();
+        var file = Png(1200, 1200);
+        var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer("noga"), new { purpose = "avatar", ownerId = nogaId, contentType = "image/png", bytes = file.Length }, HttpStatusCode.Created);
+        var id = ticket.GetProperty("mediaId").GetGuid();
+        store.Upload(MediaKeys.Incoming(StudioOf(studioPath), id), file);
+
+        // Only one finalize points the owner at the picture (#345): the other is told the upload is finished.
+        var finalizes = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{id}/finalize", Customer("noga"))));
+        finalizes.Select(r => r.StatusCode).Should().BeEquivalentTo([HttpStatusCode.OK, HttpStatusCode.Conflict]);
+        var loser = await finalizes.Single(r => r.StatusCode == HttpStatusCode.Conflict).Content.ReadAsStringAsync();
+        JsonSerializer.Deserialize<JsonElement>(loser).GetProperty("code").GetString().Should().Be("media.not_pending");
+        var uploads = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/audit-events?limit=100", Customer("owner"))).GetProperty("items").EnumerateArray()
+            .Count(e => e.GetProperty("action").GetString() == "media.uploaded");
+        uploads.Should().Be(1);
+        store.Keys.Should().Contain([MediaKeys.Large(StudioOf(studioPath), id), MediaKeys.Small(StudioOf(studioPath), id)]);
+    }
+
+    private static Guid StudioOf(string studioPath) => Guid.Parse(studioPath.Split('/')[^1]);
+
     private async Task<HttpResponseMessage> UploadRawAsync(HttpClient client, string studioPath, string who, Guid ownerId, byte[] file)
     {
         var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer(who), new { purpose = "avatar", ownerId, contentType = "image/png", bytes = file.Length }, HttpStatusCode.Created);
         var id = ticket.GetProperty("mediaId").GetGuid();
-        store.Upload(MediaKeys.Incoming(id), file);
+        store.Upload(MediaKeys.Incoming(StudioOf(studioPath), id), file);
         return await RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{id}/finalize", Customer(who));
     }
 
@@ -173,8 +199,8 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
     {
         var ticket = await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads", Customer(who), new { purpose, ownerId, contentType = "image/png", bytes = file.Length }, HttpStatusCode.Created);
         var id = ticket.GetProperty("mediaId").GetGuid();
-        ticket.GetProperty("uploadUrl").GetString().Should().Contain(MediaKeys.Incoming(id));
-        store.Upload(MediaKeys.Incoming(id), file);
+        ticket.GetProperty("uploadForm").GetProperty("fields").GetProperty("key").GetString().Should().Be(MediaKeys.Incoming(StudioOf(studioPath), id));
+        store.Upload(MediaKeys.Incoming(StudioOf(studioPath), id), file);
         return await SendAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{id}/finalize", Customer(who));
     }
 

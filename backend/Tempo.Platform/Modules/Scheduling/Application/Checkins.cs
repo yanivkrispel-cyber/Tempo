@@ -38,8 +38,13 @@ public interface ICheckinService
 public sealed partial class BookingService : ICheckinService
 {
     private const int CheckinStepSeconds = 30;
-    private const int MaxBadScansPerMinute = 5;
     private const string CheckinPrefix = "TCI1";
+
+    /// <summary>Invalid scans one staff member may make in a minute (#345).</summary>
+    private const int MaxBadScansPerMinute = 5;
+
+    /// <summary>Invalid scans of one person's code, by anyone, in an hour: a code can't be guessed by many scanners (#345).</summary>
+    private const int MaxBadScansPerPersonPerHour = 10;
 
     public async Task<CheckinCodeView> MyCodeAsync(TenantContext tenant, CancellationToken cancellationToken)
     {
@@ -58,24 +63,37 @@ public sealed partial class BookingService : ICheckinService
 
     public async Task<CheckinView> CheckInAsync(TenantContext tenant, string? code, Guid? sessionId, CancellationToken cancellationToken)
     {
-        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         var now = clock.GetUtcNow();
-        await using (var attempts = unitOfWork.Command(
-            "SELECT count(*)::int FROM people.checkin_attempts WHERE organization_id = $1 AND membership_id = $2 AND attempted_at > $3",
-            tenant.OrganizationId, tenant.MembershipId, now.AddMinutes(-1)))
+
+        // Who may scan is settled before the code is looked at (#345): a member never gets to test codes.
+        await using (var check = await BeginAsync(tenant, cancellationToken))
         {
-            if ((int)(await attempts.ExecuteScalarAsync(cancellationToken))! >= MaxBadScansPerMinute)
-            {
-                throw new DomainRuleViolationException(ViolationKind.TooManyRequests, "checkin.too_many_attempts", "Too many invalid codes. Wait a minute.");
-            }
+            await MayScanAsync(check, tenant, sessionId, now, cancellationToken);
         }
 
-        var person = await VerifyCodeAsync(unitOfWork, tenant.OrganizationId, code, now, cancellationToken);
-        if (person is null)
+        // The attempt is recorded and committed before it is counted, so of many scans at once no more than the
+        // limit get as far as the code (#345). A valid code forgets it again; what stays are the invalid ones.
+        var attempt = await RecordAttemptAsync(tenant, ClaimedPerson(code), now, cancellationToken);
+
+        Guid? person;
+        await using (var verify = await BeginAsync(tenant, cancellationToken))
         {
-            await RecordBadScanAsync(tenant, now, cancellationToken);
-            throw new DomainRuleViolationException(ViolationKind.Validation, "checkin.invalid_code", "This code is not valid. Ask them to open it again.", "code");
+            person = await VerifyCodeAsync(verify, tenant.OrganizationId, code, now, cancellationToken);
+            if (person is null)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Validation, "checkin.invalid_code", "This code is not valid. Ask them to open it again.", "code");
+            }
+
+            // A valid code is forgotten at once, whatever the check-in answers next (too early, no booking, ...).
+            await using (var forget = verify.Command("DELETE FROM people.checkin_attempts WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, attempt))
+            {
+                await forget.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await verify.CommitAsync(cancellationToken);
         }
+
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
 
         var classes = await CheckinClassesAsync(unitOfWork, tenant.OrganizationId, person.Value, now, sessionId, cancellationToken);
         var open = classes.FirstOrDefault(c => c.OpensAt <= now);
@@ -203,23 +221,94 @@ public sealed partial class BookingService : ICheckinService
         return binary % 1_000_000;
     }
 
-    private async Task RecordBadScanAsync(TenantContext tenant, DateTimeOffset now, CancellationToken cancellationToken)
+    /// <summary>
+    /// Staff with attendance.mark may scan; otherwise only an active instructor, of the given class or of one whose
+    /// check-in is open now. The class the code opens is checked again with the same rule once it is known.
+    /// </summary>
+    private static async Task MayScanAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid? sessionId, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
-        await using (var record = unitOfWork.Command(
-            "INSERT INTO people.checkin_attempts (organization_id, membership_id, attempted_at) VALUES ($1, $2, $3)",
-            tenant.OrganizationId, tenant.MembershipId, now))
+        if (tenant.Has(Permissions.AttendanceMark))
         {
-            await record.ExecuteNonQueryAsync(cancellationToken);
+            return;
         }
 
-        await using (var prune = unitOfWork.Command(
-            "DELETE FROM people.checkin_attempts WHERE organization_id = $1 AND membership_id = $2 AND attempted_at < $3",
-            tenant.OrganizationId, tenant.MembershipId, now.AddHours(-1)))
+        if (sessionId is { } session)
         {
-            await prune.ExecuteNonQueryAsync(cancellationToken);
+            await StaffOrInstructorAsync(unitOfWork, tenant, session, Permissions.AttendanceMark, cancellationToken);
+            return;
         }
 
-        await unitOfWork.CommitAsync(cancellationToken);
+        await using var command = unitOfWork.Command(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM scheduling.sessions s
+                JOIN organizations.memberships m ON m.organization_id = s.organization_id AND m.id = s.instructor_membership_id
+                WHERE s.organization_id = $1 AND s.instructor_membership_id = $2 AND m.status = 'active' AND m.role <> 'client'
+                  AND s.status = 'scheduled' AND s.ends_at > $3 AND s.starts_at <= $4)
+            """,
+            tenant.OrganizationId, tenant.MembershipId, now, now.Add(AttendanceOpensBefore));
+        if (await command.ExecuteScalarAsync(cancellationToken) is not true)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "permission.denied", "Only staff or this class's instructor can do this.");
+        }
+    }
+
+    /// <summary>The person a code says it belongs to, whether or not its digits are right; null when it isn't shaped like a code.</summary>
+    private static Guid? ClaimedPerson(string? code)
+    {
+        var parts = (code ?? "").Trim().Split('.');
+        return parts.Length == 3 && Guid.TryParseExact(parts[1], "N", out var person) ? person : null;
+    }
+
+    /// <summary>
+    /// Writes the attempt in its own transaction, then counts the scanner's attempts in the last minute and the
+    /// claimed person's in the last hour, this one included. Over either limit is 429; the attempt stays counted.
+    /// </summary>
+    private async Task<Guid> RecordAttemptAsync(TenantContext tenant, Guid? claimed, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        Guid id;
+        await using (var unitOfWork = await BeginAsync(tenant, cancellationToken))
+        {
+            await using (var record = unitOfWork.Command(
+                "INSERT INTO people.checkin_attempts (organization_id, membership_id, attempted_at, target_person_id) VALUES ($1, $2, $3, $4) RETURNING id",
+                tenant.OrganizationId, tenant.MembershipId, now, claimed))
+            {
+                id = (Guid)(await record.ExecuteScalarAsync(cancellationToken))!;
+            }
+
+            await using (var prune = unitOfWork.Command(
+                "DELETE FROM people.checkin_attempts WHERE organization_id = $1 AND (membership_id = $2 OR target_person_id = $3) AND attempted_at < $4",
+                tenant.OrganizationId, tenant.MembershipId, claimed, now.AddHours(-1)))
+            {
+                await prune.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await unitOfWork.CommitAsync(cancellationToken);
+        }
+
+        int byScanner;
+        int byPerson;
+        await using (var unitOfWork = await BeginAsync(tenant, cancellationToken))
+        {
+            await using var count = unitOfWork.Command(
+                """
+                SELECT count(*) FILTER (WHERE membership_id = $2 AND attempted_at > $4)::int,
+                       count(*) FILTER (WHERE target_person_id = $3 AND attempted_at > $5)::int
+                FROM people.checkin_attempts
+                WHERE organization_id = $1 AND (membership_id = $2 OR target_person_id = $3)
+                """,
+                tenant.OrganizationId, tenant.MembershipId, claimed, now.AddMinutes(-1), now.AddHours(-1));
+            await using var reader = await count.ExecuteReaderAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
+            byScanner = reader.GetInt32(0);
+            byPerson = reader.GetInt32(1);
+        }
+
+        if (byScanner > MaxBadScansPerMinute || byPerson > MaxBadScansPerPersonPerHour)
+        {
+            throw new DomainRuleViolationException(ViolationKind.TooManyRequests, "checkin.too_many_attempts", "Too many invalid codes. Wait a minute.");
+        }
+
+        return id;
     }
 }

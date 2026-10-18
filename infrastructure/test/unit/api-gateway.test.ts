@@ -186,10 +186,10 @@ describe("The tripwire alerts the owner in production only", () => {
 describe("the media bucket takes browser uploads only from the apps (docs/33 section 6, #345)", () => {
   const template = stackTemplate("Api");
 
-  it("CORS allows the presigned POST (and the old PUT) from the app origins, never a wildcard", () => {
+  it("CORS allows only the presigned POST, from the app origins, never a wildcard", () => {
     const [bucket] = Object.values(template.findResources("AWS::S3::Bucket", { Properties: { CorsConfiguration: Match.anyValue() } }));
     const [rule] = bucket.Properties.CorsConfiguration.CorsRules;
-    expect(rule.AllowedMethods).toEqual(["PUT", "POST"]);
+    expect(rule.AllowedMethods).toEqual(["POST"]);
     expect(rule.AllowedOrigins.length).toBeGreaterThan(0);
     expect(rule.AllowedOrigins).not.toContain("*");
   });

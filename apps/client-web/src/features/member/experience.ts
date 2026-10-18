@@ -166,7 +166,7 @@ export function useMyProfile(organizationId: string) {
 }
 
 /**
- * A picture: an upload ticket, a PUT straight to storage, then finalize (docs/33 section 6.3). The server re-encodes
+ * A picture: an upload ticket, a presigned POST straight to storage, then finalize (docs/33 section 6.3). The server re-encodes
  * the file; nothing is shown until it says the picture is ready.
  */
 export function useUploadPicture(organizationId: string) {
@@ -189,12 +189,7 @@ export function useUploadPicture(organizationId: string) {
           body: { purpose, ownerId, contentType, bytes: file.size },
         }),
       );
-      const put = await fetch(ticket.uploadUrl, {
-        method: "PUT",
-        headers: { "content-type": ticket.contentType },
-        body: file,
-      });
-      if (!put.ok) throw new Error(`upload ${put.status}`);
+      await sendToStorage(ticket.uploadForm, file);
       return unwrap(
         api.POST("/api/v1/organizations/{organizationId}/media/uploads/{mediaId}/finalize", {
           params: { path: { organizationId, mediaId: ticket.mediaId } },
@@ -203,4 +198,20 @@ export function useUploadPicture(organizationId: string) {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId] }),
   });
+}
+
+/**
+ * Sends the file to storage as the ticket's presigned POST (H-1): every field as given, the file last, as S3 asks.
+ * S3 itself refuses a file over the ticket's size. Its XML refusal becomes a Problem (`media.too_large`, or
+ * `media.storage_refused`), so the screen reads it like any other API error.
+ */
+async function sendToStorage(form: Schemas["MediaUploadForm"], file: File): Promise<void> {
+  const body = new FormData();
+  for (const [name, value] of Object.entries(form.fields)) body.append(name, value);
+  body.append("file", file);
+  const sent = await fetch(form.url, { method: "POST", body });
+  if (sent.ok) return;
+  const xml = await sent.text().catch(() => "");
+  const code = xml.includes("<Code>EntityTooLarge</Code>") ? "media.too_large" : "media.storage_refused";
+  throw new TempoApiError(sent, { type: "about:blank", title: code, status: sent.status, code });
 }

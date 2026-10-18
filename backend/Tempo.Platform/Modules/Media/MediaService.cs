@@ -5,7 +5,7 @@ using Tempo.Platform.Modules.Audit;
 
 namespace Tempo.Platform.Modules.Media;
 
-public sealed record UploadTicketView(Guid MediaId, Uri UploadUrl, PresignedForm UploadForm, int MaxBytes, string ContentType, DateTimeOffset ExpiresAt);
+public sealed record UploadTicketView(Guid MediaId, PresignedForm UploadForm, int MaxBytes, string ContentType, DateTimeOffset ExpiresAt);
 
 public sealed record MediaView(Guid Id, string Purpose, Guid OwnerId, int Width, int Height);
 
@@ -67,10 +67,9 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
         }
 
         await unitOfWork.CommitAsync(cancellationToken);
-        var key = MediaKeys.Incoming(id);
+        var key = MediaKeys.Incoming(tenant.OrganizationId, id);
         return new UploadTicketView(
             id,
-            store.PresignPut(key, contentType, UploadLifetime),
             store.PresignPost(key, contentType, MaxUploadBytes, UploadLifetime),
             MaxUploadBytes,
             contentType,
@@ -108,7 +107,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
         await using (var unitOfWork = await BeginAsync(tenant, cancellationToken))
         {
             await using var read = unitOfWork.Command(
-                "SELECT purpose, owner_id, status, created_by FROM media.media_objects WHERE organization_id = $1 AND id = $2",
+                "SELECT purpose, owner_id, status, created_by FROM media.media_objects WHERE organization_id = $1 AND id = $2 FOR UPDATE",
                 tenant.OrganizationId, mediaId);
             await using var reader = await read.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken) || reader.GetGuid(3) != tenant.MembershipId)
@@ -125,7 +124,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
             owner = reader.GetGuid(1);
         }
 
-        var incoming = MediaKeys.Incoming(mediaId);
+        var incoming = MediaKeys.Incoming(tenant.OrganizationId, mediaId);
         var original = await store.ReadAsync(incoming, MaxUploadBytes, cancellationToken)
             ?? throw new DomainRuleViolationException(ViolationKind.Conflict, "media.not_uploaded", "The file was not uploaded, or it is over 8 MB.");
         var image = ImageProcessor.Process(original);
@@ -136,13 +135,25 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
             throw new DomainRuleViolationException(ViolationKind.Validation, "media.not_an_image", "This file is not a picture we can use.", "file");
         }
 
-        await store.WriteAsync(MediaKeys.Large(mediaId), image.Large, "image/webp", cancellationToken);
-        await store.WriteAsync(MediaKeys.Small(mediaId), image.Small, "image/webp", cancellationToken);
+        await store.WriteAsync(MediaKeys.Large(tenant.OrganizationId, mediaId), image.Large, "image/webp", cancellationToken);
+        await store.WriteAsync(MediaKeys.Small(tenant.OrganizationId, mediaId), image.Small, "image/webp", cancellationToken);
         await store.DeleteAsync([incoming], cancellationToken);
 
         Guid? previous;
         await using (var unitOfWork = await BeginAsync(tenant, cancellationToken))
         {
+            // Only one finalize of an upload points the owner at it: the row is locked and must still be pending
+            // (#345). Two at once write the same objects, so the loser has nothing to clean up.
+            await using (var pending = unitOfWork.Command(
+                "SELECT status FROM media.media_objects WHERE organization_id = $1 AND id = $2 FOR UPDATE",
+                tenant.OrganizationId, mediaId))
+            {
+                if (await pending.ExecuteScalarAsync(cancellationToken) as string != "pending")
+                {
+                    throw new DomainRuleViolationException(ViolationKind.Conflict, "media.not_pending", "This upload was already finished.");
+                }
+            }
+
             // The owner check runs again: a role may have changed while the file was uploading.
             await CheckOwnerAsync(unitOfWork, tenant, kind, owner, cancellationToken);
             previous = await PointAsync(unitOfWork, tenant.OrganizationId, kind, owner, mediaId, cancellationToken);
@@ -167,7 +178,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
         if (previous is { } replaced)
         {
-            await store.DeleteAsync([MediaKeys.Large(replaced), MediaKeys.Small(replaced)], cancellationToken);
+            await store.DeleteAsync([MediaKeys.Large(tenant.OrganizationId, replaced), MediaKeys.Small(tenant.OrganizationId, replaced)], cancellationToken);
         }
 
         return new MediaView(mediaId, kind, owner, image.Width, image.Height);
@@ -195,7 +206,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
         if (previous is { } removed)
         {
-            await store.DeleteAsync([MediaKeys.Large(removed), MediaKeys.Small(removed)], cancellationToken);
+            await store.DeleteAsync([MediaKeys.Large(tenant.OrganizationId, removed), MediaKeys.Small(tenant.OrganizationId, removed)], cancellationToken);
         }
     }
 
@@ -217,8 +228,8 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
         while (await reader.ReadAsync(cancellationToken))
         {
             var id = reader.GetGuid(0);
-            keys.Add(MediaKeys.Large(id));
-            keys.Add(MediaKeys.Small(id));
+            keys.Add(MediaKeys.Large(organizationId, id));
+            keys.Add(MediaKeys.Small(organizationId, id));
         }
 
         return keys;
