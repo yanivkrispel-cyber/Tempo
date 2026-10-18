@@ -80,6 +80,7 @@ try
     app.MapMediaEndpoints();
     app.MapInstructorEndpoints();
     app.MapCheckinEndpoints();
+    app.MapInsightEndpoints();
     app.MapProgressEndpoints();
     app.MapReportEndpoints();
     app.MapHealthDeclarationEndpoints();

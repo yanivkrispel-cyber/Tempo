@@ -1439,6 +1439,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/insights/sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Pass sales this month and a forecast (`reports.view`)
+         * @description Passes granted at their product's list price, not payments (docs/33 X-9); the forecast is null before the third day.
+         */
+        get: operations["getSales"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/insights/occupancy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** The week's occupancy by day and part of day (`reports.view`) */
+        get: operations["getOccupancy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/insights/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Up to three "waiting for you" cards (`reports.view`)
+         * @description Members at risk and passes ending need `people.view` too; a full class with four or more waiting comes with the first free slot that day.
+         */
+        get: operations["listSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/insights/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** What happened in the last 48 hours (`reports.view` and `people.view`) */
+        get: operations["listActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /** People and upcoming classes by name (`schedule.view`; people with `people.view`) */
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/class-types": {
         parameters: {
             query?: never;
@@ -3859,6 +3960,92 @@ export interface components {
             healthStatus: "signed" | "missing" | "expired" | "needs_medical_approval";
             alreadyCheckedIn: boolean;
         };
+        Sales: {
+            month: string;
+            timeZone: string;
+            soFarAgorot: number;
+            /** @description The previous month up to the same day. */
+            previousToDateAgorot: number;
+            forecastAgorot?: number | null;
+            passesSold: number;
+            /** @description Passes of a product without a price (counted as 0). */
+            unpricedCount: number;
+            days: {
+                /** Format: date */
+                day: string;
+                cumulativeAgorot: number;
+            }[];
+        };
+        Occupancy: {
+            /** Format: date */
+            weekStart: string;
+            timeZone: string;
+            places: number;
+            capacity: number;
+            previousPlaces?: number | null;
+            previousCapacity?: number | null;
+            cells: {
+                /** Format: date */
+                day: string;
+                /** @enum {string} */
+                part: "morning" | "noon" | "evening";
+                places: number;
+                capacity: number;
+                fullWithWaitlist: boolean;
+            }[];
+        };
+        Suggestion: {
+            /** @enum {string} */
+            kind: "passes_ending" | "members_at_risk" | "waitlist_pressure";
+            count: number;
+            people: components["schemas"]["PersonRef"][];
+            amountAgorot?: number | null;
+            /** Format: uuid */
+            sessionId?: string | null;
+            className?: string | null;
+            /** Format: date-time */
+            startsAt?: string | null;
+            /** Format: uuid */
+            instructorMembershipId?: string | null;
+            instructorName?: string | null;
+            slot?: {
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: uuid */
+                roomId?: string | null;
+                roomName?: string | null;
+            } | null;
+        };
+        SuggestionList: {
+            items: components["schemas"]["Suggestion"][];
+        };
+        Activity: {
+            /** @enum {string} */
+            kind: "booking.created" | "booking.waitlisted" | "booking.cancelled" | "booking.promoted" | "booking.checked_in" | "pass.granted" | "health.declaration.signed";
+            /** Format: date-time */
+            at: string;
+            person: components["schemas"]["PersonRef"];
+            className?: string | null;
+            /** Format: date-time */
+            classStartsAt?: string | null;
+            spotLabel?: string | null;
+            productName?: string | null;
+            priceAgorot?: number | null;
+        };
+        ActivityList: {
+            items: components["schemas"]["Activity"][];
+        };
+        SearchResults: {
+            people: components["schemas"]["PersonRef"][];
+            sessions: {
+                /** Format: uuid */
+                id: string;
+                className: string;
+                /** Format: date-time */
+                startsAt: string;
+                instructorName?: string | null;
+            }[];
+        };
         ChangeSpotRequest: {
             /** Format: uuid */
             spotId: string;
@@ -4519,6 +4706,18 @@ export interface components {
             monthlyGoal: number | null;
             /** @description Consecutive Sunday-to-Saturday weeks with an attended class; the current week counts once it has one. */
             streakWeeks: number;
+            /** @description The last 12 weeks, oldest first (docs/33 section 10). */
+            weeks?: components["schemas"]["ProgressWeek"][];
+        };
+        ProgressWeek: {
+            /**
+             * Format: date
+             * @description The Sunday.
+             */
+            weekStart: string;
+            attended: number;
+            /** @description Places still booked ahead; the current week only. */
+            booked: number;
         };
         MonthlyGoalRequest: {
             /** @description Null clears the goal. */
@@ -7332,6 +7531,140 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getSales: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sales"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getOccupancy: {
+        parameters: {
+            query?: {
+                /** @description Any day of the week; defaults to this week. */
+                week?: string;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Occupancy"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listSuggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listActivity: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listClassTypes: {
