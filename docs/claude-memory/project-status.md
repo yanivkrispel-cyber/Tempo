@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-10-17, night (day boards #232, DAY-PLAN-5: pilot readiness; #253, DAY-PLAN-6: owner reports and
-removing logins and studios; and #321, DAY-PLAN-7: D15 on every screen, member import, staff notes and tags).
+Updated 2026-10-18, night (board #347, DAY-PLAN-8: installable apps, #345 hardening, the premium flows on dev, white
+label plan). Earlier: boards #232, #253 and #321 (2026-10-17).
 
 ## In one paragraph
 
@@ -129,13 +129,39 @@ session's Studio Experience LLD (#322, open).
 - Fictional phones in tests: libphonenumber rejects `050-00000xx` and `050-1234567`; tests that need a valid number use
   a few `050-23456xx` values.
 
-## Premium redesign (approved 2026-10-17, D16 to D19)
+## Premium redesign (approved 2026-10-17, D16 to D20): landed and live on dev
 
 Kris approved the "Warm Glass" mockups and the redesign, and asked that every capability they show exists first.
 Plan and design: `docs/33_Studio_Experience_LLD.md` (capability matrix C1 to C25, steps E0 to E10, migrations 0026
 to 0029): rooms with spots and the usual spot, buddies, instructor profiles (bio, Instagram, playlist), pictures on
 S3, the instructor's note, the check-in QR, owner insights (sales and forecast, occupancy, suggestions, activity,
-search), progress weeks. Then the design system v1.0 and the two apps.
+search), progress weeks, the design system v1.0 and both apps. All of it is on `main` and live on dev since
+2026-10-18 (#324 to #346); E10's end-to-end proof is board #347 below.
+
+## Installable apps, #345 hardening and the premium flows on dev (2026-10-18 night, board #347)
+
+| Piece | PR |
+|---|---|
+| Kris's logo; the mark redrawn as SVG (`docs/design/brand/`), a temporary logo until Kris replaces it | K1 #348 |
+| Both apps install on Android and iPhone: icons (192, 512, maskable, apple-touch), `id`, screenshots, shortcuts | O1 #352 |
+| Install from inside the app (home card after a booking, profile and settings rows, the iPhone steps) | O2 #356 |
+| The install gate: every deploy runs `tools/scripts/pwa-check.mjs` against both live apps | K2 #349 |
+| Uploads are a presigned POST capped at 8 MB by S3 itself; the PUT is gone; CORS is POST only | H-1 #351, O3 #358, H-1b #371 |
+| The apps' CSP allows the media bucket (no picture could be uploaded or shown from the live apps before) | #372 |
+| Check-in scan limits: staff checked before the code, attempts committed before counting, 10 a person an hour (migration 0030) | H-2 #354 |
+| New pictures under `media/<org>/<id>/` from 2026-10-20 00:00 UTC (the UUIDv7 picks the layout); finalize locks the row | H-3 #368 |
+| The check-in secret is encrypted with the health data key (migration 0031); drop the plain column later (#374) | H-4 #373 |
+| Finalizing an upload that never arrived is 409, not 500 (S3 answers 403 for a missing key: the role can't list) | #370 |
+| A unit of work replaces pooled connections Neon closed while the Lambda was frozen (the 500s after idle) | #357 |
+| Dev's API reserves 20 concurrent executions (10 throttled parallel e2e runs: the 503s) | #364 |
+| `premium-live-check.mjs` (K4) and `demo-premium.mjs` (K5, test-studio-1 and -2 dressed with rooms, instructors, photos, a buddy pair, sales, arrivals) | #361 |
+| E10 on dev: `sync8` (buddies, spots, the scan, the live map) at 360 and 1280 px | O4 #366 |
+| Performance: the member home's layout shift (CLS 0.107) gone; the promotion is a toast | O5 #365 |
+| White label plan, W-1 to W-12 with defaults, build steps WL1 to WL6 | K6 #362 (`docs/35`) |
+
+- Migrations on dev go up to **0031**; **0032** is the next free number.
+- Running the .NET tests on this machine: Smart App Control also blocked Debug DLLs on 2026-10-18; run them in the
+  `mcr.microsoft.com/dotnet/sdk:10.0` container (local-dev-quirks.md).
 
 ## Apps
 
@@ -166,6 +192,9 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | The two **(reading)** report rules in docs/32 section 6 | A renewed pass is not "ending"; nobody is "at risk" in their first 30 days |
 | `TEMPO_STUDIO_REMOVAL_MIN_DAYS` and Neon's point-in-time history | 30 days by default outside dev; a removed studio stays in Neon's history until it ages out |
 | Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
+| The real logo | The icons use K1's redraw of LOGO1.png as a temporary logo (Kris, 2026-10-18) |
+| `docs/35` W-1 to W-12 (white label) | Defaults apply unless Kris changes them; then WL1 to WL6 |
+| `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
 
 ## Who works on what
 
