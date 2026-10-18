@@ -282,7 +282,7 @@ public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvide
             while (await reader.ReadAsync(cancellationToken))
             {
                 var id = reader.GetGuid(0);
-                pictures.AddRange([MediaKeys.Incoming(id), MediaKeys.Large(id), MediaKeys.Small(id)]);
+                pictures.AddRange([MediaKeys.Incoming(organizationId, id), MediaKeys.Large(organizationId, id), MediaKeys.Small(organizationId, id)]);
             }
         }
 

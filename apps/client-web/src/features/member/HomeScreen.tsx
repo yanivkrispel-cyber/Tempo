@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   Avatar,
   Banner,
@@ -142,6 +142,8 @@ function StudioHome({ studio }: { studio: Studio }) {
   const passes = useMyPasses(studio.id);
   const profile = useMyProfile(studio.id);
   const instructors = useInstructors(studio.id);
+  // The installed app's "check-in pass" shortcut (manifest.webmanifest) opens the pass straight away.
+  const [params, setParams] = useSearchParams();
 
   const next = upcoming.data?.find((booking) => booking.status === "booked");
   const dayClasses = (sessions.data ?? []).filter(
@@ -177,6 +179,12 @@ function StudioHome({ studio }: { studio: Studio }) {
       hello={greeting(timeZone, now)}
       avatar={profile.data?.avatarUrl}
     >
+      <CheckinPass
+        organizationId={studio.id}
+        timeZone={timeZone}
+        open={params.get("open") === "checkin"}
+        onClose={() => setParams({}, { replace: true })}
+      />
       {promotion && (
         <Banner tone="success" icon="check">
           התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית. <Link to="/inbox">להתראות</Link>

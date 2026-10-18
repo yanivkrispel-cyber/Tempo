@@ -260,8 +260,11 @@ ALTER TABLE people.people                ADD COLUMN avatar_media_id uuid;
 1. `POST /media/uploads` with `{ purpose, ownerId, contentType, bytes }`: checks the permission for the owner
    (class cover: `schedule.manage`; studio cover: `organization.settings.manage`; instructor photo: self or
    `schedule.manage`; avatar: self or `people.manage`), type in `image/jpeg|png|webp`, size up to 8 MB; inserts a
-   `pending` row and returns a presigned `PUT` for `incoming/<org>/<id>` that lives 10 minutes.
-2. The app uploads directly to S3.
+   `pending` row and returns a presigned `POST` (`uploadForm`) for `incoming/<org>/<id>` that lives 10 minutes. Its
+   signed policy pins the key and content type and carries `content-length-range` 1 to 8 MB, so S3 itself refuses
+   a bigger file (#345, H-1 on board #347; the old presigned `PUT`, which could not cap the size, goes away once
+   the apps POST).
+2. The app uploads directly to S3 as `multipart/form-data`: the form's fields, then the file last as `file`.
 3. `POST /media/uploads/{id}/finalize`: the API reads the object, checks the magic bytes, decodes it (SkiaSharp,
    MIT; decode errors reject), rejects anything over 40 megapixels, re-encodes to WebP at 1600 and 400 pixels on the
    long side with no metadata, writes `media/<org>/<id>/large.webp` and `small.webp`, deletes the incoming object,
@@ -270,6 +273,11 @@ ALTER TABLE people.people                ADD COLUMN avatar_media_id uuid;
 4. Reads: payloads carry `photoUrl`, `coverUrl`, `avatarUrl` as presigned GETs of the right size.
 
 Erasing a person deletes their avatar objects. Removing a studio (docs/32 section 10) deletes `media/<org>/`.
+
+Keys as built (#345, H-3): the studio's id is in the key of every picture created from 2026-10-20 00:00 UTC on
+(`MediaKeys.StudioPrefixSince`). Pictures created before keep `incoming/<id>` and `media/<id>/...`: the media id is a
+UUIDv7, so its creation time picks the layout for writing and reading alike, and no object ever moves. Studio
+removal and erase delete by the keys the rows name, so both layouts are covered.
 Audit: `media.uploaded`, `media.removed` with purpose and owner id.
 
 ## 7. Instructor note on a class (C11)
@@ -293,8 +301,12 @@ waitlisted members on the class screen and in the home card. Migration 0028. Aud
   starts within the next 30 minutes or is running (or the given `sessionId`), marks it `attended`
   (docs/29 6.4) and returns the person's name, avatar, spot label and health-declaration state for the scanner
   screen. A code that was already accepted in its window is accepted again but does nothing new (idempotent).
-- Errors: `checkin.invalid_code`, `checkin.no_booking`, `checkin.too_early`. Five invalid scans from one staff
-  member in a minute return `429`.
+- Errors: `checkin.invalid_code`, `checkin.no_booking`, `checkin.too_early`. Who may scan is checked before the
+  code is read. Every scan is recorded (and committed) before the code is checked and forgotten when the code is
+  valid; past five invalid scans from one staff member in a minute, or ten of one person's code by anyone in an
+  hour, the answer is `429 checkin.too_many_attempts` (#345, migration 0030). A person whose code was capped can't
+  be scanned for up to an hour, even with the right code: the door asks them to wait or marks attendance by hand on
+  the roster. Six valid scans from one device in the same instant can make the sixth a 429 for a moment.
 - Audit: `booking.checked_in` (booking id, method `code`).
 
 ### 8.2 Apps
