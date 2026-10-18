@@ -2623,6 +2623,10 @@ a.tp-row:focus-visible {
   .tp-week__day {
     width: var(--touch-min);
   }
+  .tp-toast__close {
+    width: var(--touch-min);
+    height: var(--touch-min);
+  }
   button.tp-chip,
   a.tp-chip {
     min-width: var(--touch-min);
