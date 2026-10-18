@@ -176,7 +176,8 @@ public static class ScheduleEndpoints
     internal static RoomResponse ToResponse(RoomView r) => new(r.Id, r.Name, r.DefaultCapacity, r.Status, r.Version.ToString(CultureInfo.InvariantCulture));
 
     internal static ClassTypeResponse ToResponse(ClassTypeView c) =>
-        new(c.Id, c.Name, c.Category, c.Color, c.DefaultMinutes, c.Description, c.Status, c.Version.ToString(CultureInfo.InvariantCulture));
+        new(c.Id, c.Name, c.Category, c.Color, c.DefaultMinutes, c.Description, c.Status, c.Version.ToString(CultureInfo.InvariantCulture),
+            MediaLinks.Url(c.CoverMediaId), MediaLinks.Url(c.CoverMediaId, small: true));
 
     internal static ScheduleTemplateResponse ToResponse(TemplateView t)
     {
@@ -207,9 +208,10 @@ public static class ScheduleEndpoints
             s.LocalDate,
             s.StartsAt,
             s.EndsAt,
-            new SessionClassTypeResponse(s.ClassType.Id, s.ClassType.Name, s.ClassType.Category, s.ClassType.Color, s.ClassType.Description),
+            new SessionClassTypeResponse(s.ClassType.Id, s.ClassType.Name, s.ClassType.Category, s.ClassType.Color, s.ClassType.Description,
+                MediaLinks.Url(s.ClassType.CoverMediaId), MediaLinks.Url(s.ClassType.CoverMediaId, small: true)),
             s.Instructor is { } i ? new InstructorResponse(i.MembershipId, i.DisplayName) : null,
-            s.Room is { } r ? new SessionRoomResponse(r.Id, r.Name) : null,
+            s.Room is { } r ? new SessionRoomResponse(r.Id, r.Name, r.SpotSelection) : null,
             s.Capacity,
             s.BookedCount,
             s.WaitlistCount,
@@ -217,7 +219,8 @@ public static class ScheduleEndpoints
             s.MyBooking is { } m ? new MyBookingStateResponse(m.BookingId, m.Status, m.WaitlistPosition, m.FreeCancelUntil) : null,
             s.PassPreview is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
             s.Version.ToString(CultureInfo.InvariantCulture),
-            s.FrozenUntil);
+            s.FrozenUntil,
+            s.MemberNote);
 
     private static TimeOnly ParseTime(string value, string field) =>
         TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)

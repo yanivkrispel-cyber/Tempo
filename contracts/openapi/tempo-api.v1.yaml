@@ -90,6 +90,10 @@ tags:
     description: Booking, cancelling, the waitlist, roster and attendance (docs/29).
   - name: Buddies
     description: Members who agreed to see each other on room maps (docs/33 section 4).
+  - name: Media
+    description: Pictures of class types, instructors, the studio and people (docs/33 section 6).
+  - name: Instructors
+    description: Instructor profiles inside the studio (docs/33 section 5).
   - name: Passes
     description: Punch cards and memberships the studio sells and grants (docs/29).
   - name: Notifications
@@ -1747,6 +1751,190 @@ paths:
       responses:
         "204": { description: Unlinked. }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/media/uploads:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Media]
+      operationId: startMediaUpload
+      summary: "Start uploading a picture (who may depends on the purpose)"
+      description: |
+        docs/33 section 6.3. A class cover needs `schedule.manage`, the studio cover `organization.settings.manage`,
+        an instructor photo is the instructor's own or `schedule.manage`, an avatar is the person's own or
+        `people.manage`. Returns a presigned PUT that lives 10 minutes. 503 `media.unavailable` where no bucket is
+        configured.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MediaUploadRequest" }
+      responses:
+        "201":
+          description: Upload here, then finalize.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MediaUploadTicket" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/media/uploads/{mediaId}/finalize:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - name: mediaId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Media]
+      operationId: finalizeMediaUpload
+      summary: "Finish an upload: re-encode the picture and put it in place (the uploader)"
+      description: |
+        The API reads the uploaded file, checks it is a JPEG, PNG or WebP of at most 40 megapixels, re-encodes it
+        to WebP at 1600 and 400 pixels with no metadata (D17), and replaces the owner's previous picture. 400
+        `media.not_an_image` for anything else; 409 `media.not_uploaded` when nothing was uploaded.
+      responses:
+        "200":
+          description: The picture is in place.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Media" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/media:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    delete:
+      tags: [Media]
+      operationId: removeMedia
+      summary: "Remove a picture (the same rule as uploading it)"
+      parameters:
+        - { name: purpose, in: query, required: true, schema: { $ref: "#/components/schemas/MediaPurpose" } }
+        - { name: ownerId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: "Removed, or there was none." }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/instructors:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Instructors]
+      operationId: listInstructors
+      summary: "The studio's instructors (`schedule.view`)"
+      description: Visible profiles of active staff who teach a weekly class or a future session, or wrote a profile.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstructorList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/organizations/{organizationId}/instructors/{membershipId}:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/MembershipId"
+    get:
+      tags: [Instructors]
+      operationId: getInstructor
+      summary: "One instructor with their next classes (`schedule.view`)"
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Instructor" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/instructors/{membershipId}/profile:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/MembershipId"
+    put:
+      tags: [Instructors]
+      operationId: saveInstructorProfile
+      summary: "Edit an instructor's profile (`schedule.manage`, or the instructor)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffProfileRequest" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Instructor" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/staff-profile:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    put:
+      tags: [Instructors]
+      operationId: saveMyStaffProfile
+      summary: "Edit one's own instructor profile (staff)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffProfileRequest" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Instructor" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/sessions/{sessionId}/member-note:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+      - $ref: "#/components/parameters/SessionId"
+    put:
+      tags: [Schedule]
+      operationId: setSessionMemberNote
+      summary: "The instructor's note to a class (`schedule.manage`, or the class's instructor)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberNoteRequest" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -3876,6 +4064,7 @@ components:
       type: object
       required: [id, displayName, status, source, hasLogin, createdAt, version]
       properties:
+        avatarUrl: { type: [string, "null"], format: uri, description: "The person's picture, a presigned link (docs/33 section 6)." }
         id: { type: string, format: uuid }
         displayName: { type: string, examples: [נועה לוי] }
         givenName: { type: [string, "null"] }
@@ -4397,6 +4586,8 @@ components:
         description: { type: [string, "null"], maxLength: 1000 }
         status: { type: string, enum: [active, archived] }
         version: { type: string }
+        coverUrl: { type: [string, "null"], format: uri, description: "A presigned link that works for 6 hours (docs/33 section 6)." }
+        coverSmallUrl: { type: [string, "null"], format: uri, description: "A presigned link that works for 6 hours (docs/33 section 6)." }
 
     ClassTypeList:
       type: object
@@ -4561,6 +4752,8 @@ components:
             category: { type: string }
             color: { $ref: "#/components/schemas/ClassColor" }
             description: { type: [string, "null"], description: "About the class (AppClass)." }
+            coverUrl: { type: [string, "null"], format: uri, description: "A presigned link that works for 6 hours (docs/33 section 6)." }
+            coverSmallUrl: { type: [string, "null"], format: uri, description: "A presigned link that works for 6 hours (docs/33 section 6)." }
         instructor:
           oneOf:
             - $ref: "#/components/schemas/InstructorRef"
@@ -4572,6 +4765,7 @@ components:
               properties:
                 id: { type: string, format: uuid }
                 name: { type: string }
+                spotSelection: { type: boolean, description: "Members pick a spot when they book (docs/33 section 3)." }
             - type: "null"
         capacity: { type: integer }
         bookedCount: { type: integer }
@@ -4593,6 +4787,10 @@ components:
           description: |
             When no pass is valid because the caller's membership is frozen on this class's day (docs/29 section
             16.4): the last frozen day, so the booking sheet can say so before the 409. Null otherwise.
+        memberNote:
+          type: [string, "null"]
+          maxLength: 200
+          description: The instructor's note to the class (docs/33 section 7), e.g. what to bring.
         version: { type: string }
 
     SessionList:
@@ -4633,6 +4831,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         displayName: { type: string }
+        avatarUrl: { type: [string, "null"], format: uri, description: "A presigned link that works for 6 hours (docs/33 section 6)." }
 
     Booking:
       type: object
@@ -4817,6 +5016,84 @@ components:
       required: [code]
       properties:
         code: { type: string, description: "The 8 letters and digits; spaces, dashes and case are ignored." }
+
+    Instructor:
+      type: object
+      required: [membershipId, displayName, visible]
+      properties:
+        membershipId: { type: string, format: uuid }
+        displayName: { type: string }
+        headline: { type: [string, "null"], maxLength: 80, examples: [מורה לפילאטיס מכשירים] }
+        bio: { type: [string, "null"], maxLength: 600 }
+        instagramHandle: { type: [string, "null"], pattern: "^[A-Za-z0-9._]{1,30}$", description: The handle without @. }
+        playlistUrl: { type: [string, "null"], format: uri, description: "Spotify, Apple Music or YouTube Music only (docs/33 X-6)." }
+        photoUrl: { type: [string, "null"], format: uri }
+        photoSmallUrl: { type: [string, "null"], format: uri }
+        visible: { type: boolean, description: Shown to members. }
+        nextSessions:
+          type: [array, "null"]
+          description: The next five classes; only on `getInstructor`.
+          items: { $ref: "#/components/schemas/Session" }
+
+    InstructorList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Instructor" }
+
+    StaffProfileRequest:
+      type: object
+      properties:
+        headline: { type: [string, "null"], maxLength: 80 }
+        bio: { type: [string, "null"], maxLength: 600 }
+        instagramHandle: { type: [string, "null"], description: "A handle, @handle or an instagram.com link." }
+        playlistUrl: { type: [string, "null"], description: "An https link to Spotify, Apple Music or YouTube Music." }
+        visible: { type: boolean, default: true }
+
+    MemberNoteRequest:
+      type: object
+      properties:
+        note: { type: [string, "null"], maxLength: 200, description: Null or empty clears it. }
+        applyToWeekly: { type: boolean, description: "Also the weekly class's note and its future sessions." }
+
+    MediaPurpose:
+      type: string
+      enum: [class_cover, instructor_photo, studio_cover, avatar]
+
+    MediaUploadRequest:
+      type: object
+      required: [purpose, ownerId, contentType, bytes]
+      properties:
+        purpose: { $ref: "#/components/schemas/MediaPurpose" }
+        ownerId:
+          type: string
+          format: uuid
+          description: "The class type, the instructor's membership, the studio or the person the picture belongs to."
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        bytes: { type: integer, minimum: 1, maximum: 8388608 }
+
+    MediaUploadTicket:
+      type: object
+      required: [mediaId, uploadUrl, contentType, expiresAt]
+      properties:
+        mediaId: { type: string, format: uuid }
+        uploadUrl: { type: string, format: uri, description: "PUT the file here with the same Content-Type, within 10 minutes." }
+        contentType: { type: string }
+        expiresAt: { type: string, format: date-time }
+
+    Media:
+      type: object
+      required: [id, purpose, ownerId, url, smallUrl, width, height]
+      properties:
+        id: { type: string, format: uuid }
+        purpose: { $ref: "#/components/schemas/MediaPurpose" }
+        ownerId: { type: string, format: uuid }
+        url: { type: string, format: uri }
+        smallUrl: { type: string, format: uri }
+        width: { type: integer }
+        height: { type: integer }
 
     ChangeSpotRequest:
       type: object

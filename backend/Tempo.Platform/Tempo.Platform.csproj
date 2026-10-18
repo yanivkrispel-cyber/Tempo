@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
+    <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="libphonenumber-csharp" />
   </ItemGroup>

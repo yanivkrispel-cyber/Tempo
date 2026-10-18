@@ -166,7 +166,7 @@ public static class PeopleEndpoints
             : throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", $"{field} must be a string.", field);
 
     internal static PersonResponse ToResponse(PersonView p) =>
-        new(p.Id, p.DisplayName, p.GivenName, p.FamilyName, p.BirthDate, p.Status, p.Source, p.HasLogin, p.MembershipId, p.PrimaryEmail, p.PrimaryPhone, p.MergedIntoId, p.CreatedAt, p.Version.ToString(CultureInfo.InvariantCulture), Tags(p));
+        new(p.Id, p.DisplayName, p.GivenName, p.FamilyName, p.BirthDate, p.Status, p.Source, p.HasLogin, p.MembershipId, p.PrimaryEmail, p.PrimaryPhone, p.MergedIntoId, p.CreatedAt, p.Version.ToString(CultureInfo.InvariantCulture), Tags(p), MediaLinks.Url(p.AvatarMediaId, small: true));
 
     internal static PersonDetailResponse ToResponse(PersonDetailView d)
     {
@@ -177,7 +177,8 @@ public static class PeopleEndpoints
             [.. d.ContactPoints.Select(ToResponse)],
             [.. d.Consents.Select(ToResponse)],
             [.. d.Relationships.Select(r => new RelationshipResponse(r.Id, r.Type, r.FromPersonId, r.ToPersonId, r.OtherDisplayName, r.CreatedAt))],
-            Tags(p));
+            Tags(p),
+            MediaLinks.Url(p.AvatarMediaId));
     }
 
     internal static ContactPointResponse ToResponse(ContactPointView c) =>

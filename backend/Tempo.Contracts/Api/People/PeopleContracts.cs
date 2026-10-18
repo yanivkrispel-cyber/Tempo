@@ -19,7 +19,8 @@ public sealed record PersonResponse(
     Guid? MergedIntoId,
     DateTimeOffset CreatedAt,
     string Version,
-    IReadOnlyList<PersonTagResponse> Tags);
+    IReadOnlyList<PersonTagResponse> Tags,
+    Uri? AvatarUrl = null);
 
 /// <summary>`PersonDetail`: the person with contacts, current consent and relationships.</summary>
 public sealed record PersonDetailResponse(
@@ -40,7 +41,8 @@ public sealed record PersonDetailResponse(
     IReadOnlyList<ContactPointResponse> ContactPoints,
     IReadOnlyList<ConsentResponse> Consents,
     IReadOnlyList<RelationshipResponse> Relationships,
-    IReadOnlyList<PersonTagResponse> Tags);
+    IReadOnlyList<PersonTagResponse> Tags,
+    Uri? AvatarUrl = null);
 
 public sealed record PersonPageResponse(IReadOnlyList<PersonResponse> Items, Guid? NextBefore);
 

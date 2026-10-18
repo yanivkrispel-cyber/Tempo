@@ -32,6 +32,10 @@
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.17" />
     <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.2" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.14" />
+    <!-- Pictures (docs/33 section 6, D17): S3 for the bytes, SkiaSharp (MIT) to re-encode them to WebP. -->
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.2" />
+    <PackageVersion Include="SkiaSharp" Version="4.152.3" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.152.3" />
 
     <!-- Database / migrator (ADR-0022) -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />

@@ -232,6 +232,16 @@
           "Serilog": "4.2.0"
         }
       },
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "4.152.3",
+        "contentHash": "iZavtVZl3wLd2bxyqF/stG1BD64S45oaQrvPJpYzVETGHHP4qF8kvKDwH2fbCCiMP7COEKR5bAx2R8Jkc2/Lcw=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "4.152.3",
+        "contentHash": "Z7oTz0reu2eROlD5sRj8c6IVq6K1nEzZxKaqXWYVrn8tlgliiJ46PVj8prK1uVCzVQXxIO33P2nscmp8m/njUQ=="
+      },
       "SnapshotRestore.Registry": {
         "type": "Transitive",
         "resolved": "1.0.2",
@@ -252,8 +262,11 @@
       "tempo.platform": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.S3": "[4.0.104.2, )",
           "AWSSDK.SimpleSystemsManagement": "[4.0.104.2, )",
           "Npgsql": "[10.0.3, )",
+          "SkiaSharp": "[4.152.3, )",
+          "SkiaSharp.NativeAssets.Linux.NoDependencies": "[4.152.3, )",
           "libphonenumber-csharp": "[9.0.41, )"
         }
       },
@@ -270,6 +283,15 @@
         "contentHash": "QsHygaMyxQdgh5NPs5GGyBjK6mqQr5nv8rpqlrWC5+e1k7sVx+2xwDHv493S5IMw461S/PyHfjkUDjIQU5ArSA==",
         "dependencies": {
           "Amazon.Lambda.Core": "3.3.0"
+        }
+      },
+      "AWSSDK.S3": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.104.2, )",
+        "resolved": "4.0.104.2",
+        "contentHash": "ImZ1pO9SWh+RAN8hmN5OnonyTvq+/q4dXLxTxjtsZ60c06dnCCy+MX3sc4F3Q8c9J1bg8WoU+VkrrVIpXLviww==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
         }
       },
       "AWSSDK.SimpleSystemsManagement": {
@@ -304,6 +326,22 @@
         "requested": "[4.4.0, )",
         "resolved": "4.4.0",
         "contentHash": "ZC6Le3rr4TVJJjS4KsQAesxeF1EhW9qcZmmG7eP5Y2G3+gTGkJEUXkq4+tZNPtyp05I0wWOxnIjwtxFweJsObw=="
+      },
+      "SkiaSharp": {
+        "type": "CentralTransitive",
+        "requested": "[4.152.3, )",
+        "resolved": "4.152.3",
+        "contentHash": "IoasRVR929K39+urVXW/9rX8UQ95Z9g3yXUNENCjpvT0/on/I0PjC51w/E5fW+NGHx5dkTpjSYPt7LnbU28TAQ==",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "4.152.3",
+          "SkiaSharp.NativeAssets.macOS": "4.152.3"
+        }
+      },
+      "SkiaSharp.NativeAssets.Linux.NoDependencies": {
+        "type": "CentralTransitive",
+        "requested": "[4.152.3, )",
+        "resolved": "4.152.3",
+        "contentHash": "ddPJvDTCyQQMhhgBjZ1/zs1xWsEVeaIYVCMZOJVHK1gDJBKUskqXwQqRhx9fBhUcycQB2SmqQ2s2iluvOnwFrw=="
       }
     }
   }
