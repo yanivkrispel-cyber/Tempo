@@ -94,6 +94,8 @@ tags:
     description: Pictures of class types, instructors, the studio and people (docs/33 section 6).
   - name: Instructors
     description: Instructor profiles inside the studio (docs/33 section 5).
+  - name: Check-in
+    description: The rotating check-in code and the scan at the door (docs/33 section 8).
   - name: Passes
     description: Punch cards and memberships the studio sells and grants (docs/29).
   - name: Notifications
@@ -1937,6 +1939,55 @@ paths:
         "402": { $ref: "#/components/responses/Restricted" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/checkin-code:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Check-in]
+      operationId: getMyCheckinCode
+      summary: "The caller's check-in code, which changes every 30 seconds (self)"
+      description: |
+        docs/33 section 8, D19. Show it as a QR. `openClass` is the booked class whose check-in is open now (from
+        30 minutes before the start until the end); `nextClass` the next one today when none is open.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckinCode" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/checkins:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Check-in]
+      operationId: checkIn
+      summary: "Scan a member's code at the door (`attendance.mark`, or the class's instructor)"
+      description: |
+        Marks the booking of the class whose check-in is open attended; scanning again is harmless
+        (`alreadyCheckedIn`). 400 `checkin.invalid_code` (five a minute, then 429), 409 `checkin.too_early` or
+        `checkin.no_booking`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CheckinRequest" }
+      responses:
+        "200":
+          description: Checked in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Checkin" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/organizations/{organizationId}/class-types:
     parameters:
@@ -5094,6 +5145,50 @@ components:
         smallUrl: { type: string, format: uri }
         width: { type: integer }
         height: { type: integer }
+
+    CheckinClass:
+      type: object
+      required: [sessionId, bookingId, className, startsAt, opensAt]
+      properties:
+        sessionId: { type: string, format: uuid }
+        bookingId: { type: string, format: uuid }
+        className: { type: string }
+        startsAt: { type: string, format: date-time }
+        opensAt: { type: string, format: date-time }
+        spotLabel: { type: [string, "null"] }
+
+    CheckinCode:
+      type: object
+      required: [code, validForSeconds]
+      properties:
+        code: { type: string, pattern: "^TCI1\\.[0-9a-f]{32}\\.[0-9]{6}$" }
+        validForSeconds: { type: integer, minimum: 1, maximum: 30 }
+        openClass:
+          oneOf:
+            - $ref: "#/components/schemas/CheckinClass"
+            - type: "null"
+        nextClass:
+          oneOf:
+            - $ref: "#/components/schemas/CheckinClass"
+            - type: "null"
+
+    CheckinRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: The text of the scanned QR. }
+        sessionId: { type: string, format: uuid, description: Check into this class only. }
+
+    Checkin:
+      type: object
+      required: [bookingId, sessionId, person, healthStatus, alreadyCheckedIn]
+      properties:
+        bookingId: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        person: { $ref: "#/components/schemas/PersonRef" }
+        spotLabel: { type: [string, "null"] }
+        healthStatus: { type: string, enum: [signed, missing, expired, needs_medical_approval] }
+        alreadyCheckedIn: { type: boolean }
 
     ChangeSpotRequest:
       type: object

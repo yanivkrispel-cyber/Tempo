@@ -1392,6 +1392,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/checkin-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's check-in code, which changes every 30 seconds (self)
+         * @description docs/33 section 8, D19. Show it as a QR. `openClass` is the booked class whose check-in is open now (from
+         *     30 minutes before the start until the end); `nextClass` the next one today when none is open.
+         */
+        get: operations["getMyCheckinCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan a member's code at the door (`attendance.mark`, or the class's instructor)
+         * @description Marks the booking of the class whose check-in is open attended; scanning again is harmless
+         *     (`alreadyCheckedIn`). 400 `checkin.invalid_code` (five a minute, then 429), 409 `checkin.too_early` or
+         *     `checkin.no_booking`.
+         */
+        post: operations["checkIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/class-types": {
         parameters: {
             query?: never;
@@ -3773,6 +3820,44 @@ export interface components {
             smallUrl: string;
             width: number;
             height: number;
+        };
+        CheckinClass: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            bookingId: string;
+            className: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            opensAt: string;
+            spotLabel?: string | null;
+        };
+        CheckinCode: {
+            code: string;
+            validForSeconds: number;
+            openClass?: components["schemas"]["CheckinClass"] | null;
+            nextClass?: components["schemas"]["CheckinClass"] | null;
+        };
+        CheckinRequest: {
+            /** @description The text of the scanned QR. */
+            code: string;
+            /**
+             * Format: uuid
+             * @description Check into this class only.
+             */
+            sessionId?: string;
+        };
+        Checkin: {
+            /** Format: uuid */
+            bookingId: string;
+            /** Format: uuid */
+            sessionId: string;
+            person: components["schemas"]["PersonRef"];
+            spotLabel?: string | null;
+            /** @enum {string} */
+            healthStatus: "signed" | "missing" | "expired" | "needs_medical_approval";
+            alreadyCheckedIn: boolean;
         };
         ChangeSpotRequest: {
             /** Format: uuid */
@@ -7190,6 +7275,63 @@ export interface operations {
             402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getMyCheckinCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinCode"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinRequest"];
+            };
+        };
+        responses: {
+            /** @description Checked in. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Checkin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     listClassTypes: {

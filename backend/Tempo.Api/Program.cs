@@ -79,6 +79,7 @@ try
     app.MapBuddyEndpoints();
     app.MapMediaEndpoints();
     app.MapInstructorEndpoints();
+    app.MapCheckinEndpoints();
     app.MapProgressEndpoints();
     app.MapReportEndpoints();
     app.MapHealthDeclarationEndpoints();
