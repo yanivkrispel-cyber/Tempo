@@ -179,11 +179,16 @@ describe("the owner's day (docs/33 section 9)", () => {
 
     const sales = await screen.findByRole("region", { name: "מכירות החודש" });
     expect(within(sales).getByText(/12,400/)).toBeInTheDocument();
-    expect(within(sales).getByText("24%")).toBeInTheDocument();
+    // The change says what it is compared with, in words, as in the mockup (O6).
+    expect(within(sales).getByText(/יותר מספטמבר באותו זמן/)).toHaveTextContent("24% יותר מספטמבר באותו זמן");
     expect(within(sales).getByText(/צפי לסוף החודש/)).toBeInTheDocument();
+    // The forecast continues the month's line as a dashed one, to the month's last day.
+    expect(sales.querySelector("path[stroke-dasharray]")).not.toBeNull();
 
     const week = screen.getByRole("region", { name: "תפוסה השבוע" });
     expect(within(week).getByText("78%")).toBeInTheDocument();
+    // Last week's share itself: "8% more" of a percentage would be read two ways.
+    expect(within(week).getByText(/בשבוע שעבר/)).toHaveTextContent("70% בשבוע שעבר");
     expect(within(week).getByRole("cell", { name: "10 מתוך 10, מלא עם ממתינים" })).toBeInTheDocument();
 
     const waiting = await screen.findByRole("region", { name: "מחכה לך" });

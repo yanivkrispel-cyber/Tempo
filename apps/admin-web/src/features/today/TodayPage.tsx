@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/errors";
 import {
@@ -270,13 +270,18 @@ function SalesCard() {
       : null;
   return (
     <Card as="section" className={styles.kpi} aria-labelledby="sales-title">
-      <div className={styles.kpiHead}>
-        <h2 id="sales-title" className="tp-eyebrow">
-          מכירות החודש
-        </h2>
-        {change !== null && <ChangeChip percent={change} />}
+      <h2 id="sales-title" className="tp-eyebrow">
+        מכירות החודש
+      </h2>
+      <div className={styles.kpiFigure}>
+        <span className={`tp-display tp-num ${styles.kpiValue}`}>{priceLabel(data.soFarAgorot)}</span>
+        {change !== null && (
+          <ChangeChip up={change >= 0}>
+            <span className="tp-num">{Math.abs(change)}%</span> {change >= 0 ? "יותר" : "פחות"} מ
+            {previousMonthName(data.month)} באותו זמן
+          </ChangeChip>
+        )}
       </div>
-      <span className={`tp-display tp-num ${styles.kpiValue}`}>{priceLabel(data.soFarAgorot)}</span>
       <Sparkline sales={data} />
       <span className="tp-caption">
         {data.passesSold} כרטיסיות ומנויים
@@ -287,29 +292,43 @@ function SalesCard() {
   );
 }
 
-function ChangeChip({ percent }: { percent: number }) {
-  const up = percent >= 0;
+const monthName = new Intl.DateTimeFormat("he-IL", { month: "long", timeZone: "UTC" });
+
+/** "ספטמבר" for the month "2026-10". */
+function previousMonthName(month: string): string {
+  const [year, number] = month.split("-").map(Number);
+  return monthName.format(new Date(Date.UTC(year!, number! - 2, 1)));
+}
+
+/** The change said in words beside the figure, as the mockup does (O6); the arrow shows which way. */
+function ChangeChip({ up, children }: { up: boolean; children: ReactNode }) {
   return (
     <Chip tone={up ? "success" : "warning"}>
       <Icon name={up ? "arrow-up" : "arrow-down"} width={12} height={12} />
-      <span className="tp-num">{Math.abs(percent)}%</span>
-      <span className="tp-sr-only">{up ? "יותר מהתקופה הקודמת" : "פחות מהתקופה הקודמת"}</span>
+      <span>{children}</span>
     </Chip>
   );
 }
 
-/** The month's running total as a soft line; decoration, the number above says it. */
+/**
+ * The month's running total as a soft line across the whole month, and the forecast as a dashed line on to the
+ * month's last day; decoration, the numbers say it.
+ */
 function Sparkline({ sales }: { sales: Sales }) {
   const days = sales.days;
   if (days.length < 2) return <div className={styles.spark} aria-hidden="true" />;
-  const top = Math.max(1, ...days.map((day) => day.cumulativeAgorot));
+  const [year, number] = sales.month.split("-").map(Number);
+  const monthDays = new Date(Date.UTC(year!, number!, 0)).getUTCDate();
+  const forecast = sales.forecastAgorot ?? null;
+  const top = Math.max(1, forecast ?? 0, ...days.map((day) => day.cumulativeAgorot));
   const width = 300;
   const height = 64;
-  const x = (index: number) => (index / (days.length - 1)) * width;
+  const x = (dayOfMonth: number) => ((dayOfMonth - 1) / (monthDays - 1)) * width;
   const y = (value: number) => height - 4 - (value / top) * (height - 8);
-  const line = days
-    .map((day, index) => `${index === 0 ? "M" : "L"}${x(index).toFixed(1)} ${y(day.cumulativeAgorot).toFixed(1)}`)
-    .join(" ");
+  const points = days.map((day) => [x(Number(day.day.slice(8, 10))), y(day.cumulativeAgorot)] as const);
+  const line = points.map(([px, py], index) => `${index === 0 ? "M" : "L"}${px.toFixed(1)} ${py.toFixed(1)}`).join(" ");
+  const [firstX] = points[0]!;
+  const [lastX, lastY] = points[points.length - 1]!;
   return (
     <div className={styles.spark} dir="ltr" aria-hidden="true">
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
@@ -319,7 +338,10 @@ function Sparkline({ sales }: { sales: Sales }) {
             <stop offset="1" stopColor="var(--sage)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={`${line} L${width} ${height} L0 ${height} Z`} fill="url(#tp-spark-fill)" />
+        <path
+          d={`${line} L${lastX.toFixed(1)} ${height} L${firstX.toFixed(1)} ${height} Z`}
+          fill="url(#tp-spark-fill)"
+        />
         <path
           d={line}
           fill="none"
@@ -328,6 +350,17 @@ function Sparkline({ sales }: { sales: Sales }) {
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
         />
+        {forecast !== null && lastX < width && (
+          <path
+            d={`M${lastX.toFixed(1)} ${lastY.toFixed(1)} L${width} ${y(forecast).toFixed(1)}`}
+            fill="none"
+            stroke="var(--rose)"
+            strokeWidth="2"
+            strokeDasharray="5 5"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
       </svg>
     </div>
   );
@@ -355,13 +388,17 @@ function OccupancyCard() {
   const cell = (day: string, part: string) => data.cells.find((item) => item.day === day && item.part === part);
   return (
     <Card as="section" className={styles.kpi} aria-labelledby="occupancy-title">
-      <div className={styles.kpiHead}>
-        <h2 id="occupancy-title" className="tp-eyebrow">
-          תפוסה השבוע
-        </h2>
-        {previous !== null && <ChangeChip percent={share - previous} />}
+      <h2 id="occupancy-title" className="tp-eyebrow">
+        תפוסה השבוע
+      </h2>
+      <div className={styles.kpiFigure}>
+        <span className={`tp-display tp-num ${styles.kpiValue}`}>{share}%</span>
+        {previous !== null && (
+          <ChangeChip up={share >= previous}>
+            <span className="tp-num">{previous}%</span> בשבוע שעבר
+          </ChangeChip>
+        )}
       </div>
-      <span className={`tp-display tp-num ${styles.kpiValue}`}>{share}%</span>
       <div
         className={`tp-heat ${styles.heat}`}
         style={{ "--tp-days": Math.max(1, days.length) } as CSSProperties}
