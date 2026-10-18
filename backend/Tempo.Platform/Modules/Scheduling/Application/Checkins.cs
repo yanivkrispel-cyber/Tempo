@@ -75,24 +75,30 @@ public sealed partial class BookingService : ICheckinService
         // limit get as far as the code (#345). A valid code forgets it again; what stays are the invalid ones.
         var attempt = await RecordAttemptAsync(tenant, ClaimedPerson(code), now, cancellationToken);
 
-        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
-        var person = await VerifyCodeAsync(unitOfWork, tenant.OrganizationId, code, now, cancellationToken);
-        if (person is null)
+        Guid? person;
+        await using (var verify = await BeginAsync(tenant, cancellationToken))
         {
-            throw new DomainRuleViolationException(ViolationKind.Validation, "checkin.invalid_code", "This code is not valid. Ask them to open it again.", "code");
+            person = await VerifyCodeAsync(verify, tenant.OrganizationId, code, now, cancellationToken);
+            if (person is null)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Validation, "checkin.invalid_code", "This code is not valid. Ask them to open it again.", "code");
+            }
+
+            // A valid code is forgotten at once, whatever the check-in answers next (too early, no booking, ...).
+            await using (var forget = verify.Command("DELETE FROM people.checkin_attempts WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, attempt))
+            {
+                await forget.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await verify.CommitAsync(cancellationToken);
         }
 
-        await using (var forget = unitOfWork.Command("DELETE FROM people.checkin_attempts WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, attempt))
-        {
-            await forget.ExecuteNonQueryAsync(cancellationToken);
-        }
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
 
         var classes = await CheckinClassesAsync(unitOfWork, tenant.OrganizationId, person.Value, now, sessionId, cancellationToken);
         var open = classes.FirstOrDefault(c => c.OpensAt <= now);
         if (open is null)
         {
-            // The code was valid: keep the forgotten attempt forgotten.
-            await unitOfWork.CommitAsync(cancellationToken);
             throw classes.Count > 0
                 ? Conflict("checkin.too_early", $"Check-in opens at {classes[0].OpensAt:HH:mm} UTC.")
                 : Conflict("checkin.no_booking", "No class to check into now.");
