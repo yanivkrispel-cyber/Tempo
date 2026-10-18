@@ -7,12 +7,15 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { App } from "./app/App";
+import { listenForInstall } from "./app/install";
 import { routes } from "./app/routes";
 import { readAppConfig } from "./auth/config";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root is missing from index.html");
 
+// Before the first render: Chrome may offer the install before any screen mounts (board #347, P-3).
+listenForInstall();
 const config = readAppConfig();
 const auth = config.auth ? new AuthClient({ config: config.auth, app: "admin-web" }) : null;
 

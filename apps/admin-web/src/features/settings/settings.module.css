@@ -1,0 +1,35 @@
+.rowText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Safari's steps, numbered in circles. */
+.installSteps {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.installSteps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.installSteps li::before {
+  counter-increment: step;
+  content: counter(step);
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  font-weight: 600;
+  font-size: 14px;
+}
