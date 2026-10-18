@@ -39,15 +39,100 @@
   flex-direction: column;
   gap: var(--space-3);
 }
+.summary {
+  margin: 4px 0 0;
+}
+
+/* The day's classes: one card, a row per class (OwnerDashboard mockup's "היום בסטודיו" table). On a phone the bar
+   goes under the name; when the column has room, the bar has its own column. */
+.day {
+  padding: 6px;
+}
 .list {
-  display: grid;
-  gap: var(--space-3);
+  display: flex;
+  flex-direction: column;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .list > li {
   min-width: 0;
+}
+.list > li + li {
+  border-top: 1px solid var(--line);
+}
+.row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "time text state"
+    "time fill fill";
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 6px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+}
+.row:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+@media (hover: hover) {
+  .row:hover {
+    background: var(--surface-hover);
+  }
+}
+.rowCancelled .rowTime,
+.rowCancelled .rowTitle {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+}
+.rowTime {
+  grid-area: time;
+  align-self: start;
+  padding-top: 2px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.rowText {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rowTitle {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowText :global(.tp-caption) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowFill {
+  grid-area: fill;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.rowBar {
+  flex: 1;
+  min-width: 64px;
+  height: 8px;
+}
+.rowFill :global(.tp-caption) {
+  flex: none;
+}
+.rowState {
+  grid-area: state;
+  justify-self: end;
 }
 
 /* The live class: a shorter hero, with the numbers on glass. */
@@ -195,9 +280,14 @@
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 }
-@container (min-width: 720px) {
-  .list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@container (min-width: 640px) {
+  .row {
+    grid-template-columns: 56px minmax(0, 1.4fr) minmax(160px, 1fr) auto;
+    grid-template-areas: "time text fill state";
+  }
+  .rowTime {
+    align-self: center;
+    padding-top: 0;
   }
 }
 @media (min-width: 1200px) {

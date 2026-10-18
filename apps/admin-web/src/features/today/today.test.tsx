@@ -102,6 +102,37 @@ describe("the day in the studio (D15, the coach's screen)", () => {
     expect(within(day).getByText(/המתאמנים קיבלו הודעה/)).toBeInTheDocument();
   });
 
+  it("sums the day up under the heading, without the cancelled classes", async () => {
+    renderAt("/o/neshima/today", () => [
+      session({ id: id(31) }),
+      session({ id: id(32), startsAt: "2026-10-14T16:00:00Z", endsAt: "2026-10-14T16:50:00Z", bookedCount: 8 }),
+      session({ id: id(33), status: "cancelled", bookedCount: 0 }),
+    ]);
+    expect(await screen.findByText("היום 2 שיעורים ו־13 נרשמים.")).toBeInTheDocument();
+  });
+
+  it("says one class in words", async () => {
+    renderAt("/o/neshima/today", () => [session({ id: id(34), bookedCount: 1 })]);
+    expect(await screen.findByText("היום שיעור אחד ונרשם.ה אחד.ת.")).toBeInTheDocument();
+  });
+
+  it("shows how full each class is on a bar, and none on a cancelled one", async () => {
+    renderAt("/o/neshima/today", () => [
+      session({ id: id(41) }),
+      session({
+        id: id(42),
+        status: "cancelled",
+        classType: { id: id(5), name: "ספינינג", category: "cycle", color: "sand" },
+      }),
+    ]);
+    const day = await screen.findByRole("region", { name: "השיעורים היום" });
+    const meters = within(day).getAllByRole("meter");
+    expect(meters).toHaveLength(1);
+    expect(meters[0]).toHaveAccessibleName("תפוסה, 5 מתוך 8");
+    expect(meters[0]).toHaveAttribute("aria-valuenow", "5");
+    expect(meters[0]).toHaveAttribute("aria-valuemax", "8");
+  });
+
   it("shows tomorrow on request", async () => {
     const { api } = renderAt("/o/neshima/today", () => []);
     expect(await screen.findByText("אין שיעורים היום.")).toBeInTheDocument();

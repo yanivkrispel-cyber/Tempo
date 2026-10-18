@@ -7,12 +7,10 @@ import {
   ButtonLink,
   Card,
   Chip,
-  ClassRow,
   EmptyState,
   Icon,
   Segmented,
   Skeleton,
-  TimeSlot,
   type ChipTone,
   type IconName,
 } from "../../shared/design-system";
@@ -68,12 +66,15 @@ function DayView({ timeZone }: { timeZone: string }) {
   const live = day === "today" ? liveSession(all, openedAt) : null;
 
   const list = (items: Session[]) => (
-    <ul className={styles.list}>
-      {items.map((session) => (
-        <SessionRow key={session.id} session={session} timeZone={timeZone} openedAt={openedAt} />
-      ))}
-    </ul>
+    <Card className={styles.day}>
+      <ul className={styles.list}>
+        {items.map((session) => (
+          <SessionRow key={session.id} session={session} timeZone={timeZone} openedAt={openedAt} />
+        ))}
+      </ul>
+    </Card>
   );
+  const summary = sessions.data ? daySummary(all, dayWord) : null;
 
   return (
     <>
@@ -83,6 +84,7 @@ function DayView({ timeZone }: { timeZone: string }) {
             יום {weekdayNames[dayOfWeek(date)]} · {formatDate(date)}
           </span>
           <h1>היום בסטודיו</h1>
+          {summary && <p className={`tp-muted ${styles.summary}`}>{summary}</p>}
         </div>
         <div className={styles.tools}>
           <Segmented
@@ -548,31 +550,70 @@ function ago(at: string, now: number): string {
   return hours === 1 ? "לפני שעה" : `לפני ${hours} שעות`;
 }
 
-/** One class: when, what, where and with whom, how full, and its state now. Opens the class page. */
+/** "היום 9 שיעורים ו־78 נרשמים.": the day in a line under the heading; cancelled classes don't count. */
+function daySummary(sessions: Session[], dayWord: string): string | null {
+  const held = sessions.filter((session) => session.status !== "cancelled");
+  if (held.length === 0) return null;
+  const classes = held.length === 1 ? "שיעור אחד" : `${held.length} שיעורים`;
+  const booked = held.reduce((sum, session) => sum + session.bookedCount, 0);
+  if (booked === 0) return `${dayWord} ${classes}, עוד אין נרשמים.`;
+  return booked === 1 ? `${dayWord} ${classes} ונרשם.ה אחד.ת.` : `${dayWord} ${classes} ו־${booked} נרשמים.`;
+}
+
+/**
+ * One class as a row of the day's table (OwnerDashboard mockup): when, what, where and with whom, a bar of how full
+ * it is, and its state now. The whole row opens the class page.
+ */
 function SessionRow({ session, timeZone, openedAt }: { session: Session; timeZone: string; openedAt: number }) {
   const studio = useStudio();
   const start = clockTime(session.startsAt, timeZone);
   const end = clockTime(session.endsAt, timeZone);
-  const minutes = Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60_000);
   const where = [session.room?.name, session.instructor?.displayName].filter(Boolean).join(" · ");
+  const cancelled = session.status === "cancelled";
+  const fill = session.capacity > 0 ? Math.min(100, Math.round((session.bookedCount / session.capacity) * 100)) : 0;
   return (
-    <ClassRow
-      as="li"
-      to={`/o/${studio.slug}/schedule/sessions/${session.id}`}
-      slot={<TimeSlot time={start}>{`${minutes} דק׳`}</TimeSlot>}
-      title={session.classType.name}
-      meta={
-        <>
-          <span className="tp-num">
-            {start} עד {end}
+    <li>
+      <Link
+        to={`/o/${studio.slug}/schedule/sessions/${session.id}`}
+        className={`${styles.row}${cancelled ? ` ${styles.rowCancelled}` : ""}`}
+      >
+        <span className={`tp-num ${styles.rowTime}`}>{start}</span>
+        <span className={styles.rowText}>
+          <strong className={styles.rowTitle}>
+            <bdi>{session.classType.name}</bdi>
+          </strong>
+          <span className="tp-caption">
+            <span className="tp-num">
+              {start} עד {end}
+            </span>
+            {where && <> · {where}</>}
           </span>
-          {where && ` · ${where}`}
-          <br />
-          {session.status === "cancelled" ? "המתאמנים קיבלו הודעה" : occupancy(session)}
-        </>
-      }
-      actions={<StateChip session={session} openedAt={openedAt} />}
-    />
+        </span>
+        <span className={styles.rowFill}>
+          {cancelled ? (
+            <span className="tp-caption">המתאמנים קיבלו הודעה</span>
+          ) : (
+            <>
+              <span
+                role="meter"
+                aria-label={`תפוסה, ${session.bookedCount} מתוך ${session.capacity}`}
+                aria-valuemin={0}
+                aria-valuemax={session.capacity}
+                aria-valuenow={session.bookedCount}
+                className={`tp-bar tp-bar--sage ${styles.rowBar}`}
+                style={{ "--tp-bar": `${fill}%` } as CSSProperties}
+              >
+                <span className="tp-bar__fill" />
+              </span>
+              <span className="tp-caption tp-num">{occupancy(session)}</span>
+            </>
+          )}
+        </span>
+        <span className={styles.rowState}>
+          <StateChip session={session} openedAt={openedAt} />
+        </span>
+      </Link>
+    </li>
   );
 }
 
