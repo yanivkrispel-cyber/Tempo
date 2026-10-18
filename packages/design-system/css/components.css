@@ -106,6 +106,15 @@
   background: var(--surface-sunken);
   box-shadow: var(--shadow-sunken);
 }
+/* A secondary toggle that is on sinks into the page in the brand's ink, instead of the primary's dark sage under the
+   secondary's dark ink (axe color-contrast on the reports' "תאריכים אחרים"). */
+.tp-btn--secondary[aria-pressed="true"] {
+  background: var(--surface-sunken);
+  color: var(--brand-ink);
+  box-shadow:
+    var(--shadow-sunken),
+    inset 0 0 0 1px var(--line);
+}
 
 /* ghost: text only, lifts to a cream slab on hover */
 .tp-btn--ghost {
