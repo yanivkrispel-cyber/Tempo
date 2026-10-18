@@ -4,6 +4,7 @@ using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.People.Application;
+using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Notifications.Application;
 using Tempo.Platform.Modules.Scheduling.Domain;
 
@@ -58,7 +59,7 @@ public interface IBookingService
     Task<MyBookingPage> ListForPersonAsync(TenantContext tenant, Guid personId, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
 }
 
-public sealed partial class BookingService(IDataSourceProvider dataSources, TimeProvider clock) : IBookingService
+public sealed partial class BookingService(IDataSourceProvider dataSources, TimeProvider clock, IHealthDataKeys? healthKeys = null) : IBookingService
 {
     private sealed record SessionFacts(Guid Id, DateOnly LocalDate, DateTimeOffset StartsAt, string Status, string Category);
 

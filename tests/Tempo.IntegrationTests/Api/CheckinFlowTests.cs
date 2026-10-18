@@ -18,6 +18,7 @@ using Tempo.Api.DependencyInjection;
 using Tempo.IntegrationTests.DatabaseMigrator;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.Modules.Identity.Application;
+using Tempo.Platform.Modules.Scheduling.Application;
 using Xunit;
 
 namespace Tempo.IntegrationTests.Api;
@@ -30,6 +31,8 @@ namespace Tempo.IntegrationTests.Api;
 public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IDisposable
 {
     private const string CustomerIssuer = "https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_Customers";
+
+    private static readonly byte[] TestHealthKey = Enumerable.Range(1, 32).Select(i => (byte)i).ToArray();
 
     private readonly RSA rsa = RSA.Create(2048);
 
@@ -166,6 +169,51 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
         parallel.Count(s => s == HttpStatusCode.TooManyRequests).Should().Be(12 - parallel.Count(s => s == HttpStatusCode.BadRequest));
     }
 
+    [Fact]
+    public async Task TheSecret_IsStoredEncrypted_AnOldPlainOneStillWorksAndMoves_AndEraseClearsIt()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, roomId, _) = await StudioAsync(client, ["noga", "maya"], capacity: 4);
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var classTypeId = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/class-types", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var local = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow.AddMinutes(20), israel);
+        var created = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+        {
+            classTypeId,
+            localDate = local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            localStart = local.ToString("HH:mm", CultureInfo.InvariantCulture),
+            roomId,
+            capacity = 4
+        }, HttpStatusCode.Created);
+        var soon = $"{studioPath}/sessions/{created.GetProperty("id").GetGuid()}";
+        await SendAsync(client, HttpMethod.Post, $"{soon}/bookings", Customer("noga"), null, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{soon}/bookings", Customer("maya"), null, HttpStatusCode.Created);
+        var noga = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/profile", Customer("noga"))).GetProperty("id").GetGuid();
+        var maya = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/profile", Customer("maya"))).GetProperty("id").GetGuid();
+
+        // 1. A new secret is stored as AES-GCM ciphertext (format byte 1) with its key version; no plain bytes.
+        var code = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/checkin-code", Customer("noga"))).GetProperty("code").GetString()!;
+        (await db.AsMasterAsync("SELECT checkin_secret IS NULL FROM people.people WHERE id = $1", noga)).Should().Be(true);
+        (await db.AsMasterAsync("SELECT get_byte(checkin_secret_ciphertext, 0) FROM people.people WHERE id = $1", noga)).Should().Be(1);
+        (await db.AsMasterAsync("SELECT checkin_secret_key_version FROM people.people WHERE id = $1", noga)).Should().Be(1);
+        (await SendAsync(client, HttpMethod.Post, $"{studioPath}/checkins", Customer("owner"), new { code })).GetProperty("person").GetProperty("id").GetGuid().Should().Be(noga);
+
+        // 2. A secret written before H-4 (plain bytes) still gives valid codes, and moves to ciphertext on first use.
+        var legacy = Enumerable.Range(100, 32).Select(i => (byte)i).ToArray();
+        await db.AsMasterAsync("UPDATE people.people SET checkin_secret = $2 WHERE id = $1", maya, legacy);
+        var expected = $"TCI1.{maya:N}.{BookingService.Hotp(legacy, DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30):D6}";
+        var mayaCode = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/checkin-code", Customer("maya"))).GetProperty("code").GetString()!;
+        mayaCode[..^6].Should().Be(expected[..^6]);
+        (await db.AsMasterAsync("SELECT checkin_secret IS NULL AND checkin_secret_ciphertext IS NOT NULL FROM people.people WHERE id = $1", maya)).Should().Be(true);
+        (await SendAsync(client, HttpMethod.Post, $"{studioPath}/checkins", Customer("owner"), new { code = mayaCode })).GetProperty("person").GetProperty("id").GetGuid().Should().Be(maya);
+
+        // 3. Erasing the person clears the ciphertext and its key version too.
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{noga}/erase", Customer("owner", freshSignIn: true), new { reason = "בקשת מחיקה" });
+        (await db.AsMasterAsync("SELECT checkin_secret_ciphertext IS NULL AND checkin_secret_key_version IS NULL FROM people.people WHERE id = $1", noga)).Should().Be(true);
+    }
+
     /// <summary>A studio with instructor Dana, the members with a 10-entry card each, a room and a class in three days.</summary>
     private async Task<(string StudioPath, Guid RoomId, string SessionPath)> StudioAsync(HttpClient client, string[] members, int capacity)
     {
@@ -214,6 +262,8 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
             builder.UseSetting("DATABASE_PLATFORM_CONNECTION_STRING", db.ConnectionString(DatabaseRole.Platform));
             builder.UseSetting("COGNITO_CLIENT_IDS", "customer-client");
             builder.UseSetting("COGNITO_OPERATOR_CLIENT_IDS", "operator-client");
+            // The check-in secret is encrypted with the health data key (#345, H-4); a test key, never a real one.
+            builder.UseSetting("HEALTH_DATA_KEY_V1", Convert.ToBase64String(TestHealthKey));
             builder.ConfigureTestServices(services =>
             {
                 services.PostConfigure<CognitoOptions>(CognitoAuthentication.CustomerScheme, o => o.Issuer = CustomerIssuer);
@@ -230,7 +280,7 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
         });
     }
 
-    private string Customer(string subject)
+    private string Customer(string subject, bool freshSignIn = false)
     {
         var now = DateTime.UtcNow;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
@@ -240,7 +290,7 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
             [
                 new Claim("sub", subject), new Claim("username", subject), new Claim("token_use", "access"),
                 new Claim("client_id", "customer-client"),
-                new Claim("auth_time", new DateTimeOffset(now.AddHours(-1)).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture))
+                new Claim("auth_time", new DateTimeOffset(freshSignIn ? now.AddMinutes(-1) : now.AddHours(-1)).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture))
             ]),
             NotBefore = now.AddMinutes(-1),
             IssuedAt = now.AddMinutes(-1),

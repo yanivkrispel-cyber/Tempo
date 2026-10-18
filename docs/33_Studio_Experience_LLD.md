@@ -292,7 +292,10 @@ waitlisted members on the class screen and in the home card. Migration 0028. Aud
 ### 8.1 The code
 
 - Migration 0029: `people.people` gets `checkin_secret bytea` (32 random bytes), created on first use, cleared on
-  erase.
+  erase. Since migration 0031 (#345, H-4) the secret is stored only as `checkin_secret_ciphertext` with
+  `checkin_secret_key_version`: AES-GCM with the health data key, in docs/31's format, bound to the studio, the
+  person and the key version. A plain secret from before moves to the ciphertext on first use; a key that can't be
+  read fails closed (503 `health.key_unavailable`), as for health declarations.
 - `GET /me/checkin-code` returns `{ code, validForSeconds }`. The code is `TCI1.<personId short>.<6 digits>` where
   the digits are HOTP(secret, floor(unix time / 30)) (RFC 4226 truncation). The app redraws the QR when it rotates.
   The response also says whether a booking is open for check-in now and for which session.

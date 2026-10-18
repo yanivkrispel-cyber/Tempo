@@ -4,6 +4,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.People.Application;
+using Tempo.Platform.Modules.People.Infrastructure;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
 
@@ -167,7 +168,7 @@ public sealed partial class BookingService : ICheckinService
     }
 
     /// <summary>The person the code belongs to when its digits match this window or the one before; null otherwise.</summary>
-    private static async Task<Guid?> VerifyCodeAsync(UnitOfWork unitOfWork, Guid organizationId, string? code, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<Guid?> VerifyCodeAsync(UnitOfWork unitOfWork, Guid organizationId, string? code, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var parts = (code ?? "").Trim().Split('.');
         if (parts.Length != 3 || parts[0] != CheckinPrefix || !Guid.TryParseExact(parts[1], "N", out var person) || parts[2].Length != 6 || !int.TryParse(parts[2], out var digits))
@@ -185,27 +186,72 @@ public sealed partial class BookingService : ICheckinService
         return Hotp(secret, step) == digits || Hotp(secret, step - 1) == digits ? person : null;
     }
 
-    private static async Task<byte[]?> SecretAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, bool create, CancellationToken cancellationToken)
+    /// <summary>
+    /// The person's 32-byte secret, kept encrypted with the health data key (#345, H-4). A plain secret from before
+    /// migration 0031 still counts and is moved to the ciphertext here. With <paramref name="create"/>, a person
+    /// without one gets a new one; two requests at once both end up with the one that was stored first.
+    /// </summary>
+    private async Task<byte[]?> SecretAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, bool create, CancellationToken cancellationToken)
     {
-        await using (var read = unitOfWork.Command("SELECT checkin_secret FROM people.people WHERE organization_id = $1 AND id = $2 AND status = 'active'", organizationId, personId))
+        byte[]? plain = null;
+        byte[]? ciphertext = null;
+        var keyVersion = 0;
+        await using (var read = unitOfWork.Command(
+            "SELECT checkin_secret, checkin_secret_ciphertext, checkin_secret_key_version FROM people.people WHERE organization_id = $1 AND id = $2 AND status = 'active'",
+            organizationId, personId))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
         {
-            if (await read.ExecuteScalarAsync(cancellationToken) is byte[] existing)
+            if (!await reader.ReadAsync(cancellationToken))
             {
-                return existing;
+                return null;
             }
+
+            plain = await reader.IsDBNullAsync(0, cancellationToken) ? null : reader.GetFieldValue<byte[]>(0);
+            ciphertext = await reader.IsDBNullAsync(1, cancellationToken) ? null : reader.GetFieldValue<byte[]>(1);
+            keyVersion = await reader.IsDBNullAsync(2, cancellationToken) ? 0 : reader.GetInt32(2);
         }
 
-        if (!create)
+        if (ciphertext is not null)
+        {
+            return await OpenSecretAsync(organizationId, personId, ciphertext, keyVersion, cancellationToken);
+        }
+
+        if (plain is null && !create)
         {
             return null;
         }
 
-        var secret = RandomNumberGenerator.GetBytes(32);
-        await using var write = unitOfWork.Command(
-            "UPDATE people.people SET checkin_secret = coalesce(checkin_secret, $3) WHERE organization_id = $1 AND id = $2 RETURNING checkin_secret",
-            organizationId, personId, secret);
-        return await write.ExecuteScalarAsync(cancellationToken) as byte[];
+        // Store the old plain secret, or a new one, as ciphertext; only if the row still has no ciphertext.
+        var secret = plain ?? RandomNumberGenerator.GetBytes(32);
+        var keys = healthKeys ?? throw new InvalidOperationException("Check-in needs the health data keys (IHealthDataKeys).");
+        var version = keys.CurrentVersion;
+        var sealedSecret = HealthCipher.Encrypt(await keys.GetAsync(version, cancellationToken), Convert.ToBase64String(secret), SecretField(organizationId, personId, version));
+        await using (var write = unitOfWork.Command(
+            """
+            UPDATE people.people SET checkin_secret_ciphertext = $3, checkin_secret_key_version = $4, checkin_secret = NULL
+            WHERE organization_id = $1 AND id = $2 AND checkin_secret_ciphertext IS NULL
+            """,
+            organizationId, personId, sealedSecret, version))
+        {
+            if (await write.ExecuteNonQueryAsync(cancellationToken) == 1)
+            {
+                return secret;
+            }
+        }
+
+        // Another request stored one first: use that.
+        return await SecretAsync(unitOfWork, organizationId, personId, create: false, cancellationToken);
     }
+
+    private async Task<byte[]> OpenSecretAsync(Guid organizationId, Guid personId, byte[] ciphertext, int keyVersion, CancellationToken cancellationToken)
+    {
+        var keys = healthKeys ?? throw new InvalidOperationException("Check-in needs the health data keys (IHealthDataKeys).");
+        return Convert.FromBase64String(HealthCipher.Decrypt(await keys.GetAsync(keyVersion, cancellationToken), ciphertext, SecretField(organizationId, personId, keyVersion)));
+    }
+
+    /// <summary>The secret's place: the studio, the person (in the declaration's slot) and the key version.</summary>
+    private static HealthField SecretField(Guid organizationId, Guid personId, int keyVersion) =>
+        new(organizationId, personId, "people.checkin_secret", keyVersion);
 
     /// <summary>RFC 4226 HOTP, six digits, HMAC-SHA1 (what TOTP apps use; the secret never leaves the server here).</summary>
     public static int Hotp(byte[] secret, long counter)
