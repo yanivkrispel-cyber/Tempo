@@ -312,4 +312,20 @@ describe("the command palette (P8)", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/o/neshima/people/${id(61)}`));
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
+
+  it("says the search failed instead of showing an empty result, and keeps Tab inside the palette", async () => {
+    renderAt("/o/neshima/today", {
+      [`GET ${base}/search`]: json({ title: "error" }, 500),
+    });
+    await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" });
+    await userEvent.keyboard("{Control>}k{/Control}");
+    const box = await screen.findByRole("combobox", { name: "חיפוש אנשים, שיעורים ומסכים" });
+    await userEvent.type(box, "מא");
+    // The search retries once before it gives up.
+    expect(await screen.findByText("החיפוש לא הצליח. נסו שוב.", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByText("לא נמצא כלום.")).not.toBeInTheDocument();
+
+    await userEvent.tab();
+    expect(box).toHaveFocus();
+  });
 });

@@ -110,6 +110,9 @@ export function CommandPalette({ sections, onClose }: { sections: PaletteSection
     } else if (event.key === "Escape") {
       event.preventDefault();
       onClose();
+    } else if (event.key === "Tab") {
+      // The input is the dialog's only focusable element; Tab must not leave the modal.
+      event.preventDefault();
     }
   };
 
@@ -137,7 +140,11 @@ export function CommandPalette({ sections, onClose }: { sections: PaletteSection
         <ul id={listId} className="tp-cmdk__list" role="listbox" aria-label="תוצאות" style={{ margin: 0 }}>
           {options.length === 0 ? (
             <li className="tp-caption" style={{ padding: 12 }}>
-              {term.length >= 2 && search.isFetching ? "מחפשים…" : "לא נמצא כלום."}
+              {term.length >= 2 && search.isFetching
+                ? "מחפשים…"
+                : term.length >= 2 && search.isError
+                  ? "החיפוש לא הצליח. נסו שוב."
+                  : "לא נמצא כלום."}
             </li>
           ) : (
             options.map((option, index) => (
