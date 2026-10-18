@@ -3,7 +3,11 @@ using System.Text.Json;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
+using System.Net;
+using Amazon.S3.Model;
 using FluentAssertions;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Tempo.Platform.Modules.Media;
 using Xunit;
 
@@ -40,5 +44,21 @@ public sealed class S3MediaStoreTests
 
         var expires = policy.RootElement.GetProperty("expiration").GetDateTimeOffset();
         expires.Should().BeCloseTo(DateTimeOffset.UtcNow.AddMinutes(10), TimeSpan.FromMinutes(1));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound, "NoSuchKey")]
+    [InlineData(HttpStatusCode.Forbidden, "AccessDenied")]
+    public async Task ReadAsync_AMissingUpload_IsNull_EvenWhenS3SaysAccessDenied(HttpStatusCode status, string code)
+    {
+        // The API's role may read incoming/* but not list the bucket, so S3 answers 403 AccessDenied, not 404, for a
+        // key nobody uploaded (dev, board #347, 2026-10-18: finalize answered 500 instead of 409 media.not_uploaded).
+        var s3 = Substitute.For<IAmazonS3>();
+        s3.GetObjectAsync(Bucket, "incoming/nothing", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new AmazonS3Exception("missing") { StatusCode = status, ErrorCode = code });
+
+        var bytes = await new S3MediaStore(s3, Bucket).ReadAsync("incoming/nothing", 1024, CancellationToken.None);
+
+        bytes.Should().BeNull();
     }
 }
