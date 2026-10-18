@@ -19,6 +19,8 @@
 ## Deploying
 
 - Normal path: merge to `main`, then `.github/workflows/deploy-development.yml` builds, deploys and smoke-tests dev.
+  Its last step is the install gate (`tools/scripts/pwa-check.mjs`, since 2026-10-18): a deploy whose apps lose
+  their manifest `id` or the 192, 512 or maskable PNG icon goes red, because Android then won't install them.
 - Manual path (announce it first, never during a CI run): `cdk diff`, review it, then
   `npx cdk deploy 'TempoDev/*' --require-approval never` from `infrastructure/`. Set `COMMIT_SHA` or health
   reports `version=local`.

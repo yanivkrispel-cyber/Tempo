@@ -251,3 +251,9 @@ jobs:
             echo "- Studio console: https://$ADMIN_PROJECT.pages.dev"
             echo "- Members app: https://$CLIENT_PROJECT.pages.dev"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Both apps stay installable from Chrome on Android: a manifest with an id, a start_url in scope and PNG icons
+      # of 192, 512 and maskable that answer image/png at their size (board #347; neither app installed on 2026-10-18).
+      - name: Check the apps install
+        if: steps.secrets.outputs.ready == 'true'
+        run: node tools/scripts/pwa-check.mjs "https://$CLIENT_PROJECT.pages.dev" "https://$ADMIN_PROJECT.pages.dev"
