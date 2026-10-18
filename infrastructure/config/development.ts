@@ -40,7 +40,7 @@ const developmentConfig: TempoEnvironmentConfig = {
     apiTimeoutSeconds: 30,
     workerMemoryMb: 512,
     workerTimeoutSeconds: 60,
-    apiReservedConcurrency: 10,
+    apiReservedConcurrency: 20,
     workerReservedConcurrency: 5
   },
 

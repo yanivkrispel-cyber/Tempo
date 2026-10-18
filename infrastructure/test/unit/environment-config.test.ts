@@ -188,3 +188,12 @@ describe("validateEnvironmentConfig", () => {
     ).toThrow(/at most 10/);
   });
 });
+
+describe("dev's reserved concurrency fits the account's quota of 40 (case 179192381800130)", () => {
+  it("gives the API 20, so parallel e2e runs aren't throttled, and leaves at least 10 unreserved", async () => {
+    const { default: development } = await import("../../config/development");
+    // One API function and one worker (worker-outbox) reserve concurrency; AWS keeps 10 unreserved at least.
+    expect(development.lambda.apiReservedConcurrency).toBe(20);
+    expect(development.lambda.apiReservedConcurrency + development.lambda.workerReservedConcurrency).toBeLessThanOrEqual(40 - 10);
+  });
+});
