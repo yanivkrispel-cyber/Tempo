@@ -4,7 +4,12 @@ Each of these cost time once.
 
 - **Smart App Control** blocks freshly built Release DLLs and sometimes the Debug migrator exe
   ("An Application Control policy has blocked this file"). Run tests in Debug (`dotnet test -c Debug`). Run the
-  migrator in Docker (`mcr.microsoft.com/dotnet/sdk:10.0`). CI on Linux runs Release.
+  migrator in Docker (`mcr.microsoft.com/dotnet/sdk:10.0`). CI on Linux runs Release. On 2026-10-18 it blocked the
+  Debug test DLLs too: run `dotnet test` inside the sdk:10.0 container on a copy of the tree (no bin/obj/node_modules),
+  with `/var/run/docker.sock` mounted and `TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal` for the integration tests.
+- **Stacked PRs close when their base branch is deleted.** `gh pr merge --delete-branch` on a PR that others are
+  stacked on closes them (2026-10-18: #359 and #360). Retarget them to `main` before merging the base.
+- **A push to a draft PR skips CI**; marking it ready doesn't re-run it. Push an empty commit after "ready".
 - **Git Bash path rewriting:** arguments like `/tempo/dev/...` or `origin/branch:.github/...` get rewritten into
   Windows paths. Prefix the command with `MSYS_NO_PATHCONV=1`.
 - **`gh` missing from Git Bash PATH:** add `export PATH="$PATH:/c/Program Files/GitHub CLI"`.
