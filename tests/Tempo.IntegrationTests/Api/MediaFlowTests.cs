@@ -177,6 +177,8 @@ public sealed class MediaFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         // Only one finalize points the owner at the picture (#345): the other is told the upload is finished.
         var finalizes = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => RawAsync(client, HttpMethod.Post, $"{studioPath}/media/uploads/{id}/finalize", Customer("noga"))));
         finalizes.Select(r => r.StatusCode).Should().BeEquivalentTo([HttpStatusCode.OK, HttpStatusCode.Conflict]);
+        var loser = await finalizes.Single(r => r.StatusCode == HttpStatusCode.Conflict).Content.ReadAsStringAsync();
+        JsonSerializer.Deserialize<JsonElement>(loser).GetProperty("code").GetString().Should().Be("media.not_pending");
         var uploads = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/audit-events?limit=100", Customer("owner"))).GetProperty("items").EnumerateArray()
             .Count(e => e.GetProperty("action").GetString() == "media.uploaded");
         uploads.Should().Be(1);

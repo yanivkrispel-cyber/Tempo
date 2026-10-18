@@ -72,6 +72,8 @@ public static class MediaLinks
             return null;
         }
 
+        // Only tenant routes return pictures; a route outside the tenant group that wants one must pass the studio
+        // itself, since TenantRouteFilter.Current throws there.
         var organizationId = TenantRouteFilter.Current(Current.Value!).OrganizationId;
         var key = small ? MediaKeys.Small(organizationId, id) : MediaKeys.Large(organizationId, id);
         return Store.PresignGet(key, MediaKeys.UrlLifetime);
