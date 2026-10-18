@@ -260,7 +260,7 @@ ALTER TABLE people.people                ADD COLUMN avatar_media_id uuid;
 1. `POST /media/uploads` with `{ purpose, ownerId, contentType, bytes }`: checks the permission for the owner
    (class cover: `schedule.manage`; studio cover: `organization.settings.manage`; instructor photo: self or
    `schedule.manage`; avatar: self or `people.manage`), type in `image/jpeg|png|webp`, size up to 8 MB; inserts a
-   `pending` row and returns a presigned `POST` (`uploadForm`) for `incoming/<id>` that lives 10 minutes. Its
+   `pending` row and returns a presigned `POST` (`uploadForm`) for `incoming/<org>/<id>` that lives 10 minutes. Its
    signed policy pins the key and content type and carries `content-length-range` 1 to 8 MB, so S3 itself refuses
    a bigger file (#345, H-1 on board #347; the old presigned `PUT`, which could not cap the size, goes away once
    the apps POST).
@@ -273,6 +273,11 @@ ALTER TABLE people.people                ADD COLUMN avatar_media_id uuid;
 4. Reads: payloads carry `photoUrl`, `coverUrl`, `avatarUrl` as presigned GETs of the right size.
 
 Erasing a person deletes their avatar objects. Removing a studio (docs/32 section 10) deletes `media/<org>/`.
+
+Keys as built (#345, H-3): the studio's id is in the key of every picture created from 2026-10-20 00:00 UTC on
+(`MediaKeys.StudioPrefixSince`). Pictures created before keep `incoming/<id>` and `media/<id>/...`: the media id is a
+UUIDv7, so its creation time picks the layout for writing and reading alike, and no object ever moves. Studio
+removal and erase delete by the keys the rows name, so both layouts are covered.
 Audit: `media.uploaded`, `media.removed` with purpose and owner id.
 
 ## 7. Instructor note on a class (C11)
