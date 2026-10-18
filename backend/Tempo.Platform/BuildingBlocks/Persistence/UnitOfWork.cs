@@ -29,6 +29,25 @@ public sealed class UnitOfWork : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         var dataSource = await dataSources.GetAsync(role, cancellationToken);
+        if (await StartAsync(dataSource, userAccountId, organizationId, retryIfBroken: true, cancellationToken) is { } unitOfWork)
+        {
+            return unitOfWork;
+        }
+
+        // The pool handed out a connection the server had already closed: a Lambda is frozen between requests, so the
+        // pool can't prune while Neon suspends its compute (board #347, 2026-10-18). Nothing has run yet, so starting
+        // again is safe; the other idle connections went stale together.
+        dataSource.Clear();
+        return (await StartAsync(dataSource, userAccountId, organizationId, retryIfBroken: false, cancellationToken))!;
+    }
+
+    /// <summary>
+    /// Opens the connection, the transaction and the RLS values. With <paramref name="retryIfBroken"/>, a connection
+    /// the server closed comes back as null instead of an error, so the caller can try once more.
+    /// </summary>
+    private static async Task<UnitOfWork?> StartAsync(
+        NpgsqlDataSource dataSource, Guid? userAccountId, Guid? organizationId, bool retryIfBroken, CancellationToken cancellationToken)
+    {
         var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         try
         {
@@ -36,6 +55,11 @@ public sealed class UnitOfWork : IAsyncDisposable
             var unitOfWork = new UnitOfWork(connection, transaction);
             await unitOfWork.SetAsync(userAccountId, organizationId, cancellationToken);
             return unitOfWork;
+        }
+        catch (NpgsqlException) when (retryIfBroken && connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.DisposeAsync();
+            return null;
         }
         catch
         {

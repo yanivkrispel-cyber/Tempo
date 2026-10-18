@@ -34,17 +34,20 @@ import { applyStandardTags } from "../constructs/tagging";
  * Cognito domain, two-step sign-in setup calls the Cognito user API (#127), and the design system loads Heebo and
  * IBM Plex Mono from Google Fonts. Inline style attributes are allowed (React's `style`); inline scripts are not.
  * `apiOrigins` adds an API that is not same-origin: on Cloudflare Pages the apps call the execute-api URL (ADR-0027).
+ * Pictures (docs/33 section 6) go to and come from the media bucket's presigned URLs, so its origin is in both
+ * `connect-src` (the upload POST) and `img-src` (the presigned GETs).
  */
 export function appContentSecurityPolicy(config: TempoEnvironmentConfig, apiOrigins: readonly string[] = []): string {
   const cognitoDomain = `https://tempo-${config.environmentName}-${config.accountId}.auth.${config.region}.amazoncognito.com`;
   const cognitoApi = `https://cognito-idp.${config.region}.amazonaws.com`;
+  const mediaBucket = `https://${resourceName(config, `media-${config.accountId}`)}.s3.${config.region}.amazonaws.com`;
   return [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
-    ["connect-src 'self'", ...apiOrigins, cognitoDomain, cognitoApi].join(" "),
+    `img-src 'self' data: blob: ${mediaBucket}`,
+    ["connect-src 'self'", ...apiOrigins, cognitoDomain, cognitoApi, mediaBucket].join(" "),
     `form-action 'self' ${cognitoDomain}`,
     "worker-src 'self'",
     "manifest-src 'self'",

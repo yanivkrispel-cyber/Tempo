@@ -504,3 +504,47 @@
 .buddyForm > :first-child {
   flex: 1;
 }
+
+/* Installing the app from inside it (board #347, P-3). */
+.installCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.installIcon {
+  flex: none;
+  border-radius: 11px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.installTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.installSteps {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.installSteps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.installSteps li::before {
+  counter-increment: step;
+  content: counter(step);
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  font-weight: 600;
+  font-size: 14px;
+}

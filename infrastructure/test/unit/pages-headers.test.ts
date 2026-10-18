@@ -11,15 +11,21 @@ describe("Cloudflare Pages headers (ADR-0027)", () => {
     expect(file.split("\n")[0]).toBe("/*");
   });
 
-  it("lets the apps call the cross-origin API and Cognito, and nothing else", () => {
+  it("lets the apps call the cross-origin API, Cognito and the picture bucket, and nothing else", () => {
     const csp = file.split("\n").find((line) => line.includes("Content-Security-Policy"));
     expect(csp).toContain(
       "connect-src 'self' https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com " +
-        "https://tempo-dev-687239340846.auth.eu-central-1.amazoncognito.com https://cognito-idp.eu-central-1.amazonaws.com;"
+        "https://tempo-dev-687239340846.auth.eu-central-1.amazoncognito.com https://cognito-idp.eu-central-1.amazonaws.com " +
+        "https://tempo-dev-media-687239340846.s3.eu-central-1.amazonaws.com;"
     );
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).not.toContain("unsafe-eval");
+  });
+
+  it("shows pictures from the bucket's presigned URLs (docs/33 section 6; board #347: avatars were blocked)", () => {
+    const csp = file.split("\n").find((line) => line.includes("Content-Security-Policy"));
+    expect(csp).toContain("img-src 'self' data: blob: https://tempo-dev-media-687239340846.s3.eu-central-1.amazonaws.com;");
   });
 
   it("carries the headers of CloudFront's managed SecurityHeadersPolicy", () => {

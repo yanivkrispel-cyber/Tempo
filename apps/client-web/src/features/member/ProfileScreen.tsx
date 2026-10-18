@@ -4,6 +4,7 @@ import { Avatar, Button, Card, HealthStatusChip, Icon, IconButton, useToast } fr
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { useApi } from "../../api/ApiProvider";
+import { hasCode } from "../../api/errors";
 import { forgetPushOnSignOut } from "../../account/push";
 import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
@@ -11,6 +12,7 @@ import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { EditNameDialog } from "./EditNameDialog";
 import { useMyHealthDeclaration } from "./health";
 import { GoalDialog } from "./GoalDialog";
+import { InstallAppRow } from "./InstallApp";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
 import { BuddiesCard } from "./BuddiesCard";
@@ -65,7 +67,14 @@ export function ProfileScreen() {
                   { purpose: "avatar", ownerId: myProfile.data.id, file },
                   {
                     onSuccess: () => toast.show({ tone: "success", message: "התמונה עודכנה" }),
-                    onError: () => toast.show({ tone: "danger", message: "לא הצלחנו לעדכן את התמונה. נסו שוב." }),
+                    onError: (error) =>
+                      toast.show({
+                        tone: "danger",
+                        // Storage itself refuses a file over the ticket's size (H-1).
+                        message: hasCode(error, "media.too_large")
+                          ? "התמונה גדולה מ-8 מגה. נסו תמונה קטנה יותר."
+                          : "לא הצלחנו לעדכן את התמונה. נסו שוב.",
+                      }),
                   },
                 );
               }}
@@ -163,6 +172,7 @@ export function ProfileScreen() {
             <hr className="tp-divider" />
           </>
         )}
+        <InstallAppRow />
         <button type="button" className="tp-setting" onClick={soon}>
           <span>קבלות ותשלומים</span>
           <Icon name="chevron-left" />

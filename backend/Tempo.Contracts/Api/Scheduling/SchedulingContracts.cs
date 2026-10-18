@@ -276,8 +276,11 @@ public sealed record MemberNoteRequest(string? Note, bool? ApplyToWeekly);
 /// <summary>`MediaUploadRequest`: what the picture is for and its declared type and size.</summary>
 public sealed record MediaUploadRequest(string? Purpose, Guid? OwnerId, string? ContentType, int? Bytes);
 
-/// <summary>`MediaUploadTicket`: PUT the file to `uploadUrl` with this `Content-Type`, then finalize.</summary>
-public sealed record MediaUploadTicketResponse(Guid MediaId, Uri UploadUrl, string ContentType, DateTimeOffset ExpiresAt);
+/// <summary>`MediaUploadTicket`: POST the file with `uploadForm` (S3 refuses one over `maxBytes`), then finalize.</summary>
+public sealed record MediaUploadTicketResponse(Guid MediaId, MediaUploadFormResponse UploadForm, int MaxBytes, string ContentType, DateTimeOffset ExpiresAt);
+
+/// <summary>`MediaUploadForm`: a presigned POST; send every field as is, then the file last as `file`.</summary>
+public sealed record MediaUploadFormResponse(Uri Url, IReadOnlyDictionary<string, string> Fields);
 
 /// <summary>`Media`: a ready picture.</summary>
 public sealed record MediaResponse(Guid Id, string Purpose, Guid OwnerId, Uri Url, Uri SmallUrl, int Width, int Height);

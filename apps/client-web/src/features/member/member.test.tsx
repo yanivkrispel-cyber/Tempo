@@ -59,6 +59,28 @@ describe("member home", () => {
     );
   });
 
+  it("opens the check-in pass from the installed app's shortcut, and closing it drops the shortcut", async () => {
+    const studio = createStudio();
+    studio.routes[`GET /api/v1/organizations/${organizationId}/me/checkin-code`] = {
+      code: "c0de",
+      validForSeconds: 30,
+    };
+    const router = createMemoryRouter(routes, { initialEntries: ["/?open=checkin"] });
+    render(
+      <App
+        router={router}
+        auth={signedInAuth()}
+        apiUrl="https://api.test"
+        fetch={apiStub(studio.routes).fetch}
+        now={testNow}
+      />,
+    );
+    expect(await screen.findByRole("dialog", { name: "כרטיס כניסה" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "כרטיס כניסה" })).not.toBeInTheDocument());
+    expect(router.state.location.search).toBe("");
+  });
+
   it("lists the chosen day's classes that have not ended, and says why a day is empty", async () => {
     renderAt("/");
     const week = await screen.findByRole("group", { name: "ימי השבוע" });

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   Avatar,
   ButtonLink,
@@ -16,6 +16,7 @@ import { addDays, dayOfWeek, formatDate, startOfWeek, type IsoDate } from "../..
 import { freeSpots, myState, waitText } from "./bookingState";
 import { useInstructors, useMyProfile } from "./experience";
 import { dayName, relativeDay } from "./format";
+import { InstallAppCard } from "./InstallApp";
 import styles from "./member.module.css";
 import { metaLine } from "./passText";
 import { CheckinPass, CountdownRing } from "./Premium";
@@ -172,6 +173,8 @@ function StudioHome({ studio }: { studio: Studio }) {
   const passes = useMyPasses(studio.id);
   const profile = useMyProfile(studio.id);
   const instructors = useInstructors(studio.id);
+  // The installed app's "check-in pass" shortcut (manifest.webmanifest) opens the pass straight away.
+  const [params, setParams] = useSearchParams();
 
   const next = upcoming.data?.find((booking) => booking.status === "booked");
   const dayClasses = (sessions.data ?? []).filter(
@@ -208,6 +211,12 @@ function StudioHome({ studio }: { studio: Studio }) {
       hello={greeting(timeZone, now)}
       avatar={profile.data?.avatarUrl}
     >
+      <CheckinPass
+        organizationId={studio.id}
+        timeZone={timeZone}
+        open={params.get("open") === "checkin"}
+        onClose={() => setParams({}, { replace: true })}
+      />
       {next ? (
         <NextClassHero
           organizationId={studio.id}
@@ -251,6 +260,9 @@ function StudioHome({ studio }: { studio: Studio }) {
           </div>
         </section>
       )}
+
+      {/* After a booking, never on the first visit (board #347, P-3). */}
+      {next && <InstallAppCard />}
 
       <WeekStrip days={week} value={day} onChange={setDay} today={today} marked={bookedDays} />
 

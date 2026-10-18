@@ -81,7 +81,7 @@ export class ApiStack extends Stack {
     const { config } = props;
     const database = this.databaseConnection(config);
 
-    // Pictures (docs/33 section 6, D17): one private bucket. The apps PUT uploads to presigned URLs under
+    // Pictures (docs/33 section 6, D17): one private bucket. The apps POST uploads to presigned forms under
     // incoming/ (CORS for the apps' origins); the API re-encodes them into media/ and links them with presigned
     // GETs. Nothing is public. About US$0.10 a month at pilot size (owner approved S3 on 2026-10-17).
     this.mediaBucket = new Bucket(this, "MediaBucket", {
@@ -99,7 +99,7 @@ export class ApiStack extends Stack {
       ],
       cors: [
         {
-          allowedMethods: [HttpMethods.PUT],
+          allowedMethods: [HttpMethods.POST],
           allowedOrigins: [...config.corsAllowedOrigins],
           allowedHeaders: ["content-type"],
           maxAge: 3600
