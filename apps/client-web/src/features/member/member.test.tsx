@@ -1,5 +1,5 @@
 import type { AuthClient } from "@tempo/api-client/auth";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -445,9 +445,26 @@ describe("the waitlist", () => {
 
 describe("promotion and the inbox", () => {
   it("tells the member on the home screen and the bell that a place opened", async () => {
-    renderAt("/", { inbox: promoted() });
+    const { router } = renderAt("/", { inbox: promoted() });
     expect(await screen.findByRole("link", { name: "התראות, אחת חדשה" })).toHaveAttribute("href", "/inbox");
-    expect(screen.getByText(/התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית/)).toBeInTheDocument();
+    // A toast, not a banner above the hero: the inbox answers after the hero is drawn, and a banner then pushed the
+    // whole home down (CLS 0.107 at 360px, board #347, O5).
+    const toasts = screen.getByRole("region", { name: "הודעות" });
+    expect(await within(toasts).findByText(/התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית/)).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByText(/התפנה מקום מרשימת ההמתנה/)).not.toBeInTheDocument();
+    await userEvent.click(within(toasts).getByRole("button", { name: "להתראות" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/inbox"));
+  });
+
+  it("tells about a promotion once, not on every visit to the home", async () => {
+    const { router } = renderAt("/", { inbox: promoted() });
+    const toasts = screen.getByRole("region", { name: "הודעות" });
+    await within(toasts).findByText(/התפנה מקום מרשימת ההמתנה/);
+    await userEvent.click(within(toasts).getByRole("button", { name: "סגירה" }));
+    await act(() => router.navigate("/profile"));
+    await act(() => router.navigate("/"));
+    await screen.findByRole("link", { name: "התראות, אחת חדשה" });
+    expect(within(toasts).queryByText(/התפנה מקום מרשימת ההמתנה/)).not.toBeInTheDocument();
   });
 
   it("shows a studio's message about a class in its own words", async () => {

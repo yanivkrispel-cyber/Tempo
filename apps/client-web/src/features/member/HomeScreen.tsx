@@ -1,8 +1,7 @@
-import { useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   Avatar,
-  Banner,
   ButtonLink,
   EmptyState,
   IconButtonLink,
@@ -10,6 +9,7 @@ import {
   ProgressRing,
   WeekStrip,
   shortDate,
+  useToast,
 } from "../../shared/design-system";
 import { nameOf, useAccount } from "../../account/account";
 import { addDays, dayOfWeek, formatDate, startOfWeek, type IsoDate } from "../../shared/utilities/dates";
@@ -131,6 +131,37 @@ function HomeFrame({
   );
 }
 
+/** Promotions already told in this tab, through reloads too; the bell keeps them until they are read. */
+const toldKey = "tempo.home.toldPromotion";
+
+function toldBefore(id: string): boolean {
+  try {
+    if (window.sessionStorage.getItem(toldKey) === id) return true;
+    window.sessionStorage.setItem(toldKey, id);
+  } catch {
+    // Storage blocked: the toast may come again on the next visit, which is harmless.
+  }
+  return false;
+}
+
+/**
+ * A place opened from the waitlist: a toast, once per notice. The inbox answers after the hero is drawn, so a banner
+ * above it pushed the whole home down (CLS 0.107 at 360px, board #347, O5); a toast covers nothing the member reads.
+ */
+function useTellPromotion(id: string | undefined) {
+  const toast = useToast();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!id || toldBefore(id)) return;
+    toast.show({
+      tone: "success",
+      icon: "check",
+      message: "התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית.",
+      action: { label: "להתראות", onClick: () => void navigate("/inbox") },
+    });
+  }, [id, toast, navigate]);
+}
+
 function StudioHome({ studio }: { studio: Studio }) {
   const { timeZone, now, today } = useStudioClock(studio.id);
   const inbox = useInbox(studio.id);
@@ -160,6 +191,7 @@ function StudioHome({ studio }: { studio: Studio }) {
   const promotion = inbox.data
     ? knownNotices(inbox.data.items).find((item) => item.kind === "booking.promoted" && !item.readAt)
     : undefined;
+  useTellPromotion(promotion?.id);
   const unread = inbox.data ? knownNotices(inbox.data.items).filter((item) => !item.readAt).length : 0;
   const bell = (
     <IconButtonLink
@@ -185,12 +217,6 @@ function StudioHome({ studio }: { studio: Studio }) {
         open={params.get("open") === "checkin"}
         onClose={() => setParams({}, { replace: true })}
       />
-      {promotion && (
-        <Banner tone="success" icon="check">
-          התפנה מקום מרשימת ההמתנה, ונרשמת אוטומטית. <Link to="/inbox">להתראות</Link>
-        </Banner>
-      )}
-
       {next ? (
         <NextClassHero
           organizationId={studio.id}
