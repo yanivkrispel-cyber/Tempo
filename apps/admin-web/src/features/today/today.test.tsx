@@ -113,7 +113,7 @@ describe("the day in the studio (D15, the coach's screen)", () => {
 
   it("says one class in words", async () => {
     renderAt("/o/neshima/today", () => [session({ id: id(34), bookedCount: 1 })]);
-    expect(await screen.findByText("היום שיעור אחד ונרשם.ה אחד.ת.")).toBeInTheDocument();
+    expect(await screen.findByText("היום שיעור אחד ורישום אחד.")).toBeInTheDocument();
   });
 
   it("shows how full each class is on a bar, and none on a cancelled one", async () => {

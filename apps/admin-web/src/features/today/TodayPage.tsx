@@ -557,7 +557,7 @@ function daySummary(sessions: Session[], dayWord: string): string | null {
   const classes = held.length === 1 ? "שיעור אחד" : `${held.length} שיעורים`;
   const booked = held.reduce((sum, session) => sum + session.bookedCount, 0);
   if (booked === 0) return `${dayWord} ${classes}, עוד אין נרשמים.`;
-  return booked === 1 ? `${dayWord} ${classes} ונרשם.ה אחד.ת.` : `${dayWord} ${classes} ו־${booked} נרשמים.`;
+  return booked === 1 ? `${dayWord} ${classes} ורישום אחד.` : `${dayWord} ${classes} ו־${booked} נרשמים.`;
 }
 
 /**
