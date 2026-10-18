@@ -107,9 +107,14 @@ async function call(token, method, route, body, { expected = [200, 201, 202, 204
   return { status: response.status, json, text, headers: response.headers };
 }
 
-/** A Cognito user for this run, signed in, with a Tempo account, invited as a client and joined. */
-async function joinMember(owner, s, who) {
+/**
+ * A Cognito user for this run, signed in, with a Tempo account, invited as a client and joined. It goes on
+ * `members` before the user exists, so `finally` deletes it whatever fails next.
+ */
+async function joinMember(owner, s, who, members) {
   const email = EMAIL(who);
+  const member = { email, cognito: true };
+  members.push(member);
   const password = `${randomBytes(12).toString("base64url")}aA1!`;
   awsWithInput(["cognito-idp", "admin-create-user"], {
     UserPoolId: poolId,
@@ -120,14 +125,12 @@ async function joinMember(owner, s, who) {
     ],
     MessageAction: "SUPPRESS",
   });
-  const member = { email, cognito: true };
   awsWithInput(["cognito-idp", "admin-set-user-password"], { UserPoolId: poolId, Username: email, Password: password, Permanent: true });
   member.token = signIn(email, password);
   await call(member.token, "POST", "/api/v1/session");
   const invitation = (await call(owner, "POST", `${s}/invitations`, { email, role: "client" })).json;
   member.membershipId = (await call(member.token, "POST", "/api/v1/invitations/accept", { token: new URL(invitation.link).hash.slice(1) })).json?.membershipId;
   member.personId = (await call(owner, "GET", `${s}/people?query=${encodeURIComponent(email)}`)).json.items[0]?.id;
-  return member;
 }
 
 const owner = signIn(ssm(`${smokePath}/email`), ssm(`${smokePath}/password`));
@@ -162,7 +165,7 @@ try {
   check(saved?.spotSelection === true && saved.spots.length === 6, "the e2e room has 6 spots in 2 rows, spot selection on");
   const spotByLabel = (label) => saved.spots.find((spot) => spot.label === label);
 
-  for (const who of ["a", "b"]) members.push(await joinMember(owner, s, who));
+  for (const who of ["a", "b"]) await joinMember(owner, s, who, members);
   const [a, b] = members;
   check(members.every((m) => m.membershipId && m.personId), "two e2e members joined the smoke studio by invitation");
   if (!members.every((m) => m.membershipId && m.personId)) throw new Error("the e2e members could not join; nothing else can run");
@@ -237,7 +240,13 @@ try {
   for (const m of members) {
     if (m.personId) await call(owner, "POST", `${s}/people/${m.personId}/erase`, { reason: "e2e premium live check" });
     if (m.membershipId) await call(owner, "DELETE", `${s}/members/${m.membershipId}`, undefined, { expected: [200, 204, 404, 409] });
-    if (m.cognito) awsWithInput(["cognito-idp", "admin-delete-user"], { UserPoolId: poolId, Username: m.email });
+    if (m.cognito) {
+      try {
+        awsWithInput(["cognito-idp", "admin-delete-user"], { UserPoolId: poolId, Username: m.email });
+      } catch {
+        // Never created (admin-create-user failed): nothing to delete.
+      }
+    }
   }
   if (room?.id) {
     const current = (await call(owner, "GET", `${s}/rooms`)).json.items.find((r) => r.id === room.id);
