@@ -1,7 +1,12 @@
 # Design system
 
-- **The reference is one image**, "Neo-Tactile Soft UI", which the owner chose on 2026-10-13. The product must match
-  it one-to-one in buttons and colours. Never re-tint it: no teal, no navy.
+- **The look is "Warm Glass" (D16, 2026-10-17).** The owner approved the premium mockups
+  (`docs/design/mockups/premium-2026-10-17/`, canvas https://claude.ai/artifact/NUG1JaZVkZfPixXyeBTnNK). It keeps the
+  colours of the 2026-10-13 reference image "Neo-Tactile Soft UI" (never re-tint: no teal, no navy) and changes the
+  rest: glass for floating bars and sheets, paper cards, wells only for tactile things, real photos, Frank Ruhl Libre
+  for moments and IBM Plex Sans Hebrew for UI, one deep-sage `#56735b` action per screen (white on it 5.2:1). The
+  eight principles and their sources: `docs/25_Design_System.md` section 2. A screen that shows a capability must be
+  backed by it (`docs/33_Studio_Experience_LLD.md`). The v0.3 package below is what is on `main` until step E7.
 - **Palette** (sampled from the image, v0.3):
 
   | Token               | Value                                                                   |
