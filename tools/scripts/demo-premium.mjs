@@ -23,8 +23,11 @@
  * or in the repo; `--profile tempo` needs Cognito admin user calls and cloudformation:DescribeStacks):
  *   TEMPO_DEMO_PASSWORD=... node tools/scripts/demo-premium.mjs <studio-slug> --owner <email> --member <email> [--profile tempo]
  *
- * Running it again updates the same rooms, profiles and covers; it adds another set of sales and arrivals.
- * Never prints passwords, tokens, presigned URLs or anyone's address.
+ * Only demo studios: the slug must start with `test-studio-`, `demo-` or `e2e-`; anything else is refused, because
+ * the script rewrites room maps, moves weekly classes to fictional coaches and sells passes. Running it again updates
+ * the same rooms, profiles and covers, and adds no second set of sales or arrivals (it finds its own by the note
+ * `demo-premium` on a pass and by today's one-off class of the first coach). A photo that can't be downloaded is
+ * skipped with a warning. Never prints passwords, tokens, presigned URLs or anyone's address.
  */
 
 import { execFileSync } from "node:child_process";
@@ -46,8 +49,14 @@ const ownerEmail = option("--owner");
 const memberEmail = option("--member");
 const profile = option("--profile", "tempo");
 const password = process.env.TEMPO_DEMO_PASSWORD;
+const DEMO_SLUG = /^(test-studio-|demo-|e2e-)/;
+const MARK = "demo-premium";
 if (!slug || slug.startsWith("--") || !ownerEmail || !memberEmail || !password) {
   console.error("usage: TEMPO_DEMO_PASSWORD=... node tools/scripts/demo-premium.mjs <studio-slug> --owner <email> --member <email> [--profile tempo]");
+  process.exit(2);
+}
+if (!DEMO_SLUG.test(slug)) {
+  console.error(`✗ ${slug} is not a demo studio (test-studio-*, demo-* or e2e-*); refusing to dress it`);
   process.exit(2);
 }
 
@@ -161,7 +170,13 @@ async function photo(id, width) {
 
 /** Ticket, upload (the presigned POST when the API offers it, else the older PUT), finalize. */
 async function upload(token, s, purpose, ownerId, photoId, width) {
-  const bytes = await photo(photoId, width);
+  let bytes;
+  try {
+    bytes = await photo(photoId, width);
+  } catch (error) {
+    console.log(`! skipped the ${purpose} picture: ${error.message}`);
+    return null;
+  }
   const ticket = (await call(token, "POST", `${s}/media/uploads`, { purpose, ownerId, contentType: "image/jpeg", bytes: bytes.length })).json;
   if (!ticket) return null;
   const sent = ticket.uploadForm
@@ -294,7 +309,12 @@ if (!already.some((b) => b.personId === buddyPerson)) {
 }
 const products = (await call(owner, "GET", `${s}/pass-products`)).json.items.filter((p) => p.status === "active");
 const card = products.find((p) => p.kind === "punch_card") ?? products[0];
-await call(owner, "POST", `${s}/people/${buddyPerson}/passes`, { productId: card.id });
+/** True when this script already sold the person a pass that is still active. */
+async function hasDemoPass(personId) {
+  const passes = (await call(owner, "GET", `${s}/people/${personId}/passes`)).json?.items ?? [];
+  return passes.some((pass) => pass.note === MARK && pass.status === "active");
+}
+if (!(await hasDemoPass(buddyPerson))) await call(owner, "POST", `${s}/people/${buddyPerson}/passes`, { productId: card.id, note: MARK });
 
 let pair = null;
 for (const session of upcoming) {
@@ -318,16 +338,20 @@ const people = (await call(owner, "GET", `${s}/people?limit=50`)).json.items.fil
 const priced = products.filter((p) => (p.priceAgorot ?? 0) > 0);
 let sold = 0;
 for (const [index, person] of people.slice(0, 6).entries()) {
+  if (await hasDemoPass(person.id)) continue;
   const product = priced[index % Math.max(priced.length, 1)] ?? card;
-  if ((await call(owner, "POST", `${s}/people/${person.id}/passes`, { productId: product.id }, { expected: [201, 409] })).status === 201) sold += 1;
+  if ((await call(owner, "POST", `${s}/people/${person.id}/passes`, { productId: product.id, note: MARK }, { expected: [201, 409] })).status === 201) sold += 1;
 }
-done(`${sold} passes sold this month`);
+done(`${sold} passes sold this month (people who already have one from this script are skipped)`);
 
 // 8. Arrivals: a class in 20 minutes, five marked attended, the buddy scanned at the door.
 const soon = localParts(new Date(Date.now() + 20 * 60_000));
 const room = rooms[0];
 const classType = classTypes.find((t) => coverFor(t) === PHOTOS.reformer) ?? classTypes[0];
-const arrival = (await call(owner, "POST", `${s}/sessions`, {
+const todays = (await call(owner, "GET", `${s}/sessions?from=${soon.date}&to=${soon.date}`)).json.items;
+const earlier = todays.find((x) => !x.templateId && x.status === "scheduled" && x.instructor?.membershipId === instructors[1].membershipId);
+if (earlier) done(`arrivals already dressed today (the class at ${localParts(new Date(earlier.startsAt)).time}); none added`);
+const arrival = earlier ? null : (await call(owner, "POST", `${s}/sessions`, {
   classTypeId: classType.id, localDate: soon.date, localStart: soon.time, minutes: 50, capacity: 8, roomId: room?.id, instructorMembershipId: instructors[1].membershipId,
 })).json;
 if (arrival?.id) {
