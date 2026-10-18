@@ -1,5 +1,5 @@
 import qrcode from "qrcode-generator";
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Dialog, Icon } from "../../shared/design-system";
 import { useCheckinCode } from "./experience";
 import { clockTime } from "./studioTime";
@@ -135,6 +135,12 @@ export function SlideToConfirm({
   const [travel, setTravel] = useState(240);
   const moved = useRef(false);
   const rtl = typeof document !== "undefined" && document.documentElement.dir !== "ltr";
+  const wasPending = useRef(pending);
+  // When the action settles and this control is still on screen, it failed: bring the knob back to try again.
+  useEffect(() => {
+    if (wasPending.current && !pending) setDrag(0);
+    wasPending.current = pending;
+  }, [pending]);
 
   function down(event: ReactPointerEvent<HTMLButtonElement>) {
     if (pending) return;
