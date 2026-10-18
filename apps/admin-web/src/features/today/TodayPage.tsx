@@ -89,7 +89,12 @@ function DayView({ timeZone }: { timeZone: string }) {
             יום {weekdayNames[dayOfWeek(date)]} · {formatDate(date)}
           </span>
           <h1>היום בסטודיו</h1>
-          {summary && <p className={`tp-muted ${styles.summary}`}>{summary}</p>}
+          {/* While the day loads, an empty line holds the summary's place so the page does not jump (O5). */}
+          {(summary || sessions.isPending) && (
+            <p className={`tp-muted ${styles.summary}`} aria-hidden={summary ? undefined : true}>
+              {summary ?? " "}
+            </p>
+          )}
         </div>
         <div className={styles.tools}>
           <Segmented

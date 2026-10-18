@@ -120,6 +120,28 @@ describe("the day in the studio (D15, the coach's screen)", () => {
     expect(await screen.findByText("היום 2 שיעורים ו־13 נרשמים.")).toBeInTheDocument();
   });
 
+  it("keeps the summary's line while the day loads, so the page below does not jump (O5)", async () => {
+    const me = {
+      ...sampleMe,
+      memberships: [
+        { ...studio, role: "staff" as const, roles: [roleSummary("staff")], permissions: permissionsFor.staff },
+      ],
+    };
+    const api = apiStub({
+      "POST /api/v1/session": me,
+      [`GET ${base}`]: organization,
+      // The day's classes never answer: the page stays loading.
+      [`GET ${base}/sessions`]: () => new Promise<Response>(() => undefined),
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ["/o/neshima/today"] });
+    render(<App router={router} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} />);
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" });
+    const line = heading.nextElementSibling;
+    expect(line?.tagName).toBe("P");
+    expect(line).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("says one class in words", async () => {
     renderAt("/o/neshima/today", () => [session({ id: id(34), bookedCount: 1 })]);
     expect(await screen.findByText("היום שיעור אחד ורישום אחד.")).toBeInTheDocument();
