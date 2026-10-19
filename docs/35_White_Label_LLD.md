@@ -1,7 +1,7 @@
 # White Label LLD (the studio's own name, logo, colour and icon)
 
-> **Status:** Proposed. Open questions W-1 to W-12 each carry a default; the defaults apply unless Kris changes them
-> on board #347 or on epic #294. Nothing here is built yet (board #347 P-5: docs first).
+> **Status:** Approved by Kris on 2026-10-19 (D21): W-1 to W-12 as written, except W-10, which he changed to a
+> branded sign-in per studio (D22, docs/36, ADR-0028). Built on board #380 (WL1 to WL6).
 > **Audience:** Kris, Ofir, the agents.
 > **Related:** docs/18 (the baseline: brand model, resolution order, what is allowed and forbidden), docs/33 and D16
 > (Warm Glass), docs/15 and docs/33 section 6 (pictures on S3), ADR-0021 ($0 until revenue), ADR-0027 (the apps on
@@ -23,7 +23,8 @@ In:
 - the guardrails of docs/18 section 5 made concrete: no free colours, no custom CSS or scripts, contrast checked.
 
 Out (later, each needs its own decision): custom domains (W-8), branded email and sender (waits for docs/30 D-1 and
-D-2), a branded sign-in page (W-10), custom fonts (W-7), a store app per studio, and paid branding plans (W-11).
+D-2), custom fonts (W-7), a store app per studio, and paid branding plans (W-11). The branded sign-in page (W-10) was
+added by Kris on 2026-10-19 and is planned in docs/36.
 
 ## 2. The brand model
 
@@ -50,7 +51,7 @@ One row per studio, `organizations.brands` (a later migration; the number is tak
 
 | Id | Default | Rule |
 |---|---|---|
-| W-1 | **Eight accents, chosen by Tempo, each with its light and dark values and its ink:** sage (today's `--brand`), olive, ocean, plum, rose, terracotta, sand, graphite. A studio picks one by id; the API refuses anything else. | Each accent ships as a set of tokens (`--brand`, `--brand-hover`, `--brand-pressed`, `--brand-ink`, `--brand-soft`, `--brand-glow`, `--on-brand`). A design-system test checks every pair the components use: white text on the accent and the accent's ink on paper at least 4.5:1, the focus glow at least 3:1 against paper. A failing accent never ships, so no studio can make a button unreadable. |
+| W-1 | **Eight accents, chosen by Tempo, each with its light and dark values and its ink:** sage (today's `--brand`), olive, ocean, plum, rose, terracotta, sand, graphite. A studio picks one by id; the API refuses anything else. | Each accent ships as a set of tokens (`--brand`, `--brand-hover`, `--brand-pressed`, `--brand-ink`, `--brand-soft`, `--brand-glow`, `--on-brand`). A design-system test checks every pair the components use: white text on the accent and the accent's ink on paper at least 4.5:1, and the accent itself as a mark at least 3:1 against paper (the focus ring is Tempo's blue for every accent, so the glow is decorative; WL2 review on #382). A failing accent never ships, so no studio can make a button unreadable. |
 
 - The accent changes the brand tokens only. Warm Glass surfaces, ink, status colours (danger, warning, success) and
   category colours stay Tempo's, so a red "cancel" never turns into the studio's pink.
@@ -67,7 +68,7 @@ One row per studio, `organizations.brands` (a later migration; the number is tak
 | The check-in pass | The studio's logo on the card with the QR. |
 | Web push notifications | The studio's icon as the notification's icon. |
 | Console | Stays Tempo (W-9): the studio's logo small next to its name in the header. Staff use one tool for every studio they work at. |
-| Sign-in page (Cognito Hosted UI) | Stays Tempo (W-10). |
+| Sign-in page | The studio's own: `/s/<slug>/login` in its look, our screen over Cognito (W-10, docs/36). `/login` is Tempo's. |
 | Emails | Later, with docs/30 D-1 and D-2. |
 
 ## 5. The studio's own installable app
@@ -126,7 +127,7 @@ Nothing here needs a new paid service.
 | W-7 | Fonts? | No custom fonts: the Hebrew font of the design system stays for every studio (load time, Hebrew coverage). |
 | W-8 | Custom domains? | Later, by ADR, after revenue (section 6). |
 | W-9 | Does the console take the studio's brand? | No: it stays Tempo with the studio's logo small in the header. |
-| W-10 | The sign-in page? | Stays Tempo's Hosted UI. Branding it per studio means a sign-in screen of our own; not now. |
+| W-10 | The sign-in page? | **Changed by Kris (2026-10-19):** branded per studio. Cognito's managed login has no Hebrew and no right-to-left, so it is a screen of our own in the members app over Cognito's API (docs/36, ADR-0028), design B. The console keeps the Hosted UI. |
 | W-11 | Is branding part of a paid plan? | Every studio on the pilot plan gets it. When plans are priced (docs/28 B-1), Kris decides. |
 | W-12 | Does Tempo's name stay anywhere for members? | A small "built with Tempo" line in the member app's profile and on the join page. |
 
