@@ -175,6 +175,16 @@ export class AuthClient {
     return flow.returnTo;
   }
 
+  /**
+   * Takes the tokens from the app's own sign-in screen (Cognito `USER_AUTH`, docs/36 section 5) and stores them as
+   * the code exchange does, so refresh and sign-out work the same. The ID token is not kept.
+   */
+  adopt(tokens: { accessToken: string; refreshToken: string; expiresIn: number }): void {
+    this.setSession(
+      this.toSession({ access_token: tokens.accessToken, expires_in: tokens.expiresIn }, tokens.refreshToken),
+    );
+  }
+
   /** A valid access token, refreshed when it is about to expire; null when signed out. */
   async getAccessToken(): Promise<string | null> {
     const session = this.session;
