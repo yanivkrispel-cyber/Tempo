@@ -234,7 +234,10 @@ test("4. Noa shows her entry pass, staff check her in with the code, and the liv
 test("5. the owner's today page shows sales, occupancy and the check-in; the search finds Noa", async () => {
   for (const [page, screen] of await ownerScreens()) {
     await page.goto(console_("/today"));
-    await expect(page.getByRole("heading", { level: 1, name: "היום בסטודיו" })).toBeVisible();
+    // The greeting of the OwnerDashboard mockup, by the studio's clock (#378 item 1).
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^(בוקר טוב|צהריים טובים|ערב טוב|לילה טוב), / }),
+    ).toBeVisible();
     await expect(page.getByRole("region", { name: "מכירות החודש" })).toContainText("600");
     await expect(page.getByRole("region", { name: "תפוסה השבוע" })).toBeVisible();
     const feed = page.getByRole("complementary", { name: "מה קורה בסטודיו" });
