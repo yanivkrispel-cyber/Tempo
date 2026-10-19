@@ -10,7 +10,7 @@ const tokens = JSON.parse(
   readFileSync(new URL("../../../../packages/design-system/tokens/tokens.json", import.meta.url), "utf8"),
 ) as {
   color: { tokens: Array<{ name: string; value: Record<string, string> | string }> };
-  accents: { list: Array<{ id: string; value: Record<"light" | "dark", Record<string, string>> }> };
+  accents: { list: Array<{ id: string; value: Record<"light" | "dark", { brand: string; "brand-ink": string }> }> };
 };
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
