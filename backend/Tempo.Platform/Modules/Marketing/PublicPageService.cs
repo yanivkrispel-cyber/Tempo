@@ -1,0 +1,129 @@
+using System.Text.RegularExpressions;
+using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.BuildingBlocks.Persistence;
+using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Audit;
+
+namespace Tempo.Platform.Modules.Marketing;
+
+/// <summary>The studio's public page settings; version 0 while nothing was saved (the defaults: off, open join on).</summary>
+public sealed record PublicPageView(bool Enabled, bool OpenJoin, Guid? IntroProductId, string? SuggestWeeklyAt, long Version);
+
+public sealed record PublicPageChanges(bool? Enabled, bool? OpenJoin, Guid? IntroProductId, string? SuggestWeeklyAt);
+
+/// <summary>
+/// The studio's public page (docs/37 sections 4.4 and 5, M-7, M-8, M-9, M-13): whether strangers see it, whether they
+/// may join without a code, which product is the intro offer, and when the weekly story is suggested. Staff read it
+/// (the console shows the link); `organization.settings.manage` changes it.
+/// </summary>
+public interface IPublicPageService
+{
+    Task<PublicPageView> GetAsync(TenantContext tenant, CancellationToken cancellationToken);
+
+    Task<PublicPageView> UpdateAsync(TenantContext tenant, PublicPageChanges changes, long? expectedVersion, CancellationToken cancellationToken);
+}
+
+public sealed partial class PublicPageService(IDataSourceProvider dataSources) : IPublicPageService
+{
+    private static readonly PublicPageView Defaults = new(false, true, null, null, 0);
+
+    public async Task<PublicPageView> GetAsync(TenantContext tenant, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        return await ReadAsync(unitOfWork, tenant.OrganizationId, lockRow: false, cancellationToken) ?? Defaults;
+    }
+
+    public async Task<PublicPageView> UpdateAsync(TenantContext tenant, PublicPageChanges changes, long? expectedVersion, CancellationToken cancellationToken)
+    {
+        if (!tenant.Has(Permissions.OrganizationSettingsManage))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "permission.denied", "You can't change the studio's public page.");
+        }
+
+        var enabled = changes.Enabled ?? throw Required("enabled");
+        var openJoin = changes.OpenJoin ?? throw Required("openJoin");
+        var weekly = string.IsNullOrWhiteSpace(changes.SuggestWeeklyAt) ? null : changes.SuggestWeeklyAt.Trim().ToLowerInvariant();
+        if (weekly is not null && !WeeklyPattern().IsMatch(weekly))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Validation, "suggestWeeklyAt.invalid", "Use a day and a time, like \"sun 09:00\".", "suggestWeeklyAt");
+        }
+
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var before = await ReadAsync(unitOfWork, tenant.OrganizationId, lockRow: true, cancellationToken) ?? Defaults;
+        if (expectedVersion is { } expected && expected != before.Version)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Conflict, "concurrency.conflict", "Someone changed this in the meantime. Reload and try again.");
+        }
+
+        if (changes.IntroProductId is { } product)
+        {
+            await using var active = unitOfWork.Command(
+                "SELECT 1 FROM scheduling.pass_products WHERE organization_id = $1 AND id = $2 AND status = 'active'",
+                tenant.OrganizationId, product);
+            if (await active.ExecuteScalarAsync(cancellationToken) is null)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Validation, "introProductId.invalid", "Choose one of the studio's active products.", "introProductId");
+            }
+        }
+
+        var after = new PublicPageView(enabled, openJoin, changes.IntroProductId, weekly, before.Version + 1);
+        var fields = new[]
+        {
+            (after.Enabled != before.Enabled, "enabled"),
+            (after.OpenJoin != before.OpenJoin, "openJoin"),
+            (after.IntroProductId != before.IntroProductId, "introProductId"),
+            (after.SuggestWeeklyAt != before.SuggestWeeklyAt, "suggestWeeklyAt")
+        }.Where(f => f.Item1).Select(f => f.Item2).ToList();
+        if (fields.Count == 0 && before.Version > 0)
+        {
+            return before;
+        }
+
+        await using (var upsert = unitOfWork.Command(
+            """
+            INSERT INTO organizations.public_pages (organization_id, enabled, open_join, intro_product_id, suggest_weekly_at, version, updated_at, updated_by)
+            VALUES ($1, $2, $3, $4, $5, 1, now(), $6)
+            ON CONFLICT (organization_id) DO UPDATE SET
+                enabled = EXCLUDED.enabled, open_join = EXCLUDED.open_join, intro_product_id = EXCLUDED.intro_product_id,
+                suggest_weekly_at = EXCLUDED.suggest_weekly_at, version = organizations.public_pages.version + 1,
+                updated_at = now(), updated_by = EXCLUDED.updated_by
+            """,
+            tenant.OrganizationId, enabled, openJoin, changes.IntroProductId, weekly, tenant.MembershipId))
+        {
+            await upsert.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        // Field names only (docs/37 section 5).
+        await AuditWriter.WriteAsync(
+            unitOfWork,
+            new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, "public_page.updated", "organization", tenant.OrganizationId, tenant.CorrelationId, new { fields }),
+            cancellationToken);
+        await unitOfWork.CommitAsync(cancellationToken);
+        return after;
+    }
+
+    private static async Task<PublicPageView?> ReadAsync(UnitOfWork unitOfWork, Guid organizationId, bool lockRow, CancellationToken cancellationToken)
+    {
+        await using var read = unitOfWork.Command(
+            $"SELECT enabled, open_join, intro_product_id, suggest_weekly_at, version FROM organizations.public_pages WHERE organization_id = $1{(lockRow ? " FOR UPDATE" : "")}",
+            organizationId);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        Guid? product = reader.IsDBNull(2) ? null : reader.GetGuid(2);
+        string? weekly = reader.IsDBNull(3) ? null : reader.GetString(3);
+        return new PublicPageView(reader.GetBoolean(0), reader.GetBoolean(1), product, weekly, reader.GetInt64(4));
+    }
+
+    private static DomainRuleViolationException Required(string field) =>
+        new(ViolationKind.Validation, $"{field}.required", $"{field} is required.", field);
+
+    [GeneratedRegex("^(sun|mon|tue|wed|thu|fri|sat) ([01][0-9]|2[0-3]):[0-5][0-9]$")]
+    private static partial Regex WeeklyPattern();
+
+    private Task<UnitOfWork> BeginAsync(TenantContext tenant, CancellationToken cancellationToken) =>
+        UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, tenant.UserAccountId, tenant.OrganizationId, cancellationToken);
+}

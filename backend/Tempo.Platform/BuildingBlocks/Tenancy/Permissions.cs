@@ -50,6 +50,10 @@ public static class Permissions
     public const string PeopleNotesManage = "people.notes.manage";
     public const string PeopleNotesModerate = "people.notes.moderate";
 
+    // Studio marketing (docs/37 section 5), seeded by migration 0034: every class for owner and admin, one's own for staff.
+    public const string MarketingPublish = "marketing.publish";
+    public const string MarketingPublishOwn = "marketing.publish.own";
+
     /// <summary>Every key with what it allows, for the role screen (`GET /permissions`).</summary>
     public static readonly IReadOnlyDictionary<string, string> Catalog = new Dictionary<string, string>
     {
@@ -82,7 +86,9 @@ public static class Permissions
         [PeopleTagsManage] = "Create, rename and delete the studio's tags",
         [PeopleNotesView] = "Read staff notes on people",
         [PeopleNotesManage] = "Add staff notes and delete your own",
-        [PeopleNotesModerate] = "Delete anyone's staff note"
+        [PeopleNotesModerate] = "Delete anyone's staff note",
+        [MarketingPublish] = "Make stories and links for any class",
+        [MarketingPublishOwn] = "Make stories and links for your own classes"
     };
 }
 
@@ -111,7 +117,7 @@ public static class SystemRoles
             Permissions.ScheduleView, Permissions.ScheduleManage, Permissions.BookingsManage, Permissions.AttendanceMark,
             Permissions.PassesView, Permissions.PassesManage, Permissions.BillingView, Permissions.ReportsView,
             Permissions.PeopleImport, Permissions.PeopleTagsManage, Permissions.PeopleNotesView, Permissions.PeopleNotesManage,
-            Permissions.PeopleNotesModerate
+            Permissions.PeopleNotesModerate, Permissions.MarketingPublish, Permissions.MarketingPublishOwn
         });
 
     public static readonly SystemRole Staff = new(
@@ -123,7 +129,7 @@ public static class SystemRoles
         {
             Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage,
             Permissions.ScheduleView, Permissions.BookingsManage, Permissions.AttendanceMark, Permissions.PassesView,
-            Permissions.PeopleNotesView, Permissions.PeopleNotesManage
+            Permissions.PeopleNotesView, Permissions.PeopleNotesManage, Permissions.MarketingPublishOwn
         });
 
     public static readonly SystemRole Client = new(

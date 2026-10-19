@@ -264,11 +264,12 @@ public sealed record InstructorProfileResponse(
     Uri? PhotoUrl,
     Uri? PhotoSmallUrl,
     bool Visible,
-    IReadOnlyList<SessionResponse>? NextSessions);
+    IReadOnlyList<SessionResponse>? NextSessions,
+    bool PublicProfile);
 
 public sealed record InstructorListResponse(IReadOnlyList<InstructorProfileResponse> Items);
 
-public sealed record StaffProfileRequest(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible);
+public sealed record StaffProfileRequest(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible, bool? PublicProfile);
 
 /// <summary>`MemberNoteRequest`: the instructor's note to a class; null or empty clears it.</summary>
 public sealed record MemberNoteRequest(string? Note, bool? ApplyToWeekly);
