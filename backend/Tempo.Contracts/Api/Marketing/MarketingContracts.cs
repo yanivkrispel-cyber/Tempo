@@ -46,3 +46,16 @@ public sealed record PublicJoinRequest(string? Src);
 public sealed record PublicJoinResponse(Guid OrganizationId, Guid MembershipId, bool Created, PublicIntroPassResponse? IntroPass);
 
 public sealed record PublicIntroPassResponse(Guid PassId, string ProductName, bool ToPayAtStudio);
+
+/// <summary>`MarketingLinkInput`: where the link goes, which template made it, and the class it points at.</summary>
+public sealed record CreateMarketingLinkRequest(string? Channel, string? Template, Guid? SessionId);
+
+/// <summary>`MarketingLink`: `Url` is the members-app address with `?src=`.</summary>
+public sealed record MarketingLinkResponse(Guid Id, string Code, string Channel, string? Template, Guid? SessionId, Uri Url, DateTimeOffset CreatedAt);
+
+/// <summary>`SourceReport` (docs/37 section 6): per channel and per link, new members, bookings and attended bookings.</summary>
+public sealed record SourceReportResponse(int Days, IReadOnlyList<ChannelSourceResponse> ByChannel, IReadOnlyList<LinkSourceResponse> ByLink);
+
+public sealed record ChannelSourceResponse(string Channel, int Members, int Bookings, int Attended);
+
+public sealed record LinkSourceResponse(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, int Members, int Bookings, int Attended);

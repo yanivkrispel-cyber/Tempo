@@ -4256,7 +4256,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
-        SourceCounts: {
+        ChannelSource: {
+            channel: components["schemas"]["MarketingChannel"];
             /** @description New memberships whose first touch is this source. */
             members: number;
             /** @description Bookings whose last touch is this source. */
@@ -4264,22 +4265,25 @@ export interface components {
             /** @description Of those bookings, how many were attended. */
             attended: number;
         };
+        LinkSource: {
+            /** Format: uuid */
+            linkId: string;
+            code: string;
+            channel: components["schemas"]["MarketingChannel"];
+            template: string | null;
+            /** Format: uuid */
+            sessionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            members: number;
+            bookings: number;
+            attended: number;
+        };
         SourceReport: {
             days: number;
-            byChannel: (components["schemas"]["SourceCounts"] & {
-                channel: components["schemas"]["MarketingChannel"];
-            })[];
-            byLink: (components["schemas"]["SourceCounts"] & {
-                /** Format: uuid */
-                linkId: string;
-                code: string;
-                channel: components["schemas"]["MarketingChannel"];
-                template: string | null;
-                /** Format: uuid */
-                sessionId: string | null;
-                /** Format: date-time */
-                createdAt: string;
-            })[];
+            byChannel: components["schemas"]["ChannelSource"][];
+            /** @description Links with sign-ups or bookings in the window, and links made in it; at most 200. */
+            byLink: components["schemas"]["LinkSource"][];
         };
         /** @description A W3C web app manifest for one studio, so its member names are the standard's own (snake_case): `id`, `name`, `short_name` (the brand's app name), `lang` `he`, `dir` `rtl`, `start_url`, `scope`, `display` `standalone`, `orientation`, `background_color`, `theme_color` (the accent) and `icons` (`src`, `sizes`, `type` `image/png`, `purpose` `any` or `maskable`). */
         StudioManifest: {
