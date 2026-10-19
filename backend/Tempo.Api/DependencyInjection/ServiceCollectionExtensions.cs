@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAccountDeletionService, AccountDeletionService>();
         services.AddSingleton<IAccountProfiles, AccountProfiles>();
         services.AddSingleton<IOrganizationService, OrganizationService>();
+        services.AddSingleton<IBrandService, BrandService>();
         services.AddSingleton<IMemberService, MemberService>();
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();
