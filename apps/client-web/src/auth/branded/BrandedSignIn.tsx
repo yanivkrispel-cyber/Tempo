@@ -601,21 +601,37 @@ function EmailField({ value, onChange }: { value: string; onChange: (value: stri
   );
 }
 
-/** Six digits: the phone offers the code from the SMS or mail bar, and anything but digits is dropped. */
+/**
+ * Six digits shown as six boxes. One real input sits over the boxes, so the phone still offers the code from the SMS
+ * or mail bar, a paste fills all six, and anything but digits is dropped.
+ */
 function CodeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <Field label="קוד בן שש ספרות">
-      <Input
-        className={styles.code}
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="[0-9]*"
-        maxLength={6}
-        value={value}
-        onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 6))}
-        dir="ltr"
-      />
+      <div className={styles.codeBoxes} dir="ltr">
+        {Array.from({ length: 6 }, (_, index) => (
+          <span
+            key={index}
+            className={styles.codeBox}
+            data-filled={index < value.length || undefined}
+            data-current={index === Math.min(value.length, 5) || undefined}
+            aria-hidden="true"
+          >
+            {value[index] ?? ""}
+          </span>
+        ))}
+        <Input
+          className={styles.codeInput}
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]*"
+          maxLength={6}
+          value={value}
+          onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 6))}
+          dir="ltr"
+        />
+      </div>
     </Field>
   );
 }
@@ -675,7 +691,7 @@ function ResendButton({ onResend, disabled }: { onResend: () => void; disabled: 
   }, [left]);
   return (
     <button type="button" className={styles.link} onClick={onResend} disabled={disabled || left > 0}>
-      {left > 0 ? `שלחו שוב בעוד ${left} שניות` : "שלחו שוב"}
+      {left > 0 ? `שלחו שוב בעוד ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "שלחו שוב"}
     </button>
   );
 }
