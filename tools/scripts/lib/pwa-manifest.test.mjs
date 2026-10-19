@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { checkApp, checkManifest, manifestHref, pngSize } from "./pwa-manifest.mjs";
+import { checkApp, checkManifest, checkStudio, manifestHref, pngSize } from "./pwa-manifest.mjs";
 
 const APP = "https://tempo-members.pages.dev/";
 const MANIFEST_URL = "https://tempo-members.pages.dev/manifest.webmanifest";
@@ -153,4 +153,62 @@ test("checkApp reports a manifest that is not JSON", async () => {
   const problems = await checkApp(APP, { fetchImpl });
   assert.equal(problems.length, 1);
   assert.match(problems[0], /^manifest https:\/\/tempo-members\.pages\.dev\/manifest\.webmanifest is not JSON/);
+});
+
+// --- one studio's own app (docs/35 W-6, board #380 K2) ---
+const API = "https://api.example.com";
+const STUDIO_MANIFEST = `${API}/api/v1/public/studios/neshima/manifest.webmanifest`;
+
+function studioManifest(overrides = {}) {
+  return {
+    id: "https://tempo-members.pages.dev/s/neshima/",
+    name: "סטודיו נשימה",
+    short_name: "נשימה",
+    start_url: "https://tempo-members.pages.dev/s/neshima/",
+    scope: "https://tempo-members.pages.dev/s/neshima/",
+    display: "standalone",
+    icons: [
+      { src: "icons/192?v=3", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "icons/512?v=3", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "icons/512-maskable?v=3", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+    ...overrides,
+  };
+}
+
+function studioSite(manifest = studioManifest(), cors = "https://tempo-members.pages.dev") {
+  const icon = (name, side) => ({ type: "image/png", body: png(side, side) });
+  const entries = {
+    [STUDIO_MANIFEST]: { type: "application/manifest+json", body: JSON.stringify(manifest), cors },
+    [`${API}/api/v1/public/studios/neshima/icons/192?v=3`]: icon("192", 192),
+    [`${API}/api/v1/public/studios/neshima/icons/512?v=3`]: icon("512", 512),
+    [`${API}/api/v1/public/studios/neshima/icons/512-maskable?v=3`]: icon("512-maskable", 512),
+  };
+  const fetchImpl = async (url) => {
+    const entry = entries[String(url)];
+    if (!entry) return new Response("{}", { status: 404, headers: { "content-type": "application/problem+json" } });
+    const headers = { "content-type": entry.type };
+    if (entry.cors) headers["access-control-allow-origin"] = entry.cors;
+    return new Response(entry.body, { status: 200, headers });
+  };
+  return fetchImpl;
+}
+
+test("checkStudio passes a studio whose manifest lives on the API and whose app lives on the members app", async () => {
+  assert.deepEqual(await checkStudio(API, APP, "neshima", { fetchImpl: studioSite() }), []);
+});
+
+test("checkStudio wants id, start_url and scope absolute on the members app, at the studio's path", async () => {
+  const relative = studioManifest({ id: "/s/neshima/", start_url: "/s/neshima/", scope: "/s/neshima/" });
+  const problems = await checkStudio(API, APP, "neshima", { fetchImpl: studioSite(relative) });
+  assert.ok(problems.some((p) => p.includes("start_url")), problems.join("; "));
+  assert.ok(problems.some((p) => p.includes("scope")), problems.join("; "));
+  assert.ok(problems.some((p) => p.startsWith("id")), problems.join("; "));
+});
+
+test("checkStudio wants CORS for the members app, and reports a studio the API doesn't know", async () => {
+  const noCors = await checkStudio(API, APP, "neshima", { fetchImpl: studioSite(studioManifest(), null) });
+  assert.ok(noCors.some((p) => p.includes("Access-Control-Allow-Origin")), noCors.join("; "));
+  const unknown = await checkStudio(API, APP, "nobody", { fetchImpl: studioSite() });
+  assert.deepEqual(unknown, [`manifest ${API}/api/v1/public/studios/nobody/manifest.webmanifest answers 404`]);
 });

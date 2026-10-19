@@ -20,7 +20,10 @@ public sealed class ArchitectureTests
     private static readonly string[] PublicRoutes =
     [
         "/api/v1/health",
-        "/openapi/{documentName}.json"
+        "/openapi/{documentName}.json",
+        // A studio's installable app (docs/35 W-6): its manifest and icons carry its name, brand and slug, no person.
+        "/api/v1/public/studios/{slug}/manifest.webmanifest",
+        "/api/v1/public/studios/{slug}/icons/{size}"
     ];
 
     [Fact]

@@ -66,6 +66,7 @@ try
     app.MapAccountEndpoints();
     app.MapOrganizationEndpoints();
     app.MapBrandEndpoints();
+    app.MapPublicStudioEndpoints();
     app.MapRoleEndpoints();
     app.MapOwnershipEndpoints();
     app.MapPeopleEndpoints();

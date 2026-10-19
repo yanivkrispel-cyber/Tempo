@@ -19,6 +19,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/studios/{slug}/manifest.webmanifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * An active studio's web app manifest, for its own installable app (anyone)
+         * @description docs/35 section 5 (W-6, WL4). `id`, `start_url` and `scope` are absolute on the members app (`<members app>/s/<slug>/`); `icons[].src` are relative to this URL and carry the brand's version. Cached for five minutes. 404 `studio.not_found` for an unknown, suspended or removed studio. No person's data.
+         */
+        get: operations["getStudioManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/icons/{size}": {
+        parameters: {
+            query?: {
+                /** @description The brand's version, so a changed icon gets a new URL. */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                size: "192" | "512" | "512-maskable" | "180";
+            };
+            cookie?: never;
+        };
+        /**
+         * An active studio's home-screen icon as PNG (anyone)
+         * @description The studio's icon on its background, or its initials on its accent when it has none (W-2). `180` is for iOS's `apple-touch-icon`. `Cache-Control: public, max-age=31536000, immutable`. 404 for an unknown size or studio.
+         */
+        get: operations["getStudioIcon"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -3914,6 +3964,10 @@ export interface components {
             /** @description Also the weekly class's note and its future sessions. */
             applyToWeekly?: boolean;
         };
+        /** @description A W3C web app manifest for one studio, so its member names are the standard's own (snake_case): `id`, `name`, `short_name` (the brand's app name), `lang` `he`, `dir` `rtl`, `start_url`, `scope`, `display` `standalone`, `orientation`, `background_color`, `theme_color` (the accent) and `icons` (`src`, `sizes`, `type` `image/png`, `purpose` `any` or `maskable`). */
+        StudioManifest: {
+            [key: string]: unknown;
+        };
         /**
          * @description The eight vetted accents of the design system (docs/35 section 3, W-1); never a free colour.
          * @enum {string}
@@ -5049,6 +5103,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description The studio's slug, as in its public links. */
+        StudioSlug: string;
         OrganizationId: string;
         MembershipId: string;
         /** @description The `id` of the last item on the previous page. */
@@ -5096,6 +5152,60 @@ export interface operations {
             };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Problem"];
+        };
+    };
+    getStudioManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The manifest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/manifest+json": components["schemas"]["StudioManifest"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getStudioIcon: {
+        parameters: {
+            query?: {
+                /** @description The brand's version, so a changed icon gets a new URL. */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                size: "192" | "512" | "512-maskable" | "180";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PNG. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     startSession: {

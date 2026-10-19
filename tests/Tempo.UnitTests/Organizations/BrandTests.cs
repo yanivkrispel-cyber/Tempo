@@ -86,6 +86,38 @@ public sealed class BrandTests
         plain.GetPixel(100, 256).Should().Be(SKColors.White, "the plain icon gives the mark 72%");
     }
 
+    [Theory]
+    [InlineData("סטודיו נשימה", "סנ")]
+    [InlineData("Flow studio", "FS")]
+    [InlineData("yoga", "YO")]
+    [InlineData("  ", "T")]
+    [InlineData("ב׳ סטודיו", "בס")]
+    public void TheInitials_AreTheFirstLettersOfTwoWords_OrOfOneWord(string name, string expected) =>
+        StudioIcons.Initials(name).Should().Be(expected);
+
+    [Fact]
+    public void TheInitialsIcon_DrawsWhiteLettersOnTheAccent_InEverySize()
+    {
+        var icons = StudioIcons.RenderInitials("סטודיו נשימה", "#855f65");
+
+        icons.Keys.Should().BeEquivalentTo("192", "512", "512-maskable", "180");
+        using var png = SKBitmap.Decode(icons["512"]);
+        png.GetPixel(0, 0).Should().Be(SKColor.Parse("#855f65"));
+        var white = 0;
+        for (var x = 0; x < 512; x += 2)
+        {
+            for (var y = 0; y < 512; y += 2)
+            {
+                if (png.GetPixel(x, y) == SKColors.White)
+                {
+                    white++;
+                }
+            }
+        }
+
+        white.Should().BeGreaterThan(500, "the embedded Hebrew face draws the letters");
+    }
+
     private static byte[] Mark(int width, int height)
     {
         using var bitmap = new SKBitmap(width, height);
