@@ -45,6 +45,10 @@ Create client
 
 Scheduling, CRM, merchant payments, advanced notifications, white label and reporting based on pilot evidence.
 
+Studio marketing (`docs/37_Studio_Marketing_LLD.md`, D23) runs in three stages: A (public studio page, links
+with sources, the story generator) before the first pilot studio goes live; B (member share cards, events, referrals)
+two to four weeks into the pilot; C (video, Meta publishing, AI captions) after revenue.
+
 ## 9. Phase 7 — Production Readiness
 
 Security review, penetration test, DR, SLOs, support, retention, billing ops, incidents, privacy and load tests.
