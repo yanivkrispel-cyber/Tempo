@@ -4449,8 +4449,11 @@ export interface components {
             }[];
         };
         Suggestion: {
-            /** @enum {string} */
-            kind: "passes_ending" | "members_at_risk" | "waitlist_pressure";
+            /**
+             * @description The `story_*` cards (docs/37 section 7.4, M-13) come with `marketing.publish` and the public page on: `story_weekly` from the owner's day and time (count = this week's classes), `story_spot_opened` for a place freed after the waitlist closed, 90 minutes or more before the class (count = places, with the session), `story_schedule_changed` for classes of the next 7 days cancelled or given a new instructor in the last 24 hours (count).
+             * @enum {string}
+             */
+            kind: "passes_ending" | "members_at_risk" | "waitlist_pressure" | "story_weekly" | "story_spot_opened" | "story_schedule_changed";
             count: number;
             people: components["schemas"]["PersonRef"][];
             amountAgorot?: number | null;
