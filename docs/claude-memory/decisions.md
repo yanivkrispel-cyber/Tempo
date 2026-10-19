@@ -77,3 +77,14 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   mapped opens its map with "המתאמנים בוחרים מכשיר" on and one reformer per place (grid as square as fits, up to
   12×12), and a new room opens its map right after it is created. Nothing changes until the owner saves; the server
   default (`spot_selection false`, docs/33 X-1) stays, so a room nobody mapped still books without spots.
+- **D23 studio marketing, stories from live data (2026-10-19):** Kris asked that a studio owner can make Instagram
+  stories like the ones studios post today, and chose the recommendation for every question ("בוא נלך לפי
+  ההמלצה"). Plan: `docs/37_Studio_Marketing_LLD.md`. Stages A and B are built on board #380 the same night,
+  after its white label tasks (Kris: "תכניס את הכל למשימות הלילה"). Stage A: a public studio and class page with sign-up, open join and an intro pass marked "to pay at the studio";
+  source codes on every link with a "where bookings came from" report; a console story generator drawn on Canvas in
+  the browser (four templates, share sheet or download, the link copied for Instagram's link sticker, $0); WhatsApp
+  text; suggestions to the owner. No Instagram connection in stage A (the API has no link sticker). Instructors make
+  stories for their own classes only. Stage B: member "I'm in" and milestone cards, meet the
+  instructor, events, bring a friend, QR poster, highlight covers. Stage C (video, Meta auto-publishing, AI captions)
+  only after the first paying studio; everything stays $0 until then (ADR-0021).
+  (D21 and D22 are board #380's white label and branded sign-in.)
