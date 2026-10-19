@@ -44,7 +44,11 @@ public sealed record PublicSessionResponse(
     PublicInstructorResponse? Instructor,
     string Availability,
     int? SpotsLeft,
-    bool WaitlistOpen);
+    bool WaitlistOpen,
+    PublicEventResponse? Event);
+
+/// <summary>An event's public face: shown in its own layout on the public page (docs/37 section 8.4).</summary>
+public sealed record PublicEventResponse(string Title, string? Description, int? PriceAgorot, bool PassRequired);
 
 public sealed record PublicClassTypeResponse(string Name, string Category, string Color);
 

@@ -5298,6 +5298,11 @@ components:
           maxLength: 200
           description: The instructor's note to the class (docs/33 section 7), e.g. what to bring.
         version: { type: string }
+        event:
+          oneOf:
+            - $ref: "#/components/schemas/SessionEvent"
+            - type: "null"
+          description: Set on a one-off session that is an event or a workshop (docs/37 section 8.4).
 
     SessionList:
       type: object
@@ -5318,6 +5323,17 @@ components:
         instructorMembershipId: { type: string, format: uuid }
         roomId: { type: string, format: uuid }
         capacity: { type: integer, minimum: 1, maximum: 500 }
+        event:
+          type: [object, "null"]
+          description: >-
+            Makes the one-off session an event or a workshop (docs/37 section 8.4): 400 `event.title.invalid` (1 to 60
+            characters), `event.description.invalid` (up to 600), `event.priceAgorot.invalid` (0 or more).
+            `passRequired` defaults to true; false books without a pass, to pay at the studio.
+          properties:
+            title: { type: string, maxLength: 60 }
+            description: { type: [string, "null"], maxLength: 600 }
+            priceAgorot: { type: [integer, "null"], minimum: 0 }
+            passRequired: { type: boolean, default: true }
 
     UpdateSessionRequest:
       type: object
@@ -5370,6 +5386,7 @@ components:
           oneOf:
             - $ref: "#/components/schemas/SpotRef"
             - type: "null"
+        toPayAtStudio: { type: boolean, description: "A place at an event without a pass (docs/37 8.4): paid at the studio, shown on the roster." }
 
     CreateBookingRequest:
       type: object
@@ -5655,7 +5672,7 @@ components:
 
     PublicSession:
       type: object
-      required: [id, startsAt, minutes, classType, roomName, coverUrl, instructor, availability, spotsLeft, waitlistOpen]
+      required: [id, startsAt, minutes, classType, roomName, coverUrl, instructor, availability, spotsLeft, waitlistOpen, event]
       properties:
         id: { type: string, format: uuid }
         startsAt: { type: string, format: date-time }
@@ -5681,6 +5698,15 @@ components:
         availability: { $ref: "#/components/schemas/PublicSessionAvailability" }
         spotsLeft: { type: [integer, "null"], description: "Only when `few`." }
         waitlistOpen: { type: boolean }
+        event:
+          type: [object, "null"]
+          description: An event shows in its own layout (docs/37 section 8.4).
+          required: [title, description, priceAgorot, passRequired]
+          properties:
+            title: { type: string }
+            description: { type: [string, "null"] }
+            priceAgorot: { type: [integer, "null"] }
+            passRequired: { type: boolean }
 
     PublicSessionList:
       type: object

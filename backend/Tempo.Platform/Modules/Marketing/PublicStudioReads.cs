@@ -30,7 +30,11 @@ public sealed record PublicSessionView(
     PublicInstructorView? Instructor,
     string Availability,
     int? SpotsLeft,
-    bool WaitlistOpen);
+    bool WaitlistOpen,
+    PublicEventView? Event = null);
+
+/// <summary>An event's public face (docs/37 section 8.4): its title, description, price shown, and whether a pass is needed.</summary>
+public sealed record PublicEventView(string Title, string? Description, int? PriceAgorot, bool PassRequired);
 
 /// <summary>
 /// The public read model of docs/37 section 4.2 (MK2). It selects only the studio's face and its sessions' shape:
@@ -58,7 +62,8 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
         SELECT s.id, s.starts_at, s.ends_at, ct.name, ct.category, ct.color, ct.cover_media_id, r.name,
                s.capacity, s.booked_count, s.status,
                sp.public_profile IS TRUE, pe.display_name, sp.photo_media_id, sp.headline, sp.instagram_handle,
-               coalesce(bp.waitlist_enabled, true), coalesce(bp.waitlist_cutoff_hours, 2)
+               coalesce(bp.waitlist_enabled, true), coalesce(bp.waitlist_cutoff_hours, 2),
+               s.event_title, s.event_description, s.event_price_agorot, s.pass_required
         FROM scheduling.sessions s
         JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
         LEFT JOIN scheduling.rooms r ON r.organization_id = s.organization_id AND r.id = s.room_id
@@ -168,10 +173,24 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
                 instructor,
                 availability,
                 availability == "few" ? left : null,
-                waitlistOpen));
+                waitlistOpen,
+                EventOf(reader)));
         }
 
         return sessions;
+    }
+
+    /// <summary>The event's columns (18 to 21 of the session select); null for a regular class.</summary>
+    private static PublicEventView? EventOf(Npgsql.NpgsqlDataReader reader)
+    {
+        if (reader.IsDBNull(18))
+        {
+            return null;
+        }
+
+        string? description = reader.IsDBNull(19) ? null : reader.GetString(19);
+        int? price = reader.IsDBNull(20) ? null : reader.GetInt32(20);
+        return new PublicEventView(reader.GetString(18), description, price, reader.GetBoolean(21));
     }
 
     /// <summary>M-10: cancelled, full, few (3 or fewer left) or open.</summary>
