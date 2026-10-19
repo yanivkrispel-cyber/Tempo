@@ -40,3 +40,8 @@ GRANT SELECT, INSERT ON marketing.referral_rewards TO $app_role$;
 ALTER TABLE notifications.preferences DROP CONSTRAINT preferences_group_check;
 ALTER TABLE notifications.preferences ADD CONSTRAINT preferences_group_check
     CHECK ("group" IN ('bookings', 'reminders', 'studio', 'celebrations'));
+
+-- A milestone is about the person themself (section 8.2), so a request may have a person as its subject.
+ALTER TABLE notifications.requests DROP CONSTRAINT requests_subject_type_check;
+ALTER TABLE notifications.requests ADD CONSTRAINT requests_subject_type_check
+    CHECK (subject_type IN ('booking', 'session', 'pass', 'session_message', 'announcement', 'person'));
