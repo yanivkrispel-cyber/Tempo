@@ -1,0 +1,160 @@
+/* Design B of the branded sign-in (docs/36): the studio's photo fills the screen, a glass sheet holds the step.
+   Colors, glass and type come from @tempo/design-system; this file only places them. */
+.stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  color: #ffffff;
+  background: linear-gradient(160deg, var(--taupe), var(--taupe-deep));
+}
+.photo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #18130f52 0%, #18130f00 30%, #18130f00 45%, var(--scrim-photo) 100%);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: max(40px, env(safe-area-inset-top)) 16px 24px;
+  margin-bottom: auto;
+}
+.logo {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  object-fit: cover;
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: #ffffff;
+  background: var(--glass-dark);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+}
+.studio {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1.1;
+  text-shadow: 0 2px 18px #00000059;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 16px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  color: var(--ink);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.heading p {
+  margin: 0;
+}
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+}
+.code {
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.link {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--brand-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.link:disabled {
+  color: var(--ink-muted);
+  opacity: 0.6;
+  text-decoration: none;
+  cursor: default;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.footer .link {
+  font-size: 14px;
+}
+.built {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+/* A computer: the photo stays the stage, the studio's name on one side and the sheet as a floating card. */
+@media (min-width: 900px) {
+  .stage {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 48px;
+    padding: 56px clamp(48px, 7vw, 120px);
+  }
+  .brand {
+    align-self: flex-end;
+    max-width: 460px;
+    margin: 0;
+    padding: 0;
+  }
+  .studio {
+    font-size: 52px;
+  }
+  .logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+  }
+  .sheet {
+    flex: none;
+    width: 420px;
+    padding: 36px 32px 20px;
+    border-radius: 30px;
+  }
+}
