@@ -46,8 +46,8 @@ Create client
 Scheduling, CRM, merchant payments, advanced notifications, white label and reporting based on pilot evidence.
 
 Studio marketing (`docs/37_Studio_Marketing_LLD.md`, D23) runs in three stages: A (public studio page, links
-with sources, the story generator) before the first pilot studio goes live; B (member share cards, events, referrals)
-two to four weeks into the pilot; C (video, Meta publishing, AI captions) after revenue.
+with sources, the story generator) and B (member share cards, events, referrals), both built on board #380 before
+the pilot; C (video, Meta publishing, AI captions) only after the first paying studio, $0 until then.
 
 ## 9. Phase 7 — Production Readiness
 

@@ -1,8 +1,9 @@
 # Studio Marketing LLD (stories, the public studio page, links that count)
 
-> **Status:** Approved direction (Kris, 2026-10-19: "בוא נלך לפי ההמלצה"). Q1 to Q6 of the research page are
-> answered with the recommendation (section 3). The new questions M-7 to M-14 carry defaults that apply unless Kris
-> changes them. Nothing here is built yet.
+> **Status:** Approved (Kris, 2026-10-19: "בוא נלך לפי ההמלצה"). Q1 to Q6 of the research page are answered with
+> the recommendation (section 3); M-7 to M-17 carry defaults that apply unless Kris changes them. **Stages A and B are
+> built on board #380 tonight** (Kris, 2026-10-19 evening), after its white label tasks; stage C waits for a paying
+> studio, and everything stays $0 until then (ADR-0021).
 > **Audience:** Kris, Ofir, the agents.
 > **Related:** docs/29 (sessions, occupancy, waitlist cutoff, passes), docs/30 (inbox, push, kinds), docs/31 (the
 > health gate), docs/33 (instructor profiles, pictures, insights and suggestions), docs/35 (brand, `/s/<slug>/`,
@@ -41,11 +42,11 @@ The links are on the research page.
 
 | Stage | What | When | Why then |
 |---|---|---|---|
-| **A** | Public studio and class pages with sign-up and booking; open join with a studio switch; an intro pass; source codes on links, memberships and bookings with a "where bookings came from" report; the story generator with four templates (week, last spots today, spot opened, schedule change); suggestions to the owner; the WhatsApp text. | **The next board after #380** (day plan 10, from 2026-10-20), as one night of two lanes. Must be on dev **before the first pilot studio goes live**. | It builds on tonight's work: the brand and `/s/<slug>/` (WL1, WL4, WL5) and the branded sign-up (docs/36). A pilot owner's first marketing question is "how do people sign up from Instagram". |
-| **B** | The member's "I'm in" card, milestone cards (10, 50, 100 classes), "meet the instructor", events and workshops with their own page and a countdown, bring-a-friend links, the QR poster, highlight covers, a weekly reminder to post. | **Two to four weeks into the pilot**, ordered by what the source report shows the pilot studio uses. | Member cards need real members and real bookings; the report tells us which channel matters. |
-| **C** | Animated stories (short video), automatic publishing through Meta (no link), a monthly "Wrapped" for members, AI-written Hebrew captions, a review turned into a card. | **After revenue** (ADR-0021). | Each one costs money or a Meta review: video rendering, AI tokens, a verified business with a privacy policy on our own domain. |
+| **A** | Public studio and class pages with sign-up and booking; open join with a studio switch; an intro pass; source codes on links, memberships and bookings with a "where bookings came from" report; the story generator with four templates (week, last spots today, spot opened, schedule change); suggestions to the owner; the WhatsApp text. | **Board #380, the night of 2026-10-19**, after the white label tasks it builds on (Kris moved it from the next board). Must be on dev **before the first pilot studio goes live**. | It builds on the same night's brand and `/s/<slug>/` (WL1, WL4, WL5) and the branded sign-up (docs/36). A pilot owner's first marketing question is "how do people sign up from Instagram". |
+| **B** | The member's "I'm in" card, milestone cards, "meet the instructor", events and workshops with their own page and a countdown, bring-a-friend links with a reward, the QR poster, highlight covers. | **Board #380 too, right after stage A** (Kris, 2026-10-19 evening). What doesn't finish by morning carries to the next board. | All $0 and built on stage A's links; ready before the pilot so the first studio's members can share from day one. |
+| **C** | Animated stories (short video), automatic publishing through Meta (no link), a monthly "Wrapped" for members, AI-written Hebrew captions, a review turned into a card. | **After the first paying studio** (Kris, 2026-10-19; ADR-0021). | Each one costs money or a Meta review: video rendering, AI tokens, a verified business with a privacy policy on our own domain. |
 
-Stage A has no recurring cost: the image is drawn in the owner's browser, the pictures are already on S3 (D17), the
+Stages A and B have no recurring cost: the image is drawn in the owner's browser, the pictures are already on S3 (D17), the
 pages are on Cloudflare Pages (ADR-0027). The one prerequisite that is not code is **the domain** (already decided:
 "buy before the pilot", 2026-10-13): a WhatsApp message and the poster show the link's address, and
 `tempo-members.pages.dev/s/noga` does not look like a studio's. Stage A works on `pages.dev` for dev.
@@ -75,6 +76,9 @@ New questions; the defaults apply unless Kris changes them:
 | M-12 | Attribution model? | **First touch on the membership, last touch on the booking**, both from the link's source code, kept 30 days in the browser (section 6). No cookies from third parties, no tracking pixels, no fingerprinting. |
 | M-13 | When does Tempo suggest a story to the owner? | Weekly (default Sunday 09:00, the owner can change or turn it off), when a place frees up after the waitlist closed, and when a session is cancelled or its instructor changes. At most three suggestions a day per studio. |
 | M-14 | Instructor details on a public page or a story? | Display name, photo, headline and Instagram handle from the instructor's profile (docs/33 section 5), only when the instructor turned on "show my profile publicly" (new switch, default off). Otherwise the class shows without an instructor. |
+| M-15 | The studio's own Instagram handle on member cards? | A field in "עמוד ציבורי" settings, empty by default; empty means no tag on the card. |
+| M-16 | Milestone thresholds? | 10, 25, 50, 100 and 200 attended classes in one studio. Not configurable in stage B. |
+| M-17 | Bring-a-friend reward? | Off until the owner picks a reward product. Then one pass of it per friend whose first booking is attended, at most 10 a month per member. |
 
 ## 4. The public studio page (stage A)
 
@@ -232,26 +236,103 @@ The owner gets a suggestion card in the console and an inbox item with push (doc
 At most three a day per studio (dedupe in the request key, docs/30). The cards join `GET /insights/suggestions` of
 docs/33 section 9.
 
-## 8. Stage B and C, planned in outline
+## 8. Stage B (built on board #380 after stage A)
 
-Each gets its own short section in this document before it is built.
+Every item is $0: drawn in the browser, data already in Tempo, existing notification channels. The one new library is
+`qrcode` (npm, MIT, runs in the browser) for the poster.
 
-- **"I'm in" card (M-5):** in the member app after a booking, a share button draws a card (class, time, spot,
-  instructor, the studio's tag) with a `member_card` link. Nothing about other members.
-- **Milestones:** at the 10th, 50th and 100th attended class, an inbox item and a card to share, from the history of
-  docs/33 section 9 (C3). Off for a member who turned it off.
-- **Meet the instructor:** a template from the public profile (M-14) and the instructor's next classes.
-- **Events and workshops:** a one-off session (docs/29) with a price shown, its own public page and a template with
-  room for a countdown sticker; reminders a week and a day before.
-- **Bring a friend:** a personal `referral` link per member; the friend gets the intro offer; the referrer gets an
-  entry by the owner's rule. Needs M-8 first.
-- **QR poster:** an A4 PNG (2480x3508) in the studio's brand with a `poster` link.
-- **Highlight covers:** round icons in the studio's accent for Instagram highlights (timetable, prices, how to get
-  here, instructors).
-- **Stage C:** animated stories (video rendered in the browser with WebCodecs where possible, else a paid renderer),
-  automatic publishing through Meta for stories without a link (needs the domain, a privacy policy and Meta's
-  review), a monthly "Wrapped" for members, AI captions in the studio's tone (cost approval), a high review turned
-  into a card with the member's consent.
+### 8.1 "I'm in": the member's card (M-5)
+
+- In the member app, after a booking succeeds and on the class's ticket, a button "שתפי" draws a 1080x1920 card on
+  Canvas: the class cover, class name, day and time, the spot number if there is one, the instructor if their
+  profile is public (M-14), the studio's name and accent, and the studio's Instagram handle when set (M-15). Never
+  another member's name or picture.
+- The link copied with it is `/s/<slug>/c/<sessionId>?src=<code>`, where the code is the member's own
+  `member_card` link (8.5).
+- Share and download exactly as the console does (section 7.3).
+
+### 8.2 Milestones
+
+- When attendance marks a booking `attended` (docs/29 section 6.4) and the person's attended count in that studio
+  reaches **10, 25, 50, 100 or 200** (M-16), the API writes a notification request of the new kind
+  `member.milestone` (dedupe key `member.milestone:{count}:{person_id}`), inbox and push, in a new member group
+  `celebrations` that the member can switch off (default on).
+- The inbox item opens `/s/<slug>/milestone/<count>`: a card drawn on Canvas with the count, hours on the mat (sum of
+  attended durations), the longest run of weeks in a row, the usual class time and the most frequent instructor.
+  `GET /api/v1/organizations/{id}/me/milestones` computes these live under RLS (docs/33 X-10: no table, no job).
+- Sharing is the member's own tap only. Nothing about a milestone is visible to other members.
+
+### 8.3 Meet the instructor
+
+A console template `instructor`: the instructor's photo, name, headline, a quote (the first sentence of the bio,
+editable in the story), the Instagram handle, and their classes in the next 7 days. Only for an instructor whose
+`public_profile` is on (M-14). The instructor can make their own (`marketing.publish.own`).
+
+### 8.4 Events and workshops
+
+- An event is a **one-off session** (docs/29) with event fields: `event_title` (up to 60 characters),
+  `event_description` (up to 600), `event_price_agorot` (shown only, like `price_agorot`), and `pass_required`
+  (default true).
+- `pass_required = false`: booking holds no pass entry; the booking is marked `to_pay_at_studio` (M-8), staff see it
+  on the roster. Capacity, waitlist, cancellation and the health gate work as for any session.
+- The console's one-off session form gets a switch "אירוע / סדנה" with the fields and a cover picture.
+- The public class page (4.1) shows an event in its own layout: title, description, date range in words, price,
+  places left.
+- A console template `event` with a free area for Instagram's countdown sticker, and a new reminder kind
+  `reminder.event_week` (7 days before) next to the existing `reminder.class_tomorrow` (docs/30).
+
+### 8.5 The member's own links, and bring a friend
+
+- `POST /api/v1/organizations/{id}/me/share-link` with `channel` `member_card` or `referral` returns the caller's own
+  link for that channel (one per member and channel, created on first use, then reused). Any active client
+  membership may call it; `marketing.links.created_by` is the member's membership.
+- **Bring a friend:** the member app's profile gets "הביאי חברה" with the referral link, a copy button and the
+  phone's share sheet (text only).
+- A friend who joins through the public page with a `referral` code is the referrer's referral (first touch, section
+  6). **Reward (M-17):** the studio picks a product in "עמוד ציבורי" settings (`referral_reward_product_id`, default
+  none = no reward). When the friend's **first booking is marked attended**, the referrer gets one pass of that
+  product, once per friend, at most 10 a month per referrer, audited `referral.rewarded` (ids only), and an inbox
+  item `member.referral_rewarded` ("חברה שהזמנת הגיעה לשיעור הראשון"; never the friend's name).
+- No reward when the friend was already a member or a recorded person of the studio before joining, or joined by a
+  join code or an invitation.
+
+### 8.6 The QR poster
+
+Console "פרסום", "פוסטר": an A4 portrait PNG (2480x3508) on Canvas, in the studio's brand: logo, name, a headline
+("סרקי והירשמי לשיעור"), the intro offer line if any, and a QR code of `/s/<slug>/?src=<poster code>` drawn by
+`qrcode` in the browser. Download only.
+
+### 8.7 Highlight covers
+
+Console "פרסום", "כיסויי היילייטס": six 1080x1920 PNGs, one icon each in a circle on the studio's accent:
+timetable, prices, about, instructors, how to get here, reviews. Icons from the design system's set. Downloaded one by
+one (no zip library).
+
+### 8.8 Database for stage B (one migration, numbered at build time)
+
+```sql
+ALTER TABLE scheduling.sessions
+    ADD COLUMN event_title        text NULL CHECK (length(event_title) BETWEEN 1 AND 60),
+    ADD COLUMN event_description  text NULL CHECK (length(event_description) <= 600),
+    ADD COLUMN event_price_agorot int  NULL CHECK (event_price_agorot >= 0),
+    ADD COLUMN pass_required      boolean NOT NULL DEFAULT true;
+ALTER TABLE scheduling.bookings ADD COLUMN to_pay_at_studio boolean NOT NULL DEFAULT false;
+ALTER TABLE organizations.public_pages
+    ADD COLUMN instagram_handle           text NULL CHECK (instagram_handle ~ '^[A-Za-z0-9._]{1,30}$'),
+    ADD COLUMN referral_reward_product_id uuid NULL;
+-- marketing.referral_rewards (organization_id, referrer_membership_id, friend_membership_id, pass_id, rewarded_at),
+-- unique (organization_id, friend_membership_id): one reward per friend.
+```
+
+New notification kinds `member.milestone`, `member.referral_rewarded` (group `celebrations`) and
+`reminder.event_week` (group `reminders`), each with a Hebrew default template (docs/30 `TemplateCatalog`).
+
+### 8.9 Stage C (after a paying studio, ADR-0021)
+
+Animated stories (video), automatic publishing through Meta for stories without a link (needs the domain, a privacy
+policy and Meta's review), a monthly "Wrapped" for members, AI captions in the studio's tone, a high review turned
+into a card with the member's consent. Each one needs Kris's approval with a price; none is built before a studio
+pays.
 
 ## 9. Privacy and security
 
@@ -279,19 +360,31 @@ Each gets its own short section in this document before it is built.
 | The domain | Already planned before the pilot (about US$10 to US$15 a year). |
 | Stage C | Video rendering, AI tokens and Meta's business verification each need Kris's approval with a price. |
 
-## 11. Build steps for stage A (the next board after #380)
+## 11. Build steps (board #380, night of 2026-10-19, after the white label tasks)
 
-| Step | What | Lane | After |
-|---|---|---|---|
-| MK1 | Migration: `public_pages`, `marketing.links`, the source columns, `public_intro`, `to_pay_at_studio`, the instructor `public_profile` flag; permissions `marketing.publish` and `marketing.publish.own`; contract | K | board #380 merged (0032, 0033 taken) |
-| MK2 | Public read API (4.2) on WL4's route group: the read model, buckets, caching, rate limits, the key test | K | MK1, WL4 |
-| MK3 | Open join with intro pass and first-touch source (4.3 step 3); the booking call takes the last-touch source | K | MK1 |
-| MK4 | Links API and the source report (section 6) | K | MK1 |
-| MK5 | S3 CORS `GET` for the two app origins; suggestions kind and triggers (7.4) | K | MK1 |
-| MO1 | Public pages in `client-web`: `/s/<slug>/` signed out, `/c/<id>`, `/week/<date>`; `src` capture; sign-up with `returnTo` into join, health declaration and booking (4.3) | O | MK2, MK3, docs/36's screens |
-| MO2 | Console "עמוד ציבורי" settings with preview (4.4), and the instructor's public switch | O | MK1 |
-| MO3 | Console "פרסום": the four templates on Canvas, share and download, the copied link, the WhatsApp text | O | MK4, MK5 (CORS) |
-| MO4 | Suggestion cards in the console; the source report screen | O | MK4, MK5 |
-| MK6 | Live check on dev: a test studio public, a story drawn and its link opened signed out, sign-up, join, book, and the report counts it; `premium-live-check.mjs` extended | K with O | all |
+Stage A first, then stage B. A step waits for the steps in "After". Migrations are K's; each takes the next free number
+when it is written (0032 and 0033 are #380's K1 and K5). What doesn't finish by 06:30 carries to the next board in
+the same order.
+
+| Step | Stage | What | Lane | After |
+|---|---|---|---|---|
+| MK1 | A | Migration: `public_pages`, `marketing.links`, the source columns, `public_intro`, `to_pay_at_studio` on passes, the instructor `public_profile` flag; permissions `marketing.publish` and `marketing.publish.own`; contract (post SYNC) | K | #380 K1, K5 |
+| MK2 | A | Public read API (4.2) on WL4's route group: the read model, buckets, caching, rate limits, the key test | K | MK1, #380 K2 |
+| MK3 | A | Open join with intro pass and first-touch source (4.3 step 3); the booking call takes the last-touch source | K | MK1 |
+| MK4 | A | Links API and the source report (section 6) | K | MK1 |
+| MK5 | A | S3 CORS `GET` for the two app origins; the `marketing.suggestion` kind and its triggers (7.4) | K | MK1 |
+| MO1 | A | Public pages in `client-web`: `/s/<slug>/` signed out, `/c/<id>`, `/week/<date>`; `src` capture; sign-up with `returnTo` into join, health declaration and booking (4.3) | O | MK2, MK3, #380 O3, O5 |
+| MO2 | A | Console "עמוד ציבורי" settings with preview (4.4), and the instructor's public switch | O | MK1 |
+| MO3 | A | Console "פרסום": the four templates on Canvas, share and download, the copied link, the WhatsApp text | O | MK4, MK5 |
+| MO4 | A | Suggestion cards in the console; the source report screen | O | MK4, MK5 |
+| MK6 | A | Live check on dev: a test studio public, a story drawn and its link opened signed out, sign-up, join, book, and the report counts it; `premium-live-check.mjs` extended | K with O | stage A merged |
+| MK7 | B | Migration for stage B (8.8); the three notification kinds with templates; contract (post SYNC) | K | MK1 |
+| MK8 | B | `me/share-link`; milestones on attendance and `me/milestones`; referral reward on the friend's first attendance; event booking without a pass; `reminder.event_week` | K | MK7, MK3 |
+| MO5 | B | Member app: "I'm in" card and share, the milestone card, "הביאי חברה" in the profile | O | MK8 |
+| MO6 | B | Console: the event switch on the one-off session form; the event layout on the public page; the `event` template | O | MK7, MO1 |
+| MO7 | B | Console: the `instructor` template, the QR poster (`qrcode`), the highlight covers | O | MO3 |
+| MK9 | B | Live check on dev for stage B: a milestone at 10 on a test member, a referral reward, an event booked without a pass | K with O | stage B merged |
 
 Every screen at 360 and 1280 px (D15), Hebrew right to left, fictional people only (the repo is public, D14).
+**$0 (ADR-0021):** no paid service and no new AWS resource; the only infrastructure change is a CORS rule on the
+existing bucket. No Meta connection, no WhatsApp or SMS provider, no AI, no video rendering (all stage C).
