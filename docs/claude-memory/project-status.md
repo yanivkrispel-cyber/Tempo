@@ -156,7 +156,9 @@ search), progress weeks, the design system v1.0 and both apps. All of it is on `
 | Dev's API reserves 20 concurrent executions (10 throttled parallel e2e runs: the 503s) | #364 |
 | `premium-live-check.mjs` (K4) and `demo-premium.mjs` (K5, test-studio-1 and -2 dressed with rooms, instructors, photos, a buddy pair, sales, arrivals) | #361 |
 | E10 on dev: `sync8` (buddies, spots, the scan, the live map) at 360 and 1280 px | O4 #366 |
-| Performance: the member home's layout shift (CLS 0.107) gone; the promotion is a toast | O5 #365 |
+| Performance: the member home's layout shift (CLS 0.107) gone (the promotion is a toast); the console today keeps its summary line while loading. Every measured page now under CLS 0.1 and LCP 2.5 s on dev | O5 #365, #376 |
+| The regression run of `screens` and sync2 to sync7 on dev, and its fixes (inline links underlined, the folded tab bar's names, the toast's close button at 44 px, the pressed secondary button) | O0 #350 #353 #363 #355 |
+| The today page as one compact table; the mockup comparison (O6), the larger gaps in #378 | #367; #377 |
 | White label plan, W-1 to W-12 with defaults, build steps WL1 to WL6 | K6 #362 (`docs/35`) |
 
 - Migrations on dev go up to **0031**; **0032** is the next free number.
