@@ -143,7 +143,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicStudio
-      x-tempo-planned: true
       summary: A studio's public page, when the studio turned it on (anyone)
       description: >-
         docs/37 section 4.2 (MK2). 404 `studio.not_found` for an unknown, suspended or removed studio, or one whose
@@ -164,7 +163,6 @@ paths:
     get:
       tags: [Public]
       operationId: listPublicSessions
-      x-tempo-planned: true
       summary: A public studio's sessions for up to 14 days, with occupancy buckets (anyone)
       description: >-
         MK2. `from` and `to` are local dates (`yyyy-mm-dd`, the studio's time zone); `to` at most 13 days after
@@ -191,7 +189,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicSession
-      x-tempo-planned: true
       summary: One session of a public studio (anyone)
       description: MK2. 404 `session.not_found` for a session of another studio or more than 60 days away.
       security: []
