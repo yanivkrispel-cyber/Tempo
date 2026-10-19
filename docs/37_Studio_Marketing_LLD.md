@@ -9,7 +9,8 @@
 > public manifest routes), docs/36 (branded sign-in and sign-up, board #380), ADR-0021 ($0 until revenue), D15
 > (every screen on a phone and a computer), D16 (Warm Glass).
 > **Research and mockups:** the RTL page https://claude.ai/artifact/7TfmXmwG3SnvMi7SJ2rRRZ (private to Kris): a
-> live story builder, nine templates, and the research with sources.
+> live story builder, nine templates, and the research with sources. A copy that opens offline:
+> `docs/design/mockups/marketing-2026-10-19/studio-stories.html` (the studio, people and numbers are fictional).
 
 Studio owners advertise their classes on Instagram stories every week. Today they copy the timetable by hand into
 Canva, write "מקומות אחרונים" themselves, and scribble a line over a class that was cancelled. Tempo already holds
