@@ -57,13 +57,13 @@ member app's `ClientId`. No secret, no AWS signature.
 | Step (design B) | Call | Body (the parts that matter) | Next |
 |---|---|---|---|
 | Email, then "המשך" | `InitiateAuth` | `AuthFlow: USER_AUTH`, `AuthParameters: { USERNAME: <email> }` (no preferred challenge) | `AvailableChallenges` (e.g. `PASSWORD`, `WEB_AUTHN`) and a `Session`. The screen shows Face ID first if `WEB_AUTHN` is there and the device supports it, else the password field. |
-| Password | `RespondToAuthChallenge` | `ChallengeName: SELECT_CHALLENGE`, `ChallengeResponses: { USERNAME, ANSWER: PASSWORD, PASSWORD }`, `Session` | tokens, or `SOFTWARE_TOKEN_MFA` |
+| Password | `RespondToAuthChallenge` | `ChallengeName: SELECT_CHALLENGE`, `ChallengeResponses: { USERNAME, ANSWER: PASSWORD, PASSWORD }`, `Session` | tokens, `SOFTWARE_TOKEN_MFA`, or a `PASSWORD` challenge that wants the password again in a second `RespondToAuthChallenge` (handle both shapes) |
 | Password in one step (known user, "use password") | `InitiateAuth` | `AuthParameters: { USERNAME, PREFERRED_CHALLENGE: PASSWORD, PASSWORD }` | tokens, or `SOFTWARE_TOKEN_MFA` |
 | Face ID / fingerprint | `RespondToAuthChallenge` (`ANSWER: WEB_AUTHN`) or `InitiateAuth` with `PREFERRED_CHALLENGE: WEB_AUTHN` | then `navigator.credentials.get({ publicKey: <CREDENTIAL_REQUEST_OPTIONS> })` | `RespondToAuthChallenge` `ChallengeName: WEB_AUTHN`, `ChallengeResponses: { USERNAME, CREDENTIAL: <AuthenticationResponseJSON> }` → tokens |
 | Six-digit app code (owners, staff) | `RespondToAuthChallenge` | `ChallengeName: SOFTWARE_TOKEN_MFA`, `ChallengeResponses: { USERNAME, SOFTWARE_TOKEN_MFA_CODE }`, `Session` | tokens |
 | Email code (after #304) | `InitiateAuth` with `PREFERRED_CHALLENGE: EMAIL_OTP`, then `RespondToAuthChallenge` `ChallengeName: EMAIL_OTP`, `{ USERNAME, EMAIL_OTP_CODE }` | | tokens |
-| Sign up | `SignUp` | `Username: <email>`, `Password`, `UserAttributes: [{ Name: email }]` | `UserConfirmed: false`, `CodeDeliveryDetails` (the six-digit code goes by email; Cognito's default sender works for this) |
-| The six digits after sign-up | `ConfirmSignUp` | `Username`, `ConfirmationCode` | a `Session`; then `InitiateAuth` `USER_AUTH` with that `Session` signs in (F-6) |
+| Sign up | `SignUp` | `Username: <email>`, `Password`, `UserAttributes: [{ Name: email }]` | `UserConfirmed: false`, `CodeDeliveryDetails` and a `Session` to keep for the confirmation (the six-digit code goes by email; Cognito's default sender works for this) |
+| The six digits after sign-up | `ConfirmSignUp` | `Username`, `ConfirmationCode`, and the `Session` from `SignUp` | a `Session`; then `InitiateAuth` `USER_AUTH` with that `Session` signs in (F-6) |
 | "שלחו שוב" (after 60 s) | `ResendConfirmationCode` | `Username` | |
 | Forgot password | `ForgotPassword`, then `ConfirmForgotPassword` | `Username`; then `Username`, `ConfirmationCode`, `Password` | back to the password step |
 | The one-time Face ID offer after a sign-in | `StartWebAuthnRegistration`, `navigator.credentials.create(...)`, `CompleteWebAuthnRegistration` | `AccessToken`; then `AccessToken`, `Credential: <RegistrationResponseJSON>` | 200, empty body |
@@ -81,6 +81,8 @@ whether an email exists.
 | `NotAuthorizedException` | wrong password, unknown user (with user-existence errors prevented), expired `Session`, a refused factor | "האימייל או הסיסמה לא נכונים" on the password step; on an expired session, back to the email step |
 | `UserNotConfirmedException` | signed up, never confirmed | to the six-digit confirmation, with a resend |
 | `PasswordResetRequiredException` | an admin reset | to forgot-password |
+| challenge `NEW_PASSWORD_REQUIRED` | a user an administrator created | a "choose a password" step (`RespondToAuthChallenge` with `NEW_PASSWORD`) |
+| challenge `MFA_SETUP` or `SELECT_MFA_TYPE` | the pool asks the user to set up MFA | send them to the Hosted UI, which can |
 | `CodeMismatchException` | wrong confirmation, reset or TOTP code | "הקוד לא נכון" |
 | `ExpiredCodeException` | old code | "הקוד פג. שלחנו חדש" plus resend |
 | `UsernameExistsException` | sign-up with a taken email | the same neutral text as success ("אם האימייל פנוי, שלחנו קוד"), then the confirm step; a real owner goes to sign-in or reset from there |
@@ -88,7 +90,7 @@ whether an email exists.
 | `InvalidParameterException` | malformed input; also a reset for a user without a recovery method | "בדקו את הפרטים ונסו שוב" |
 | `LimitExceededException`, `TooManyRequestsException`, `TooManyFailedAttemptsException` | Cognito's rate limits and lockout | "יותר מדי ניסיונות. נסו שוב בעוד כמה דקות" |
 | `CodeDeliveryFailureException` | the code email couldn't be sent | "לא הצלחנו לשלוח קוד. נסו שוב" |
-| `WebAuthnNotSupportedException`, `WebAuthnChallengeNotFoundException`, `WebAuthnRelyingPartyMismatchException`, `WebAuthnOriginNotAllowedException`, `WebAuthnCredentialNotSupportedException`, `WebAuthnConfigurationMissingException`, `WebAuthnClientMismatchException` | the passkey path fails | fall back to the password step quietly; the offer is not shown again on this device |
+| `WebAuthnNotSupportedException`, `WebAuthnNotEnabledException`, `WebAuthnChallengeNotFoundException`, `WebAuthnRelyingPartyMismatchException`, `WebAuthnOriginNotAllowedException`, `WebAuthnCredentialNotSupportedException`, `WebAuthnConfigurationMissingException`, `WebAuthnClientMismatchException` | the passkey path fails | fall back to the password step quietly; the offer is not shown again on this device |
 | a browser `NotAllowedError` from `navigator.credentials` | the person cancelled Face ID | stay on the step, offer the password |
 | `UserLambdaValidationException`, `ResourceNotFoundException`, `InternalErrorException`, network error | misconfiguration or outage | "משהו השתבש. אפשר להיכנס גם דרך העמוד הרגיל" with a link to the Hosted UI path |
 

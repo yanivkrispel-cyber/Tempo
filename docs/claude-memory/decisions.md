@@ -77,6 +77,19 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   mapped opens its map with "המתאמנים בוחרים מכשיר" on and one reformer per place (grid as square as fits, up to
   12×12), and a new room opens its map right after it is created. Nothing changes until the owner saves; the server
   default (`spot_selection false`, docs/33 X-1) stays, so a room nobody mapped still books without spots.
+- **D21 white label approved (2026-10-19):** Kris approved docs/35 W-1 to W-12 as written, except W-10 (D22). Each
+  studio has a brand: an app name of up to 12 characters, one of eight vetted accents (never a free colour; the accent
+  changes the brand tokens only, status and category colours stay Tempo's), a logo and a home-screen icon drawn by the
+  API on paper or on the accent (initials when there is none). The members app has a studio path `/s/<slug>/` with
+  its own manifest and icons served by the API, so a member can install one icon per studio; the console stays Tempo
+  with the studio's logo. No custom fonts, custom domains only after revenue, branding free on the pilot plan, a small
+  "built with Tempo" line. Built on board #380 (WL1 to WL6).
+- **D22 branded sign-in, design B (2026-10-19):** the members' sign-in is branded per studio too (W-10 changed).
+  Cognito's managed login has no Hebrew and no right-to-left, so it is our own screen in `client-web` over Cognito's
+  `USER_AUTH` API (ADR-0028, `docs/36_Branded_Sign_In_LLD.md`): password and passkey now, the email code after an SES
+  sender (#304); users with TOTP keep password + TOTP (Cognito refuses them passwordless). Design B, "glass over the
+  studio", from the mockup canvas. Behind the flag `branded_login`; the Hosted UI stays for the console and as the
+  fallback.
 - **D23 studio marketing, stories from live data (2026-10-19):** Kris asked that a studio owner can make Instagram
   stories like the ones studios post today, and chose the recommendation for every question ("בוא נלך לפי
   ההמלצה"). Plan: `docs/37_Studio_Marketing_LLD.md`. Stages A and B are built on board #380 the same night,
@@ -87,4 +100,3 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   stories for their own classes only. Stage B: member "I'm in" and milestone cards, meet the
   instructor, events, bring a friend, QR poster, highlight covers. Stage C (video, Meta auto-publishing, AI captions)
   only after the first paying studio; everything stays $0 until then (ADR-0021).
-  (D21 and D22 are board #380's white label and branded sign-in.)
