@@ -37,7 +37,7 @@ public static class MarketingEndpoints
     {
         var updated = await pages.UpdateAsync(
             TenantRouteFilter.Current(httpContext),
-            new PublicPageChanges(request.Enabled, request.OpenJoin, request.IntroProductId, request.SuggestWeeklyAt),
+            new PublicPageChanges(request.Enabled, request.OpenJoin, request.IntroProductId, request.SuggestWeeklyAt, request.InstagramHandle, request.ReferralRewardProductId),
             OrganizationEndpoints.ParseVersion(ifMatch),
             httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
@@ -64,5 +64,5 @@ public static class MarketingEndpoints
     }
 
     private static PublicPageResponse ToResponse(PublicPageView p) =>
-        new(p.Enabled, p.OpenJoin, p.IntroProductId, p.SuggestWeeklyAt, p.Version.ToString(CultureInfo.InvariantCulture));
+        new(p.Enabled, p.OpenJoin, p.IntroProductId, p.SuggestWeeklyAt, p.Version.ToString(CultureInfo.InvariantCulture), p.InstagramHandle, p.ReferralRewardProductId);
 }
