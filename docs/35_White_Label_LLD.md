@@ -1,6 +1,6 @@
 # White Label LLD (the studio's own name, logo, colour and icon)
 
-> **Status:** Approved by Kris on 2026-10-19 (D21): W-1 to W-12 as written, except W-10, which he changed to a
+> **Status:** Approved by Kris on 2026-10-19 (D21): W-1 to W-12 as written (W-1 as amended by WL2: the accent as a mark at 3:1), except W-10, which he changed to a
 > branded sign-in per studio (D22, docs/36, ADR-0028). Built on board #380 (WL1 to WL6).
 > **Audience:** Kris, Ofir, the agents.
 > **Related:** docs/18 (the baseline: brand model, resolution order, what is allowed and forbidden), docs/33 and D16
