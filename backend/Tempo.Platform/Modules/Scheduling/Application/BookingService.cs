@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Notifications.Application;
@@ -47,7 +48,8 @@ public interface IBookingService
     /// Books <paramref name="personId"/>, or the caller when null (the self rule). In a room with spots the place
     /// takes <paramref name="spotId"/>, or the usual or first free spot when null (docs/33 section 3.3).
     /// </summary>
-    Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null);
+    /// <summary><paramref name="sourceCode"/> is the link a member came from (docs/37 M-12), kept on their own booking only.</summary>
+    Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null, string? sourceCode = null);
 
     Task<BookingView> CancelAsync(TenantContext tenant, Guid bookingId, bool returnEntry, CancellationToken cancellationToken);
 
@@ -65,7 +67,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
 
     private sealed record Policy(int FreeCancelHours, int WaitlistCutoffHours, int HorizonDays, bool WaitlistEnabled, bool RequireHealthDeclaration);
 
-    public async Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null)
+    public async Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null, string? sourceCode = null)
     {
         if (personId is not null && !tenant.Has(Permissions.BookingsManage))
         {
@@ -157,6 +159,11 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation && e.ConstraintName == "ux_bookings_session_spot")
         {
             throw Conflict("booking.spot_unavailable", "Someone already holds this spot.");
+        }
+
+        if (personId is null)
+        {
+            await SourceLinks.MarkBookingAsync(unitOfWork, tenant.OrganizationId, bookingId, sourceCode, cancellationToken);
         }
 
         if (healthStatus != HealthStatus.SignedStatus)

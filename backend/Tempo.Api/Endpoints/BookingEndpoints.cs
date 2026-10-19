@@ -36,7 +36,7 @@ public static class BookingEndpoints
         IBookingService bookings)
     {
         var tenant = TenantRouteFilter.Current(httpContext);
-        var booking = await bookings.BookAsync(tenant, sessionId, request?.PersonId, httpContext.RequestAborted, request?.SpotId);
+        var booking = await bookings.BookAsync(tenant, sessionId, request?.PersonId, httpContext.RequestAborted, request?.SpotId, request?.Src);
         return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/bookings/{booking.Id}", ToResponse(booking));
     }
 

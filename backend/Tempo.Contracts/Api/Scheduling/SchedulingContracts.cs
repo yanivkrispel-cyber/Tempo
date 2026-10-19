@@ -171,7 +171,7 @@ public sealed record MyBookingResponse(
 
 public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Items, Guid? NextBefore);
 
-public sealed record CreateBookingRequest(Guid? PersonId, Guid? SpotId = null);
+public sealed record CreateBookingRequest(Guid? PersonId, Guid? SpotId = null, string? Src = null);
 
 /// <summary>`SpotRef`: the spot a booked place holds (docs/33 section 3).</summary>
 public sealed record SpotRefResponse(Guid Id, string Label);

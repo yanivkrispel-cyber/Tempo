@@ -38,3 +38,11 @@ public sealed record PublicClassTypeResponse(string Name, string Category, strin
 public sealed record PublicInstructorResponse(string DisplayName, Uri? PhotoUrl, string? Headline, string? InstagramHandle);
 
 public sealed record PublicSessionListResponse(IReadOnlyList<PublicSessionResponse> Items);
+
+/// <summary>`PublicJoinRequest`: the first-touch source code the members app kept, if any.</summary>
+public sealed record PublicJoinRequest(string? Src);
+
+/// <summary>`PublicJoinResponse`: the membership, whether it is new, and the intro pass granted now, if any.</summary>
+public sealed record PublicJoinResponse(Guid OrganizationId, Guid MembershipId, bool Created, PublicIntroPassResponse? IntroPass);
+
+public sealed record PublicIntroPassResponse(Guid PassId, string ProductName, bool ToPayAtStudio);

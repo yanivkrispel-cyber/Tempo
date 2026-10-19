@@ -20,13 +20,12 @@ public static class RouteGroups
             .AddEndpointFilter<TenantRouteFilter>();
 
     /// <summary>
-    /// `/api/v1/public/studios/{slug}/...` for anyone, no token: an active studio's public face (docs/35 W-6, docs/37).
-    /// Every route here is listed in ArchitectureTests and returns no person's data. CORS is API Gateway's, for the
-    /// two app origins.
+    /// `/api/v1/public/studios/{slug}/...`: an active studio's public face (docs/35 W-6, docs/37). Each route says
+    /// whether it is for anyone (`AllowAnonymous`, listed in ArchitectureTests, no person's data) or for a signed-in
+    /// customer (joining). CORS is API Gateway's, for the two app origins.
     /// </summary>
     public static RouteGroupBuilder MapPublicStudioGroup(this IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup($"/api/v1/public/studios/{{{PublicStudioRouteFilter.RouteValue}}}")
-            .AllowAnonymous()
             .AddEndpointFilter<PublicRateLimitFilter>()
             .AddEndpointFilter<PublicStudioRouteFilter>();
 

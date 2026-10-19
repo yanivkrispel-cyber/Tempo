@@ -1,9 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Tempo.Api.Middleware;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Marketing;
 using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.Organizations.Domain;
@@ -31,11 +35,13 @@ public static class PublicStudioEndpoints
     {
         var studio = endpoints.MapPublicStudioGroup();
 
-        studio.MapGet(string.Empty, StudioAsync).WithName("getPublicStudio");
-        studio.MapGet("/sessions", SessionsAsync).WithName("listPublicSessions");
-        studio.MapGet("/sessions/{sessionId:guid}", SessionAsync).WithName("getPublicSession");
-        studio.MapGet("/manifest.webmanifest", ManifestAsync).WithName("getStudioManifest");
-        studio.MapGet("/icons/{size}", IconAsync).WithName("getStudioIcon");
+        studio.MapGet(string.Empty, StudioAsync).AllowAnonymous().WithName("getPublicStudio");
+        studio.MapGet("/sessions", SessionsAsync).AllowAnonymous().WithName("listPublicSessions");
+        studio.MapGet("/sessions/{sessionId:guid}", SessionAsync).AllowAnonymous().WithName("getPublicSession");
+        studio.MapGet("/manifest.webmanifest", ManifestAsync).AllowAnonymous().WithName("getStudioManifest");
+        studio.MapGet("/icons/{size}", IconAsync).AllowAnonymous().WithName("getStudioIcon");
+        // Joining needs a customer token and a verified email (docs/37 section 4.3).
+        studio.MapPost("/join", JoinAsync).RequireAuthorization().WithName("joinPublicStudio").Produces<PublicJoinResponse>();
 
         return endpoints;
     }
@@ -97,6 +103,28 @@ public static class PublicStudioEndpoints
         return DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
             ? date
             : throw new DomainRuleViolationException(ViolationKind.Validation, "range.invalid", "Dates are yyyy-mm-dd.", field);
+    }
+
+    private static async Task<IResult> JoinAsync(
+        HttpContext httpContext,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PublicJoinRequest? request,
+        IAccountDirectory accounts,
+        IPublicJoinService joins)
+    {
+        var (caller, problem) = await CallerAccount.ResolveAsync(httpContext, accounts);
+        if (caller is null)
+        {
+            return problem!;
+        }
+
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        var correlationId = httpContext.Items[CorrelationIdMiddleware.ItemKey] as string ?? httpContext.TraceIdentifier;
+        var joined = await joins.JoinAsync(caller, studio, request?.Src, correlationId, httpContext.RequestAborted);
+        return Results.Ok(new PublicJoinResponse(
+            studio.Id,
+            joined.Membership.MembershipId,
+            joined.Created,
+            joined.IntroPass is { } p ? new PublicIntroPassResponse(p.PassId, p.ProductName, p.ToPayAtStudio) : null));
     }
 
     private static IResult ManifestAsync(HttpContext httpContext, AppLinks links)
