@@ -81,6 +81,9 @@ public sealed class PublicStudioFlowTests(PostgresFixture postgres) : IClassFixt
         }
 
         (await client.GetAsync($"{publicPath}/icons/64")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        // Only the URL with the brand's current version is cached for a year (#387 review).
+        (await client.GetAsync($"{publicPath}/icons/192")).Headers.CacheControl!.ToString().Should().Be("public, max-age=60");
+        (await client.GetAsync($"{publicPath}/icons/192?v=7")).Headers.CacheControl!.ToString().Should().Be("public, max-age=60");
 
         // 2. A brand with an icon: the manifest names its version and the icon is the studio's own PNG.
         await SendAsync(client, HttpMethod.Put, $"{studioPath}/brand", Customer("owner"), Input("נשימה", "ocean", "accent"));
@@ -89,6 +92,7 @@ public sealed class PublicStudioFlowTests(PostgresFixture postgres) : IClassFixt
         manifest.GetProperty("short_name").GetString().Should().Be("נשימה");
         manifest.GetProperty("theme_color").GetString().Should().Be("#4a7088");
         manifest.GetProperty("icons")[2].GetProperty("src").GetString().Should().Be("icons/512-maskable?v=2");
+        (await client.GetAsync($"{publicPath}/icons/512-maskable?v=0")).Headers.CacheControl!.ToString().Should().Be("public, max-age=60", "an old version's URL");
         var own = await client.GetByteArrayAsync($"{publicPath}/icons/512-maskable?v=2");
         own.Should().Equal(await store.ReadAsync(MediaKeys.Icon(studioId, icon.GetProperty("id").GetGuid(), "512-maskable"), int.MaxValue, CancellationToken.None));
 

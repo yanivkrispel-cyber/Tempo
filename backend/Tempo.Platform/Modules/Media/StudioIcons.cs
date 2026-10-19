@@ -52,13 +52,18 @@ public static class StudioIcons
     /// A studio without an icon (W-2): up to two initials in white on the accent, from the first two words of its
     /// name (or the first two letters of one word), in Hebrew or Latin, in the design system's Hebrew face.
     /// </summary>
-    public static IReadOnlyDictionary<string, byte[]> RenderInitials(string name, string groundHex)
+    public static IReadOnlyDictionary<string, byte[]> RenderInitials(string name, string groundHex) =>
+        Sizes.ToDictionary(size => size.Name, size => RenderInitials(name, groundHex, size.Name));
+
+    /// <summary>One size of the initials icon, for the public icon route that asks for one at a time.</summary>
+    public static byte[] RenderInitials(string name, string groundHex, string sizeName)
     {
+        var size = Sizes.Single(s => s.Name == sizeName);
         var initials = Initials(name);
         // Skia draws left to right without shaping, so Hebrew initials are laid out in reverse to read right to left.
         var drawn = initials.Any(IsRightToLeft) ? new string([.. initials.Reverse()]) : initials;
         var ground = SKColor.Parse(groundHex);
-        return Sizes.ToDictionary(size => size.Name, size => Draw(size, ground, canvas =>
+        return Draw(size, ground, canvas =>
         {
             var box = size.Side * (size.Maskable ? MaskableBox : PlainBox);
             using var font = new SKFont(Face.Value, box * (initials.Length > 1 ? 0.6f : 0.75f));
@@ -67,7 +72,7 @@ public static class StudioIcons
             font.GetFontMetrics(out var metrics);
             var baseline = (size.Side - (metrics.Ascent + metrics.Descent)) / 2;
             canvas.DrawText(drawn, (size.Side - width) / 2, baseline, SKTextAlign.Left, font, paint);
-        }));
+        });
     }
 
     /// <summary>Up to two letters: the first letter of each of the first two words, else a word's first two letters.</summary>

@@ -159,7 +159,7 @@ public static class PublicStudioEndpoints
         return Results.Text(JsonSerializer.Serialize(manifest, Json), "application/manifest+json");
     }
 
-    private static async Task<IResult> IconAsync(HttpContext httpContext, string size, IMediaStore store)
+    private static async Task<IResult> IconAsync(HttpContext httpContext, string size, string? v, IMediaStore store)
     {
         if (!IconNames.Contains(size))
         {
@@ -173,11 +173,13 @@ public static class PublicStudioEndpoints
             png = await store.ReadAsync(MediaKeys.Icon(studio.Id, iconId, size), MediaService.MaxUploadBytes, httpContext.RequestAborted);
         }
 
-        // No icon (W-2): the studio's initials on its accent. An icon whose PNG can't be read now gets them too, but
-        // only for a minute, so the real one isn't hidden behind a year of cache.
+        // No icon (W-2): the studio's initials on its accent. An icon whose PNG can't be read now gets them too.
         var missing = png is null && studio.Brand.IconMediaId is not null;
-        png ??= StudioIcons.RenderInitials(studio.DisplayName, Brand.Accents[studio.Brand.AccentId])[size];
-        httpContext.Response.Headers.CacheControl = missing ? "public, max-age=60" : "public, max-age=31536000, immutable";
+        png ??= StudioIcons.RenderInitials(studio.DisplayName, Brand.Accents[studio.Brand.AccentId], size);
+        // A year of cache only for the URL that names the brand's current version (#387 review): a request without
+        // `v`, with an old one, or for a PNG that can't be read now is kept for a minute, so a rebrand shows.
+        var current = !missing && v == studio.Brand.Version.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        httpContext.Response.Headers.CacheControl = current ? "public, max-age=31536000, immutable" : "public, max-age=60";
         return Results.Bytes(png, "image/png");
     }
 }
