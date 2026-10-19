@@ -93,6 +93,60 @@ const check = (list, soft) => {
 check(pairs, false);
 check(SOURCE_EXACT, true);
 
+// --- accents (WL2, docs/35 section 3) ---------------------------------------
+// A studio picks one of these by id. Every accent sets the same brand tokens in both themes, and none ships unless
+// text on its button and its ink on paper read at 4.5:1, and the accent as a mark (the toggle on, a selection, today)
+// shows at 3:1 on paper. The focus ring is Tempo's blue for every accent, so it is not part of an accent.
+// `sage` is today's look: its values must equal the root brand tokens exactly.
+const ACCENT_IDS = ["sage", "olive", "ocean", "plum", "rose", "terracotta", "sand", "graphite"];
+const ACCENT_TOKENS = [
+  "brand",
+  "brand-light",
+  "brand-hover",
+  "brand-pressed",
+  "brand-glow",
+  "brand-soft",
+  "brand-ink",
+  "brand-deep",
+  "on-brand",
+  "brand-solid",
+];
+const accents = t.accents?.list ?? [];
+const hexOk = (v) => typeof v === "string" && /^#[0-9a-f]{6}$/.test(v);
+if (JSON.stringify(accents.map((a) => a.id)) !== JSON.stringify(ACCENT_IDS))
+  failures.push(`accents: expected ${ACCENT_IDS.join(", ")}, got ${accents.map((a) => a.id).join(", ") || "none"}`);
+if (t.accents?.default !== "sage") failures.push(`accents: the default must be sage`);
+for (const accent of accents) {
+  if (!accent.label) failures.push(`accent ${accent.id}: missing its Hebrew label`);
+  for (const theme of themes) {
+    const v = accent.value?.[theme] ?? {};
+    const keys = Object.keys(v).sort();
+    if (JSON.stringify(keys) !== JSON.stringify([...ACCENT_TOKENS].sort()))
+      failures.push(`accent ${accent.id} ${theme}: tokens must be exactly ${ACCENT_TOKENS.join(", ")}`);
+    for (const [name, value] of Object.entries(v))
+      if (!hexOk(value)) failures.push(`accent ${accent.id} ${theme}: ${name} is not #rrggbb`);
+    if (accent.id === "sage")
+      for (const name of ACCENT_TOKENS)
+        if (v[name] !== color[name]?.[theme])
+          failures.push(`accent sage ${theme}: ${name} differs from the root token`);
+    if (v["brand-solid"] !== accent.value?.light?.brand)
+      failures.push(`accent ${accent.id} ${theme}: brand-solid must be the light brand in every theme`);
+    const grounds = ["canvas", "surface", "surface-sand"].map((g) => [g, color[g][theme] ?? color[g].light]);
+    const floors = [
+      ...["brand", "brand-hover", "brand-pressed"].map((bg) => ["on-brand", v["on-brand"], bg, v[bg], 4.5]),
+      ...[...grounds, ["brand-soft", v["brand-soft"]]].map(([g, gv]) => ["brand-ink", v["brand-ink"], g, gv, 4.5]),
+      ...grounds.map(([g, gv]) => ["brand", v.brand, g, gv, 3]),
+      ["white", "#ffffff", "brand-solid", v["brand-solid"], 4.5],
+    ];
+    for (const [fg, a, bg, b, min] of floors) {
+      if (!hexOk(a) || !hexOk(b)) continue;
+      const r = ratio(a, b);
+      rows.push(`${r.toFixed(2).padStart(6)}  ${theme.padEnd(5)}  accent ${accent.id}: ${fg} on ${bg}`);
+      if (r < min) failures.push(`${theme}: accent ${accent.id}: ${fg} on ${bg} = ${r.toFixed(2)} (< ${min})`);
+    }
+  }
+}
+
 console.log(rows.join("\n"));
 if (warnings.length)
   console.log(
