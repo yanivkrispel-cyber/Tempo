@@ -28,6 +28,11 @@ public sealed class ArchitectureTests
         "/api/v1/public/studios/{slug}/sessions",
         "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}",
         "/api/v1/public/studios/{slug}/icons/{size}",
+        // Share links by intent (SK4): where a link leads and an inviter's first name under SL-8; preview pictures
+        // as redirects to the studio's own pictures. No other person data.
+        "/api/v1/public/studios/{slug}/links/{code}",
+        "/api/v1/public/studios/{slug}/cover",
+        "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}/cover",
         // The prices and offers of SL-4 and SL-5 (SK2): products the owner listed, their prices shown only, no person.
         "/api/v1/public/studios/{slug}/products",
         "/api/v1/public/studios/{slug}/products/{productId:guid}"

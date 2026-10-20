@@ -1,6 +1,7 @@
 import { CfnOutput, Duration, Fn, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
 import { AccessLogFormat } from "aws-cdk-lib/aws-apigateway";
 import {
+  CfnStage,
   CorsHttpMethod,
   HttpApi,
   HttpMethod,
@@ -251,11 +252,18 @@ export class ApiStack extends Stack {
       integration
     });
 
+    // The anonymous public routes get route keys of their own, so the stage can throttle them lower than the rest
+    // (board #404, S-A). API Gateway matches the most specific route, so the function sees the same requests.
+    const publicRoutes = [
+      ...this.httpApi.addRoutes({ path: "/api/v1/public/{proxy+}", methods: [HttpMethod.GET], integration }),
+      ...this.httpApi.addRoutes({ path: "/api/v1/public/studios/{slug}/join", methods: [HttpMethod.POST], integration })
+    ];
+
     const accessLogGroup = createLogGroup(this, "AccessLogGroup", config, {
       logGroupName: `/aws/apigateway/${config.apiName}`
     });
 
-    new HttpStage(this, "DefaultStage", {
+    const stage = new HttpStage(this, "DefaultStage", {
       httpApi: this.httpApi,
       stageName: "$default",
       autoDeploy: true,
@@ -266,6 +274,13 @@ export class ApiStack extends Stack {
         format: ACCESS_LOG_FORMAT
       }
     });
+    const { reads, join } = config.publicThrottle;
+    (stage.node.defaultChild as CfnStage).routeSettings = {
+      "GET /api/v1/public/{proxy+}": { ThrottlingRateLimit: reads.rateLimit, ThrottlingBurstLimit: reads.burstLimit },
+      "POST /api/v1/public/studios/{slug}/join": { ThrottlingRateLimit: join.rateLimit, ThrottlingBurstLimit: join.burstLimit }
+    };
+    // A stage's route settings must name routes that already exist.
+    for (const route of publicRoutes) stage.node.addDependency(route);
 
     // The edge distribution's /api/* origin (ADR-0009 amendment). AWS_IAM means
     // only signed requests get in: CloudFront signs every one with its origin

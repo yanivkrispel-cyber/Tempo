@@ -62,6 +62,14 @@ const stagingConfig: TempoEnvironmentConfig = {
     enableWaf: false
   },
 
+  // Below the stage's 50 and 100 (board #404, S-A), and both bursts together below the API's reserved concurrency,
+  // so anonymous traffic can never take every execution (a 70-request burst gave 50 503s on 2026-10-20). Per-client
+  // limits are the API's own counters.
+  publicThrottle: {
+    reads: { rateLimit: 10, burstLimit: 12 },
+    join: { rateLimit: 2, burstLimit: 4 }
+  },
+
   corsAllowedOrigins: ["https://staging-admin.tempo.example", "https://staging-client.tempo.example"],
 
   cognitoCallbackUrls: {

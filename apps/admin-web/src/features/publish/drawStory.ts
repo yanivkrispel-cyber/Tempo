@@ -1,5 +1,14 @@
 import type { IsoDate } from "../../shared/utilities/dates";
-import { whenWord, weekRange, type LabelTone, type StorySlot, type TemplateId } from "./storyData";
+import {
+  offerHeadline,
+  untilWords,
+  whenWord,
+  weekRange,
+  type LabelTone,
+  type OfferInfo,
+  type StorySlot,
+  type TemplateId,
+} from "./storyData";
 
 /**
  * The stage A stories drawn with Canvas 2D at 1080x1920 (docs/37 section 7.3): no server, no library that copies the
@@ -24,6 +33,8 @@ export interface StoryInput {
   /** The studio's accent ground (docs/35 W-1). */
   accent: string;
   slots: readonly StorySlot[];
+  /** The offer story's product. */
+  offer?: OfferInfo | null;
   /** The studio's today, for "היום" and "מחר". */
   today: IsoDate;
   /** The week template's first day. */
@@ -78,6 +89,9 @@ export function drawStory(ctx: CanvasRenderingContext2D, input: StoryInput): voi
       break;
     case "change":
       drawChange(ctx, input);
+      break;
+    case "offer":
+      drawOffer(ctx, input);
       break;
   }
   ctx.restore();
@@ -316,6 +330,46 @@ function drawChange(ctx: CanvasRenderingContext2D, input: StoryInput) {
   text(ctx, "שאר השיעורים כרגיל. נתראה בסטודיו!", right, STORY_HEIGHT - STICKER_ROOM - 30, {
     font: `500 40px ${UI}`,
     color: "#5e544c",
+  });
+}
+
+// --- the offer for newcomers ------------------------------------------------------------------------------------
+
+function drawOffer(ctx: CanvasRenderingContext2D, input: StoryInput) {
+  ground(ctx, input);
+  const right = STORY_WIDTH - SIDE;
+  const light = mix(input.accent, "#ffffff", 0.82);
+  text(ctx, input.studioName, STORY_WIDTH / 2, 150, {
+    font: `600 36px ${UI}`,
+    align: "center",
+    spacing: 10,
+    alpha: 0.9,
+  });
+  const offer = input.offer;
+  if (!offer) return;
+  text(ctx, "פעם ראשונה בסטודיו?", right, 560, { font: `700 42px ${UI}`, spacing: 6, color: light });
+  const font = `500 150px ${DISPLAY}`;
+  const lines = wrap(ctx, offerHeadline(offer), font, STORY_WIDTH - 2 * SIDE).slice(0, 4);
+  lines.forEach((line, index) => text(ctx, line, right, 740 + index * 170, { font, max: STORY_WIDTH - 2 * SIDE }));
+  let y = 740 + lines.length * 170 + 40;
+  if (offer.blurb) {
+    const blurbLines = wrap(ctx, offer.blurb, `400 46px ${UI}`, STORY_WIDTH - 2 * SIDE).slice(0, 3);
+    blurbLines.forEach((line, index) =>
+      text(ctx, line, right, y + index * 68, { font: `400 46px ${UI}`, alpha: 0.9, max: STORY_WIDTH - 2 * SIDE }),
+    );
+    y += blurbLines.length * 68 + 30;
+  }
+  if (offer.until) {
+    const label = untilWords(offer.until);
+    const width = chipWidth(ctx, label, 1.5);
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    roundRect(ctx, right - width, y, width, 96, 48);
+    ctx.fill();
+    text(ctx, label, right - width / 2, y + 64, { font: `600 48px ${UI}`, align: "center" });
+  }
+  text(ctx, "נרשמים בלינק, משלמים בסטודיו.", right, STORY_HEIGHT - STICKER_ROOM - 30, {
+    font: `500 38px ${UI}`,
+    alpha: 0.85,
   });
 }
 

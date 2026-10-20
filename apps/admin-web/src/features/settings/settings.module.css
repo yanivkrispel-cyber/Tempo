@@ -411,3 +411,37 @@
   font-weight: 600;
   text-align: center;
 }
+
+/* The products on the public page (SL-4, SL-5): one card per product, in the public order. */
+.listed {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.listedRow {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-width: 0;
+}
+.listedHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+.listedName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.listedActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}

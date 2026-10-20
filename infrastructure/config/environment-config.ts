@@ -113,6 +113,12 @@ export interface FeatureFlags {
   readonly enableDevCanary?: boolean;
 }
 
+/** Steady requests per second and the burst API Gateway allows on one route. */
+export interface RouteThrottle {
+  readonly rateLimit: number;
+  readonly burstLimit: number;
+}
+
 export interface TempoEnvironmentConfig {
   readonly environmentName: TempoEnvironmentName;
   readonly accountId: string;
@@ -148,6 +154,16 @@ export interface TempoEnvironmentConfig {
 
   /** Exact, non-wildcard CORS origins allowed to call the HTTP API. */
   readonly corsAllowedOrigins: readonly string[];
+
+  /**
+   * Gateway throttling for the anonymous public routes, below the stage default (board #404, S-A). It is shared by
+   * every caller of the route, so it protects Neon and Lambda, not one visitor from another: the API's own counters
+   * limit each source IP and each user.
+   */
+  readonly publicThrottle: {
+    readonly reads: RouteThrottle;
+    readonly join: RouteThrottle;
+  };
 
   /** Exact, non-wildcard Cognito callback URLs, per app client. */
   readonly cognitoCallbackUrls: {
@@ -188,6 +204,20 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (config.edgeDistributionId !== undefined && !/^E[A-Z0-9]{8,20}$/.test(config.edgeDistributionId)) {
     errors.push(`edgeDistributionId must be a CloudFront distribution id, got "${config.edgeDistributionId}"`);
+  }
+
+  const { reads, join } = config.publicThrottle;
+  for (const [name, throttle] of [["reads", reads], ["join", join]] as const) {
+    if (!(throttle.rateLimit >= 1 && throttle.rateLimit <= throttle.burstLimit)) {
+      errors.push(`publicThrottle.${name}: rateLimit must be at least 1 and at most burstLimit`);
+    }
+  }
+  // Anonymous bursts must leave executions for everyone else: the API answers 503 once its reserved concurrency is
+  // used up (board #404, S-A).
+  if (reads.burstLimit + join.burstLimit >= config.lambda.apiReservedConcurrency) {
+    errors.push(
+      `publicThrottle: the two bursts (${reads.burstLimit + join.burstLimit}) must stay below lambda.apiReservedConcurrency (${config.lambda.apiReservedConcurrency})`
+    );
   }
 
   if (config.region !== "eu-central-1") {

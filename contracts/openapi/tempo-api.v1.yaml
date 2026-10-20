@@ -273,7 +273,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicLink
-      x-tempo-planned: true
       summary: Where one of a public studio's links leads, and the inviter's first name for a member's invite (anyone)
       description: >-
         SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404
@@ -295,7 +294,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicStudioCover
-      x-tempo-planned: true
       summary: The studio's cover picture for link previews (anyone)
       description: >-
         SL-9, SK4. `302` to a short-lived presigned URL of the studio's cover, or of its 512 px icon when there is
@@ -313,7 +311,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicSessionCover
-      x-tempo-planned: true
       summary: A session's class cover for link previews (anyone)
       description: >-
         SL-9, SK4. `302` to a short-lived presigned URL of the class type's cover, else the studio's cover, else its
@@ -336,12 +333,13 @@ paths:
         and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records
         the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person
         and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts
-        against the join attempts (429 with `Retry-After`). **SK3 (planned fields):** with `productId` (a listed
+        against the join attempts (429 with `Retry-After`). **SK3:** with `productId` (a listed
         product) and/or `sessionId`, one transaction joins, grants that product once, marked to pay at the studio,
         and books; on any error nothing is granted or booked. 404 `product.not_found` or `session.not_found`;
         409 `offer.ended`, `offer.not_newcomer` (the caller holds or held this newcomers-only product here),
-        `session.full`, `session.not_bookable`. The booking's source is this link (last touch); the membership's
-        stays the first one.
+        `session.full`, `session.not_bookable` (cancelled, started or not open yet). A full class with an open
+        waitlist answers 200 with the booking `waitlisted`. The only partial answer is `next: health_declaration`
+        (see the response). The booking's source is this link (last touch); the membership's stays the first one.
       requestBody:
         required: false
         content:
@@ -5959,9 +5957,15 @@ components:
             passId: { type: string, format: uuid }
             productName: { type: string }
             toPayAtStudio: { type: boolean }
+        next:
+          type: [string, "null"]
+          enum: [health_declaration, null]
+          description: >-
+            SK3: `health_declaration` when `sessionId` couldn't be booked only because the studio asks for a signed
+            health declaration first. The membership and the pass are kept; the app shows the declaration, then books.
         booking:
           type: [object, "null"]
-          description: "SK3: the booking made with `sessionId`. Until SK3 the API leaves it out."
+          description: "SK3: the booking made with `sessionId`; null without one, or when `next` is set."
           required: [bookingId, sessionId, status]
           properties:
             bookingId: { type: string, format: uuid }
@@ -6045,7 +6049,7 @@ components:
           items: { $ref: "#/components/schemas/LinkSource" }
         byTarget:
           type: array
-          description: "SK4: the same counts per target kind (SL-1). Until SK4 the API leaves it out."
+          description: "The same counts per target kind (SL-1). Always sent; optional in the schema so older fixtures stay valid."
           items:
             type: object
             required: [kind, members, bookings, attended]
