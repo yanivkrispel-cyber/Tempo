@@ -103,7 +103,7 @@ export interface paths {
         put?: never;
         /**
          * Join a public studio as a client, without a code (a signed-in customer)
-         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`).
+         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`), and against the per-address and per-account limits of board #404 S-A (`RateLimits:JoinPerIpPerHour`, `JoinPerUserPerHour`; 429 `rate_limited`).
          */
         post: operations["joinPublicStudio"];
         delete?: never;
@@ -333,7 +333,7 @@ export interface paths {
         put?: never;
         /**
          * The caller's own link for a member card or for bringing a friend (`schedule.view`)
-         * @description docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts for the bring-a-friend reward (M-17).
+         * @description docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts for the bring-a-friend reward (M-17). Counts against the caller's link limit (S-A, 429 `rate_limited`).
          */
         post: operations["getMyShareLink"];
         delete?: never;
@@ -403,7 +403,7 @@ export interface paths {
         put?: never;
         /**
          * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
-         * @description docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         * @description docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template). Counts against the caller's link limit (S-A, `RateLimits:LinksPerUserPerHour`; 429 `rate_limited` with `Retry-After`).
          */
         post: operations["createMarketingLink"];
         delete?: never;
@@ -6110,6 +6110,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getMyMilestones: {
@@ -6226,6 +6227,7 @@ export interface operations {
             402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getSourceReport: {

@@ -213,7 +213,8 @@ paths:
         and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records
         the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person
         and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts
-        against the join attempts (429 with `Retry-After`).
+        against the join attempts (429 with `Retry-After`), and against the per-address and per-account limits of
+        board #404 S-A (`RateLimits:JoinPerIpPerHour`, `JoinPerUserPerHour`; 429 `rate_limited`).
       requestBody:
         required: false
         content:
@@ -528,7 +529,7 @@ paths:
       description: >-
         docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at
         the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts
-        for the bring-a-friend reward (M-17).
+        for the bring-a-friend reward (M-17). Counts against the caller's link limit (S-A, 429 `rate_limited`).
       requestBody:
         required: true
         content:
@@ -544,6 +545,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/organizations/{organizationId}/me/milestones:
     parameters:
@@ -623,7 +625,8 @@ paths:
       description: >-
         docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else
         `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no
-        session. Audit `marketing.link.created` (channel, template).
+        session. Audit `marketing.link.created` (channel, template). Counts against the caller's link limit (S-A,
+        `RateLimits:LinksPerUserPerHour`; 429 `rate_limited` with `Retry-After`).
       requestBody:
         required: true
         content:
@@ -640,6 +643,7 @@ paths:
         "402": { $ref: "#/components/responses/Restricted" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/organizations/{organizationId}/reports/sources:
     parameters:

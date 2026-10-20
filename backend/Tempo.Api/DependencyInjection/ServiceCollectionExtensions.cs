@@ -3,6 +3,7 @@ using Tempo.Api.ErrorHandling;
 using Tempo.Api.Identity;
 using Tempo.Api.Tenancy;
 using Tempo.Platform.BuildingBlocks.Persistence;
+using Tempo.Platform.BuildingBlocks.RateLimits;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
 using Tempo.Platform.Modules.Identity.Application;
@@ -84,6 +85,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHealthDeclarationService, HealthDeclarationService>();
         services.AddSingleton<IPersonLifecycleService, PersonLifecycleService>();
         services.AddSingleton<IAttemptLimiter, AttemptLimiter>();
+        services.AddSingleton<IClientRateLimiter, ClientRateLimiter>();
+        services.AddSingleton(sp => ClientRateLimits.From(key => sp.GetRequiredService<IConfiguration>()[key]));
         services.AddSingleton<IInvitationService, InvitationService>();
         services.AddSingleton<IJoinLinkService, JoinLinkService>();
         services.AddSingleton<AppLinks>();
