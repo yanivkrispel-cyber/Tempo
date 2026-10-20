@@ -76,7 +76,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(36);
+            .Should().Be(37);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
     }
