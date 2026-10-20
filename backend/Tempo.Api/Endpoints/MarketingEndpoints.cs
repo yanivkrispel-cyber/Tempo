@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Marketing;
 using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.BuildingBlocks.RateLimits;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Marketing;
 
@@ -71,9 +72,10 @@ public static class MarketingEndpoints
         _ => throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", "Use text or null.", field)
     };
 
-    private static async Task<IResult> CreateLinkAsync(HttpContext httpContext, CreateMarketingLinkRequest request, IMarketingLinkService links, AppLinks apps)
+    private static async Task<IResult> CreateLinkAsync(HttpContext httpContext, CreateMarketingLinkRequest request, IMarketingLinkService links, AppLinks apps, IClientRateLimiter limiter, ClientRateLimits limits)
     {
         var tenant = TenantRouteFilter.Current(httpContext);
+        await limiter.HitAsync("marketing.links.user", tenant.UserAccountId.ToString(), limits.LinksPerUserPerHour, httpContext.RequestAborted);
         var link = await links.CreateAsync(tenant, new NewMarketingLink(request.Channel, request.Template, request.SessionId, request.Target?.Kind, request.Target?.Id), httpContext.RequestAborted);
         return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/marketing/links/{link.Id}", LinkResponse(link, apps));
     }
@@ -93,9 +95,12 @@ public static class MarketingEndpoints
             new MarketingTargetBody(link.TargetKind, link.TargetId), link.ShowName);
     }
 
-    private static async Task<IResult> ShareLinkAsync(HttpContext httpContext, ShareLinkRequest request, IMemberMarketingService members, AppLinks apps)
+    private static async Task<IResult> ShareLinkAsync(HttpContext httpContext, ShareLinkRequest request, IMemberMarketingService members, AppLinks apps, IClientRateLimiter limiter, ClientRateLimits limits)
     {
-        var link = await members.ShareLinkAsync(TenantRouteFilter.Current(httpContext), request.Channel, request.SessionId, httpContext.RequestAborted, request.ShowName);
+        var tenant = TenantRouteFilter.Current(httpContext);
+        // One limit for every link a person makes, the studio's and their own (S-A, board #404).
+        await limiter.HitAsync("marketing.links.user", tenant.UserAccountId.ToString(), limits.LinksPerUserPerHour, httpContext.RequestAborted);
+        var link = await members.ShareLinkAsync(tenant, request.Channel, request.SessionId, httpContext.RequestAborted, request.ShowName);
         return Results.Ok(LinkResponse(link, apps));
     }
 
