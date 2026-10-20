@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { NavLink, Outlet, useParams } from "react-router";
 import { consoleStudios, membershipRoleName, permissionsOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
@@ -6,7 +6,7 @@ import { Button, ButtonLink, EmptyState, Icon, IconButton, cx, type IconName } f
 import { useMediaQuery, WIDE_SCREEN } from "../../shared/useMediaQuery";
 import { IncomingTransferBanner } from "../ownership/Ownership";
 import { securityPath } from "../security/SecurityPage";
-import { CommandPalette, useCommandPalette } from "./CommandPalette";
+import { CommandPalette, CommandPaletteProvider, useCommandPalette } from "./CommandPalette";
 import styles from "./console.module.css";
 import { ConsoleNotices } from "./ConsoleNotices";
 import { StudioContext, type Studio } from "./studio";
@@ -93,6 +93,8 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
   const wide = useMediaQuery(WIDE_SCREEN, true);
   const [menuOpen, setMenuOpen] = useState(false);
   const palette = useCommandPalette();
+  const { setOpen: setPaletteOpen } = palette;
+  const openPalette = useCallback(() => setPaletteOpen(true), [setPaletteOpen]);
   // A tablet turned sideways while the menu is open keeps the menu on screen, so it is no longer "open".
   const open = !wide && menuOpen;
   const opener = useRef<HTMLElement | null>(null);
@@ -213,7 +215,9 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
       <div className={styles.content} inert={open}>
         <ConsoleNotices />
         <IncomingTransferBanner />
-        <Outlet />
+        <CommandPaletteProvider value={openPalette}>
+          <Outlet />
+        </CommandPaletteProvider>
       </div>
 
       {palette.open && <CommandPalette sections={visible} onClose={() => palette.setOpen(false)} />}
