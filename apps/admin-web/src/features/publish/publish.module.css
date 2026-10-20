@@ -125,3 +125,42 @@
     flex: 1 1 100%;
   }
 }
+
+/* "Where does the link lead" (SL-6): one choice per place, the template's default chosen. */
+.targets {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.targets > .tp-field__help {
+  margin: 0 0 8px;
+}
+.target {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-bottom-width: 0;
+  background: var(--surface);
+  min-width: 0;
+}
+.target > .tp-caption {
+  padding-inline-start: 30px;
+  overflow-wrap: anywhere;
+}
+.target:nth-of-type(1) {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.target:last-of-type {
+  border-bottom-width: 1px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+.target[data-on] {
+  background: var(--brand-soft);
+}
+.targets > :global(.tp-field) {
+  margin-top: 12px;
+}
