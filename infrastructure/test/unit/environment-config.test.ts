@@ -26,6 +26,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     github: { owner: "yanivkrispel-cyber", ownerId: 282451313, repo: "Tempo", repoId: 1317067674, allowedBranch: "main", githubEnvironment: undefined },
     featureFlags: { enableCustomDomain: false, enableFrontendHosting: false, enableWaf: false },
     corsAllowedOrigins: ["http://localhost:5173"],
+    passkeyRelyingPartyId: "localhost",
     publicThrottle: { reads: { rateLimit: 5, burstLimit: 6 }, join: { rateLimit: 1, burstLimit: 2 } },
     cognitoCallbackUrls: {
       adminWeb: ["http://localhost:5173/auth/callback"],
@@ -82,7 +83,7 @@ describe("validateEnvironmentConfig", () => {
       platformAdminWeb: ["https://ops.tempo.example/"]
     };
     const staging = (overrides: Partial<TempoEnvironmentConfig>) =>
-      baseConfig({ environmentName: "stg", corsAllowedOrigins: ["https://app.tempo.example"], cognitoCallbackUrls: https, cognitoLogoutUrls: logout, ...overrides });
+      baseConfig({ environmentName: "stg", corsAllowedOrigins: ["https://app.tempo.example"], cognitoCallbackUrls: https, cognitoLogoutUrls: logout, passkeyRelyingPartyId: "app.tempo.example", ...overrides });
 
     expect(() => validateEnvironmentConfig(staging({}))).not.toThrow();
     expect(() => validateEnvironmentConfig(staging({ corsAllowedOrigins: ["http://app.tempo.example"] }))).toThrow(/only https/);
@@ -196,6 +197,25 @@ describe("dev's reserved concurrency fits the account's quota of 40 (case 179192
     // One API function and one worker (worker-outbox) reserve concurrency; AWS keeps 10 unreserved at least.
     expect(development.lambda.apiReservedConcurrency).toBe(20);
     expect(development.lambda.apiReservedConcurrency + development.lambda.workerReservedConcurrency).toBeLessThanOrEqual(40 - 10);
+  });
+});
+
+describe("the passkey's relying party is named, not derived (#386 review)", () => {
+  it("is refused unless it is the host of one of the members app's callbacks", () => {
+    const wrong = baseConfig({ passkeyRelyingPartyId: "evil.example" });
+    expect(() => validateEnvironmentConfig(wrong)).toThrow(/passkeyRelyingPartyId/);
+  });
+
+  it("stays the same when the callbacks are reordered", () => {
+    const reordered = baseConfig({
+      passkeyRelyingPartyId: "localhost",
+      cognitoCallbackUrls: { ...baseConfig().cognitoCallbackUrls, clientWeb: ["http://localhost:5173/auth/callback"] }
+    });
+    expect(() => validateEnvironmentConfig(reordered)).not.toThrow();
+  });
+
+  it("is tempo-members.pages.dev on dev, whatever comes first in the callbacks", () => {
+    expect(development.passkeyRelyingPartyId).toBe("tempo-members.pages.dev");
   });
 });
 

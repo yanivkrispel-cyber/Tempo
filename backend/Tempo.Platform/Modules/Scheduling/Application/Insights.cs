@@ -245,7 +245,7 @@ public sealed class InsightService(IDataSourceProvider dataSources, TimeProvider
               AND s.starts_at > $2 AND $3 >= s.starts_at - make_interval(hours => coalesce(bp.waitlist_cutoff_hours, 2))
               AND EXISTS (SELECT 1 FROM scheduling.bookings b
                           WHERE b.organization_id = s.organization_id AND b.session_id = s.id AND b.status = 'cancelled'
-                            AND b.updated_at >= s.starts_at - make_interval(hours => coalesce(bp.waitlist_cutoff_hours, 2)))
+                            AND b.cancelled_at >= s.starts_at - make_interval(hours => coalesce(bp.waitlist_cutoff_hours, 2)))
             ORDER BY s.starts_at
             LIMIT 1
             """,

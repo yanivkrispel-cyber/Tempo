@@ -6,7 +6,7 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, json, membershipAs, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { candidates, storyLabel, toSlot, whatsappText } from "./storyData";
+import { candidates, defaultTarget, offerHeadline, storyLabel, toSlot, untilWords, whatsappText } from "./storyData";
 
 // MO3 (docs/37 section 7, board #404): the console's "פרסום", four stories drawn on the device, each with its own
 // link for Instagram's link sticker, and the same story as WhatsApp text.
@@ -64,24 +64,53 @@ const instructors = {
   ],
 };
 
-const link = (body: { channel: string; template: string; sessionId: string | null }) => ({
+const link = (body: { channel: string; template: string; target: { kind: string; id: string | null } }) => ({
   id: id(90),
   code: "a1b2c3",
   channel: body.channel,
   template: body.template,
-  sessionId: body.sessionId,
+  sessionId: body.target.kind === "session" ? body.target.id : null,
+  target: body.target,
   url: `https://neshima.test/s/a1b2c3`,
   createdAt: "2026-10-14T08:50:00Z",
 });
 
-function renderPublish(permissions: readonly string[], role: "owner" | "staff" = "owner", url = "/o/neshima/publish") {
+// SO3: the offers the owner listed on the public page (SL-4), and the products behind them.
+const passProduct = (productId: string, name: string, priceAgorot: number, status = "active") => ({
+  id: productId,
+  kind: "punch_card",
+  name,
+  entries: 3,
+  validDays: 30,
+  priceAgorot,
+  status,
+  version: "1",
+});
+const trialOffer = passProduct(id(40), "3 שיעורי ניסיון", 9900);
+const archivedOffer = passProduct(id(41), "מבצע קיץ", 5000, "archived");
+const tenCard = passProduct(id(42), "כרטיסיית 10", 65000);
+const listed = [
+  { productId: id(40), newcomersOnly: true, publicUntil: "2026-10-31", blurb: "לכל מי שמתחילה" },
+  { productId: id(41), newcomersOnly: true, publicUntil: null, blurb: null },
+  { productId: id(42), newcomersOnly: false, publicUntil: null, blurb: null },
+];
+
+function renderPublish(
+  permissions: readonly string[],
+  role: "owner" | "staff" = "owner",
+  url = "/o/neshima/publish",
+  extra: Record<string, unknown> = {},
+) {
   const api = apiStub({
     "POST /api/v1/session": { ...sampleMe, memberships: [membershipAs(role, { permissions })] },
     [`GET ${base}`]: organization,
     [`GET ${base}/sessions`]: { items: sessions },
     [`GET ${base}/instructors`]: instructors,
     [`GET ${base}/brand`]: { accentId: "ocean" },
+    [`GET ${base}/pass-products`]: { items: [trialOffer, archivedOffer, tenCard] },
+    [`GET ${base}/public-page`]: { listedProducts: listed },
     [`POST ${base}/marketing/links`]: async (request: Request) => json(link(await request.json()), 201),
+    ...extra,
   });
   render(
     <App
@@ -96,6 +125,7 @@ function renderPublish(permissions: readonly string[], role: "owner" | "staff" =
 
 const owner = [...membershipAs("owner").permissions, "marketing.publish", "marketing.publish.own"];
 const instructor = [...membershipAs("staff").permissions, "marketing.publish.own"];
+const targetOf = (kind: string, targetId: string | null = null) => ({ kind, id: targetId });
 const linkBodies = (api: ReturnType<typeof apiStub>) =>
   api.requests.flatMap((request, index) => (request.url.endsWith("/marketing/links") ? [api.bodies[index]] : []));
 
@@ -139,7 +169,7 @@ describe("the console's publishing (MO3)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "הורדה והעתקת הלינק" }));
     await waitFor(() => expect(clipboard).toEqual(["https://neshima.test/s/a1b2c3"]));
-    expect(linkBodies(api)).toEqual([{ channel: "story", template: "week", sessionId: null }]);
+    expect(linkBodies(api)).toEqual([{ channel: "story", template: "week", target: targetOf("schedule") }]);
     expect(await screen.findByText("הלינק הועתק, הדביקי אותו במדבקת הלינק")).toBeInTheDocument();
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
   });
@@ -155,7 +185,9 @@ describe("the console's publishing (MO3)", () => {
     expect(text).toHaveValue(
       "התפנה מקום ברפורמר בוקר עם נועה לוי, היום ב-12:00.\nמי שנרשמת ראשונה מקבלת: https://neshima.test/s/a1b2c3",
     );
-    expect(linkBodies(api)).toEqual([{ channel: "whatsapp", template: "spot_opened", sessionId: id(10) }]);
+    expect(linkBodies(api)).toEqual([
+      { channel: "whatsapp", template: "spot_opened", target: targetOf("session", id(10)) },
+    ]);
     expect(clipboard).toEqual([(text as HTMLTextAreaElement).value]);
   });
 
@@ -176,13 +208,121 @@ describe("the console's publishing (MO3)", () => {
     expect(within(classes).getAllByRole("checkbox")).toHaveLength(1);
     expect(within(classes).getByRole("checkbox", { name: "יום חמישי 18:00 · יוגה זורמת" })).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "הורדה והעתקת הלינק" }));
-    await waitFor(() => expect(linkBodies(api)).toEqual([{ channel: "story", template: "week", sessionId: id(11) }]));
+    await waitFor(() =>
+      expect(linkBodies(api)).toEqual([{ channel: "story", template: "week", target: targetOf("session", id(11)) }]),
+    );
+  });
+
+  it("shows a studio's and a class's name as literal text, never as markup", async () => {
+    const hostile = '<script>alert(1)</script> "מרווח"';
+    const studioName = `סטודיו ${hostile}`;
+    const classes = [session({ classType: { id: id(1), name: hostile, category: "pilates", color: "rose" } })];
+    const member = membershipAs("owner", { permissions: owner });
+    renderPublish(owner, "owner", undefined, {
+      "POST /api/v1/session": {
+        ...sampleMe,
+        // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag -- test code: the `<script>` text is the hostile fixture this test proves is shown as text.
+        memberships: [{ ...member, organization: { ...member.organization, displayName: studioName } }],
+      },
+      [`GET ${base}/sessions`]: { items: classes },
+    });
+    const group = await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    expect(within(group).getByRole("checkbox", { name: `יום רביעי 12:00 · ${hostile}` })).toBeInTheDocument();
+    expect(document.body.textContent).toContain(hostile);
+    expect(document.body.textContent).toContain(studioName);
+    expect(document.body.querySelector("script")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "טקסט לוואטסאפ" }));
+    const text = (await screen.findByRole("textbox", { name: "הטקסט לוואטסאפ" })) as HTMLTextAreaElement;
+    expect(text.value).toContain(hostile);
+    expect(document.body.querySelector("script")).toBeNull();
   });
 
   it("is not in the menu without a publishing permission", async () => {
     renderPublish(membershipAs("staff").permissions, "staff");
     expect(await screen.findByRole("heading", { name: "אין לך גישה לפרסום" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /פרסום/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("where the link leads (SO3, SL-6)", () => {
+  const picker = () => screen.findByRole("group", { name: "לאן הקישור יוביל?" });
+  const create = () => userEvent.click(screen.getByRole("button", { name: "הורדה והעתקת הלינק" }));
+
+  it("chooses the template default and sends it", async () => {
+    const api = renderPublish(owner);
+    const week = await picker();
+    expect(within(week).getByRole("radio", { name: "למערכת של השבוע" })).toBeChecked();
+
+    // Last places and a freed spot lead to the class; a change in the timetable leads to the studio page.
+    await userEvent.click(screen.getByRole("button", { name: /מקומות אחרונים/ }));
+    expect(within(await picker()).getByRole("radio", { name: "לשיעור הזה" })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /התפנה מקום/ }));
+    expect(within(await picker()).getByRole("radio", { name: "לשיעור הזה" })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /שינוי במערכת/ }));
+    expect(within(await picker()).getByRole("radio", { name: "למערכת של השבוע" })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("button", { name: /התפנה מקום/ }));
+    await create();
+    await waitFor(() =>
+      expect(linkBodies(api)).toEqual([
+        { channel: "story", template: "spot_opened", target: targetOf("session", id(10)) },
+      ]),
+    );
+  });
+
+  it("changes the body and asks for a new link when the owner picks another place", async () => {
+    const api = renderPublish(owner);
+    const group = await picker();
+    await userEvent.click(within(group).getByRole("radio", { name: "למחירון" }));
+    await create();
+    await waitFor(() => expect(linkBodies(api)).toHaveLength(1));
+    expect(linkBodies(api)[0]).toEqual({ channel: "story", template: "week", target: targetOf("prices") });
+
+    await userEvent.click(within(await picker()).getByRole("radio", { name: "להצעה למצטרפים" }));
+    await userEvent.click(screen.getByRole("button", { name: "הורדה והעתקת הלינק" }));
+    await waitFor(() => expect(linkBodies(api)).toHaveLength(2));
+    expect(linkBodies(api)[1]).toEqual({ channel: "story", template: "week", target: targetOf("offer", id(40)) });
+  });
+
+  it("makes the offer story from the listed offer, to the offer by default, never from an archived one", async () => {
+    const api = renderPublish(owner);
+    await userEvent.click(await screen.findByRole("button", { name: /הצעה למצטרפים/ }));
+    expect(
+      await screen.findByRole("img", { name: /סטורי: הצעה למצטרפים\. 3 שיעורי ניסיון ב-99 ₪/ }),
+    ).toBeInTheDocument();
+    expect(within(await picker()).getByRole("radio", { name: "להצעה למצטרפים" })).toBeChecked();
+    // One live offer: nothing to choose from (the archived one and the punch card are not offers).
+    expect(screen.queryByRole("combobox", { name: "ההצעה" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "טקסט לוואטסאפ" }));
+    const text = await screen.findByRole("textbox", { name: "הטקסט לוואטסאפ" });
+    expect(text).toHaveValue(
+      "3 שיעורי ניסיון ב-99 ₪ בסטודיו נשימה. עד 31 באוקטובר.\nלכל מי שמתחילה\n\nלהצטרפות: https://neshima.test/s/a1b2c3",
+    );
+    expect(linkBodies(api)).toEqual([{ channel: "whatsapp", template: "offer", target: targetOf("offer", id(40)) }]);
+  });
+
+  it("gives an instructor no choice: the link names their class, and the offer story is not theirs", async () => {
+    const api = renderPublish(instructor, "staff");
+    await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    expect(screen.queryByRole("group", { name: "לאן הקישור יוביל?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /הצעה למצטרפים/ })).not.toBeInTheDocument();
+    await create();
+    await waitFor(() => expect(linkBodies(api)).toHaveLength(1));
+    expect(linkBodies(api)[0]).toMatchObject({ target: targetOf("session", id(11)) });
+  });
+});
+
+describe("with no offer listed", () => {
+  it("says so in the offer story and disables the offer place", async () => {
+    // A studio that lists a punch card only.
+    renderPublish(owner, "owner", "/o/neshima/publish", {
+      [`GET ${base}/public-page`]: { listedProducts: [listed[2]] },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /הצעה למצטרפים/ }));
+    expect(await screen.findByText(/אין הצעה למצטרפים חדשים בעמוד הציבורי/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "הורדה והעתקת הלינק" })).toBeDisabled();
   });
 });
 
@@ -218,5 +358,28 @@ describe("what a story says", () => {
     expect(whatsappText("week", "נשימה", [slot()], "https://x.test/s/1", "2026-10-14")).toBe(
       "המערכת של השבוע בנשימה\nרביעי 12:00 · רפורמר בוקר · נועה לוי · מקומות אחרונים\n\nלהרשמה: https://x.test/s/1",
     );
+  });
+});
+
+describe("the words of the offer story", () => {
+  it("defaults each template to a place (SL-6)", () => {
+    expect(defaultTarget).toEqual({
+      week: "schedule",
+      change: "schedule",
+      today: "session",
+      spot_opened: "session",
+      offer: "offer",
+    });
+  });
+
+  it("writes the headline and the last day", () => {
+    expect(offerHeadline({ name: "3 שיעורי ניסיון", priceAgorot: 9900 })).toBe("3 שיעורי ניסיון ב-99 ₪");
+    expect(offerHeadline({ name: "3 שיעורי ניסיון", priceAgorot: 9950 })).toBe("3 שיעורי ניסיון ב-99.50 ₪");
+    expect(offerHeadline({ name: "שיעור ניסיון", priceAgorot: null })).toBe("שיעור ניסיון");
+    expect(untilWords("2026-10-31")).toBe("עד 31 באוקטובר");
+  });
+
+  it("falls back to the link alone when there is no offer", () => {
+    expect(whatsappText("offer", "נשימה", [], "https://x.test/s/1", "2026-10-14", null)).toBe("https://x.test/s/1");
   });
 });

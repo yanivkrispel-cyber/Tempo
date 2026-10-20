@@ -13,6 +13,7 @@ import {
   EmptyState,
   Field,
   Input,
+  Radio,
   Segmented,
   Select,
   Skeleton,
@@ -24,10 +25,24 @@ import { addDays, startOfWeek, todayIn } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
 import { useStudio } from "../console/studio";
 import { useInstructorProfiles } from "../console/experience";
+import { usePassProducts } from "../passes/queries";
 import { useSessions, useStudioTimeZone } from "../schedule/queries";
+import { publicPageKey } from "../settings/PublicPageCard";
 import { drawStory, loadStoryFonts, STORY_HEIGHT, STORY_WIDTH } from "./drawStory";
 import styles from "./publish.module.css";
-import { candidates, maxSlots, templates, toSlot, whatsappText, type StorySlot, type TemplateId } from "./storyData";
+import {
+  candidates,
+  defaultTarget,
+  maxSlots,
+  offerHeadline,
+  templates,
+  toSlot,
+  whatsappText,
+  type OfferInfo,
+  type StorySlot,
+  type TargetKind,
+  type TemplateId,
+} from "./storyData";
 
 type MarketingLink = Schemas["MarketingLink"];
 
@@ -38,10 +53,11 @@ const emptyText: Record<TemplateId, string> = {
   today: "אין היום שיעורים שעוד לא התחילו.",
   spot_opened: "אין בימים הקרובים שיעור עם מקום פנוי.",
   change: "אין ביטולים בשבוע הקרוב.",
+  offer: "אין הצעה למצטרפים חדשים בעמוד הציבורי. אפשר להוסיף אחת בהגדרות, בעמוד ציבורי.",
 };
 
 /**
- * `/o/:slug/publish`, "פרסום" (docs/37 section 7, MO3): the four stage A stories drawn on the device at 1080x1920,
+ * `/o/:slug/publish`, "פרסום" (docs/37 section 7, MO3): the stage A stories and the offer story drawn on the device at 1080x1920,
  * shared to Instagram from a phone or downloaded on a computer, each with its own link copied for the link sticker,
  * and the same story as WhatsApp text. Owners and admins pick any class; an instructor only their own (M-4).
  */
@@ -77,6 +93,14 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
   // This week and the next: the week template's two choices, and the next 7 days for the others.
   const sessions = useSessions(thisWeek ?? "", thisWeek ? addDays(thisWeek, 13) : "");
   const instructors = useInstructorProfiles();
+  // The newcomers' offers the owner listed on the public page (SL-4): the offer story and the "offer" target.
+  const page = useQuery({
+    queryKey: publicPageKey(organizationId),
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/organizations/{organizationId}/public-page", { params: { path: { organizationId } } })),
+    enabled: !ownOnly,
+  });
+  const products = usePassProducts();
   const brand = useQuery({
     queryKey: ["studio", organizationId, "brand"],
     queryFn: () =>
@@ -87,12 +111,18 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
 
   // A suggestion card on the Today page opens the story it means (`?template=spot_opened&session=…`, MO4).
   const [search] = useSearchParams();
-  const [template, setTemplate] = useState<TemplateId>(() => templateFrom(search.get("template")));
+  const [template, setTemplate] = useState<TemplateId>(() => {
+    const fromLink = templateFrom(search.get("template"));
+    // An instructor has no offer story: its link would not name one of their classes.
+    return ownOnly && fromLink === "offer" ? "week" : fromLink;
+  });
   const [week, setWeek] = useState<"this" | "next">("this");
   const [chosen, setChosen] = useState<Partial<Record<string, string[]>>>(() => {
     const session = search.get("session");
     return session && search.get("template") === "spot_opened" ? { spot_opened: [session] } : {};
   });
+  const [chosenTarget, setChosenTarget] = useState<Partial<Record<TemplateId, TargetKind>>>({});
+  const [offerId, setOfferId] = useState("");
   const [showInstructors, setShowInstructors] = useState(true);
   const [showLeft, setShowLeft] = useState(false);
   const [note, setNote] = useState("");
@@ -130,6 +160,40 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
   const picked = kept && (template !== "spot_opened" || offered.some((slot) => kept.includes(slot.id))) ? kept : shown;
   const slots = offered.filter((slot) => picked.includes(slot.id)).slice(0, maxSlots[template]);
 
+  // Listed offers that are still on: active products, not past their last day.
+  const offers = useMemo<OfferInfo[]>(() => {
+    if (ownOnly || !page.data || !products.data || !today) return [];
+    return page.data.listedProducts.flatMap((listed) => {
+      const product = products.data.find((item) => item.id === listed.productId);
+      if (!listed.newcomersOnly || !product || product.status !== "active") return [];
+      if (listed.publicUntil && listed.publicUntil < today) return [];
+      return [
+        {
+          productId: product.id,
+          name: product.name,
+          priceAgorot: product.priceAgorot ?? null,
+          until: listed.publicUntil,
+          blurb: listed.blurb,
+        },
+      ];
+    });
+  }, [ownOnly, page.data, products.data, today]);
+  const offer = offers.find((item) => item.productId === offerId) ?? offers[0] ?? null;
+
+  const availableTargets: Record<TargetKind, boolean> = {
+    session: slots.length > 0,
+    schedule: true,
+    offer: offer !== null,
+    prices: true,
+  };
+  // An instructor's link must name one of their sessions (M-4); the owner's follows the template unless changed.
+  const wanted: TargetKind = ownOnly ? "session" : (chosenTarget[template] ?? defaultTarget[template]);
+  const targetKind: TargetKind = availableTargets[wanted] ? wanted : "schedule";
+  const target: { kind: TargetKind; id: string | null } = {
+    kind: targetKind,
+    id: targetKind === "session" ? (slots[0]?.id ?? null) : targetKind === "offer" ? (offer?.productId ?? null) : null,
+  };
+
   const canvas = useRef<HTMLCanvasElement>(null);
   const [fontsReady, setFontsReady] = useState(false);
   useEffect(() => {
@@ -149,20 +213,19 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
       slots,
       today,
       weekStart,
+      offer,
       note: template === "week" ? note.trim() : "",
       photo: template === "week" || template === "today" ? (photo?.image ?? null) : null,
     });
     // `slots` is derived on every render; its ids and labels are what change the picture.
-  }, [template, studio.displayName, accent, JSON.stringify(slots), today, weekStart, note, photo, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [template, studio.displayName, accent, JSON.stringify(slots), offer, today, weekStart, note, photo, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // An instructor's link must name one of their sessions (M-4); the owner's leads to the studio's page.
-  const sessionId = template === "spot_opened" || ownOnly ? (slots[0]?.id ?? null) : null;
-  const linkKey = `${template}:${sessionId ?? ""}`;
+  const linkKey = `${template}:${target.kind}:${target.id ?? ""}`;
   const createLink = (channel: "story" | "whatsapp") =>
     unwrap(
       api.POST("/api/v1/organizations/{organizationId}/marketing/links", {
         params: { path: { organizationId } },
-        body: { channel, template, sessionId },
+        body: { channel, template, target },
       }),
     );
 
@@ -203,12 +266,17 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
 
   const [whatsapp, setWhatsapp] = useState<{ key: string; text: string } | null>(null);
   const whatsappMessage =
-    whatsapp?.key === `${linkKey}:${JSON.stringify(slots.map((slot) => slot.id))}` ? whatsapp : null;
+    whatsapp?.key === `${linkKey}:${JSON.stringify(slots.map((slot) => slot.id))}:${offer?.productId ?? ""}`
+      ? whatsapp
+      : null;
   const writeWhatsapp = useMutation({
     mutationFn: () => createLink("whatsapp"),
     onSuccess: async (link) => {
-      const text = whatsappText(template, studio.displayName, slots, link.url, today!);
-      setWhatsapp({ key: `${linkKey}:${JSON.stringify(slots.map((slot) => slot.id))}`, text });
+      const text = whatsappText(template, studio.displayName, slots, link.url, today!, offer);
+      setWhatsapp({
+        key: `${linkKey}:${JSON.stringify(slots.map((slot) => slot.id))}:${offer?.productId ?? ""}`,
+        text,
+      });
       if (await copyText(text))
         toast.show({ tone: "success", icon: "check", message: "הטקסט הועתק, אפשר להדביק בוואטסאפ" });
     },
@@ -231,6 +299,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
   };
 
   const loading = !timeZone || sessions.isPending;
+  const noContent = template === "offer" ? offer === null : slots.length === 0;
   const failed = zoneError ?? sessions.error;
   const full =
     template !== "spot_opened" &&
@@ -254,25 +323,27 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
             height={STORY_HEIGHT}
             className={styles.story}
             role="img"
-            aria-label={storyDescription(template, slots)}
+            aria-label={storyDescription(template, slots, offer)}
           />
           <figcaption className="tp-caption tp-muted">האזור הריק למטה שמור למדבקת הלינק של אינסטגרם.</figcaption>
         </figure>
 
         <div className={`tp-stack ${styles.controls}`}>
           <div role="group" aria-label="תבנית" className={styles.templates}>
-            {templates.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={styles.template}
-                aria-pressed={template === item.id}
-                onClick={() => setTemplate(item.id)}
-              >
-                <strong>{item.name}</strong>
-                <span>{item.caption}</span>
-              </button>
-            ))}
+            {templates
+              .filter((item) => !ownOnly || item.id !== "offer")
+              .map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={styles.template}
+                  aria-pressed={template === item.id}
+                  onClick={() => setTemplate(item.id)}
+                >
+                  <strong>{item.name}</strong>
+                  <span>{item.caption}</span>
+                </button>
+              ))}
           </div>
 
           {failed ? (
@@ -295,7 +366,25 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                 />
               )}
 
-              {offered.length === 0 ? (
+              {template === "offer" ? (
+                offer ? (
+                  offers.length > 1 ? (
+                    <Field label="ההצעה">
+                      <Select value={offer.productId} onChange={(event) => setOfferId(event.target.value)}>
+                        {offers.map((item) => (
+                          <option key={item.productId} value={item.productId}>
+                            {offerHeadline(item)}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  ) : (
+                    <p>{offerHeadline(offer)}</p>
+                  )
+                ) : (
+                  <p className="tp-muted">{emptyText.offer}</p>
+                )
+              ) : offered.length === 0 ? (
                 <p className="tp-muted">{emptyText[template]}</p>
               ) : template === "spot_opened" ? (
                 <Field label="השיעור">
@@ -334,21 +423,23 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                 </fieldset>
               )}
 
-              <div className="tp-stack" style={{ gap: 8 }}>
-                <Checkbox
-                  label="להציג מדריכים"
-                  checked={showInstructors}
-                  onChange={(event) => setShowInstructors(event.target.checked)}
-                />
-                <p className="tp-field__help">רק מדריכים שהסכימו להופיע בעמוד הציבורי.</p>
-                {template === "week" && (
+              {template !== "offer" && (
+                <div className="tp-stack" style={{ gap: 8 }}>
                   <Checkbox
-                    label="להציג כמה מקומות נשארו"
-                    checked={showLeft}
-                    onChange={(event) => setShowLeft(event.target.checked)}
+                    label="להציג מדריכים"
+                    checked={showInstructors}
+                    onChange={(event) => setShowInstructors(event.target.checked)}
                   />
-                )}
-              </div>
+                  <p className="tp-field__help">רק מדריכים שהסכימו להופיע בעמוד הציבורי.</p>
+                  {template === "week" && (
+                    <Checkbox
+                      label="להציג כמה מקומות נשארו"
+                      checked={showLeft}
+                      onChange={(event) => setShowLeft(event.target.checked)}
+                    />
+                  )}
+                </div>
+              )}
 
               {template === "week" && (
                 <Field label="הערה בכתב יד" help={`${note.length} מתוך ${NOTE_LIMIT} תווים.`}>
@@ -386,6 +477,38 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                 </div>
               )}
 
+              {!ownOnly && !noContent && (
+                <fieldset className={styles.targets}>
+                  <legend className="tp-field__label">לאן הקישור יוביל?</legend>
+                  <p className="tp-field__help">בחרנו לפי התבנית, ואפשר לשנות.</p>
+                  {targetOptions(slots[0] ?? null, offer).map((option) => (
+                    <div key={option.kind} className={styles.target} data-on={targetKind === option.kind || undefined}>
+                      <Radio
+                        name="target"
+                        label={option.title}
+                        checked={targetKind === option.kind}
+                        disabled={!availableTargets[option.kind]}
+                        onChange={() => setChosenTarget({ ...chosenTarget, [template]: option.kind })}
+                      />
+                      <span className="tp-caption tp-muted">
+                        {availableTargets[option.kind] ? option.hint : option.missing}
+                      </span>
+                    </div>
+                  ))}
+                  {targetKind === "offer" && offers.length > 1 && template !== "offer" && (
+                    <Field label="ההצעה">
+                      <Select value={offer?.productId ?? ""} onChange={(event) => setOfferId(event.target.value)}>
+                        {offers.map((item) => (
+                          <option key={item.productId} value={item.productId}>
+                            {offerHeadline(item)}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+                </fieldset>
+              )}
+
               {(prepare.isError || writeWhatsapp.isError) && (
                 <Banner tone="danger" icon="info">
                   {errorMessage(prepare.error ?? writeWhatsapp.error, "לא הצלחנו ליצור לינק. נסו שוב.")}
@@ -401,7 +524,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                   <Button
                     icon={shareFiles ? "share" : "arrow-down"}
                     loading={prepare.isPending}
-                    disabled={slots.length === 0}
+                    disabled={noContent}
                     onClick={() => prepare.mutate()}
                   >
                     {shareFiles ? "הכנה לשיתוף" : "הורדה והעתקת הלינק"}
@@ -410,7 +533,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                 <Button
                   variant="secondary"
                   loading={writeWhatsapp.isPending}
-                  disabled={slots.length === 0}
+                  disabled={noContent}
                   onClick={() => writeWhatsapp.mutate()}
                 >
                   טקסט לוואטסאפ
@@ -451,13 +574,34 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
   );
 }
 
+/** The four places a link can lead (SL-1), with what each says about the story it belongs to. */
+function targetOptions(slot: StorySlot | null, offer: OfferInfo | null) {
+  return [
+    {
+      kind: "session" as const,
+      title: "לשיעור הזה",
+      hint: slot ? slotTitle(slot) : "",
+      missing: "בחרו שיעור בסטורי",
+    },
+    { kind: "schedule" as const, title: "למערכת של השבוע", hint: "כל השיעורים, עם מקומות פנויים", missing: "" },
+    {
+      kind: "offer" as const,
+      title: "להצעה למצטרפים",
+      hint: offer ? offerHeadline(offer) : "",
+      missing: "אין הצעה בעמוד הציבורי",
+    },
+    { kind: "prices" as const, title: "למחירון", hint: "כל הכרטיסיות והמנויים", missing: "" },
+  ];
+}
+
 function slotTitle(slot: StorySlot): string {
   return `יום ${slot.weekday} ${slot.time} · ${slot.name}`;
 }
 
 /** What the picture says, for a screen reader. */
-function storyDescription(template: TemplateId, slots: readonly StorySlot[]): string {
+function storyDescription(template: TemplateId, slots: readonly StorySlot[], offer: OfferInfo | null): string {
   const name = templates.find((item) => item.id === template)!.name;
+  if (template === "offer") return offer ? `סטורי: ${name}. ${offerHeadline(offer)}` : `סטורי: ${name}`;
   return slots.length === 0 ? `סטורי: ${name}` : `סטורי: ${name}. ${slots.map(slotTitle).join(", ")}`;
 }
 

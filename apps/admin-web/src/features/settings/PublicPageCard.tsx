@@ -23,6 +23,7 @@ import { useStudio } from "../console/studio";
 import { usePassProducts, type PassProduct } from "../passes/queries";
 import { QrCode } from "../security/QrCode";
 import { initials } from "./BrandCard";
+import { ListedProducts, type ListedProduct } from "./ListedProducts";
 import styles from "./settings.module.css";
 
 type PublicPage = Schemas["PublicPage"];
@@ -115,6 +116,10 @@ function PublicPageForm({ page, products }: { page: PublicPage; products: PassPr
   const [suggestDay, setSuggestDay] = useState(weekly?.day ?? "");
   const [suggestTime, setSuggestTime] = useState<string | null>(weekly?.time ?? "09:00");
   const [device, setDevice] = useState<Device>("phone");
+  // Only active products can be listed (the API rejects an archived one), so an archived one is left out of the set.
+  const activeIds = new Set(products.filter((product) => product.status === "active").map((product) => product.id));
+  const savedListed = page.listedProducts.filter((item) => activeIds.has(item.productId));
+  const [listed, setListed] = useState<ListedProduct[]>(savedListed);
 
   const save = useMutation({
     mutationKey: [organizationId, "settings.updatePublicPage"],
@@ -145,7 +150,8 @@ function PublicPageForm({ page, products }: { page: PublicPage; products: PassPr
     openJoin !== page.openJoin ||
     (introProductId || null) !== page.introProductId ||
     suggestWeeklyAt !== page.suggestWeeklyAt ||
-    handle.replace(/^@/, "") !== (page.instagramHandle ?? "");
+    handle.replace(/^@/, "") !== (page.instagramHandle ?? "") ||
+    JSON.stringify(listed) !== JSON.stringify(savedListed);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -158,6 +164,8 @@ function PublicPageForm({ page, products }: { page: PublicPage; products: PassPr
       instagramHandle: handle || null,
       // Not on this form (stage B, M-17): sent back as it is.
       referralRewardProductId: page.referralRewardProductId,
+      // Sent only when changed: it replaces the set, and the array order is the public order.
+      ...(JSON.stringify(listed) !== JSON.stringify(savedListed) && { listedProducts: listed }),
     });
   };
 
@@ -215,6 +223,7 @@ function PublicPageForm({ page, products }: { page: PublicPage; products: PassPr
             disabled={!editable}
           />
         </Field>
+        <ListedProducts listed={listed} products={products} disabled={!editable || !enabled} onChange={setListed} />
         <div className="tp-field">
           <span className="tp-field__label" id="suggest-weekly">
             הצעה שבועית לסטורי

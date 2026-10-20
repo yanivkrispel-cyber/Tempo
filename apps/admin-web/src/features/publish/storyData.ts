@@ -4,14 +4,37 @@ import { clockTime } from "../../shared/utilities/times";
 
 type Session = Schemas["Session"];
 
-/** The four stage A templates (docs/37 section 7.2); the id is what the link records. */
-export type TemplateId = "week" | "today" | "spot_opened" | "change";
+/** The stage A templates (docs/37 section 7.2) and the offer story (SO3); the id is what the link records. */
+export type TemplateId = "week" | "today" | "spot_opened" | "change" | "offer";
+
+/** Where a link leads (SL-1): one class, the studio's page, one listed offer, or the prices page. */
+export type TargetKind = Schemas["MarketingTarget"]["kind"];
+
+/** What each template's link leads to unless the owner picks otherwise (SL-6). */
+export const defaultTarget: Record<TemplateId, TargetKind> = {
+  week: "schedule",
+  change: "schedule",
+  today: "session",
+  spot_opened: "session",
+  offer: "offer",
+};
+
+/** A listed newcomers' offer as the offer story and its text say it. */
+export interface OfferInfo {
+  productId: string;
+  name: string;
+  priceAgorot: number | null;
+  /** The last listed day, in the studio's time zone. */
+  until: IsoDate | null;
+  blurb: string | null;
+}
 
 export const templates: readonly { id: TemplateId; name: string; caption: string }[] = [
   { id: "week", name: "השבוע בסטודיו", caption: "המערכת של השבוע עם התפוסה" },
   { id: "today", name: "מקומות אחרונים", caption: "השיעורים של היום שכמעט מלאים" },
   { id: "spot_opened", name: "התפנה מקום", caption: "שיעור אחד שיש בו מקום פנוי" },
   { id: "change", name: "שינוי במערכת", caption: "ביטולים בשבוע הקרוב" },
+  { id: "offer", name: "הצעה למצטרפים", caption: "ההצעה הציבורית של הסטודיו" },
 ];
 
 const weekdays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"] as const;
@@ -98,6 +121,26 @@ export function weekRange(from: IsoDate): string {
     : `${fromDay} ${months[fromMonth - 1]} עד ${toDay} ${months[toMonth - 1]}`;
 }
 
+/** "3 שיעורי ניסיון ב-99 ₪": the offer's name and its price, when it has one. */
+export function offerHeadline(offer: Pick<OfferInfo, "name" | "priceAgorot">): string {
+  return offer.priceAgorot == null ? offer.name : `${offer.name} ב-${shekels(offer.priceAgorot)}`;
+}
+
+/** "99 ₪", or "49.50 ₪" for a price with agorot. */
+export function shekels(agorot: number): string {
+  const amount = (agorot / 100).toLocaleString("he-IL", {
+    minimumFractionDigits: agorot % 100 ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+  return `${amount} ₪`;
+}
+
+/** "עד 31 באוקטובר": the offer's last day. */
+export function untilWords(date: IsoDate): string {
+  const [, month, day] = date.split("-").map(Number) as [number, number, number];
+  return `עד ${day} ${months[month - 1]}`;
+}
+
 /** "היום", "מחר" or "ביום שלישי": how a story says when, from the studio's today. */
 export function whenWord(slot: Pick<StorySlot, "date" | "weekday">, today: IsoDate): string {
   if (slot.date === today) return "היום";
@@ -125,11 +168,14 @@ export function candidates(template: TemplateId, slots: readonly StorySlot[], no
       const cancelled = upcoming.filter((slot) => slot.cancelled);
       return { offered: cancelled, shown: cancelled.slice(0, maxSlots.change).map((slot) => slot.id) };
     }
+    case "offer":
+      // The offer story is about a product, not a class.
+      return { offered: [] as StorySlot[], shown: [] as string[] };
   }
 }
 
 /** How many classes fit each design. */
-export const maxSlots: Record<TemplateId, number> = { week: 9, today: 5, spot_opened: 1, change: 4 };
+export const maxSlots: Record<TemplateId, number> = { week: 9, today: 5, spot_opened: 1, change: 4, offer: 0 };
 
 /** The same story as plain Hebrew text for WhatsApp (docs/37 section 7.3), with the link last. */
 export function whatsappText(
@@ -138,6 +184,7 @@ export function whatsappText(
   slots: readonly StorySlot[],
   link: string,
   today: IsoDate,
+  offer: OfferInfo | null = null,
 ): string {
   const line = (slot: StorySlot, withDay: boolean) =>
     [
@@ -167,6 +214,13 @@ export function whatsappText(
       const places = slot.free === 1 ? "התפנה מקום" : `התפנו ${slot.free} מקומות`;
       const who = slot.instructor ? ` עם ${slot.instructor}` : "";
       return `${places} ב${slot.name}${who}, ${whenWord(slot, today)} ב-${slot.time}.\nמי שנרשמת ראשונה מקבלת: ${link}`;
+    }
+    case "offer": {
+      if (!offer) return link;
+      const until = offer.until ? ` ${untilWords(offer.until)}.` : "";
+      return [`${offerHeadline(offer)} ב${studioName}.${until}`, offer.blurb, "", `להצטרפות: ${link}`]
+        .filter((part) => part !== null)
+        .join("\n");
     }
     case "change":
       return [

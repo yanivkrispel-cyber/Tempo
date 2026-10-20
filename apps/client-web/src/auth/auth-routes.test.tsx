@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiProvider, useApi } from "../api/ApiProvider";
 import { App } from "../app/App";
 import { routes } from "../app/routes";
+import { studioSlugOf } from "../app/studioPath";
 import { apiStub, problem, signedInRoutes } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
 
@@ -40,6 +41,28 @@ describe("protected routes", () => {
     const router = renderAt("/login?returnTo=%2F%2Fevil.example", signedInAuth());
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
   });
+
+  it.each(["https://evil.example", "/\\evil.example", "/\t/evil.example", "javascript:alert(1)", "/auth/callback"])(
+    "lands on the safe default for the hostile returnTo %j",
+    async (returnTo) => {
+      const router = renderAt(`/login?returnTo=${encodeURIComponent(returnTo)}`, signedInAuth());
+      await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+      expect(router.state.location.search).toBe("");
+    },
+  );
+
+  it.each(["/s/other-studio/", "/s/other-studio/../../admin"])(
+    "keeps a returnTo of %s inside the studio's own app on that studio's sign-in",
+    async (returnTo) => {
+      const flowStorage = memoryStorage();
+      const redirect = vi.fn();
+      await signedOutAuth({ flowStorage, redirect, basePath: "/s/neshima" }).signIn(returnTo);
+      const stored = JSON.parse(flowStorage.getItem("tempo.client-web.signin")!) as { returnTo: string };
+      const resolved = new URL(stored.returnTo, "https://app.example");
+      expect(resolved.origin).toBe("https://app.example");
+      expect(studioSlugOf(resolved.pathname)).toBe("neshima");
+    },
+  );
 
   it("explains a missing sign-in configuration instead of offering a dead button", async () => {
     renderAt("/", null);

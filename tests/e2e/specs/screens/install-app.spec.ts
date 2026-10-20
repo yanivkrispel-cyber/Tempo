@@ -84,3 +84,28 @@ for (const { app, url, row } of apps) {
     });
   }
 }
+
+// Board #404, SL-7: Instagram's own browser would install its own view, not the studio's, so nothing is offered
+// there even when it fires a prompt. Read-only.
+for (const screen of screens) {
+  test(`client-web on ${screen.name}: Instagram's browser gets no install`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: screen.width, height: screen.height },
+      isMobile: screen.touch,
+      hasTouch: screen.touch,
+      locale: "he-IL",
+      timezoneId: "Asia/Jerusalem",
+      userAgent: `${iphone.replace(" Safari/604.1", "")} Instagram 390.0.0.27.80`,
+      storageState: sessionStatePath,
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${clientUrl}/profile`);
+      await settle(page);
+      await offerInstall(page);
+      await expect(page.getByRole("button", { name: /התקנת האפליקציה/ })).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+}

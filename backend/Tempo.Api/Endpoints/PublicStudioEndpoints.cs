@@ -7,6 +7,7 @@ using Tempo.Api.Middleware;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Marketing;
 using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.BuildingBlocks.RateLimits;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.Organizations.Application;
@@ -186,13 +187,24 @@ public static class PublicStudioEndpoints
         HttpContext httpContext,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PublicJoinRequest? request,
         IAccountDirectory accounts,
-        IPublicJoinService joins)
+        IPublicJoinService joins,
+        IClientRateLimiter limiter,
+        ClientRateLimits limits)
     {
         var (caller, problem) = await CallerAccount.ResolveAsync(httpContext, accounts);
         if (caller is null)
         {
             return problem!;
         }
+
+        // S-A (board #404): per source address and per account, counted before the join so refused tries count too.
+        // The address is API Gateway's source IP, or CloudFront's viewer address on the edge path (ClientAddress).
+        if (ClientAddress.Of(httpContext) is { } address)
+        {
+            await limiter.HitAsync("public.join.ip", address, limits.JoinPerIpPerHour, httpContext.RequestAborted);
+        }
+
+        await limiter.HitAsync("public.join.user", caller.UserAccountId.ToString(), limits.JoinPerUserPerHour, httpContext.RequestAborted);
 
         var studio = PublicStudioRouteFilter.Current(httpContext);
         var correlationId = httpContext.Items[CorrelationIdMiddleware.ItemKey] as string ?? httpContext.TraceIdentifier;
