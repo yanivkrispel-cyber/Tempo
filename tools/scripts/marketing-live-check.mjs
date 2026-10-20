@@ -275,7 +275,9 @@ try {
   }
   if (pageBefore && s) {
     const current = (await call(smoke, "GET", `${s}/public-page`)).json;
-    await call(smoke, "PUT", `${s}/public-page`, { ...pageBefore, introProductId: null, referralRewardProductId: null }, { ifMatch: current.version, expected: [200] });
+    // Every field as it was before the run, the studio's own intro and reward products included (#391 review): the
+    // products this run made are archived above, and the page no longer points at them.
+    await call(smoke, "PUT", `${s}/public-page`, { ...pageBefore }, { ifMatch: current.version, expected: [200] });
   }
   console.log("cleanup: classes cancelled, products archived, members erased and removed, Cognito users deleted, the public page set back");
 }
