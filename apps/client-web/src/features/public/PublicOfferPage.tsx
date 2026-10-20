@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import { useMe } from "../../account/account";
 import { NotFoundPage } from "../../app/NotFoundPage";
+import { useAuth } from "../../auth/AuthProvider";
 import { useStudioPath } from "../../app/studioPath";
 import { Button, Card, Chip, shortDate } from "../../shared/design-system";
 import { addDays, type IsoDate } from "../../shared/utilities/dates";
@@ -40,9 +42,12 @@ export function PublicOfferPage() {
 }
 
 function Offer({ slug, productId }: { slug: string; productId: string }) {
+  const { isSignedIn } = useAuth();
+  // Back from the sign-in, the account is made here (`POST /session`) before the join, as on the class page.
+  const me = useMe();
   const studio = usePublicStudio(slug);
   const detail = usePublicProduct(slug, productId);
-  if (studio.isPending || detail.isPending) return <PublicSkeleton />;
+  if ((isSignedIn && me.isPending) || studio.isPending || detail.isPending) return <PublicSkeleton />;
   if (studio.isError) {
     return isNotFound(studio.error) ? (
       <StudioNotFound />

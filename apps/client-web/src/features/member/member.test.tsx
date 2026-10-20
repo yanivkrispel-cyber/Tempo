@@ -303,11 +303,13 @@ describe("a class and cancelling", () => {
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
     const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
     await userEvent.click(within(sheet).getByRole("button", { name: "אישור ההרשמה" }));
-    expect(await findToast("נרשמת לשיעור. בכרטיסייה כרטיסיית 10 נשארו 6 כניסות.")).toBeInTheDocument();
 
     // Board ח: the place is held, in one line, with what comes next.
     const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
     expect(done).toHaveTextContent("יוגה בהריון, היום בשעה 19:00, החדר הקטן.");
+    // What the pass gave is said in the dialog; no toast covers it on a phone.
+    expect(done).toHaveTextContent("בכרטיסייה כרטיסיית 10 נשארו 6 כניסות.");
+    expect(screen.queryByText(/נרשמת לשיעור/)).not.toBeInTheDocument();
     expect(within(done).getByRole("button", { name: "הוספה ליומן" })).toBeInTheDocument();
     const shared: ShareData[] = [];
     vi.stubGlobal("navigator", { ...navigator, share: async (data: ShareData) => void shared.push(data) });

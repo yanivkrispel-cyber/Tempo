@@ -19,10 +19,11 @@ export function useBookingFlow(organizationId: string) {
   const book = useBook(organizationId);
   const toast = useToast();
 
-  function run(session: Session, onDone?: (booking: Booking) => void, spotId?: string | null) {
+  /** `onDone` returns true when the screen confirms the booking itself (the "שמרנו לך מקום" dialog): no toast then. */
+  function run(session: Session, onDone?: (booking: Booking) => boolean | void, spotId?: string | null) {
     book.mutate(spotId ? { sessionId: session.id, spotId } : session.id, {
       onSuccess: (booking: Booking) => {
-        onDone?.(booking);
+        if (onDone?.(booking) === true) return;
         if (booking.status === "waitlisted") {
           toast.show({
             tone: "success",

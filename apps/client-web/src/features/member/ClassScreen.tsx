@@ -482,8 +482,10 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
             (booking) => {
               setSheetOpen(false);
               setChosen(null);
-              if (booking.status === "booked") setBooked(booking);
               setFocusTitle((count) => count + 1);
+              if (booking.status !== "booked") return false;
+              setBooked(booking);
+              return true;
             },
             chosenSpot?.state === "free" ? chosenSpot.id : null,
           )
