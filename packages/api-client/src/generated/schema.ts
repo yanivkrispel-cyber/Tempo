@@ -151,7 +151,7 @@ export interface paths {
         };
         /**
          * An active studio's home-screen icon as PNG (anyone)
-         * @description The studio's icon on its background, or its initials on its accent when it has none (W-2). `180` is for iOS's `apple-touch-icon`. `Cache-Control: public, max-age=31536000, immutable`. 404 for an unknown size or studio.
+         * @description The studio's icon on its background, or its initials on its accent when it has none (W-2). `180` is for iOS's `apple-touch-icon`. `Cache-Control: public, max-age=31536000, immutable` when `v` is the brand's current version, else `max-age=60`. 404 for an unknown size or studio.
          */
         get: operations["getStudioIcon"];
         put?: never;
