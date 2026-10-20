@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -130,6 +130,43 @@ const membersAtRisk = {
   ],
 };
 
+const channel = (name: string, members: number, bookings: number, attended: number) => ({
+  channel: name,
+  members,
+  bookings,
+  attended,
+});
+const sourceLink = (n: number, overrides: Record<string, unknown> = {}) => ({
+  linkId: id(70 + n),
+  code: `c0de${n}`,
+  channel: "story",
+  template: "week",
+  sessionId: null,
+  createdAt: `2026-10-0${n}T08:00:00Z`,
+  members: 1,
+  bookings: n,
+  attended: 0,
+  ...overrides,
+});
+const sources = {
+  days: 7,
+  byChannel: [
+    channel("story", 3, 9, 6),
+    channel("whatsapp", 1, 2, 2),
+    channel("bio", 0, 0, 0),
+    channel("poster", 0, 0, 0),
+    channel("member_card", 0, 0, 0),
+    channel("referral", 0, 0, 0),
+    channel("other", 0, 0, 0),
+  ],
+  byLink: [
+    sourceLink(1),
+    sourceLink(2, { channel: "whatsapp", template: "spot_opened", sessionId: id(10), members: 0, bookings: 2 }),
+    ...[3, 4, 5, 6, 7, 8, 9].map((n) => sourceLink(n)),
+  ],
+};
+const emptySources = { days: 7, byChannel: sources.byChannel.map((row) => channel(row.channel, 0, 0, 0)), byLink: [] };
+
 type Permissions = readonly string[];
 const owner: Permissions = [...permissionsFor.owner, "reports.view"];
 
@@ -141,6 +178,7 @@ function renderAt(url: string, permissions: Permissions = owner, routesForApi: R
     [`GET ${base}/reports/summary`]: summary,
     [`GET ${base}/reports/passes-ending`]: passesEnding,
     [`GET ${base}/reports/members-at-risk`]: membersAtRisk,
+    [`GET ${base}/reports/sources`]: sources,
     ...routesForApi,
   });
   render(
@@ -358,6 +396,41 @@ describe("the two lists", () => {
     });
     expect(await screen.findByText("אין כרטיסיות או מנויים שמסתיימים בקרוב.")).toBeInTheDocument();
     expect(await screen.findByText("כל מי שמחזיק כרטיסייה בתוקף הגיע בחודש האחרון.")).toBeInTheDocument();
+  });
+});
+
+describe("where sign-ups came from (MO4)", () => {
+  it("counts per channel with a total and per link, the busiest first, and switches to 30 days", async () => {
+    const api = renderAt("/o/neshima/reports");
+    const card = await screen.findByRole("region", { name: "מאיפה הגיעו ההרשמות" });
+    const byChannel = await within(card).findByRole("table", { name: "ההרשמות לפי ערוץ" });
+    // Channels with nothing are left out.
+    expect(
+      within(byChannel)
+        .getAllByRole("row")
+        .map((row) => row.textContent),
+    ).toEqual(["ערוץהצטרפונרשמו לשיעורהגיעו", "סטורי396", "וואטסאפ122", "סך הכול4118"]);
+
+    const byLink = within(card).getByRole("table", { name: "ההרשמות לפי לינק" });
+    const rows = within(byLink).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(8);
+    expect(rows[0]).toHaveTextContent(/^סטורי · השבוע בסטודיו/);
+    expect(within(byLink).getByRole("rowheader", { name: /וואטסאפ · התפנה מקום/ })).toBeInTheDocument();
+    await userEvent.click(within(card).getByRole("button", { name: "כל 9 הלינקים" }));
+    expect(within(byLink).getAllByRole("row")).toHaveLength(10);
+
+    expect(reportRequests(api, "/reports/sources").map((url) => url.searchParams.get("days"))).toEqual(["7"]);
+    await userEvent.click(within(card).getByRole("button", { name: "30 ימים" }));
+    await waitFor(() =>
+      expect(reportRequests(api, "/reports/sources").map((url) => url.searchParams.get("days"))).toEqual(["7", "30"]),
+    );
+  });
+
+  it("says what to do when no link brought anyone", async () => {
+    renderAt("/o/neshima/reports", [...owner, "marketing.publish"], { [`GET ${base}/reports/sources`]: emptySources });
+    const card = await screen.findByRole("region", { name: "מאיפה הגיעו ההרשמות" });
+    expect(await within(card).findByText(/לא הגיעו הרשמות דרך לינקים/)).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "לעמוד הפרסום" })).toHaveAttribute("href", "/o/neshima/publish");
   });
 });
 
