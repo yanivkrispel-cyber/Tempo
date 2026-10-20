@@ -5,6 +5,7 @@ import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
 import { shortDayName } from "./format";
 import { InstallOffer } from "./InstallApp";
+import { OpenInBrowserCard } from "./OpenInBrowserCard";
 import styles from "./member.module.css";
 import { useCalendarFile, type Booking, type Session, type Studio } from "./studio";
 import { clockTime } from "./studioTime";
@@ -105,6 +106,7 @@ export function BookedDialog({
             </Button>
           </div>
           <InstallOffer appName={studio.name} />
+          <OpenInBrowserCard />
           <Button variant="ghost" block onClick={onClose}>
             סגירה
           </Button>

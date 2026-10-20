@@ -617,3 +617,11 @@
 .installLater {
   align-self: center;
 }
+
+/* "פתיחה בדפדפן" after booking inside an in-app browser (SL-7, board ו). */
+.openInBrowser {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}

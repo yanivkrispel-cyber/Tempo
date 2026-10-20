@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { isInAppBrowser } from "./inAppBrowser";
 
 /**
  * Installing the app from inside it (board #347, P-3). Chrome, Edge and Samsung Internet fire `beforeinstallprompt`
@@ -50,12 +51,8 @@ export function isIos(): boolean {
   return /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1);
 }
 
-/** Instagram's, Facebook's or TikTok's own browser: it cannot add a page to the home screen. */
-export function isInAppBrowser(): boolean {
-  return /Instagram|FBAN|FBAV|FB_IAB|musical_ly|BytedanceWebview|TikTok|Line\//.test(navigator.userAgent);
-}
-
 function currentWay(): InstallWay {
+  // Inside Instagram, Facebook or TikTok it would install the social app's view, not the studio's (SL-7).
   if (installed || isStandalone() || isInAppBrowser()) return null;
   if (deferred) return "prompt";
   return isIos() ? "ios" : null;
