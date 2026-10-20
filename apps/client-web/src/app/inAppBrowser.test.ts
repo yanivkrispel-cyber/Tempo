@@ -15,6 +15,8 @@ const agents = {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_41.2.0 JsSdk/2.0 NetType/WIFI Channel/App Store ByteLocale/he Region/IL BytedanceWebview/d8a21c6",
   tiktokAndroid:
     "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.0.0 Mobile Safari/537.36 trill_410205 JsSdk/1.0 NetType/WIFI Channel/googleplay AppName/musical_ly app_version/41.2.5 ByteLocale/he",
+  lineIos:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/15.12.0",
   androidWebView:
     "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.0.0 Mobile Safari/537.36",
   chromeAndroid:
@@ -39,6 +41,7 @@ describe("inAppBrowser", () => {
     ["facebookAndroid", "facebook"],
     ["tiktokIos", "tiktok"],
     ["tiktokAndroid", "tiktok"],
+    ["lineIos", "line"],
     ["androidWebView", "webview"],
   ] as const)("tells %s", (name, kind) => {
     expect(inAppBrowser(agents[name])).toBe(kind);

@@ -78,6 +78,14 @@ public sealed class MarketingLinksFlowTests(PostgresFixture postgres) : IClassFi
         (await RawAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("dana"), new { channel = "story" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await RawAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("noga"), new { channel = "story", sessionId = danasClass })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await RawAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("owner"), new { channel = "tiktok" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // A referral or member card link is a member's own (me/share-link): made by staff, it would reward its maker for
+        // every newcomer the studio's story brings (K5 finding, board #404).
+        foreach (var memberChannel in new[] { "referral", "member_card" })
+        {
+            (await RawAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("owner"), new { channel = memberChannel })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await RawAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("dana"), new { channel = memberChannel, sessionId = danasClass })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
         (await RawAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("owner"), new { channel = "story", sessionId = Guid.NewGuid() })).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         // 2. Maya arrives from the week's story, joins, and books Dana's class from Dana's WhatsApp; she attends.

@@ -7,7 +7,7 @@ import { installDismissed, dismissInstall, listenForInstall, resetInstallForTest
 import { routes } from "../../app/routes";
 import { apiStub } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { createStudio, testNow } from "../../test/studio";
+import { createStudio, sessionIds, testNow } from "../../test/studio";
 
 // Board #347, P-3: never on the first visit. The member app offers itself after a booking (a card on the home that
 // can be dismissed for 30 days) and always in the profile. Android and desktop take the browser's own prompt; an
@@ -118,6 +118,39 @@ describe("installing the app from the profile (P-3)", () => {
     await screen.findByRole("heading", { level: 1 });
     offerInstall();
     expect(screen.queryByRole("button", { name: /התקנת האפליקציה/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("in Instagram's own browser", () => {
+  it("offers no install, which that browser cannot do", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(`${iphone} Instagram 350.0.0.0`);
+    renderAt("/profile");
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("button", { name: /התקנת האפליקציה/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("the install offer after booking a class (board ח)", () => {
+  it("takes the browser's prompt from the 'place held' dialog", async () => {
+    const event = offerInstall();
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: /שמרנו לך מקום/ });
+    const offer = within(done).getByRole("region", { name: "סטודיו נשימה במסך הבית" });
+    await userEvent.click(within(offer).getByRole("button", { name: "הוספה למסך הבית" }));
+    expect(event.prompt).toHaveBeenCalledOnce();
+  });
+
+  it("goes for 30 days on 'later'", async () => {
+    offerInstall();
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: /שמרנו לך מקום/ });
+    await userEvent.click(within(done).getByRole("button", { name: "אחר כך" }));
+    expect(within(done).queryByRole("region", { name: "סטודיו נשימה במסך הבית" })).not.toBeInTheDocument();
+    expect(installDismissed()).toBe(true);
   });
 });
 

@@ -6,12 +6,13 @@
  */
 
 /** The app whose browser this is; `webview` is any other Android app showing the page in its own view. */
-export type InAppBrowser = "instagram" | "facebook" | "tiktok" | "webview";
+export type InAppBrowser = "instagram" | "facebook" | "tiktok" | "line" | "webview";
 
 const kinds: [InAppBrowser, RegExp][] = [
   ["instagram", /\bInstagram\b/i],
   ["facebook", /\bFB(AN|AV|IOS|_IAB|DV|SV)\b|\bFBAN\/|\bFBAV\/|\bMessenger(ForiOS|LiteForiOS)?\b/i],
   ["tiktok", /\bTikTok\b|\bmusical_ly\b|\bBytedanceWebview\b|\btrill_/i],
+  ["line", /\bLine\/\d/],
   // Android's own WebView says `; wv)` (developer.chrome.com, "User-Agent strings"); Chrome itself never does.
   ["webview", /\bAndroid\b.*;\s?wv\)/],
 ];
