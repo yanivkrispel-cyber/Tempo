@@ -28,7 +28,8 @@ export function awsIn(args, input) {
     rmSync(dir, { recursive: true, force: true });
   }
 }
-const outputs = JSON.parse(aws(["cloudformation", "describe-stacks", "--stack-name", "TempoDev-Identity"])).Stacks[0].Outputs;
+const outputs = JSON.parse(aws(["cloudformation", "describe-stacks", "--stack-name", "TempoDev-Identity"])).Stacks[0]
+  .Outputs;
 const out = (k) => outputs.find((o) => o.OutputKey === k)?.OutputValue;
 export const poolId = out("UserPoolId");
 export const clientId = out("ClientWebClientId");
@@ -37,7 +38,9 @@ const ssm = (n) => JSON.parse(aws(["ssm", "get-parameter", "--name", n, "--with-
 
 export const authFor = (username, password) =>
   awsIn(["cognito-idp", "admin-initiate-auth"], {
-    UserPoolId: poolId, ClientId: clientId, AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+    UserPoolId: poolId,
+    ClientId: clientId,
+    AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
     AuthParameters: { USERNAME: username, PASSWORD: password },
   }).AuthenticationResult;
 export const smokeToken = () => authFor(ssm(`${smokePath}/email`), ssm(`${smokePath}/password`)).AccessToken;
@@ -54,26 +57,57 @@ export async function call(token, method, route, body, { ifMatch } = {}) {
   });
   const t = await r.text();
   let json = null;
-  try { json = t ? JSON.parse(t) : null; } catch { /* not json */ }
+  try {
+    json = t ? JSON.parse(t) : null;
+  } catch {
+    /* not json */
+  }
   return { status: r.status, json };
 }
 export const newPassword = () => `${randomBytes(12).toString("base64url")}aA1!`;
 export const confirmUser = (email) => {
   awsIn(["cognito-idp", "admin-confirm-sign-up"], { UserPoolId: poolId, Username: email });
-  awsIn(["cognito-idp", "admin-update-user-attributes"], { UserPoolId: poolId, Username: email, UserAttributes: [{ Name: "email_verified", Value: "true" }] });
+  awsIn(["cognito-idp", "admin-update-user-attributes"], {
+    UserPoolId: poolId,
+    Username: email,
+    UserAttributes: [{ Name: "email_verified", Value: "true" }],
+  });
 };
-export const deleteUser = (email) => { try { awsIn(["cognito-idp", "admin-delete-user"], { UserPoolId: poolId, Username: email }); } catch { /* gone */ } };
+export const deleteUser = (email) => {
+  try {
+    awsIn(["cognito-idp", "admin-delete-user"], { UserPoolId: poolId, Username: email });
+  } catch {
+    /* gone */
+  }
+};
 export const localAt = (at) => ({
   localDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(at),
-  localStart: new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at),
+  localStart: new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(at),
 });
 export function createUser(email, password) {
   awsIn(["cognito-idp", "admin-create-user"], {
-    UserPoolId: poolId, Username: email, MessageAction: "SUPPRESS",
-    UserAttributes: [{ Name: "email", Value: email }, { Name: "email_verified", Value: "true" }],
+    UserPoolId: poolId,
+    Username: email,
+    MessageAction: "SUPPRESS",
+    UserAttributes: [
+      { Name: "email", Value: email },
+      { Name: "email_verified", Value: "true" },
+    ],
   });
-  awsIn(["cognito-idp", "admin-set-user-password"], { UserPoolId: poolId, Username: email, Password: password, Permanent: true });
+  awsIn(["cognito-idp", "admin-set-user-password"], {
+    UserPoolId: poolId,
+    Username: email,
+    Password: password,
+    Permanent: true,
+  });
 }
 export function e2eUsers() {
-  return JSON.parse(aws(["cognito-idp", "list-users", "--user-pool-id", poolId, "--filter", 'email ^= "e2e-o4-"'])).Users.map((u) => u.Username);
+  return JSON.parse(
+    aws(["cognito-idp", "list-users", "--user-pool-id", poolId, "--filter", 'email ^= "e2e-o4-"']),
+  ).Users.map((u) => u.Username);
 }
