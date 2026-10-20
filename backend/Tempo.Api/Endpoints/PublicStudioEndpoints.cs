@@ -1,0 +1,88 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Tempo.Api.Tenancy;
+using Tempo.Platform.Modules.Media;
+using Tempo.Platform.Modules.Organizations.Domain;
+
+namespace Tempo.Api.Endpoints;
+
+/// <summary>
+/// A studio's own installable app (docs/35 section 5, W-6, WL4): its web app manifest and its home-screen icons, for
+/// anyone, no sign-in. `start_url`, `scope` and `id` are absolute on the members app's origin, because a manifest's
+/// URLs resolve against the manifest's own URL (the API) and Chrome drops a scope on another origin than the page.
+/// Icons are relative, so they resolve here. An icon URL carries the brand's version and is immutable for a year.
+/// </summary>
+public static class PublicStudioEndpoints
+{
+    /// <summary>The PNG names a manifest and iOS ask for (<see cref="StudioIcons.Sizes"/>).</summary>
+    private static readonly HashSet<string> IconNames = [.. StudioIcons.Sizes.Select(s => s.Name)];
+
+    private static readonly JsonSerializerOptions Json = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    public static IEndpointRouteBuilder MapPublicStudioEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        var studio = endpoints.MapPublicStudioGroup();
+
+        studio.MapGet("/manifest.webmanifest", ManifestAsync).WithName("getStudioManifest");
+        studio.MapGet("/icons/{size}", IconAsync).WithName("getStudioIcon");
+
+        return endpoints;
+    }
+
+    private static IResult ManifestAsync(HttpContext httpContext, AppLinks links)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        var home = $"{links.ClientApp}/s/{Uri.EscapeDataString(studio.Slug)}/";
+        var icon = (string name) => $"icons/{name}?v={studio.Brand.Version}";
+        var manifest = new
+        {
+            id = home,
+            name = studio.DisplayName,
+            short_name = studio.Brand.AppName,
+            lang = "he",
+            dir = "rtl",
+            start_url = home,
+            scope = home,
+            display = "standalone",
+            orientation = "portrait",
+            background_color = Brand.PaperHex,
+            theme_color = Brand.Accents[studio.Brand.AccentId],
+            icons = new object[]
+            {
+                new { src = icon("192"), sizes = "192x192", type = "image/png", purpose = "any" },
+                new { src = icon("512"), sizes = "512x512", type = "image/png", purpose = "any" },
+                new { src = icon("512-maskable"), sizes = "512x512", type = "image/png", purpose = "maskable" }
+            }
+        };
+
+        // The manifest changes with the brand, so phones may keep it only briefly.
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Text(JsonSerializer.Serialize(manifest, Json), "application/manifest+json");
+    }
+
+    private static async Task<IResult> IconAsync(HttpContext httpContext, string size, IMediaStore store)
+    {
+        if (!IconNames.Contains(size))
+        {
+            return Results.NotFound();
+        }
+
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        byte[]? png = null;
+        if (studio.Brand.IconMediaId is { } iconId && store.Available)
+        {
+            png = await store.ReadAsync(MediaKeys.Icon(studio.Id, iconId, size), MediaService.MaxUploadBytes, httpContext.RequestAborted);
+        }
+
+        // No icon (W-2): the studio's initials on its accent. An icon whose PNG can't be read now gets them too, but
+        // only for a minute, so the real one isn't hidden behind a year of cache.
+        var missing = png is null && studio.Brand.IconMediaId is not null;
+        png ??= StudioIcons.RenderInitials(studio.DisplayName, Brand.Accents[studio.Brand.AccentId])[size];
+        httpContext.Response.Headers.CacheControl = missing ? "public, max-age=60" : "public, max-age=31536000, immutable";
+        return Results.Bytes(png, "image/png");
+    }
+}
