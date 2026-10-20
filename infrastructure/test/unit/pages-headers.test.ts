@@ -43,6 +43,14 @@ describe("Cloudflare Pages headers (ADR-0027)", () => {
     expect(file).toContain("Referrer-Policy: strict-origin-when-cross-origin");
   });
 
+  it("lets browsers keep the hashed build files for a year, and only those", () => {
+    const lines = file.split("\n");
+    const assets = lines.indexOf("/assets/*");
+    expect(assets).toBeGreaterThan(0);
+    expect(lines[assets + 1]).toBe("  Cache-Control: public, max-age=31536000, immutable");
+    expect(lines.filter((line) => line.includes("Cache-Control"))).toHaveLength(1);
+  });
+
   it("refuses an API that is not https", () => {
     expect(() => pagesHeadersFile(developmentConfig, "http://localhost:5000")).toThrow(/must be https/);
   });
