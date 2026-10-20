@@ -2,17 +2,11 @@ import type { ChipTone } from "../../shared/design-system";
 import { addDays, type IsoDate } from "../../shared/utilities/dates";
 import { shortDayName } from "../member/format";
 import { clockTime, hasStarted, studioDate } from "../member/studioTime";
-import type { PublicSession } from "./publicStudio";
+import type { PublicProduct, PublicSession } from "./publicStudio";
 
-/** "₪45", or "₪45.50"; the price is paid at the studio (SL-5). */
-export function shekels(agorot: number): string {
-  const amount = agorot / 100;
-  return `₪${amount.toLocaleString("he-IL", { minimumFractionDigits: agorot % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
-}
-
-/** The intro offer as one line: "שיעור ניסיון · ₪45", or its name alone when it has no price. */
+/** The intro offer as one line: "שיעור ניסיון · 45 ₪", or its name alone when it has no price. */
 export function offerText({ name, priceAgorot }: { name: string; priceAgorot: number | null }): string {
-  return priceAgorot === null ? name : `${name} · ${shekels(priceAgorot)}`;
+  return priceAgorot === null ? name : `${name} · ${priceText(priceAgorot)}`;
 }
 
 /** "היום", "מחר", or the day's short name ("שלישי"), for a class near today. */
@@ -110,4 +104,46 @@ export function alternatives(sessions: readonly PublicSession[], instead: Public
     .filter((session) => session.id !== instead?.id && publicState(session, now) === "open")
     .sort((a, b) => same(b) - same(a) || Date.parse(a.startsAt) - Date.parse(b.startsAt))
     .slice(0, 3);
+}
+
+/** "1,300 ₪", or "45.50 ₪": a price on the prices and offer pages (SL-4, SL-5). */
+export function priceText(agorot: number): string {
+  const amount = agorot / 100;
+  return `${amount.toLocaleString("he-IL", { minimumFractionDigits: agorot % 100 ? 2 : 0, maximumFractionDigits: 2 })} ₪`;
+}
+
+/** "5 שבועות", "6 חודשים", "שנה": how long a pass lasts, in the words a person would use. */
+export function validityText(days: number): string {
+  if (days >= 360 && days <= 366) return "שנה";
+  if (days >= 28 && days % 30 === 0) {
+    const months = days / 30;
+    return months === 1 ? "חודש" : months === 2 ? "חודשיים" : `${months} חודשים`;
+  }
+  if (days % 7 === 0) {
+    const weeks = days / 7;
+    return weeks === 1 ? "שבוע" : weeks === 2 ? "שבועיים" : `${weeks} שבועות`;
+  }
+  return days === 1 ? "יום" : `${days} ימים`;
+}
+
+/**
+ * "70 ₪ לשיעור, תוך 6 חודשים" for a punch card ("בתוך" on an offer's card); "לשימוש תוך 3 שבועות" when it has no
+ * per-class price.
+ */
+export function perClassText(product: PublicProduct, within: "תוך" | "בתוך" = "תוך"): string {
+  const validity = `${within} ${validityText(product.validDays)}`;
+  return product.pricePerClassAgorot === null
+    ? `לשימוש ${validity}`
+    : `${priceText(product.pricePerClassAgorot)} לשיעור, ${validity}`;
+}
+
+const countWords = ["", "", "שני", "שלושה", "ארבעה", "חמישה", "שישה", "שבעה", "שמונה", "תשעה", "עשרה"];
+
+/** What a product includes, for the offer page: the owner's blurb, or "שלושה שיעורים לבחירה מכל המערכת". */
+export function includedText(product: PublicProduct): string {
+  if (product.blurb) return product.blurb;
+  if (product.kind === "membership") return "כניסה לכל השיעורים במערכת";
+  const entries = product.entries ?? 0;
+  if (entries === 1) return "שיעור אחד לבחירה מכל המערכת";
+  return `${countWords[entries] || entries} שיעורים לבחירה מכל המערכת`;
 }
