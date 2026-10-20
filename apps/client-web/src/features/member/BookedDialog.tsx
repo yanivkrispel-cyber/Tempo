@@ -1,10 +1,12 @@
 import { useMe } from "../../account/account";
 import { studioBasename } from "../../app/studioPath";
+import type { ReactNode } from "react";
 import { Button, Dialog, Icon, shortDate, useToast, type IconName } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
 import { shortDayName } from "./format";
 import { InstallOffer } from "./InstallApp";
+import { passTakenText } from "./passText";
 import { OpenInBrowserCard } from "./OpenInBrowserCard";
 import styles from "./member.module.css";
 import { useCalendarFile, type Booking, type Session, type Studio } from "./studio";
@@ -42,9 +44,12 @@ export function BookedDialog({
   const day =
     session.localDate === today ? "היום" : `${shortDayName(session.localDate)} ${shortDate(session.localDate)}`;
   const summary = [session.classType.name, `${day} בשעה ${time}`, session.room?.name].filter(Boolean).join(", ");
-  const notes: { icon: IconName; text: string }[] = [];
-  if (booking?.spot) notes.push({ icon: "check", text: `מכשיר ${booking.spot.label} שמור לך` });
-  if (freeCancelUntil) notes.push({ icon: "clock", text: `ביטול חינם עד ${freeCancelUntil}` });
+  const notes: { key: string; icon: IconName; text: ReactNode }[] = [];
+  if (booking?.spot) notes.push({ key: "spot", icon: "check", text: `מכשיר ${booking.spot.label} שמור לך` });
+  if (freeCancelUntil) notes.push({ key: "cancel", icon: "clock", text: `ביטול חינם עד ${freeCancelUntil}` });
+  // The pass it took, said here instead of in a toast that would cover the dialog on a phone.
+  const pass = passTakenText(booking?.pass);
+  if (pass) notes.push({ key: "pass", icon: "credit-card", text: pass });
 
   async function share() {
     const url = `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
@@ -81,7 +86,7 @@ export function BookedDialog({
           {notes.length > 0 && (
             <ul className={styles.bookedNotes}>
               {notes.map((note) => (
-                <li key={note.text}>
+                <li key={note.key}>
                   <span className={styles.bookedNoteIcon} aria-hidden="true">
                     <Icon name={note.icon} />
                   </span>
