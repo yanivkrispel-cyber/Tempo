@@ -30,7 +30,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(34);
+        result.AppliedScripts.Should().HaveCount(35);
         result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
         result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
         result.AppliedScripts[2].Should().EndWith("0003_join_attempts.sql");
@@ -63,9 +63,9 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         result.AppliedScripts[29].Should().EndWith("0030_checkin_attempt_limits.sql");
         result.AppliedScripts[30].Should().EndWith("0031_checkin_secret_encrypted.sql");
         result.AppliedScripts[31].Should().EndWith("0032_brands.sql");
-        // 0033 is reserved for #374 (dropping the plain check-in secret).
-        result.AppliedScripts[32].Should().EndWith("0034_marketing_stage_a.sql");
-        result.AppliedScripts[33].Should().EndWith("0035_marketing_stage_b.sql");
+        result.AppliedScripts[32].Should().EndWith("0033_drop_plain_checkin_secret.sql");
+        result.AppliedScripts[33].Should().EndWith("0034_marketing_stage_a.sql");
+        result.AppliedScripts[34].Should().EndWith("0035_marketing_stage_b.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -73,7 +73,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(34);
+            .Should().Be(35);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
     }
@@ -104,7 +104,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(34);
+        result.AppliedScripts.Should().HaveCount(35);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();
