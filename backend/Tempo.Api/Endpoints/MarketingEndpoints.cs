@@ -73,20 +73,28 @@ public static class MarketingEndpoints
     private static async Task<IResult> CreateLinkAsync(HttpContext httpContext, CreateMarketingLinkRequest request, IMarketingLinkService links, AppLinks apps)
     {
         var tenant = TenantRouteFilter.Current(httpContext);
-        var link = await links.CreateAsync(tenant, new NewMarketingLink(request.Channel, request.Template, request.SessionId), httpContext.RequestAborted);
+        var link = await links.CreateAsync(tenant, new NewMarketingLink(request.Channel, request.Template, request.SessionId, request.Target?.Kind, request.Target?.Id), httpContext.RequestAborted);
         return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/marketing/links/{link.Id}", LinkResponse(link, apps));
     }
 
-    /// <summary>The members-app address of a link: the class page when it names one, else the studio's page.</summary>
+    /// <summary>The members-app address of a link by its target (SL-1): a class, an offer, the prices or the week.</summary>
     private static MarketingLinkResponse LinkResponse(MarketingLinkView link, AppLinks apps)
     {
-        var path = link.SessionId is { } session ? $"/s/{Uri.EscapeDataString(link.Slug)}/c/{session}" : $"/s/{Uri.EscapeDataString(link.Slug)}/";
-        return new MarketingLinkResponse(link.Id, link.Code, link.Channel, link.Template, link.SessionId, new Uri($"{apps.ClientApp}{path}?src={link.Code}"), link.CreatedAt);
+        var studio = $"/s/{Uri.EscapeDataString(link.Slug)}";
+        var path = link.TargetKind switch
+        {
+            "session" => $"{studio}/c/{link.TargetId}",
+            "offer" => $"{studio}/o/{link.TargetId}",
+            "prices" => $"{studio}/prices",
+            _ => $"{studio}/"
+        };
+        return new MarketingLinkResponse(link.Id, link.Code, link.Channel, link.Template, link.SessionId, new Uri($"{apps.ClientApp}{path}?src={link.Code}"), link.CreatedAt,
+            new MarketingTargetBody(link.TargetKind, link.TargetId), link.ShowName);
     }
 
     private static async Task<IResult> ShareLinkAsync(HttpContext httpContext, ShareLinkRequest request, IMemberMarketingService members, AppLinks apps)
     {
-        var link = await members.ShareLinkAsync(TenantRouteFilter.Current(httpContext), request.Channel, request.SessionId, httpContext.RequestAborted);
+        var link = await members.ShareLinkAsync(TenantRouteFilter.Current(httpContext), request.Channel, request.SessionId, httpContext.RequestAborted, request.ShowName);
         return Results.Ok(LinkResponse(link, apps));
     }
 
@@ -102,7 +110,8 @@ public static class MarketingEndpoints
         return Results.Ok(new SourceReportResponse(
             report.Days,
             [.. report.ByChannel.Select(c => new ChannelSourceResponse(c.Channel, c.Counts.Members, c.Counts.Bookings, c.Counts.Attended))],
-            [.. report.ByLink.Select(l => new LinkSourceResponse(l.LinkId, l.Code, l.Channel, l.Template, l.SessionId, l.CreatedAt, l.Counts.Members, l.Counts.Bookings, l.Counts.Attended))]));
+            [.. report.ByLink.Select(l => new LinkSourceResponse(l.LinkId, l.Code, l.Channel, l.Template, l.SessionId, l.CreatedAt, l.Counts.Members, l.Counts.Bookings, l.Counts.Attended, new MarketingTargetBody(l.TargetKind, l.TargetId)))],
+            [.. (report.ByTarget ?? []).Select(t => new TargetSourceResponse(t.Kind, t.Counts.Members, t.Counts.Bookings, t.Counts.Attended))]));
     }
 
     private static PublicPageResponse ToResponse(PublicPageView p) =>

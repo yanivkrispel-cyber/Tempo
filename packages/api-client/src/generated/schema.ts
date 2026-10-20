@@ -4644,7 +4644,7 @@ export interface components {
             byChannel: components["schemas"]["ChannelSource"][];
             /** @description Links with sign-ups or bookings in the window, and links made in it; at most 200. */
             byLink: components["schemas"]["LinkSource"][];
-            /** @description SK4: the same counts per target kind (SL-1). Until SK4 the API leaves it out. */
+            /** @description The same counts per target kind (SL-1). Always sent; optional in the schema so older fixtures stay valid. */
             byTarget?: {
                 /** @enum {string} */
                 kind: "session" | "schedule" | "offer" | "prices";
