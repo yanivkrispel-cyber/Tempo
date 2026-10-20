@@ -8,6 +8,9 @@ export type ReportSummary = Schemas["ReportSummary"];
 export type ReportFigures = Schemas["ReportFigures"];
 export type PassesEndingReport = Schemas["PassesEndingReport"];
 export type MembersAtRiskReport = Schemas["MembersAtRiskReport"];
+export type SourceReport = Schemas["SourceReport"];
+export type LinkSource = Schemas["LinkSource"];
+export type MarketingChannel = Schemas["MarketingChannel"];
 
 const reportsKey = (organizationId: string) => ["studio", organizationId, "reports"] as const;
 
@@ -55,6 +58,22 @@ export function useMembersAtRisk(enabled: boolean) {
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/reports/members-at-risk", {
           params: { path: { organizationId } },
+        }),
+      ),
+    enabled,
+  });
+}
+
+/** GET …/reports/sources (docs/37 section 6, MO4): sign-ups per channel and per link, a live query. */
+export function useSourceReport(days: 7 | 30, enabled = true) {
+  const api = useApi();
+  const { organizationId } = useStudio();
+  return useQuery({
+    queryKey: [...reportsKey(organizationId), "sources", days],
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/v1/organizations/{organizationId}/reports/sources", {
+          params: { path: { organizationId }, query: { days } },
         }),
       ),
     enabled,

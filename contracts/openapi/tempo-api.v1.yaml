@@ -229,7 +229,6 @@ paths:
     get:
       tags: [Public]
       operationId: listPublicProducts
-      x-tempo-planned: true
       summary: A public studio's listed products, offers first (anyone)
       description: >-
         SL-5, SK2. Products the owner listed (`listedProducts` on the public page) that are active and not past their
@@ -252,7 +251,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicProduct
-      x-tempo-planned: true
       summary: One listed product of a public studio, for the offer page (anyone)
       description: >-
         SL-4, SK2. 404 `product.not_found` for a product that isn't listed or isn't this studio's. A listed offer past
@@ -756,7 +754,8 @@ paths:
         docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`,
         `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without
         `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no
-        session. Audit `marketing.link.created` (channel, template).
+        session. 400 `channel.invalid` for `member_card` and `referral`, which are a member's own links
+        (`me/share-link`). Audit `marketing.link.created` (channel, template).
       requestBody:
         required: true
         content:
@@ -5760,7 +5759,7 @@ components:
 
     PublicPage:
       type: object
-      required: [enabled, openJoin, introProductId, suggestWeeklyAt, version, instagramHandle, referralRewardProductId]
+      required: [enabled, openJoin, introProductId, suggestWeeklyAt, version, instagramHandle, referralRewardProductId, listedProducts]
       properties:
         enabled: { type: boolean, description: Strangers see the page (M-7). }
         openJoin: { type: boolean, description: "Anyone signed in may join from the page, no code (M-9)." }
@@ -5771,7 +5770,7 @@ components:
         referralRewardProductId: { type: [string, "null"], format: uuid, description: "One pass of it per friend's first attended class (M-17); null means no reward." }
         listedProducts:
           type: array
-          description: "SL-4, SL-5 (SK2): the products shown on the prices page, in this order. Until SK2 the API leaves it out."
+          description: "SL-4, SL-5: the products shown on the prices page, in this order."
           items: { $ref: "#/components/schemas/ListedProduct" }
 
     ListedProduct:
@@ -5861,13 +5860,13 @@ components:
             description: { type: [string, "null"] }
             priceAgorot: { type: [integer, "null"] }
             passRequired: { type: boolean }
-        past: { type: boolean, description: "SL-3 (SK2): the session has started or ended. Until SK2 the API leaves it out." }
+        past: { type: boolean, description: "SL-3: the session has started or ended. Always sent (optional in the schema so older fixtures stay valid)." }
         alternatives:
           type: array
           maxItems: 3
           description: >-
             SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14
-            days, the same class type first. Empty otherwise. Only on the single-session read.
+            days, the same class type first. Empty otherwise, and always empty in the list.
           items: { $ref: "#/components/schemas/PublicSessionSummary" }
 
     PublicSessionSummary:
