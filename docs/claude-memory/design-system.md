@@ -22,6 +22,12 @@
   Radii are 4, 8 and 12 (plus 16, 20 and 28). White text on sage, rose or taupe is kept exact even though it is
   under AA; those pairs are flagged.
 
+- **Accents (WL2, board #380, 2026-10-19):** a studio picks one of eight accents by id (sage, olive, ocean, plum,
+  rose, terracotta, sand, graphite; `accents` in `tokens.json`, with Hebrew labels). `data-accent="<id>"` swaps the
+  brand tokens only; sage equals the root tokens. `check-tokens.mjs` holds each accent to 4.5:1 (white on the button,
+  its ink on paper) and 3:1 (the accent as a mark). A custom property derived from `--brand` must be declared on
+  `:root, [data-accent]`, or an accent set on a region (a live preview) keeps sage. The apps use `applyAccent()` from
+  `src/shared/design-system/accent.ts`; the specimen is `docs/accents.html`.
 - **Light is the face of the product.** `tokens.css` ignores the OS theme. Dark only applies with an explicit
   `data-theme="dark"`.
 - Hebrew, right to left, first.
