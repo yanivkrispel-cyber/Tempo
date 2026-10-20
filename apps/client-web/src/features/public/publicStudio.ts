@@ -1,7 +1,7 @@
 // A studio's public page and classes, for a visitor who is not a member yet (docs/37 section 4). Every read is public
 // and carries no person data (S-B); joining needs a signed-in caller with a verified email (S-D).
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { TempoApiError, unwrap, type Schemas } from "@tempo/api-client";
+import { TempoApiError, unwrap, type Schemas, type TempoClient } from "@tempo/api-client";
 import { activeMemberships, type Me } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import type { IsoDate } from "../../shared/utilities/dates";
@@ -68,10 +68,16 @@ export function usePublicSession(slug: string, sessionId: string) {
 /** Joins the studio as a member, with the first-touch source; joining twice is harmless (`created: false`). */
 export function useJoinStudio(slug: string) {
   const api = useApi();
-  return useMutation({
-    mutationFn: () =>
-      unwrap(
-        api.POST("/api/v1/public/studios/{slug}/join", { params: { path: { slug } }, body: { src: currentSource() } }),
-      ),
-  });
+  return useMutation({ mutationFn: () => joinStudio(api, slug) });
+}
+
+/** The join itself; `headers` carries a token the app has not adopted yet (the sheet's own sign-up). */
+export function joinStudio(api: TempoClient, slug: string, headers?: Record<string, string>) {
+  return unwrap(
+    api.POST("/api/v1/public/studios/{slug}/join", {
+      params: { path: { slug } },
+      body: { src: currentSource() },
+      headers,
+    }),
+  );
 }
