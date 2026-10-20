@@ -360,6 +360,10 @@
 .pickMeta {
   font-size: 13px;
 }
+.pickChip {
+  display: flex;
+  margin-top: 6px;
+}
 .fine {
   font-size: 13px;
   text-align: center;

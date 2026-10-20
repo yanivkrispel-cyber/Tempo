@@ -202,10 +202,13 @@ function Pick({
         <span className={`tp-muted ${styles.pickMeta}`}>
           <bdi>{meta}</bdi>
         </span>
+        {/* Under the line, not beside it, so a phone keeps the class name on one line. */}
+        {chip && session.availability === "few" && (
+          <span className={styles.pickChip}>
+            <Chip tone={chip.tone}>{session.spotsLeft ? `נשארו ${session.spotsLeft}` : chip.label}</Chip>
+          </span>
+        )}
       </span>
-      {chip && session.availability === "few" && (
-        <Chip tone={chip.tone}>{session.spotsLeft ? `נשארו ${session.spotsLeft}` : chip.label}</Chip>
-      )}
     </label>
   );
 }
