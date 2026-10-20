@@ -53,6 +53,7 @@ try
     }
 
     app.UseMiddleware<CorrelationIdMiddleware>();
+    app.UseMiddleware<NoStoreByDefaultMiddleware>();
     app.UseMediaLinks();
     app.UseExceptionHandler();
     // Without an explicit logger, request events go to the static startup logger.

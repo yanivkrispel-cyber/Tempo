@@ -27,3 +27,22 @@
   gap: var(--space-6);
   align-items: start;
 }
+
+/* "מאיפה הגיעו ההרשמות" (MO4): the title beside the 7/30 switch, which wraps under it on a phone. */
+.sourcesHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.linkName,
+.linkMeta {
+  display: block;
+}
+.linkName {
+  font-weight: 600;
+}
+.linkMeta {
+  font-weight: 400;
+}

@@ -348,6 +348,10 @@ pays.
 - Threats checked in the build PR's review: data leak through the public API (key test), slug enumeration (public by
   design; a non-public studio answers 404 like an unknown one), open redirect, sign-up spam through open join (rate
   limits, verified email, owner switch), a tainted canvas (CORS), and an instructor shown without consent (M-14).
+- Board #404 hardened the public surface (S-A to S-D, D24): gateway throttling of the public routes below the API's
+  reserved concurrency, per-address and per-account counters on joins and share links, the same 404 for an unknown
+  and a suspended studio, and `private, no-store` on everything that isn't public. The table is in section 12.9;
+  the new public routes (products, one product, a link by code, the brand, the preview covers) are in section 12.
 
 ## 10. Costs (ADR-0021)
 
@@ -388,3 +392,90 @@ the same order.
 Every screen at 360 and 1280 px (D15), Hebrew right to left, fictional people only (the repo is public, D14).
 **$0 (ADR-0021):** no paid service and no new AWS resource; the only infrastructure change is a CORS rule on the
 existing bucket. No Meta connection, no WhatsApp or SMS provider, no AI, no video rendering (all stage C).
+
+## 12. Share links by intent (board #404, 2026-10-20)
+
+Kris approved SL-1 to SL-10 on board #404 (from #380's night; D25). A story's link leads where the post points, not
+always to the studio's page. Why: in Kris's example (a real Arbox studio, 2026-10-19) Instagram could link only the
+whole price list, with the trial offer as row four, and a single class had no address of its own. The design is the
+canvas https://claude.ai/artifact/49ZHvC1fjRQWBEEKWLJQ9b (private to Kris); its boards are saved as HTML in
+`docs/design/mockups/share-links-2026-10-19/` (#409).
+
+### 12.1 Targets and routes
+
+| Target | Members app route | Used by |
+|---|---|---|
+| `session` (one class; an event and a member's invite are sessions too) | `/s/<slug>/c/<sessionId>` | `today`, `spot_opened`, `instructor`, `event` stories; a member's card |
+| `schedule` (the week) | `/s/<slug>/` | `week` and `change` stories, the QR poster, the Instagram bio link, a referral |
+| `offer` (one listed product) | `/s/<slug>/o/<productId>` | the `offer` story |
+| `prices` | `/s/<slug>/prices` | a bio or WhatsApp link to the price list |
+
+Every link keeps `?src=<code>`. `marketing.links` holds `target_kind` and `target_id` (migration 0036, #413): an id
+exactly for `session` and `offer`; a session target keeps `session_id = target_id`, so the studio's foreign key still
+holds it, and an offer's product reaches the studio's `pass_products` through a stored column and a composite
+foreign key. The console's share sheet asks "לאן הקישור יוביל?" with the template's default (SL-6). The source
+report adds the target to each link and counts per target (`byTarget`).
+
+### 12.2 Listed products, the offer page and the prices page
+
+The owner lists products on the public page (`listedProducts`, #424): the order is the public order, an offer is
+`newcomersOnly` with an optional last day (`publicUntil`) and a line of up to 120 characters. Stage A's intro product
+became a listed offer for newcomers in 0036, and `intro_product_id` stays readable for one release.
+`GET /public/studios/{slug}/products` lists offers first, then the owner's order, with the price per class for punch
+cards ("10 שיעורים, 70 ₪ לשיעור"); `GET …/products/{id}` answers `{ ended, product }` so an ended offer shows the
+prices with one line saying so (SL-4, SL-5). Prices are shown only: "נרשמים כאן, משלמים בסטודיו" until merchant
+payments (Phase 6).
+
+### 12.3 The offer join (SK3, #425)
+
+`POST /public/studios/{slug}/join` with `productId` and `sessionId` joins, grants the product to pay at the studio
+(a newcomers-only offer once per person and studio, under a per-person lock) and books, in **one transaction**. Any
+refusal leaves nothing: 404 `product.not_found`, 409 `offer.ended`, `offer.not_newcomer`, `session.full`,
+`session.not_bookable`. The one partial answer: when the studio asks for a health declaration (docs/31), a newcomer
+can't have signed it yet, so the join and the pass commit and the answer says `next: health_declaration`; the app
+shows the declaration and then books. Last touch on the booking, first touch on the membership.
+
+### 12.4 A full, cancelled or past class (SL-3)
+
+`GET …/sessions/{id}` says `past` and, when the class is full, cancelled or past, offers up to three upcoming
+classes with room in the next 14 days, the same class type first (`alternatives`, #424). A story lives longer than
+one class.
+
+### 12.5 A member's invite (SL-8)
+
+A member's own link (`member_card`, `referral`) carries `show_name` (default on, switched in their share sheet; the
+update is limited to their own link, #426). `GET /public/studios/{slug}/links/{code}` answers the target and, only for
+such a link with the switch on, their **first name**: the first word of the name the studio holds for them. Never a
+surname, a photo, tenure or attendance. The lookup is under the slug because a code is unique within one studio only.
+
+### 12.6 Inside Instagram, Facebook or TikTok (SL-7)
+
+A story's link opens in the app's own browser, where Google sign-in is blocked and passkeys usually fail. The app
+detects it by user agent and offers only the email code (once SES allows it, #304) and the password, no Face ID and
+no install prompt; after booking, a "פתיחה בדפדפן" card. A real phone check is part of SO4.
+
+### 12.7 Link previews (SL-9)
+
+Crawlers don't run JavaScript. `client-web`'s build output carries a Cloudflare Pages `_worker.js` (free plan, no
+workflow change): a request to `/s/*` from a known preview crawler gets a small page with `og:title`,
+`og:description` and `og:image` (HTML-escaped studio text, S-C); everything else passes to the static app with its
+`_headers`. The pictures come from `GET …/cover` and `…/sessions/{id}/cover`: a 302 to the studio's or the class's
+presigned picture, else the studio's icon (#426).
+
+### 12.8 After booking (SL-10)
+
+The confirmation, what to bring, "הוספה ליומן", "שליחה לחברה" (the member's own invite link), and only then the offer
+to add the studio to the home screen, never inside an in-app browser.
+
+### 12.9 The public surface's protections (S-A to S-D, D24)
+
+| Threat | Answer |
+|---|---|
+| A burst of anonymous requests takes every Lambda execution and the whole API answers 503 (seen on dev 2026-10-20: 70 parallel reads, 50 503s) | Own route keys for `GET /api/v1/public/{proxy+}` and the public join, throttled on the stage at 10 rps (burst 12) and 2 rps (burst 4), both bursts together below the API's reserved concurrency, validated in the config (#417). No WAF (N-4). |
+| One address or one account makes join or link requests without end | Counters in `identity.rate_counters` (migration 0037, #419): joins 10 per address and 3 per account an hour, share links 30 per account an hour. 429 `rate_limited` with `Retry-After`. The numbers are config (`RateLimits:*`); a counter keeps a SHA-256, never an address. |
+| Telling a suspended studio from one that never existed (S-B) | The same 404 body and headers on every public route (#423's test). |
+| A person's data in public JSON (S-B) | Exact key lists per answer in the tests; only an instructor's public profile with consent, and an inviter's first name under SL-8. Member-only class details are never read by the public queries. |
+| Studio text as markup (S-C) | Text everywhere: JSON, `<title>`, React text, Canvas `fillText`, escaped `og` tags. |
+| Joining without a verified email, or a `returnTo` off the studio (S-D) | 403 `account.email_not_verified`; `returnTo` is a same-origin path under `/s/<slug>/`, checked by `safeReturnTo`. |
+| Staff collecting the bring-a-friend reward through a studio link | Staff links can't use `referral` or `member_card` (K5-1, #421). |
+| A browser or proxy keeping a person's data | Every answer without its own caching is `private, no-store` (#422); public reads are `public` and carry no user. |

@@ -9,6 +9,7 @@ using Tempo.Contracts.Api.Marketing;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Marketing;
+using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.Organizations.Domain;
 
@@ -41,6 +42,11 @@ public static class PublicStudioEndpoints
         studio.MapGet("/manifest.webmanifest", ManifestAsync).AllowAnonymous().WithName("getStudioManifest");
         studio.MapGet("/icons/{size}", IconAsync).AllowAnonymous().WithName("getStudioIcon");
         studio.MapGet("/brand", BrandAsync).AllowAnonymous().WithName("getPublicBrand");
+        studio.MapGet("/links/{code}", LinkAsync).AllowAnonymous().WithName("getPublicLink");
+        studio.MapGet("/cover", StudioCoverAsync).AllowAnonymous().WithName("getPublicStudioCover");
+        studio.MapGet("/sessions/{sessionId:guid}/cover", SessionCoverAsync).AllowAnonymous().WithName("getPublicSessionCover");
+        studio.MapGet("/products", ProductsAsync).AllowAnonymous().WithName("listPublicProducts");
+        studio.MapGet("/products/{productId:guid}", ProductAsync).AllowAnonymous().WithName("getPublicProduct");
         // Joining needs a customer token and a verified email (docs/37 section 4.3).
         studio.MapPost("/join", JoinAsync).RequireAuthorization().WithName("joinPublicStudio").Produces<PublicJoinResponse>();
 
@@ -93,7 +99,65 @@ public static class PublicStudioEndpoints
             s.Availability,
             s.SpotsLeft,
             s.WaitlistOpen,
-            s.Event is { } e ? new PublicEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null);
+            s.Event is { } e ? new PublicEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null,
+            s.Past,
+            [.. (s.Alternatives ?? []).Select(a => new PublicSessionSummaryResponse(a.Id, a.StartsAt, a.Minutes, a.ClassName, a.InstructorName, a.Availability, a.SpotsLeft))]);
+
+    /// <summary>SL-5: the prices page. Prices change rarely, so five minutes.</summary>
+    private static async Task<IResult> ProductsAsync(HttpContext httpContext, IPublicStudioReads reads)
+    {
+        var products = await reads.ListProductsAsync(PublicStudioRouteFilter.Current(httpContext), httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Ok(new PublicProductListResponse([.. products.Select(ProductResponse)]));
+    }
+
+    /// <summary>SL-4: one offer; `ended` instead of 404 once it ended, so the page can show the prices with a line.</summary>
+    private static async Task<IResult> ProductAsync(HttpContext httpContext, Guid productId, IPublicStudioReads reads)
+    {
+        var product = await reads.GetProductAsync(PublicStudioRouteFilter.Current(httpContext), productId, httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=60";
+        return Results.Ok(new PublicProductDetailResponse(product is null, product is null ? null : ProductResponse(product)));
+    }
+
+    private static PublicProductResponse ProductResponse(PublicProductView p) =>
+        new(p.Id, p.Name, p.Kind, p.PriceAgorot, p.Entries, p.PricePerClassAgorot, p.ValidDays, p.NewcomersOnly, p.PublicUntil, p.Blurb);
+
+    /// <summary>SL-1, SL-8: where a link leads and, for a member's own link she shows, her first name.</summary>
+    private static async Task<IResult> LinkAsync(HttpContext httpContext, string code, IPublicStudioReads reads)
+    {
+        var link = await reads.GetLinkAsync(PublicStudioRouteFilter.Current(httpContext), code, httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=60";
+        return Results.Ok(new PublicLinkTargetResponse(new MarketingTargetBody(link.TargetKind, link.TargetId), link.InviterFirstName));
+    }
+
+    /// <summary>SL-9: the studio's cover for a link preview, else its icon; the picture's URL lives an hour.</summary>
+    private static async Task<IResult> StudioCoverAsync(HttpContext httpContext, IPublicStudioReads reads)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        var page = await reads.GetStudioAsync(studio, httpContext.RequestAborted);
+        return Cover(httpContext, studio, MediaLinks.UrlFor(studio.Id, page.CoverMediaId));
+    }
+
+    /// <summary>SL-9: the class's cover for a link preview, else the studio's, else its icon.</summary>
+    private static async Task<IResult> SessionCoverAsync(HttpContext httpContext, Guid sessionId, IPublicStudioReads reads)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        var session = await reads.GetSessionAsync(studio, sessionId, httpContext.RequestAborted);
+        var url = MediaLinks.UrlFor(studio.Id, session.CoverMediaId);
+        if (url is null)
+        {
+            var page = await reads.GetStudioAsync(studio, httpContext.RequestAborted);
+            url = MediaLinks.UrlFor(studio.Id, page.CoverMediaId);
+        }
+
+        return Cover(httpContext, studio, url);
+    }
+
+    private static IResult Cover(HttpContext httpContext, PublicStudio studio, Uri? picture)
+    {
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Redirect(picture?.ToString() ?? $"/api/v1/public/studios/{Uri.EscapeDataString(studio.Slug)}/icons/512?v={studio.Brand.Version}");
+    }
 
     /// <summary>
     /// docs/35 W-4, W-10: what the studio's own app and its sign-in wear, for any active studio, public page on or off.
@@ -132,12 +196,14 @@ public static class PublicStudioEndpoints
 
         var studio = PublicStudioRouteFilter.Current(httpContext);
         var correlationId = httpContext.Items[CorrelationIdMiddleware.ItemKey] as string ?? httpContext.TraceIdentifier;
-        var joined = await joins.JoinAsync(caller, studio, request?.Src, correlationId, httpContext.RequestAborted);
+        var joined = await joins.JoinAsync(caller, studio, new PublicJoinRequestView(request?.Src, request?.ProductId, request?.SessionId), correlationId, httpContext.RequestAborted);
         return Results.Ok(new PublicJoinResponse(
             studio.Id,
             joined.Membership.MembershipId,
             joined.Created,
-            joined.IntroPass is { } p ? new PublicIntroPassResponse(p.PassId, p.ProductName, p.ToPayAtStudio) : null));
+            joined.IntroPass is { } p ? new PublicIntroPassResponse(p.PassId, p.ProductName, p.ToPayAtStudio) : null,
+            joined.Booking is { } b ? new PublicJoinBookingResponse(b.BookingId, b.SessionId, b.Status) : null,
+            joined.Next));
     }
 
     private static IResult ManifestAsync(HttpContext httpContext, AppLinks links)

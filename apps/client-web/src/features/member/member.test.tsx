@@ -304,6 +304,23 @@ describe("a class and cancelling", () => {
     const sheet = screen.getByRole("dialog", { name: "הרשמה לשיעור יוגה בהריון" });
     await userEvent.click(within(sheet).getByRole("button", { name: "אישור ההרשמה" }));
     expect(await findToast("נרשמת לשיעור. בכרטיסייה כרטיסיית 10 נשארו 6 כניסות.")).toBeInTheDocument();
+
+    // Board ח: the place is held, in one line, with what comes next.
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    expect(done).toHaveTextContent("יוגה בהריון, היום בשעה 19:00, החדר הקטן.");
+    expect(within(done).getByRole("button", { name: "הוספה ליומן" })).toBeInTheDocument();
+    const shared: ShareData[] = [];
+    vi.stubGlobal("navigator", { ...navigator, share: async (data: ShareData) => void shared.push(data) });
+    await userEvent.click(within(done).getByRole("button", { name: "שליחה לחברה" }));
+    expect(shared).toEqual([
+      {
+        text: "בואי איתי ליוגה בהריון, היום ב-19:00",
+        url: `${window.location.origin}/s/neshima/c/${sessionIds.prenatal}`,
+      },
+    ]);
+    vi.unstubAllGlobals();
+    await userEvent.click(within(done).getByRole("button", { name: "סגירה" }));
+
     expect(await screen.findByRole("button", { name: "ביטול הרשמה" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toHaveFocus();
   });
