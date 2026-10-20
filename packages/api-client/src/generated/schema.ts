@@ -544,7 +544,7 @@ export interface paths {
         put?: never;
         /**
          * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
-         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. 400 `channel.invalid` for `member_card` and `referral`, which are a member's own links (`me/share-link`). Audit `marketing.link.created` (channel, template).
          */
         post: operations["createMarketingLink"];
         delete?: never;
