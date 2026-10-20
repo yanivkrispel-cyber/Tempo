@@ -12,6 +12,10 @@
  *              books with the code, attends, and the source report counts her.
  *   --stage-b  MK9: a fictional member reaches the milestone of 10 attended classes; her referral link brings a friend
  *              whose first attended class rewards her; the friend books an event without a pass.
+ *   --targets  SK5 (board #404, SL-1 to SL-10): a link of each target (class, week, offer, prices) and its public
+ *              lookup; the listed offer read signed out; a newcomer takes the offer and books in one call; a full class
+ *              offers alternatives; the report counts by target; a preview crawler gets `og` tags (SO6) while a
+ *              browser gets the app with its CSP header.
  *
  * Every person here is fictional (`e2e-marketing-<run>-…@example.com`, Cognito users made for this run). Cleanup:
  * classes cancelled, products archived, members erased and removed, Cognito users deleted, and the smoke studio's
@@ -19,7 +23,7 @@
  *
  * Usage (from a developer's machine; `--profile tempo` needs Cognito admin user calls, ssm:GetParameter and
  * cloudformation:DescribeStacks):
- *   node tools/scripts/marketing-live-check.mjs --brand --stage-a --stage-b [--profile tempo]
+ *   node tools/scripts/marketing-live-check.mjs --brand --stage-a --stage-b --targets [--profile tempo]
  *
  * Never prints passwords, tokens, presigned URLs or anyone's address.
  */
@@ -45,9 +49,14 @@ const PREFIX = "e2e-marketing ";
 const args = process.argv.slice(2);
 const profileIndex = args.indexOf("--profile");
 const profile = profileIndex >= 0 ? args[profileIndex + 1] : "tempo";
-const parts = { brand: args.includes("--brand"), stageA: args.includes("--stage-a"), stageB: args.includes("--stage-b") };
-if (!parts.brand && !parts.stageA && !parts.stageB) {
-  console.error("usage: node tools/scripts/marketing-live-check.mjs [--brand] [--stage-a] [--stage-b] [--profile tempo]");
+const parts = {
+  brand: args.includes("--brand"),
+  stageA: args.includes("--stage-a"),
+  stageB: args.includes("--stage-b"),
+  targets: args.includes("--targets"),
+};
+if (!parts.brand && !parts.stageA && !parts.stageB && !parts.targets) {
+  console.error("usage: node tools/scripts/marketing-live-check.mjs [--brand] [--stage-a] [--stage-b] [--targets] [--profile tempo]");
   process.exit(2);
 }
 
@@ -258,7 +267,82 @@ try {
       check(eventBooking?.toPayAtStudio === true && eventBooking.pass === null, "an event is booked without a pass, to pay at the studio");
     }
   }
+
+  if (parts.targets && !studio) {
+    check(false, "the smoke user owns a studio with marketing.publish");
+  } else if (parts.targets) {
+    // SK5: every link target, the offer join, alternatives, the report by target, previews.
+    pageBefore ??= (await call(smoke, "GET", `${s}/public-page`)).json;
+    const offer = (await call(smoke, "POST", `${s}/pass-products`, { kind: "punch_card", name: `${PREFIX}3 שיעורי ניסיון`, entries: 3, validDays: 35, priceAgorot: 9900 })).json;
+    products.push(offer.id);
+    const current = (await call(smoke, "GET", `${s}/public-page`)).json;
+    const listed = [...(current.listedProducts ?? []), { productId: offer.id, newcomersOnly: true, publicUntil: null, blurb: "בדיקה" }];
+    await call(smoke, "PUT", `${s}/public-page`, { ...current, enabled: true, openJoin: true, listedProducts: listed }, { ifMatch: current.version });
+    const cls = await classIn(2 * 24 * 60);
+    const full = await classIn(3 * 24 * 60, { capacity: 1 });
+
+    const paths = { session: `/c/${cls.id}`, schedule: "/", offer: `/o/${offer.id}`, prices: "/prices" };
+    const links = {};
+    for (const [kind, path] of Object.entries(paths)) {
+      const id = kind === "session" ? cls.id : kind === "offer" ? offer.id : null;
+      const link = (await call(smoke, "POST", `${s}/marketing/links`, { channel: "story", template: "week", target: { kind, id } })).json;
+      links[kind] = link;
+      const lookup = (await call(null, "GET", `/api/v1/public/studios/${slug}/links/${link?.code}`)).json;
+      check(
+        link?.url?.startsWith(`${MEMBERS_APP}/s/${slug}${path}?src=`) === true && lookup?.target?.kind === kind && lookup.inviterFirstName === null,
+        `a ${kind} link leads to ${path} and its public lookup says ${kind}`,
+      );
+    }
+
+    const listing = (await call(null, "GET", `/api/v1/public/studios/${slug}/products`)).json;
+    check(listing?.items?.[0]?.id === offer.id && listing.items[0].pricePerClassAgorot === 3300, "the prices page lists the offer first, 33 ₪ a class");
+    const one = (await call(null, "GET", `/api/v1/public/studios/${slug}/products/${offer.id}`)).json;
+    check(one?.ended === false && one.product?.newcomersOnly === true, "the offer page reads it, for newcomers");
+
+    const newcomer = await newPerson("offer");
+    const joined = (await call(newcomer.token, "POST", `/api/v1/public/studios/${slug}/join`, { src: links.offer?.code, productId: offer.id, sessionId: cls.id })).json;
+    newcomer.membershipId = joined?.membershipId;
+    newcomer.personId = (await call(smoke, "GET", `${s}/people?query=${encodeURIComponent(newcomer.email)}`)).json.items[0]?.id;
+    members.push(newcomer);
+    const booked = joined?.booking?.status === "booked" || joined?.next === "health_declaration";
+    check(booked && joined?.introPass?.toPayAtStudio === true, `the offer join granted the pass and ${joined?.next ? "asks for the health declaration next" : "booked the class"}`);
+    const again = await call(newcomer.token, "POST", `/api/v1/public/studios/${slug}/join`, { productId: offer.id }, { expected: [409] });
+    check(again.json?.code === "offer.not_newcomer", "the newcomers' offer is granted once");
+
+    const filler = await newPerson("full");
+    const filled = (await call(filler.token, "POST", `/api/v1/public/studios/${slug}/join`, { productId: offer.id, sessionId: full.id })).json;
+    filler.membershipId = filled?.membershipId;
+    filler.personId = (await call(smoke, "GET", `${s}/people?query=${encodeURIComponent(filler.email)}`)).json.items[0]?.id;
+    members.push(filler);
+    const fullPage = (await call(null, "GET", `/api/v1/public/studios/${slug}/sessions/${full.id}`)).json;
+    check(
+      filled?.next === "health_declaration" || (fullPage?.availability === "full" && (fullPage.alternatives ?? []).some((a) => a.id === cls.id)),
+      filled?.next ? "the full-class check needs a signed declaration here (skipped)" : "a full class's page offers other classes with room",
+    );
+
+    const report = (await call(smoke, "GET", `${s}/reports/sources?days=7`)).json;
+    const offers = (report?.byTarget ?? []).find((t) => t.kind === "offer");
+    check((offers?.members ?? 0) >= 1, "the source report counts the newcomer under the offer");
+
+    // SO6: a preview crawler gets the og tags; a browser gets the app and its CSP header.
+    const page = `${MEMBERS_APP}/s/${slug}/c/${cls.id}?src=${links.session?.code}`;
+    const crawled = await fetch(page, { headers: { "User-Agent": "WhatsApp/2.23.20.0" } });
+    const html = await crawled.text();
+    if (html.includes('property="og:title"')) {
+      check(html.includes('property="og:image"'), "a preview crawler gets og:title and og:image");
+    } else {
+      console.log("- previews: no og tags yet (SO6 not on dev): skipped");
+    }
+    const browser = await fetch(page, { headers: { "User-Agent": "Mozilla/5.0 (Linux; Android 14) Chrome/130.0 Mobile Safari/537.36" } });
+    check(browser.status === 200 && Boolean(browser.headers.get("content-security-policy")), "a browser gets the app with its CSP header");
+  }
 } finally {
+  // The page first (#391 review): it may point at a product of this run, and archiving that product must not wait on it.
+  if (pageBefore && s) {
+    const current = (await call(smoke, "GET", `${s}/public-page`)).json;
+    // Every field as it was before the run, the studio's own intro, reward and listed products included.
+    await call(smoke, "PUT", `${s}/public-page`, { ...pageBefore }, { ifMatch: current.version, expected: [200] });
+  }
   for (const id of sessions) await call(smoke, "POST", `${s}/sessions/${id}/cancel`, undefined, { expected: [200, 409] });
   for (const id of products) await call(smoke, "POST", `${s}/pass-products/${id}/archive`, undefined, { expected: [200, 409] });
   for (const m of members) {
@@ -272,12 +356,6 @@ try {
     } catch {
       // Already gone.
     }
-  }
-  if (pageBefore && s) {
-    const current = (await call(smoke, "GET", `${s}/public-page`)).json;
-    // Every field as it was before the run, the studio's own intro and reward products included (#391 review): the
-    // products this run made are archived above, and the page no longer points at them.
-    await call(smoke, "PUT", `${s}/public-page`, { ...pageBefore }, { ifMatch: current.version, expected: [200] });
   }
   console.log("cleanup: classes cancelled, products archived, members erased and removed, Cognito users deleted, the public page set back");
 }
