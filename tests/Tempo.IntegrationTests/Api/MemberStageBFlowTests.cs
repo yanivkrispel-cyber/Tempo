@@ -42,7 +42,6 @@ public sealed class MemberStageBFlowTests(PostgresFixture postgres) : IClassFixt
     [Fact]
     public async Task AMembersLinks_Milestones_AndTheBringAFriendReward_EndToEnd()
     {
-        PublicRateLimitFilter.Reset();
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         using var factory = Factory(db);
         var client = factory.CreateClient();
@@ -115,7 +114,6 @@ public sealed class MemberStageBFlowTests(PostgresFixture postgres) : IClassFixt
         milestones.GetProperty("longestWeekStreak").GetInt32().Should().Be(1);
         milestones.GetProperty("usualTime").GetString().Should().Be(start.ToString("HH:mm", CultureInfo.InvariantCulture));
         milestones.GetProperty("hoursOnTheMat").GetDouble().Should().BeApproximately(10 * 50 / 60.0, 0.1);
-        PublicRateLimitFilter.Reset();
     }
 
     private async Task<Guid> JoinAsync(HttpClient client, string studioPath, string subject, string role)

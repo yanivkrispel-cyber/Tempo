@@ -41,7 +41,6 @@ public sealed class PublicJoinFlowTests(PostgresFixture postgres) : IClassFixtur
     [Fact]
     public async Task OpenJoin_MakesAClient_WithTheFirstTouch_AndTheIntroPassOnce_ThenTheBookingKeepsTheLastTouch()
     {
-        PublicRateLimitFilter.Reset();
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         using var factory = Factory(db);
         var client = factory.CreateClient();
@@ -108,7 +107,6 @@ public sealed class PublicJoinFlowTests(PostgresFixture postgres) : IClassFixtur
         var audit = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/audit-events?limit=100", Customer("owner"))).GetProperty("items").EnumerateArray().ToList();
         audit.Select(e => e.GetProperty("action").GetString()).Should().Contain("membership.joined_via_public_page");
         string.Join(' ', audit.Select(e => e.GetProperty("data").GetRawText())).Should().NotContain("@example.com", "the stored data keeps ids only");
-        PublicRateLimitFilter.Reset();
     }
 
     private async Task ProblemAsync(HttpClient client, string path, string who, HttpStatusCode status, string code)

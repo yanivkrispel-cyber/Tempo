@@ -43,7 +43,6 @@ public sealed class EventFlowTests(PostgresFixture postgres) : IClassFixture<Pos
     [Fact]
     public async Task AnEvent_IsBookedWithoutAPass_ToPayAtTheStudio_ShowsPublicly_AndIsRemindedAWeekAhead()
     {
-        PublicRateLimitFilter.Reset();
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         using var factory = Factory(db);
         var client = factory.CreateClient();
@@ -96,7 +95,6 @@ public sealed class EventFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         (await At(10).RunAsync(CancellationToken.None)).EventWeek.Should().Be(1);
         (await At(11).RunAsync(CancellationToken.None)).EventWeek.Should().Be(0, "the dedupe key holds");
         (await db.AsMasterAsync("SELECT title FROM notifications.inbox_items WHERE organization_id = $1 AND kind = 'reminder.event_week'", studioId)).Should().Be("תזכורת: האירוע בעוד שבוע");
-        PublicRateLimitFilter.Reset();
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

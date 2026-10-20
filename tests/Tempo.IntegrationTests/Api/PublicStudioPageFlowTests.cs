@@ -125,7 +125,12 @@ public sealed class PublicStudioPageFlowTests(PostgresFixture postgres) : IClass
         (await client.GetAsync($"{publicPath}/sessions?from=yesterday")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.GetAsync($"{publicPath}/sessions/{Guid.NewGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        // 5. A burst from one address is cut at the limit.
+        // 5. A burst from one address is cut at the limit. The window is a calendar minute, so start the burst early in one.
+        if (DateTimeOffset.UtcNow.Second > 40)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(61 - DateTimeOffset.UtcNow.Second));
+        }
+
         PublicRateLimitFilter.Reset();
         var statuses = new List<HttpStatusCode>();
         for (var i = 0; i <= PublicRateLimitFilter.PerMinute; i++)
