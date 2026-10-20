@@ -43,7 +43,7 @@ export function PricesView({ studio, ended = false }: { studio: PublicStudio; en
 
   return (
     <PublicFrame studio={studio}>
-      <h1 className={styles.sectionTitle}>מחירים</h1>
+      <h1 className={styles.pageTitle}>מחירים</h1>
       {ended && (
         <p className={`tp-muted ${styles.notice}`} role="status">
           המבצע הזה הסתיים. אלה המחירים של <bdi>{studio.name}</bdi> כרגע.
