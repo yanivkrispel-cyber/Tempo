@@ -8,6 +8,29 @@
   margin-inline: auto;
   width: 100%;
 }
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.nav {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+.navLink {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.navLink[aria-current="page"] {
+  background: var(--surface-sunken);
+  color: var(--brand-ink);
+}
 .brand {
   display: flex;
   align-items: center;
@@ -291,6 +314,100 @@
   flex-direction: column;
   min-width: 0;
 }
+
+/* The offer page (SL-4): the first class is picked on the same screen. */
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pickList {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  cursor: pointer;
+  border-radius: 14px;
+}
+.pickList li + li {
+  border-top: 1px solid var(--line);
+}
+.pick input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--brand);
+}
+.pickTime {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.2em;
+}
+.pickText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.pickMeta {
+  font-size: 13px;
+}
+.pickChip {
+  display: flex;
+  margin-top: 6px;
+}
+.fine {
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
+.notice {
+  margin: 0;
+}
+
+/* The prices page (SL-5). */
+.productCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+.productHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.productName {
+  font-size: 18px;
+  font-weight: 600;
+}
+.productPrice {
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+.priceText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 .slot :global(.tp-chip) {
   flex: none;
 }
@@ -303,6 +420,10 @@
     margin-inline: 24px;
     padding: 30px 32px 22px;
   }
+}
+
+.priceRow strong {
+  white-space: nowrap;
 }
 
 /* "<first name> מזמינה אותך" (SL-8): the first line of the sheet, at its start like the content below it. */
