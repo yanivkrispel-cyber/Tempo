@@ -201,6 +201,131 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/public/studios/{slug}/brand:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+    get:
+      tags: [Public]
+      operationId: getPublicBrand
+      x-tempo-planned: true
+      summary: An active studio's name, accent and logo, public page on or off (anyone)
+      description: >-
+        docs/35 W-4 and W-10 (board #404, [O]'s REQUEST for WL5 part B): what the studio's own app and its branded
+        sign-in wear. The manifest already shows the name and the accent; the logo is the only new field. 404
+        `studio.not_found` with the same body for an unknown, suspended or removed slug (S-B). `public, max-age=300`.
+      security: []
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicBrand" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/products:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+    get:
+      tags: [Public]
+      operationId: listPublicProducts
+      x-tempo-planned: true
+      summary: A public studio's listed products, offers first (anyone)
+      description: >-
+        SL-5, SK2. Products the owner listed (`listedProducts` on the public page) that are active and not past their
+        last day, offers (`newcomersOnly`) first, then in the owner's order. Prices are shown only; payment is at the
+        studio until Phase 6. `public, max-age=300`.
+      security: []
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicProductList" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+      - { name: productId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Public]
+      operationId: getPublicProduct
+      x-tempo-planned: true
+      summary: One listed product of a public studio, for the offer page (anyone)
+      description: >-
+        SL-4, SK2. 404 `product.not_found` for a product that isn't listed or isn't this studio's. A listed offer past
+        its last day, or archived, answers 200 with `ended: true` and no product, so the page can show the prices
+        with one line saying so. `public, max-age=60`.
+      security: []
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicProductDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/links/{code}:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+      - { name: code, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9]{6,10}$" } }
+    get:
+      tags: [Public]
+      operationId: getPublicLink
+      x-tempo-planned: true
+      summary: Where one of a public studio's links leads, and the inviter's first name for a member's invite (anyone)
+      description: >-
+        SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404
+        `link.not_found` for an unknown code. `inviterFirstName` only for a member's own link (`member_card`,
+        `referral`) while its `showName` is on, and nothing else about the member. `public, max-age=60`.
+      security: []
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicLinkTarget" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/cover:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+    get:
+      tags: [Public]
+      operationId: getPublicStudioCover
+      x-tempo-planned: true
+      summary: The studio's cover picture for link previews (anyone)
+      description: >-
+        SL-9, SK4. `302` to a short-lived presigned URL of the studio's cover, or of its 512 px icon when there is
+        none. `public, max-age=300`. Rate-limited like the other public routes.
+      security: []
+      responses:
+        "302": { description: The picture's presigned URL in `Location`. }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/sessions/{sessionId}/cover:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+      - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Public]
+      operationId: getPublicSessionCover
+      x-tempo-planned: true
+      summary: A session's class cover for link previews (anyone)
+      description: >-
+        SL-9, SK4. `302` to a short-lived presigned URL of the class type's cover, else the studio's cover, else its
+        icon. `public, max-age=300`.
+      security: []
+      responses:
+        "302": { description: The picture's presigned URL in `Location`. }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/public/studios/{slug}/join:
     parameters:
       - $ref: "#/components/parameters/StudioSlug"
@@ -213,7 +338,12 @@ paths:
         and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records
         the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person
         and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts
-        against the join attempts (429 with `Retry-After`).
+        against the join attempts (429 with `Retry-After`). **SK3 (planned fields):** with `productId` (a listed
+        product) and/or `sessionId`, one transaction joins, grants that product once, marked to pay at the studio,
+        and books; on any error nothing is granted or booked. 404 `product.not_found` or `session.not_found`;
+        409 `offer.ended`, `offer.not_newcomer` (the caller holds or held this newcomers-only product here),
+        `session.full`, `session.not_bookable`. The booking's source is this link (last touch); the membership's
+        stays the first one.
       requestBody:
         required: false
         content:
@@ -228,6 +358,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/public/studios/{slug}/manifest.webmanifest:
@@ -621,8 +752,9 @@ paths:
       operationId: createMarketingLink
       summary: "A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)"
       description: >-
-        docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else
-        `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no
+        docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`,
+        `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without
+        `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no
         session. Audit `marketing.link.created` (channel, template).
       requestBody:
         required: true
@@ -5599,6 +5731,7 @@ components:
       properties:
         channel: { type: string, enum: [member_card, referral] }
         sessionId: { type: [string, "null"], format: uuid, description: "`member_card` only: the class the card is about." }
+        showName: { type: boolean, description: "SL-8 (SK4): show the caller's first name on the invite. Left out keeps it (default on)." }
 
     MyMilestones:
       type: object
@@ -5635,6 +5768,19 @@ components:
         version: { type: string }
         instagramHandle: { type: [string, "null"], description: "The studio's handle on member cards (M-15); null shows none." }
         referralRewardProductId: { type: [string, "null"], format: uuid, description: "One pass of it per friend's first attended class (M-17); null means no reward." }
+        listedProducts:
+          type: array
+          description: "SL-4, SL-5 (SK2): the products shown on the prices page, in this order. Until SK2 the API leaves it out."
+          items: { $ref: "#/components/schemas/ListedProduct" }
+
+    ListedProduct:
+      type: object
+      required: [productId, newcomersOnly, publicUntil, blurb]
+      properties:
+        productId: { type: string, format: uuid, description: An active product of this studio. }
+        newcomersOnly: { type: boolean, description: "An offer: granted once per person and studio (SL-4)." }
+        publicUntil: { type: [string, "null"], format: date, description: "Its last listed day, in the studio's time zone." }
+        blurb: { type: [string, "null"], minLength: 1, maxLength: 120 }
 
     PublicPageInput:
       type: object
@@ -5647,6 +5793,11 @@ components:
         suggestWeeklyAt: { type: [string, "null"] }
         instagramHandle: { type: [string, "null"], description: "A handle, @handle or an instagram.com link; 400 `instagramHandle.invalid`." }
         referralRewardProductId: { type: [string, "null"], format: uuid, description: "400 `referralRewardProductId.invalid` unless an active product of this studio." }
+        listedProducts:
+          type: array
+          maxItems: 20
+          description: "SK2: when sent, replaces the listed set; the array order is the public order. 400 `listedProducts.invalid` for another studio's or an archived product, or one listed twice. Audit `public_page.updated` names `listedProducts`."
+          items: { $ref: "#/components/schemas/ListedProduct" }
 
     PublicStudio:
       type: object
@@ -5709,6 +5860,75 @@ components:
             description: { type: [string, "null"] }
             priceAgorot: { type: [integer, "null"] }
             passRequired: { type: boolean }
+        past: { type: boolean, description: "SL-3 (SK2): the session has started or ended. Until SK2 the API leaves it out." }
+        alternatives:
+          type: array
+          maxItems: 3
+          description: >-
+            SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14
+            days, the same class type first. Empty otherwise. Only on the single-session read.
+          items: { $ref: "#/components/schemas/PublicSessionSummary" }
+
+    PublicSessionSummary:
+      type: object
+      required: [id, startsAt, minutes, className, instructorName, availability, spotsLeft]
+      properties:
+        id: { type: string, format: uuid }
+        startsAt: { type: string, format: date-time }
+        minutes: { type: integer }
+        className: { type: string }
+        instructorName: { type: [string, "null"], description: Only when the instructor's profile is public (M-14). }
+        availability: { $ref: "#/components/schemas/PublicSessionAvailability" }
+        spotsLeft: { type: [integer, "null"] }
+
+    PublicProduct:
+      type: object
+      required: [id, name, kind, priceAgorot, entries, pricePerClassAgorot, validDays, newcomersOnly, publicUntil, blurb]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { $ref: "#/components/schemas/PassKind" }
+        priceAgorot: { type: [integer, "null"] }
+        entries: { type: [integer, "null"], description: Punch cards only. }
+        pricePerClassAgorot: { type: [integer, "null"], description: "Punch cards with a price: the price over the entries, rounded to the agora." }
+        validDays: { type: integer }
+        newcomersOnly: { type: boolean }
+        publicUntil: { type: [string, "null"], format: date }
+        blurb: { type: [string, "null"] }
+
+    PublicProductList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PublicProduct" }
+
+    PublicProductDetail:
+      type: object
+      required: [ended, product]
+      properties:
+        ended: { type: boolean, description: "The offer ended or was taken off the list (SL-4); then `product` is null." }
+        product:
+          oneOf:
+            - $ref: "#/components/schemas/PublicProduct"
+            - type: "null"
+
+    PublicLinkTarget:
+      type: object
+      required: [target, inviterFirstName]
+      properties:
+        target: { $ref: "#/components/schemas/MarketingTarget" }
+        inviterFirstName: { type: [string, "null"], description: "SL-8: a member's invite with `showName` on; never a surname." }
+
+    PublicBrand:
+      type: object
+      required: [slug, appName, accentId, logoUrl]
+      properties:
+        slug: { type: string }
+        appName: { type: string }
+        accentId: { $ref: "#/components/schemas/AccentId" }
+        logoUrl: { type: [string, "null"], format: uri, description: "The logo at 400 px (WebP); presigned, short-lived." }
 
     PublicSessionList:
       type: object
@@ -5722,6 +5942,8 @@ components:
       type: object
       properties:
         src: { type: [string, "null"], pattern: "^[a-z0-9]{6,10}$", description: The first-touch source code the app kept (section 6). }
+        productId: { type: [string, "null"], format: uuid, description: "SK3: a listed product to take (SL-4)." }
+        sessionId: { type: [string, "null"], format: uuid, description: "SK3: the class to book in the same transaction." }
 
     PublicJoinResponse:
       type: object
@@ -5732,23 +5954,45 @@ components:
         created: { type: boolean, description: False when the caller was already a member. }
         introPass:
           type: [object, "null"]
+          description: The pass granted by this call (the intro product, or `productId` under SK3); null when none was.
           required: [passId, productName, toPayAtStudio]
           properties:
             passId: { type: string, format: uuid }
             productName: { type: string }
             toPayAtStudio: { type: boolean }
+        booking:
+          type: [object, "null"]
+          description: "SK3: the booking made with `sessionId`. Until SK3 the API leaves it out."
+          required: [bookingId, sessionId, status]
+          properties:
+            bookingId: { type: string, format: uuid }
+            sessionId: { type: string, format: uuid }
+            status: { type: string, enum: [booked, waitlisted] }
 
     MarketingChannel:
       type: string
       enum: [story, whatsapp, bio, poster, member_card, referral, other]
+
+    MarketingTarget:
+      type: object
+      description: "SL-1: where a link leads. `id` is a session for `session`, a listed product for `offer`, null otherwise."
+      required: [kind, id]
+      properties:
+        kind: { type: string, enum: [session, schedule, offer, prices] }
+        id: { type: [string, "null"], format: uuid }
 
     MarketingLinkInput:
       type: object
       required: [channel]
       properties:
         channel: { $ref: "#/components/schemas/MarketingChannel" }
-        template: { type: [string, "null"], pattern: "^[a-z_]{1,32}$", examples: [week, today, spot_opened, change] }
-        sessionId: { type: [string, "null"], format: uuid }
+        template: { type: [string, "null"], pattern: "^[a-z_]{1,32}$", examples: [week, today, spot_opened, change, offer] }
+        sessionId: { type: [string, "null"], format: uuid, description: "Kept for one release; use `target`." }
+        target:
+          description: "SK4: 400 `target.invalid` for a session or product of another studio, or an unlisted product."
+          oneOf:
+            - $ref: "#/components/schemas/MarketingTarget"
+            - type: "null"
 
     MarketingLink:
       type: object
@@ -5759,6 +6003,8 @@ components:
         channel: { $ref: "#/components/schemas/MarketingChannel" }
         template: { type: [string, "null"] }
         sessionId: { type: [string, "null"], format: uuid }
+        target: { $ref: "#/components/schemas/MarketingTarget" }
+        showName: { type: [boolean, "null"], description: "A member's own link only (SL-8); null on the studio's links." }
         url: { type: string, format: uri }
         createdAt: { type: string, format: date-time }
 
@@ -5780,6 +6026,7 @@ components:
         channel: { $ref: "#/components/schemas/MarketingChannel" }
         template: { type: [string, "null"] }
         sessionId: { type: [string, "null"], format: uuid }
+        target: { $ref: "#/components/schemas/MarketingTarget" }
         createdAt: { type: string, format: date-time }
         members: { type: integer }
         bookings: { type: integer }
@@ -5797,6 +6044,17 @@ components:
           type: array
           description: Links with sign-ups or bookings in the window, and links made in it; at most 200.
           items: { $ref: "#/components/schemas/LinkSource" }
+        byTarget:
+          type: array
+          description: "SK4: the same counts per target kind (SL-1). Until SK4 the API leaves it out."
+          items:
+            type: object
+            required: [kind, members, bookings, attended]
+            properties:
+              kind: { type: string, enum: [session, schedule, offer, prices] }
+              members: { type: integer }
+              bookings: { type: integer }
+              attended: { type: integer }
 
     StudioManifest:
       type: object

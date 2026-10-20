@@ -89,6 +89,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/studios/{slug}/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * An active studio's name, accent and logo, public page on or off (anyone)
+         * @description docs/35 W-4 and W-10 (board #404, [O]'s REQUEST for WL5 part B): what the studio's own app and its branded sign-in wear. The manifest already shows the name and the accent; the logo is the only new field. 404 `studio.not_found` with the same body for an unknown, suspended or removed slug (S-B). `public, max-age=300`.
+         */
+        get: operations["getPublicBrand"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A public studio's listed products, offers first (anyone)
+         * @description SL-5, SK2. Products the owner listed (`listedProducts` on the public page) that are active and not past their last day, offers (`newcomersOnly`) first, then in the owner's order. Prices are shown only; payment is at the studio until Phase 6. `public, max-age=300`.
+         */
+        get: operations["listPublicProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/products/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                productId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * One listed product of a public studio, for the offer page (anyone)
+         * @description SL-4, SK2. 404 `product.not_found` for a product that isn't listed or isn't this studio's. A listed offer past its last day, or archived, answers 200 with `ended: true` and no product, so the page can show the prices with one line saying so. `public, max-age=60`.
+         */
+        get: operations["getPublicProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/links/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                code: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Where one of a public studio's links leads, and the inviter's first name for a member's invite (anyone)
+         * @description SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404 `link.not_found` for an unknown code. `inviterFirstName` only for a member's own link (`member_card`, `referral`) while its `showName` is on, and nothing else about the member. `public, max-age=60`.
+         */
+        get: operations["getPublicLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's cover picture for link previews (anyone)
+         * @description SL-9, SK4. `302` to a short-lived presigned URL of the studio's cover, or of its 512 px icon when there is none. `public, max-age=300`. Rate-limited like the other public routes.
+         */
+        get: operations["getPublicStudioCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/sessions/{sessionId}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * A session's class cover for link previews (anyone)
+         * @description SL-9, SK4. `302` to a short-lived presigned URL of the class type's cover, else the studio's cover, else its icon. `public, max-age=300`.
+         */
+        get: operations["getPublicSessionCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/studios/{slug}/join": {
         parameters: {
             query?: never;
@@ -103,7 +244,7 @@ export interface paths {
         put?: never;
         /**
          * Join a public studio as a client, without a code (a signed-in customer)
-         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`).
+         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`). **SK3 (planned fields):** with `productId` (a listed product) and/or `sessionId`, one transaction joins, grants that product once, marked to pay at the studio, and books; on any error nothing is granted or booked. 404 `product.not_found` or `session.not_found`; 409 `offer.ended`, `offer.not_newcomer` (the caller holds or held this newcomers-only product here), `session.full`, `session.not_bookable`. The booking's source is this link (last touch); the membership's stays the first one.
          */
         post: operations["joinPublicStudio"];
         delete?: never;
@@ -403,7 +544,7 @@ export interface paths {
         put?: never;
         /**
          * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
-         * @description docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
          */
         post: operations["createMarketingLink"];
         delete?: never;
@@ -4197,6 +4338,8 @@ export interface components {
              * @description `member_card` only: the class the card is about.
              */
             sessionId?: string | null;
+            /** @description SL-8 (SK4): show the caller's first name on the invite. Left out keeps it (default on). */
+            showName?: boolean;
         };
         MyMilestones: {
             attended: number;
@@ -4237,6 +4380,23 @@ export interface components {
              * @description One pass of it per friend's first attended class (M-17); null means no reward.
              */
             referralRewardProductId: string | null;
+            /** @description SL-4, SL-5 (SK2): the products shown on the prices page, in this order. Until SK2 the API leaves it out. */
+            listedProducts?: components["schemas"]["ListedProduct"][];
+        };
+        ListedProduct: {
+            /**
+             * Format: uuid
+             * @description An active product of this studio.
+             */
+            productId: string;
+            /** @description An offer: granted once per person and studio (SL-4). */
+            newcomersOnly: boolean;
+            /**
+             * Format: date
+             * @description Its last listed day, in the studio's time zone.
+             */
+            publicUntil: string | null;
+            blurb: string | null;
         };
         /** @description `enabled` and `openJoin` are required. Any other field left out keeps its value; sent as null, it is cleared. */
         PublicPageInput: {
@@ -4252,6 +4412,8 @@ export interface components {
              * @description 400 `referralRewardProductId.invalid` unless an active product of this studio.
              */
             referralRewardProductId?: string | null;
+            /** @description SK2: when sent, replaces the listed set; the array order is the public order. 400 `listedProducts.invalid` for another studio's or an archived product, or one listed twice. Audit `public_page.updated` names `listedProducts`. */
+            listedProducts?: components["schemas"]["ListedProduct"][];
         };
         PublicStudio: {
             slug: string;
@@ -4313,6 +4475,61 @@ export interface components {
                 priceAgorot: number | null;
                 passRequired: boolean;
             } | null;
+            /** @description SL-3 (SK2): the session has started or ended. Until SK2 the API leaves it out. */
+            past?: boolean;
+            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise. Only on the single-session read. */
+            alternatives?: components["schemas"]["PublicSessionSummary"][];
+        };
+        PublicSessionSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            startsAt: string;
+            minutes: number;
+            className: string;
+            /** @description Only when the instructor's profile is public (M-14). */
+            instructorName: string | null;
+            availability: components["schemas"]["PublicSessionAvailability"];
+            spotsLeft: number | null;
+        };
+        PublicProduct: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: components["schemas"]["PassKind"];
+            priceAgorot: number | null;
+            /** @description Punch cards only. */
+            entries: number | null;
+            /** @description Punch cards with a price: the price over the entries, rounded to the agora. */
+            pricePerClassAgorot: number | null;
+            validDays: number;
+            newcomersOnly: boolean;
+            /** Format: date */
+            publicUntil: string | null;
+            blurb: string | null;
+        };
+        PublicProductList: {
+            items: components["schemas"]["PublicProduct"][];
+        };
+        PublicProductDetail: {
+            /** @description The offer ended or was taken off the list (SL-4); then `product` is null. */
+            ended: boolean;
+            product: components["schemas"]["PublicProduct"] | null;
+        };
+        PublicLinkTarget: {
+            target: components["schemas"]["MarketingTarget"];
+            /** @description SL-8: a member's invite with `showName` on; never a surname. */
+            inviterFirstName: string | null;
+        };
+        PublicBrand: {
+            slug: string;
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /**
+             * Format: uri
+             * @description The logo at 400 px (WebP); presigned, short-lived.
+             */
+            logoUrl: string | null;
         };
         PublicSessionList: {
             items: components["schemas"]["PublicSession"][];
@@ -4320,6 +4537,16 @@ export interface components {
         PublicJoinRequest: {
             /** @description The first-touch source code the app kept (section 6). */
             src?: string | null;
+            /**
+             * Format: uuid
+             * @description SK3: a listed product to take (SL-4).
+             */
+            productId?: string | null;
+            /**
+             * Format: uuid
+             * @description SK3: the class to book in the same transaction.
+             */
+            sessionId?: string | null;
         };
         PublicJoinResponse: {
             /** Format: uuid */
@@ -4328,15 +4555,32 @@ export interface components {
             membershipId: string;
             /** @description False when the caller was already a member. */
             created: boolean;
+            /** @description The pass granted by this call (the intro product, or `productId` under SK3); null when none was. */
             introPass: {
                 /** Format: uuid */
                 passId: string;
                 productName: string;
                 toPayAtStudio: boolean;
             } | null;
+            /** @description SK3: the booking made with `sessionId`. Until SK3 the API leaves it out. */
+            booking?: {
+                /** Format: uuid */
+                bookingId: string;
+                /** Format: uuid */
+                sessionId: string;
+                /** @enum {string} */
+                status: "booked" | "waitlisted";
+            } | null;
         };
         /** @enum {string} */
         MarketingChannel: "story" | "whatsapp" | "bio" | "poster" | "member_card" | "referral" | "other";
+        /** @description SL-1: where a link leads. `id` is a session for `session`, a listed product for `offer`, null otherwise. */
+        MarketingTarget: {
+            /** @enum {string} */
+            kind: "session" | "schedule" | "offer" | "prices";
+            /** Format: uuid */
+            id: string | null;
+        };
         MarketingLinkInput: {
             channel: components["schemas"]["MarketingChannel"];
             /**
@@ -4344,10 +4588,16 @@ export interface components {
              * @example today
              * @example spot_opened
              * @example change
+             * @example offer
              */
             template?: string | null;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Kept for one release; use `target`.
+             */
             sessionId?: string | null;
+            /** @description SK4: 400 `target.invalid` for a session or product of another studio, or an unlisted product. */
+            target?: components["schemas"]["MarketingTarget"] | null;
         };
         MarketingLink: {
             /** Format: uuid */
@@ -4357,6 +4607,9 @@ export interface components {
             template: string | null;
             /** Format: uuid */
             sessionId: string | null;
+            target?: components["schemas"]["MarketingTarget"];
+            /** @description A member's own link only (SL-8); null on the studio's links. */
+            showName?: boolean | null;
             /** Format: uri */
             url: string;
             /** Format: date-time */
@@ -4379,6 +4632,7 @@ export interface components {
             template: string | null;
             /** Format: uuid */
             sessionId: string | null;
+            target?: components["schemas"]["MarketingTarget"];
             /** Format: date-time */
             createdAt: string;
             members: number;
@@ -4390,6 +4644,14 @@ export interface components {
             byChannel: components["schemas"]["ChannelSource"][];
             /** @description Links with sign-ups or bookings in the window, and links made in it; at most 200. */
             byLink: components["schemas"]["LinkSource"][];
+            /** @description SK4: the same counts per target kind (SL-1). Until SK4 the API leaves it out. */
+            byTarget?: {
+                /** @enum {string} */
+                kind: "session" | "schedule" | "offer" | "prices";
+                members: number;
+                bookings: number;
+                attended: number;
+            }[];
         };
         /** @description A W3C web app manifest for one studio, so its member names are the standard's own (snake_case): `id`, `name`, `short_name` (the brand's app name), `lang` `he`, `dir` `rtl`, `start_url`, `scope`, `display` `standalone`, `orientation`, `background_color`, `theme_color` (the accent) and `icons` (`src`, `sizes`, `type` `image/png`, `purpose` `any` or `maskable`). */
         StudioManifest: {
@@ -5667,6 +5929,155 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    getPublicBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBrand"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPublicProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProductList"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProductDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicLinkTarget"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicStudioCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The picture's presigned URL in `Location`. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicSessionCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The picture's presigned URL in `Location`. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     joinPublicStudio: {
         parameters: {
             query?: never;
@@ -5695,6 +6106,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
         };
     };
