@@ -42,7 +42,6 @@ public sealed class MarketingLinksFlowTests(PostgresFixture postgres) : IClassFi
     [Fact]
     public async Task Links_AreMadeByWhoMayShareTheClass_AndTheReportCountsWhatTheyBrought()
     {
-        PublicRateLimitFilter.Reset();
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         using var factory = Factory(db);
         var client = factory.CreateClient();
@@ -103,7 +102,6 @@ public sealed class MarketingLinksFlowTests(PostgresFixture postgres) : IClassFi
         var audit = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/audit-events?limit=100", Customer("owner"))).GetProperty("items").EnumerateArray()
             .Where(e => e.GetProperty("action").GetString() == "marketing.link.created").Select(e => e.GetProperty("data").GetRawText()).ToList();
         audit.Should().HaveCount(2).And.AllSatisfy(d => d.Should().Contain("channel").And.NotContain(week.GetProperty("code").GetString()!));
-        PublicRateLimitFilter.Reset();
     }
 
     private async Task<Guid> JoinAsync(HttpClient client, string studioPath, string subject, string role)
