@@ -1,10 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Banner, Button } from "../shared/design-system";
 import { useAuth } from "./AuthProvider";
+import { brandedLoginEnabled } from "./config";
 
-/** Sign-in and sign-up, both through the Cognito Hosted UI; back to `returnTo` afterwards. */
+/**
+ * Sign-in and sign-up, through the Cognito Hosted UI, or through our own screen on `/login` when `branded_login` is
+ * on; back to `returnTo` afterwards.
+ */
 export function SignInButtons({ returnTo, beforeLeave }: { returnTo: string; beforeLeave?: () => void }) {
   const { client } = useAuth();
+  const navigate = useNavigate();
   const [leaving, setLeaving] = useState<"login" | "signup" | null>(null);
 
   if (!client) {
@@ -17,6 +23,10 @@ export function SignInButtons({ returnTo, beforeLeave }: { returnTo: string; bef
 
   const go = (screen: "login" | "signup") => {
     beforeLeave?.();
+    if (brandedLoginEnabled()) {
+      const query = new URLSearchParams({ returnTo, ...(screen === "signup" ? { screen } : {}) });
+      return void navigate(`/login?${query.toString()}`);
+    }
     setLeaving(screen);
     void client.signIn(returnTo, screen);
   };

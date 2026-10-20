@@ -9,6 +9,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { SignInButtons } from "../../auth/SignInButtons";
 import { Banner, Button, ButtonLink, Skeleton, useToast } from "../../shared/design-system";
 import { InvalidLink } from "../../shared/InvalidLink";
+import { chooseStudio } from "../member/studioChoice";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useLinkSecret } from "../../shared/utilities/linkSecret";
 
@@ -56,6 +57,8 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
     mutationFn: () => unwrap(api.POST("/api/v1/invitations/accept", { body: { token } })),
     onSuccess: async (membership) => {
       onUsed();
+      // The generic app opens on the studio just joined (docs/35 W-5).
+      chooseStudio(membership.organization.id);
       await queryClient.invalidateQueries({ queryKey: meKey });
       toast.show({ tone: "success", icon: "check", message: `הצטרפת ל${membership.organization.displayName}` });
       void navigate("/", { replace: true });

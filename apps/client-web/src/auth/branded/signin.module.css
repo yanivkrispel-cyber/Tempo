@@ -1,0 +1,182 @@
+/* Design B of the branded sign-in (docs/36): the studio's photo fills the screen, a glass sheet holds the step.
+   Colors, glass and type come from @tempo/design-system; this file only places them. */
+.stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  color: #ffffff;
+  background: linear-gradient(160deg, var(--taupe), var(--taupe-deep));
+}
+.photo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #18130f52 0%, #18130f00 30%, #18130f00 45%, var(--scrim-photo) 100%);
+}
+
+/* The studio's pill: its mark and name on dark glass, at the top of the photo. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 10px;
+  margin: max(16px, env(safe-area-inset-top)) 16px auto;
+  padding-inline: 6px 16px;
+  border-radius: 999px;
+  background: var(--glass-dark);
+  -webkit-backdrop-filter: var(--tp-glass-blur);
+  backdrop-filter: var(--tp-glass-blur);
+}
+.logo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink);
+  background: #ffffffe6;
+}
+.studio {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 16px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  color: var(--ink);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.heading p {
+  margin: 0;
+}
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+}
+/* Six boxes drawn under one transparent input that takes the typing, the paste and the phone's code offer. */
+.codeBoxes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.codeBox {
+  display: grid;
+  place-items: center;
+  height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffffb3;
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  color: var(--ink);
+}
+.codeBox[data-filled] {
+  border-color: var(--brand-ink);
+}
+.codeBoxes:focus-within .codeBox[data-current] {
+  border-color: var(--brand-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-ink) 22%, transparent);
+}
+.codeBoxes .codeInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
+  cursor: text;
+}
+.links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.link {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--brand-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.link:disabled {
+  color: var(--ink-muted);
+  opacity: 0.6;
+  text-decoration: none;
+  cursor: default;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.footer .link {
+  font-size: 14px;
+}
+.built {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+/* A computer: the photo stays the stage, the pill on top and the sheet as a floating card on the start side. */
+@media (min-width: 900px) {
+  .stage {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 32px;
+    padding: 40px clamp(48px, 7vw, 120px);
+  }
+  .brand {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin: 0;
+  }
+  .sheet {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    padding: 36px 32px 20px;
+    border-radius: 30px;
+  }
+}

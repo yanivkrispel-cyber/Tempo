@@ -31,6 +31,7 @@ import {
   type ReportSummary,
 } from "./queries";
 import styles from "./reports.module.css";
+import { SourcesCard } from "./SourcesCard";
 
 // Three presets fit a 320px phone in one row; the custom dates are a toggle of their own beside them.
 const presets: { value: PeriodPreset; label: string }[] = [
@@ -160,6 +161,8 @@ export function ReportsPage() {
           <MembersAtRisk query={membersAtRisk} slug={studio.slug} />
         </div>
       )}
+
+      <SourcesCard />
     </>
   );
 }

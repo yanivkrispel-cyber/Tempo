@@ -15,8 +15,8 @@ interface Section {
   to: string;
   label: string;
   icon: IconName;
-  /** Shown only to members who hold it. */
-  permission: string;
+  /** Shown only to members who hold it, or any one of them. */
+  permission: string | readonly string[];
   /** On the bottom bar of a phone or an upright tablet, under this shorter name. */
   quick?: string;
 }
@@ -35,6 +35,7 @@ const sections: Section[] = [
   { to: "invitations", label: "הזמנות", icon: "mail", permission: "members.invite.staff" },
   { to: "roles", label: "תפקידים", icon: "shield", permission: "members.view" },
   { to: "audit", label: "יומן פעולות", icon: "list", permission: "audit.view" },
+  { to: "publish", label: "פרסום", icon: "share", permission: ["marketing.publish", "marketing.publish.own"] },
   { to: "settings", label: "הגדרות", icon: "settings", permission: "organization.settings.manage" },
 ];
 
@@ -129,7 +130,11 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
     return () => document.removeEventListener("keydown", close);
   }, [open]);
 
-  const visible = sections.filter((section) => studio.can(section.permission));
+  const visible = sections.filter((section) =>
+    typeof section.permission === "string"
+      ? studio.can(section.permission)
+      : section.permission.some((permission) => studio.can(permission)),
+  );
   const quick = quickOrder
     .map((to) => visible.find((section) => section.to === to))
     .filter((section): section is Section => section !== undefined);

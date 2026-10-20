@@ -1,6 +1,7 @@
 import { SignInError } from "@tempo/api-client/auth";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { openStudioApp, studioSlugOf } from "../app/studioPath";
 import { Banner, ButtonLink, Skeleton } from "../shared/design-system";
 import { useAuth } from "./AuthProvider";
 
@@ -16,8 +17,11 @@ export function CallbackPage() {
     let current = true;
     client.completeSignIn(search).then(
       (returnTo) => {
-        // replace: the code is single-use, so Back must not return to this URL.
-        if (current) void navigate(returnTo, { replace: true });
+        if (!current) return;
+        // replace: the code is single-use, so Back must not return to this URL. A studio's own app (`/s/<slug>/`)
+        // runs under its own basename, so it starts afresh there; the session is already stored.
+        if (studioSlugOf(returnTo)) openStudioApp(returnTo);
+        else void navigate(returnTo, { replace: true });
       },
       (error: unknown) => {
         if (current) setFailed(error instanceof SignInError && error.code === "denied" ? "denied" : "other");

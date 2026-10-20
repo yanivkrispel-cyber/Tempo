@@ -1,7 +1,10 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Marketing;
+using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.BuildingBlocks.RateLimits;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Marketing;
 
@@ -39,29 +42,65 @@ public static class MarketingEndpoints
     {
         var updated = await pages.UpdateAsync(
             TenantRouteFilter.Current(httpContext),
-            new PublicPageChanges(request.Enabled, request.OpenJoin, request.IntroProductId, request.SuggestWeeklyAt, request.InstagramHandle, request.ReferralRewardProductId),
+            new PublicPageChanges(
+                request.Enabled,
+                request.OpenJoin,
+                SentGuid(request.IntroProductId, "introProductId"),
+                SentText(request.SuggestWeeklyAt, "suggestWeeklyAt"),
+                SentText(request.InstagramHandle, "instagramHandle"),
+                SentGuid(request.ReferralRewardProductId, "referralRewardProductId"),
+                request.ListedProducts?.Select(p => new ListedProduct(p.ProductId, p.NewcomersOnly, p.PublicUntil, p.Blurb)).ToList()),
             OrganizationEndpoints.ParseVersion(ifMatch),
             httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
     }
 
-    private static async Task<IResult> CreateLinkAsync(HttpContext httpContext, CreateMarketingLinkRequest request, IMarketingLinkService links, AppLinks apps)
+    /// <summary>Left out: null (kept). Sent as null: a <see cref="Sent{T}"/> of null (cleared). Anything else: the id, or 400.</summary>
+    private static Sent<Guid?>? SentGuid(JsonElement element, string field) => element.ValueKind switch
+    {
+        JsonValueKind.Undefined => null,
+        JsonValueKind.Null => new Sent<Guid?>(null),
+        JsonValueKind.String when element.TryGetGuid(out var id) => new Sent<Guid?>(id),
+        _ => throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", "Use an id or null.", field)
+    };
+
+    private static Sent<string?>? SentText(JsonElement element, string field) => element.ValueKind switch
+    {
+        JsonValueKind.Undefined => null,
+        JsonValueKind.Null => new Sent<string?>(null),
+        JsonValueKind.String => new Sent<string?>(element.GetString()),
+        _ => throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", "Use text or null.", field)
+    };
+
+    private static async Task<IResult> CreateLinkAsync(HttpContext httpContext, CreateMarketingLinkRequest request, IMarketingLinkService links, AppLinks apps, IClientRateLimiter limiter, ClientRateLimits limits)
     {
         var tenant = TenantRouteFilter.Current(httpContext);
-        var link = await links.CreateAsync(tenant, new NewMarketingLink(request.Channel, request.Template, request.SessionId), httpContext.RequestAborted);
+        await limiter.HitAsync("marketing.links.user", tenant.UserAccountId.ToString(), limits.LinksPerUserPerHour, httpContext.RequestAborted);
+        var link = await links.CreateAsync(tenant, new NewMarketingLink(request.Channel, request.Template, request.SessionId, request.Target?.Kind, request.Target?.Id), httpContext.RequestAborted);
         return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/marketing/links/{link.Id}", LinkResponse(link, apps));
     }
 
-    /// <summary>The members-app address of a link: the class page when it names one, else the studio's page.</summary>
+    /// <summary>The members-app address of a link by its target (SL-1): a class, an offer, the prices or the week.</summary>
     private static MarketingLinkResponse LinkResponse(MarketingLinkView link, AppLinks apps)
     {
-        var path = link.SessionId is { } session ? $"/s/{Uri.EscapeDataString(link.Slug)}/c/{session}" : $"/s/{Uri.EscapeDataString(link.Slug)}/";
-        return new MarketingLinkResponse(link.Id, link.Code, link.Channel, link.Template, link.SessionId, new Uri($"{apps.ClientApp}{path}?src={link.Code}"), link.CreatedAt);
+        var studio = $"/s/{Uri.EscapeDataString(link.Slug)}";
+        var path = link.TargetKind switch
+        {
+            "session" => $"{studio}/c/{link.TargetId}",
+            "offer" => $"{studio}/o/{link.TargetId}",
+            "prices" => $"{studio}/prices",
+            _ => $"{studio}/"
+        };
+        return new MarketingLinkResponse(link.Id, link.Code, link.Channel, link.Template, link.SessionId, new Uri($"{apps.ClientApp}{path}?src={link.Code}"), link.CreatedAt,
+            new MarketingTargetBody(link.TargetKind, link.TargetId), link.ShowName);
     }
 
-    private static async Task<IResult> ShareLinkAsync(HttpContext httpContext, ShareLinkRequest request, IMemberMarketingService members, AppLinks apps)
+    private static async Task<IResult> ShareLinkAsync(HttpContext httpContext, ShareLinkRequest request, IMemberMarketingService members, AppLinks apps, IClientRateLimiter limiter, ClientRateLimits limits)
     {
-        var link = await members.ShareLinkAsync(TenantRouteFilter.Current(httpContext), request.Channel, request.SessionId, httpContext.RequestAborted);
+        var tenant = TenantRouteFilter.Current(httpContext);
+        // One limit for every link a person makes, the studio's and their own (S-A, board #404).
+        await limiter.HitAsync("marketing.links.user", tenant.UserAccountId.ToString(), limits.LinksPerUserPerHour, httpContext.RequestAborted);
+        var link = await members.ShareLinkAsync(tenant, request.Channel, request.SessionId, httpContext.RequestAborted, request.ShowName);
         return Results.Ok(LinkResponse(link, apps));
     }
 
@@ -77,9 +116,11 @@ public static class MarketingEndpoints
         return Results.Ok(new SourceReportResponse(
             report.Days,
             [.. report.ByChannel.Select(c => new ChannelSourceResponse(c.Channel, c.Counts.Members, c.Counts.Bookings, c.Counts.Attended))],
-            [.. report.ByLink.Select(l => new LinkSourceResponse(l.LinkId, l.Code, l.Channel, l.Template, l.SessionId, l.CreatedAt, l.Counts.Members, l.Counts.Bookings, l.Counts.Attended))]));
+            [.. report.ByLink.Select(l => new LinkSourceResponse(l.LinkId, l.Code, l.Channel, l.Template, l.SessionId, l.CreatedAt, l.Counts.Members, l.Counts.Bookings, l.Counts.Attended, new MarketingTargetBody(l.TargetKind, l.TargetId)))],
+            [.. (report.ByTarget ?? []).Select(t => new TargetSourceResponse(t.Kind, t.Counts.Members, t.Counts.Bookings, t.Counts.Attended))]));
     }
 
     private static PublicPageResponse ToResponse(PublicPageView p) =>
-        new(p.Enabled, p.OpenJoin, p.IntroProductId, p.SuggestWeeklyAt, p.Version.ToString(CultureInfo.InvariantCulture), p.InstagramHandle, p.ReferralRewardProductId);
+        new(p.Enabled, p.OpenJoin, p.IntroProductId, p.SuggestWeeklyAt, p.Version.ToString(CultureInfo.InvariantCulture), p.InstagramHandle, p.ReferralRewardProductId,
+            [.. p.Listed.Select(l => new ListedProductBody(l.ProductId, l.NewcomersOnly, l.PublicUntil, l.Blurb))]);
 }

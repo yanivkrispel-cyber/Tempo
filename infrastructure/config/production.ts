@@ -65,7 +65,18 @@ const productionConfig: TempoEnvironmentConfig = {
     enableWaf: true
   },
 
+  // Below the stage's 50 and 100 (board #404, S-A), and both bursts together below the API's reserved concurrency,
+  // so anonymous traffic can never take every execution (a 70-request burst gave 50 503s on 2026-10-20). Per-client
+  // limits are the API's own counters.
+  publicThrottle: {
+    reads: { rateLimit: 10, burstLimit: 12 },
+    join: { rateLimit: 2, burstLimit: 4 }
+  },
+
   corsAllowedOrigins: ["https://app.tempo.example", "https://client.tempo.example"],
+
+  // The members app's host; a change means members register their passkeys again (docs/36 F-4).
+  passkeyRelyingPartyId: "client.tempo.example",
 
   cognitoCallbackUrls: {
     adminWeb: ["https://app.tempo.example/auth/callback"],

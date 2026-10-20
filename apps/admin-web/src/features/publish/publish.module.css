@@ -1,0 +1,166 @@
+/* The story (MO3): the preview on top on a phone, beside the controls on a computer. */
+.layout {
+  display: grid;
+  gap: 24px;
+  grid-template-areas: "preview" "controls";
+  margin-top: 20px;
+}
+.controls {
+  grid-area: controls;
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-areas: "controls preview";
+    align-items: start;
+    gap: 32px;
+  }
+  .preview {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.preview {
+  grid-area: preview;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0;
+}
+/* 1080x1920 drawn, shown at a phone's size. */
+.story {
+  width: min(100%, 62vw, 300px);
+  height: auto;
+  aspect-ratio: 9 / 16;
+  border-radius: 22px;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-float);
+}
+
+.templates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.template {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+.template span {
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.template:hover {
+  background: var(--surface-sunken);
+}
+.template:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.template[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+
+.slots {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.label[data-tone="last"] {
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+.label[data-tone="cancel"] {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.pick {
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 520px) {
+  .actions > * {
+    flex: 1 1 100%;
+  }
+}
+
+/* "Where does the link lead" (SL-6): one choice per place, the template's default chosen. */
+.targets {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.targets > .tp-field__help {
+  margin: 0 0 8px;
+}
+.target {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-bottom-width: 0;
+  background: var(--surface);
+  min-width: 0;
+}
+.target > .tp-caption {
+  padding-inline-start: 30px;
+  overflow-wrap: anywhere;
+}
+.target:nth-of-type(1) {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.target:last-of-type {
+  border-bottom-width: 1px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+.target[data-on] {
+  background: var(--brand-soft);
+}
+.targets > :global(.tp-field) {
+  margin-top: 12px;
+}
