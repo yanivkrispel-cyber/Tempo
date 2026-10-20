@@ -63,9 +63,9 @@ public sealed class NotificationPreferencesService(IDataSourceProvider dataSourc
 
     public async Task<NotificationPreferencesView> UpdateMineAsync(TenantContext tenant, NotificationPreferencesChange change, long? expectedVersion, CancellationToken cancellationToken)
     {
-        if (change.Groups.Count is < 1 or > 3)
+        if (change.Groups.Count < 1 || change.Groups.Count > NotificationGroups.All.Count)
         {
-            throw new DomainRuleViolationException(ViolationKind.Validation, "groups.invalid", "Send one to three groups.", "groups");
+            throw new DomainRuleViolationException(ViolationKind.Validation, "groups.invalid", $"Send one to {NotificationGroups.All.Count} groups.", "groups");
         }
 
         foreach (var group in change.Groups)

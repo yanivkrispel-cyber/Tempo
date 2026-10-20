@@ -46,6 +46,7 @@
 | ADR-0025 | Two-Layer Quality: Gates Block, Agents Advise | Proposed |
 | ADR-0026 | Field-Level Encryption Without a Customer-Managed Key Until Revenue | Accepted |
 | ADR-0027 | Web Apps on Cloudflare Pages While CloudFront Is Refused | Accepted |
+| ADR-0028 | The Members' Sign-In Is Our Own Screen Over Cognito's API | Accepted |
 
 ## Decision Summary
 

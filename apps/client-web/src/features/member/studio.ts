@@ -2,10 +2,13 @@
 // and 9). Every key starts with the studio's id, so two studios never share a cache entry.
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TempoApiError, unwrap, type Schemas } from "@tempo/api-client";
-import { activeMemberships, useAccount } from "../../account/account";
+import { activeMemberships, useAccount, type MyMembership } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
+import { useStudioPath } from "../../app/studioPath";
+import { currentSource } from "../public/source";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { useNow } from "./clock";
+import { useChosenStudio } from "./studioChoice";
 import { defaultTimeZone, studioToday } from "./studioTime";
 
 export type Session = Schemas["Session"];
@@ -16,16 +19,32 @@ export type PassSummary = Schemas["PassSummary"];
 export type BookingPolicy = Schemas["BookingPolicy"];
 export type InboxItem = Schemas["InboxItem"];
 
-/** The studio the member app shows: the first active membership. */
+/** The studio the member app shows. */
 export interface Studio {
   id: string;
+  slug: string;
   name: string;
 }
 
+/**
+ * A studio's own app (`/s/<slug>/`) shows that studio, and nothing when the member has no active membership there.
+ * The generic app shows the studio this device chose in the switcher, else the first active membership (docs/35 W-5).
+ */
 export function useStudio(): Studio | null {
-  const studio = activeMemberships(useAccount())[0]?.organization;
-  return studio ? { id: studio.id, name: studio.displayName } : null;
+  const memberships = activeMemberships(useAccount());
+  const path = useStudioPath();
+  const chosen = useChosenStudio();
+  const studio = path
+    ? memberships.find((membership) => membership.organization.slug === path)
+    : (memberships.find((membership) => membership.organization.id === chosen) ?? memberships[0]);
+  return studio ? studioOf(studio) : null;
 }
+
+export const studioOf = ({ organization }: MyMembership): Studio => ({
+  id: organization.id,
+  slug: organization.slug,
+  name: organization.displayName,
+});
 
 export const studioKeys = {
   /** Everything a booking or a cancellation can change: sessions, bookings, passes. */
@@ -195,17 +214,19 @@ export const targetSessionId = (target: BookTarget): string => (typeof target ==
 
 /**
  * Books the caller; a full session puts them on the waitlist instead (the response's `status` says which). Without a
- * spot the server takes the usual spot when it is free, else the first free one.
+ * spot the server takes the usual spot when it is free, else the first free one. The source of the last shared link
+ * the member opened goes with it (docs/37 section 6, the last touch).
  */
 export function useBook(organizationId: string) {
   const api = useApi();
   return useScheduleMutation(organizationId, (target: BookTarget) => {
     const sessionId = targetSessionId(target);
     const spotId = typeof target === "string" ? null : (target.spotId ?? null);
+    const src = currentSource();
     return unwrap(
       api.POST("/api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings", {
         params: { path: { organizationId, sessionId } },
-        ...(spotId ? { body: { spotId } } : {}),
+        ...(spotId || src ? { body: { ...(spotId ? { spotId } : {}), ...(src ? { src } : {}) } } : {}),
       }),
     );
   });

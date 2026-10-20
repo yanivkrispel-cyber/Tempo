@@ -31,6 +31,20 @@
   flex: 1;
   min-width: 0;
 }
+/* The studio switcher stands where the studio's name was, a quiet button whose text lines up with the date. */
+.switcher {
+  align-self: flex-start;
+  margin-inline-start: -14px;
+  margin-block: -4px;
+}
+.switcher > button {
+  color: var(--ink-muted);
+}
+/* It sits at the start of the header, so its menu opens toward the end. */
+.switcher :global(.tp-menu--popover) {
+  inset-inline: 0 auto;
+  min-width: 220px;
+}
 .title {
   font-size: 30px;
   line-height: 36px;
@@ -434,8 +448,8 @@
   place-items: center;
   background: linear-gradient(180deg, var(--brand-light), var(--brand));
   box-shadow:
-    0 0 0 8px #cfe1d4b3,
-    0 16px 30px -12px #46604be6;
+    0 0 0 8px color-mix(in srgb, var(--brand-glow) 70%, transparent),
+    0 16px 30px -12px color-mix(in srgb, var(--brand-ink) 90%, transparent);
 }
 .done :global(.tp-ticket) {
   width: 100%;

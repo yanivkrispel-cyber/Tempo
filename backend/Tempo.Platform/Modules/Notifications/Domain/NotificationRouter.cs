@@ -9,7 +9,10 @@ public static class NotificationGroups
     public const string Reminders = "reminders";
     public const string Studio = "studio";
 
-    public static readonly IReadOnlyList<string> All = [Bookings, Reminders, Studio];
+    /// <summary>A member's milestones and bring-a-friend rewards (docs/37 section 8, stage B); on by default.</summary>
+    public const string Celebrations = "celebrations";
+
+    public static readonly IReadOnlyList<string> All = [Bookings, Reminders, Studio, Celebrations];
 
     /// <summary>
     /// The group of a kind. Kinds are code (docs/30 section 5); a class message from staff is the studio group's
@@ -19,6 +22,7 @@ public static class NotificationGroups
     {
         _ when kind.StartsWith("reminder.", StringComparison.Ordinal) => Reminders,
         "session.message" or "studio.announcement" => Studio,
+        "member.milestone" or "member.referral_rewarded" => Celebrations,
         _ => Bookings
     };
 

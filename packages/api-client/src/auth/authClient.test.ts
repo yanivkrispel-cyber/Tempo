@@ -152,6 +152,23 @@ describe("AuthClient sign-in", () => {
     expect(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!)).toMatchObject({ returnTo: "/o/neshima" });
   });
 
+  it("keeps returnTo under a studio's own app, whose callback page lives outside it (docs/35 W-4)", async () => {
+    const redirect = vi.fn();
+    const flowStorage = memoryStorage();
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(tokenResponse({ access_token: "a", refresh_token: "r", expires_in: 3600 }));
+    const auth = signedOutAuth({ redirect, flowStorage, fetch, basePath: "/s/neshima" });
+    const url = await startSignIn(auth, redirect);
+    expect(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!)).toMatchObject({
+      returnTo: "/s/neshima/bookings",
+    });
+    expect(await auth.completeSignIn(`?code=c0de&state=${url.searchParams.get("state")}`)).toBe("/s/neshima/bookings");
+
+    await auth.signIn("//evil.example");
+    expect(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!)).toMatchObject({ returnTo: "/s/neshima/" });
+  });
+
   it("opens the sign-up form when asked", async () => {
     const redirect = vi.fn();
     await signedOutAuth({ redirect }).signIn("/", "signup");
@@ -234,6 +251,24 @@ describe("AuthClient sign-in", () => {
 });
 
 describe("AuthClient tokens", () => {
+  it("adopts tokens from the app's own sign-in screen and tells the listeners", async () => {
+    const storage = memoryStorage();
+    const auth = signedOutAuth({ storage, now: () => 1_000 });
+    const listener = vi.fn();
+    auth.subscribe(listener);
+
+    auth.adopt({ accessToken: "access-2", refreshToken: "refresh-2", expiresIn: 3600 });
+
+    expect(auth.isSignedIn).toBe(true);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(JSON.parse(storage.getItem("tempo.client-web.session")!)).toEqual({
+      accessToken: "access-2",
+      refreshToken: "refresh-2",
+      expiresAt: 3_601_000,
+    });
+    expect(await auth.getAccessToken()).toBe("access-2");
+  });
+
   it("returns the stored access token while it is fresh", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     expect(await signedInAuth({ fetch }).getAccessToken()).toBe("access-1");

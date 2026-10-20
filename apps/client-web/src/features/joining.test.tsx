@@ -60,6 +60,8 @@ describe("/invite", () => {
     expect(api.bodies[accept]).toEqual({ token });
     expect(api.requests.filter((request) => request.url.endsWith("/session")).length).toBe(2);
     expect(window.sessionStorage.getItem("tempo.client-web.pending-invite")).toBeNull();
+    // The generic app opens on the studio just joined (docs/35 W-5).
+    expect(window.localStorage.getItem("tempo.client-web.studio")).toBe(membership.organization.id);
   });
 
   it("says when the invitation is gone and forgets the token", async () => {
@@ -102,6 +104,7 @@ describe("/join", () => {
     expect(await screen.findByText("הצטרפת לסטודיו נשימה")).toBeInTheDocument();
     const join = api.requests.findIndex((request) => new URL(request.url).pathname === "/api/v1/join");
     expect(api.bodies[join]).toEqual({ code });
+    expect(window.localStorage.getItem("tempo.client-web.studio")).toBe(membership.organization.id);
   });
 
   it("says when the link was replaced", async () => {

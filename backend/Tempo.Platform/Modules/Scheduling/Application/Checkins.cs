@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
+using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.People.Infrastructure;
 
@@ -130,6 +131,7 @@ public sealed partial class BookingService : ICheckinService
         {
             await SetStatusAsync(unitOfWork, tenant.OrganizationId, open.BookingId, "attended", null, cancellationToken);
             await AuditAsync(unitOfWork, tenant, "booking.checked_in", open.BookingId, new { sessionId = open.SessionId, method = "code" }, cancellationToken);
+            await AttendanceEffects.OnAttendedAsync(unitOfWork, tenant.OrganizationId, open.BookingId, tenant.UserAccountId, tenant.CorrelationId, cancellationToken);
         }
 
         var health = await HealthStatus.OfPersonAsync(unitOfWork, tenant.OrganizationId, person.Value, now, cancellationToken);

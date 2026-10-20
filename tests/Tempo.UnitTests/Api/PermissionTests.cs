@@ -111,9 +111,10 @@ public sealed class PermissionTests : IDisposable
         [
             Permissions.OrganizationView, Permissions.MembersView, Permissions.PeopleView, Permissions.PeopleManage,
             Permissions.ScheduleView, Permissions.BookingsManage, Permissions.AttendanceMark, Permissions.PassesView,
-            Permissions.PeopleNotesView, Permissions.PeopleNotesManage
+            Permissions.PeopleNotesView, Permissions.PeopleNotesManage, Permissions.MarketingPublishOwn
         ];
-        SystemRoles.Admin.Permissions.Should().HaveCount(24).And.NotContain(ownerOnly).And.Contain(Permissions.ReportsView).And.Contain(Permissions.PeopleImport);
+        SystemRoles.Admin.Permissions.Should().HaveCount(26).And.NotContain(ownerOnly).And.Contain(Permissions.ReportsView).And.Contain(Permissions.PeopleImport)
+            .And.Contain([Permissions.MarketingPublish, Permissions.MarketingPublishOwn]);
         SystemRoles.Staff.Permissions.Should().BeEquivalentTo(staff);
         SystemRoles.Client.Permissions.Should().BeEquivalentTo(Permissions.OrganizationView, Permissions.ScheduleView);
     }

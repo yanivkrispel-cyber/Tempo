@@ -128,3 +128,38 @@ export async function checkApp(appUrl, { fetchImpl = fetch } = {}) {
   }
   return problems;
 }
+
+/**
+ * One studio's own app (docs/35 W-6, board #380 K2): its manifest is served by the API, cross-origin from the members
+ * app, so it must answer CORS for the app's origin, and its `id`, `start_url` and `scope` must be absolute on the
+ * members app at `/s/<slug>/` (a relative one would resolve against the API and the studio would not install).
+ * Then the same icon rules as any app.
+ */
+export async function checkStudio(apiUrl, appUrl, slug, { fetchImpl = fetch } = {}) {
+  const appOrigin = new URL(appUrl).origin;
+  const home = `${appOrigin}/s/${encodeURIComponent(slug)}/`;
+  const manifestUrl = new URL(`/api/v1/public/studios/${encodeURIComponent(slug)}/manifest.webmanifest`, apiUrl).href;
+  const response = await fetchImpl(manifestUrl, { headers: { Origin: appOrigin } });
+  if (response.status !== 200) return [`manifest ${manifestUrl} answers ${response.status}`];
+  const problems = [];
+  const allowed = response.headers.get("access-control-allow-origin");
+  if (allowed !== appOrigin && allowed !== "*") {
+    problems.push(`manifest answers Access-Control-Allow-Origin ${allowed ?? "(none)"}, not ${appOrigin}`);
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(await response.text());
+  } catch (error) {
+    return [`manifest ${manifestUrl} is not JSON (${error.message})`];
+  }
+  for (const key of ["id", "start_url", "scope"]) {
+    if (manifest[key] !== home) problems.push(`${key} is ${JSON.stringify(manifest[key])}, not ${home}`);
+  }
+  const checked = checkManifest(manifest, manifestUrl);
+  problems.push(...checked.problems);
+  for (const icon of checked.icons) {
+    const problem = await fetchIcon(icon, fetchImpl);
+    if (problem) problems.push(problem);
+  }
+  return problems;
+}

@@ -78,9 +78,15 @@ public sealed record SessionResponse(
     PassSummaryResponse? PassPreview,
     string Version,
     DateOnly? FrozenUntil = null,
-    string? MemberNote = null);
+    string? MemberNote = null,
+    SessionEventResponse? Event = null);
 
 public sealed record SessionListResponse(IReadOnlyList<SessionResponse> Items);
+
+/// <summary>`SessionEvent` (docs/37 section 8.4): a one-off session that is an event or a workshop.</summary>
+public sealed record SessionEventResponse(string Title, string? Description, int? PriceAgorot, bool PassRequired);
+
+public sealed record SessionEventRequest(string? Title, string? Description, int? PriceAgorot, bool? PassRequired);
 
 public sealed record CreateSessionRequest(
     Guid? ClassTypeId,
@@ -89,7 +95,8 @@ public sealed record CreateSessionRequest(
     int? Minutes,
     Guid? InstructorMembershipId,
     Guid? RoomId,
-    int? Capacity);
+    int? Capacity,
+    SessionEventRequest? Event = null);
 
 /// <summary>`PassProduct`: a punch card or membership the studio sells.</summary>
 public sealed record PassProductResponse(
@@ -151,7 +158,8 @@ public sealed record BookingResponse(
     DateTimeOffset CreatedAt,
     string Version,
     string? CancelledFrom = null,
-    SpotRefResponse? Spot = null);
+    SpotRefResponse? Spot = null,
+    bool ToPayAtStudio = false);
 
 /// <summary>`MyBooking`: a booking with its session.</summary>
 public sealed record MyBookingResponse(
@@ -171,7 +179,7 @@ public sealed record MyBookingResponse(
 
 public sealed record MyBookingPageResponse(IReadOnlyList<MyBookingResponse> Items, Guid? NextBefore);
 
-public sealed record CreateBookingRequest(Guid? PersonId, Guid? SpotId = null);
+public sealed record CreateBookingRequest(Guid? PersonId, Guid? SpotId = null, string? Src = null);
 
 /// <summary>`SpotRef`: the spot a booked place holds (docs/33 section 3).</summary>
 public sealed record SpotRefResponse(Guid Id, string Label);
@@ -264,11 +272,12 @@ public sealed record InstructorProfileResponse(
     Uri? PhotoUrl,
     Uri? PhotoSmallUrl,
     bool Visible,
-    IReadOnlyList<SessionResponse>? NextSessions);
+    IReadOnlyList<SessionResponse>? NextSessions,
+    bool PublicProfile);
 
 public sealed record InstructorListResponse(IReadOnlyList<InstructorProfileResponse> Items);
 
-public sealed record StaffProfileRequest(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible);
+public sealed record StaffProfileRequest(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible, bool? PublicProfile);
 
 /// <summary>`MemberNoteRequest`: the instructor's note to a class; null or empty clears it.</summary>
 public sealed record MemberNoteRequest(string? Note, bool? ApplyToWeekly);

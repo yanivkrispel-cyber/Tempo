@@ -49,6 +49,15 @@ public static class MediaKeys
 
     public static string Small(Guid organizationId, Guid mediaId) => $"media/{Scope(organizationId, mediaId)}/small.webp";
 
+    /// <summary>One installable PNG of a studio icon (<see cref="StudioIcons.Sizes"/>).</summary>
+    public static string Icon(Guid organizationId, Guid mediaId, string size) => $"media/{Scope(organizationId, mediaId)}/icon-{size}.png";
+
+    /// <summary>Every object a ready picture may have: both WebP sizes and, for a studio icon, its PNGs.</summary>
+    public static IReadOnlyList<string> Objects(Guid organizationId, Guid mediaId, string purpose) =>
+        purpose == "studio_icon"
+            ? [Large(organizationId, mediaId), Small(organizationId, mediaId), .. StudioIcons.Sizes.Select(s => Icon(organizationId, mediaId, s.Name))]
+            : [Large(organizationId, mediaId), Small(organizationId, mediaId)];
+
     private static string Scope(Guid organizationId, Guid mediaId) =>
         CreatedAt(mediaId) >= StudioPrefixSince ? $"{organizationId:D}/{mediaId:D}" : $"{mediaId:D}";
 

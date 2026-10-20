@@ -276,13 +276,14 @@ public sealed class PlatformService(IDataSourceProvider dataSources, TimeProvide
 
         // The studio's pictures (docs/33 section 6): their ids before the rows go, their objects after the commit.
         var pictures = new List<string>();
-        await using (var media = unitOfWork.Command("SELECT id FROM media.media_objects WHERE organization_id = $1", organizationId))
+        await using (var media = unitOfWork.Command("SELECT id, purpose FROM media.media_objects WHERE organization_id = $1", organizationId))
         await using (var reader = await media.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
             {
                 var id = reader.GetGuid(0);
-                pictures.AddRange([MediaKeys.Incoming(organizationId, id), MediaKeys.Large(organizationId, id), MediaKeys.Small(organizationId, id)]);
+                pictures.Add(MediaKeys.Incoming(organizationId, id));
+                pictures.AddRange(MediaKeys.Objects(organizationId, id, reader.GetString(1)));
             }
         }
 

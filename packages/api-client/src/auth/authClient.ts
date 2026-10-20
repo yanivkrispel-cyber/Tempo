@@ -47,6 +47,11 @@ export interface AuthClientOptions {
   fetch?: typeof globalThis.fetch;
   /** Navigates the browser away (to the Hosted UI). */
   redirect?: (url: string) => void;
+  /**
+   * The router's basename on a studio's own app (`/s/<slug>`, docs/35 W-4). `signIn` takes a path inside it and keeps
+   * `returnTo` under it, because the callback page (`/auth/callback`) lives outside it.
+   */
+  basePath?: string;
   now?: () => number;
 }
 
@@ -85,6 +90,7 @@ export class AuthClient {
   private readonly fetchFn: typeof globalThis.fetch;
   private readonly redirect: (url: string) => void;
   private readonly now: () => number;
+  private readonly basePath: string;
   private readonly listeners = new Set<() => void>();
   private session: Session | null;
   private refreshing: Promise<string | null> | null = null;
@@ -99,6 +105,7 @@ export class AuthClient {
     this.fetchFn = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.redirect = options.redirect ?? ((url) => window.location.assign(url));
     this.now = options.now ?? Date.now;
+    this.basePath = options.basePath ?? "";
     this.session = this.readSession();
   }
 
@@ -125,7 +132,11 @@ export class AuthClient {
   ): Promise<void> {
     // Only scopes the config declares as optional: anything else would make the Hosted UI refuse the sign-in.
     const extra = (options.scopes ?? []).filter((scope) => (this.config.optionalScopes ?? []).includes(scope));
-    const flow: Flow = { state: randomUrlSafe(), verifier: randomUrlSafe(), returnTo: safeReturnTo(returnTo) };
+    const flow: Flow = {
+      state: randomUrlSafe(),
+      verifier: randomUrlSafe(),
+      returnTo: this.basePath + safeReturnTo(returnTo),
+    };
     this.flowStorage.setItem(this.flowKey, JSON.stringify(flow));
     const path = { login: "oauth2/authorize", signup: "signup", reauthenticate: "logout" }[screen];
     const url = new URL(`${this.config.cognitoDomain}/${path}`);
@@ -173,6 +184,16 @@ export class AuthClient {
     if (!tokens.refresh_token) throw new SignInError("token_exchange_failed", "Cognito did not return tokens.");
     this.setSession(this.toSession(tokens, tokens.refresh_token));
     return flow.returnTo;
+  }
+
+  /**
+   * Takes the tokens from the app's own sign-in screen (Cognito `USER_AUTH`, docs/36 section 5) and stores them as
+   * the code exchange does, so refresh and sign-out work the same. The ID token is not kept.
+   */
+  adopt(tokens: { accessToken: string; refreshToken: string; expiresIn: number }): void {
+    this.setSession(
+      this.toSession({ access_token: tokens.accessToken, expires_in: tokens.expiresIn }, tokens.refreshToken),
+    );
   }
 
   /** A valid access token, refreshed when it is about to expire; null when signed out. */

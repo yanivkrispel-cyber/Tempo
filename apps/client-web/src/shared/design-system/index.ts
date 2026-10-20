@@ -10,6 +10,7 @@ export { Card, CardTitle } from "./Card";
 export type { CardProps, CardTitleProps, CardTone } from "./Card";
 export { Chip, CountBadge } from "./Chip";
 export type { ChipProps, ChipTone, CountBadgeProps } from "./Chip";
+export { ACCENTS, DEFAULT_ACCENT, accentOfThemeColor, applyAccent, isAccentId, type AccentId } from "./accent";
 export { cx } from "./cx";
 export { DateInput } from "./DateInput";
 export type { DateInputProps } from "./DateInput";
