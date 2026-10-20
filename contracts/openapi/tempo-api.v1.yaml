@@ -207,7 +207,6 @@ paths:
     post:
       tags: [Public]
       operationId: joinPublicStudio
-      x-tempo-planned: true
       summary: Join a public studio as a client, without a code (a signed-in customer)
       description: >-
         docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on
@@ -5340,6 +5339,11 @@ components:
             The spot to take in a room with spot selection. Omit to get the usual spot when free, else the first
             free one. 400 `booking.spot_not_offered` in a room without spots; 409 `booking.spot_unavailable` when
             it is taken. Ignored when the class is full and the booking joins the waitlist.
+        src:
+          type: [string, "null"]
+          description: >-
+            The last-touch source code the members app kept (docs/37 section 6, M-12). Kept on one's own booking only;
+            a malformed or unknown code is ignored.
 
     SpotRef:
       type: object

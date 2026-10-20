@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPublicStudioDirectory, PublicStudioDirectory>();
         services.AddSingleton<IPublicPageService, PublicPageService>();
         services.AddSingleton<IPublicStudioReads, PublicStudioReads>();
+        services.AddSingleton<IPublicJoinService, PublicJoinService>();
         services.AddSingleton<IMemberService, MemberService>();
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();

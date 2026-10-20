@@ -3958,6 +3958,8 @@ export interface components {
              *     it is taken. Ignored when the class is full and the booking joins the waitlist.
              */
             spotId?: string;
+            /** @description The last-touch source code the members app kept (docs/37 section 6, M-12). Kept on one's own booking only; a malformed or unknown code is ignored. */
+            src?: string | null;
         };
         SpotRef: {
             /** Format: uuid */
