@@ -40,6 +40,8 @@ public static class PublicStudioEndpoints
         studio.MapGet("/sessions/{sessionId:guid}", SessionAsync).AllowAnonymous().WithName("getPublicSession");
         studio.MapGet("/manifest.webmanifest", ManifestAsync).AllowAnonymous().WithName("getStudioManifest");
         studio.MapGet("/icons/{size}", IconAsync).AllowAnonymous().WithName("getStudioIcon");
+        studio.MapGet("/products", ProductsAsync).AllowAnonymous().WithName("listPublicProducts");
+        studio.MapGet("/products/{productId:guid}", ProductAsync).AllowAnonymous().WithName("getPublicProduct");
         // Joining needs a customer token and a verified email (docs/37 section 4.3).
         studio.MapPost("/join", JoinAsync).RequireAuthorization().WithName("joinPublicStudio").Produces<PublicJoinResponse>();
 
@@ -92,7 +94,28 @@ public static class PublicStudioEndpoints
             s.Availability,
             s.SpotsLeft,
             s.WaitlistOpen,
-            s.Event is { } e ? new PublicEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null);
+            s.Event is { } e ? new PublicEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null,
+            s.Past,
+            [.. (s.Alternatives ?? []).Select(a => new PublicSessionSummaryResponse(a.Id, a.StartsAt, a.Minutes, a.ClassName, a.InstructorName, a.Availability, a.SpotsLeft))]);
+
+    /// <summary>SL-5: the prices page. Prices change rarely, so five minutes.</summary>
+    private static async Task<IResult> ProductsAsync(HttpContext httpContext, IPublicStudioReads reads)
+    {
+        var products = await reads.ListProductsAsync(PublicStudioRouteFilter.Current(httpContext), httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Ok(new PublicProductListResponse([.. products.Select(ProductResponse)]));
+    }
+
+    /// <summary>SL-4: one offer; `ended` instead of 404 once it ended, so the page can show the prices with a line.</summary>
+    private static async Task<IResult> ProductAsync(HttpContext httpContext, Guid productId, IPublicStudioReads reads)
+    {
+        var product = await reads.GetProductAsync(PublicStudioRouteFilter.Current(httpContext), productId, httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=60";
+        return Results.Ok(new PublicProductDetailResponse(product is null, product is null ? null : ProductResponse(product)));
+    }
+
+    private static PublicProductResponse ProductResponse(PublicProductView p) =>
+        new(p.Id, p.Name, p.Kind, p.PriceAgorot, p.Entries, p.PricePerClassAgorot, p.ValidDays, p.NewcomersOnly, p.PublicUntil, p.Blurb);
 
     private static DateOnly? Date(string? value, string field)
     {

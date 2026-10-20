@@ -4380,8 +4380,8 @@ export interface components {
              * @description One pass of it per friend's first attended class (M-17); null means no reward.
              */
             referralRewardProductId: string | null;
-            /** @description SL-4, SL-5 (SK2): the products shown on the prices page, in this order. Until SK2 the API leaves it out. */
-            listedProducts?: components["schemas"]["ListedProduct"][];
+            /** @description SL-4, SL-5: the products shown on the prices page, in this order. */
+            listedProducts: components["schemas"]["ListedProduct"][];
         };
         ListedProduct: {
             /**
@@ -4475,9 +4475,9 @@ export interface components {
                 priceAgorot: number | null;
                 passRequired: boolean;
             } | null;
-            /** @description SL-3 (SK2): the session has started or ended. Until SK2 the API leaves it out. */
+            /** @description SL-3: the session has started or ended. Always sent (optional in the schema so older fixtures stay valid). */
             past?: boolean;
-            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise. Only on the single-session read. */
+            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise, and always empty in the list. */
             alternatives?: components["schemas"]["PublicSessionSummary"][];
         };
         PublicSessionSummary: {
