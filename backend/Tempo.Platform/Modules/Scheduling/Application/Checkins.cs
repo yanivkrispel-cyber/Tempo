@@ -189,17 +189,16 @@ public sealed partial class BookingService : ICheckinService
     }
 
     /// <summary>
-    /// The person's 32-byte secret, kept encrypted with the health data key (#345, H-4). A plain secret from before
-    /// migration 0031 still counts and is moved to the ciphertext here. With <paramref name="create"/>, a person
-    /// without one gets a new one; two requests at once both end up with the one that was stored first.
+    /// The person's 32-byte secret, kept encrypted with the health data key (#345, H-4; the plain column went in
+    /// migration 0033, #374). With <paramref name="create"/>, a person without one gets a new one; two requests at once
+    /// both end up with the one that was stored first.
     /// </summary>
     private async Task<byte[]?> SecretAsync(UnitOfWork unitOfWork, Guid organizationId, Guid personId, bool create, CancellationToken cancellationToken)
     {
-        byte[]? plain = null;
         byte[]? ciphertext = null;
         var keyVersion = 0;
         await using (var read = unitOfWork.Command(
-            "SELECT checkin_secret, checkin_secret_ciphertext, checkin_secret_key_version FROM people.people WHERE organization_id = $1 AND id = $2 AND status = 'active'",
+            "SELECT checkin_secret_ciphertext, checkin_secret_key_version FROM people.people WHERE organization_id = $1 AND id = $2 AND status = 'active'",
             organizationId, personId))
         await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
         {
@@ -208,9 +207,8 @@ public sealed partial class BookingService : ICheckinService
                 return null;
             }
 
-            plain = await reader.IsDBNullAsync(0, cancellationToken) ? null : reader.GetFieldValue<byte[]>(0);
-            ciphertext = await reader.IsDBNullAsync(1, cancellationToken) ? null : reader.GetFieldValue<byte[]>(1);
-            keyVersion = await reader.IsDBNullAsync(2, cancellationToken) ? 0 : reader.GetInt32(2);
+            ciphertext = await reader.IsDBNullAsync(0, cancellationToken) ? null : reader.GetFieldValue<byte[]>(0);
+            keyVersion = await reader.IsDBNullAsync(1, cancellationToken) ? 0 : reader.GetInt32(1);
         }
 
         if (ciphertext is not null)
@@ -218,19 +216,19 @@ public sealed partial class BookingService : ICheckinService
             return await OpenSecretAsync(organizationId, personId, ciphertext, keyVersion, cancellationToken);
         }
 
-        if (plain is null && !create)
+        if (!create)
         {
             return null;
         }
 
-        // Store the old plain secret, or a new one, as ciphertext; only if the row still has no ciphertext.
-        var secret = plain ?? RandomNumberGenerator.GetBytes(32);
+        // A new secret, stored as ciphertext only if the row still has none.
+        var secret = RandomNumberGenerator.GetBytes(32);
         var keys = healthKeys ?? throw new InvalidOperationException("Check-in needs the health data keys (IHealthDataKeys).");
         var version = keys.CurrentVersion;
         var sealedSecret = HealthCipher.Encrypt(await keys.GetAsync(version, cancellationToken), Convert.ToBase64String(secret), SecretField(organizationId, personId, version));
         await using (var write = unitOfWork.Command(
             """
-            UPDATE people.people SET checkin_secret_ciphertext = $3, checkin_secret_key_version = $4, checkin_secret = NULL
+            UPDATE people.people SET checkin_secret_ciphertext = $3, checkin_secret_key_version = $4
             WHERE organization_id = $1 AND id = $2 AND checkin_secret_ciphertext IS NULL
             """,
             organizationId, personId, sealedSecret, version))
