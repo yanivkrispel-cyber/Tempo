@@ -325,6 +325,30 @@ describe("a class and cancelling", () => {
     expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toHaveFocus();
   });
 
+  it("shares the class with her first name on, and sends showName false when she turns it off (SL-8)", async () => {
+    const { api } = renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    const toggle = within(done).getByRole("switch", { name: "להציג את השם שלי" });
+    expect(toggle).toBeChecked();
+    vi.stubGlobal("navigator", { ...navigator, share: async () => undefined });
+    const shares = () =>
+      api.requests.flatMap((request, index) =>
+        request.method === "POST" && request.url.endsWith("/me/share-link") ? [api.bodies[index]] : [],
+      );
+    await userEvent.click(within(done).getByRole("button", { name: "שליחה לחברה" }));
+    await waitFor(() => expect(shares()).toHaveLength(1));
+    expect(shares()[0]).toEqual({ channel: "member_card", sessionId: sessionIds.prenatal, showName: true });
+
+    await userEvent.click(toggle);
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(within(done).getByRole("button", { name: "שליחה לחברה" }));
+    await waitFor(() => expect(shares()).toHaveLength(2));
+    expect(shares()[1]).toEqual({ channel: "member_card", sessionId: sessionIds.prenatal, showName: false });
+    vi.unstubAllGlobals();
+  });
+
   it("says when a class does not exist", async () => {
     renderAt("/classes/0199e5a1-0000-7000-8000-000000000399");
     expect(await screen.findByText("השיעור לא נמצא")).toBeInTheDocument();

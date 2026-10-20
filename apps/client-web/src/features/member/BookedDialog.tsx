@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useMe } from "../../account/account";
 import { studioBasename } from "../../app/studioPath";
-import { Button, Dialog, Icon, shortDate, useToast, type IconName } from "../../shared/design-system";
+import { Button, Dialog, Icon, shortDate, Toggle, useToast, type IconName } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
+import { useShareLink } from "./experience";
 import { shortDayName } from "./format";
 import { InstallOffer } from "./InstallApp";
 import { OpenInBrowserCard } from "./OpenInBrowserCard";
@@ -37,6 +39,9 @@ export function BookedDialog({
 }) {
   const me = useMe();
   const toast = useToast();
+  const shareLink = useShareLink(studio.id);
+  // SL-8: the invite names her by first name unless she turns it off; on by default.
+  const [showName, setShowName] = useState(true);
   const first = me.data?.displayName?.trim().split(/\s+/)[0];
   const time = clockTime(session.startsAt, timeZone);
   const day =
@@ -47,7 +52,10 @@ export function BookedDialog({
   if (freeCancelUntil) notes.push({ icon: "clock", text: `ביטול חינם עד ${freeCancelUntil}` });
 
   async function share() {
-    const url = `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
+    let url = `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
+    // Her own link carries the invite; when it cannot be made, the plain class address still goes out.
+    const link = await shareLink.mutateAsync({ sessionId: session.id, showName }).catch(() => null);
+    if (link) url = link.url;
     const text = `בואי איתי ל${session.classType.name}, ${day} ב-${time}`;
     if (navigator.share) {
       await navigator.share({ text, url }).catch(() => undefined);
@@ -105,6 +113,7 @@ export function BookedDialog({
               שליחה לחברה
             </Button>
           </div>
+          <Toggle checked={showName} onChange={(event) => setShowName(event.target.checked)} label="להציג את השם שלי" />
           <InstallOffer appName={studio.name} />
           <OpenInBrowserCard />
           <Button variant="ghost" block onClick={onClose}>

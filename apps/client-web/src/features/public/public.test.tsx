@@ -436,3 +436,48 @@ describe("signing up inside the sheet (board ב, branded_login)", () => {
     expect(new URLSearchParams(router.state.location.search).get("returnTo")).toBe(`/c/${prenatal.id}?reserve=1`);
   });
 });
+
+describe("a member's invite (SL-8, board ה)", () => {
+  const link = (inviterFirstName: string | null) => ({
+    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName },
+  });
+  const url = `/c/${prenatal.id}?src=abc123xy`;
+
+  it("names the friend who sent the link, above the class", async () => {
+    renderStudioApp(url, { routes: link("נגה") });
+    expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
+    expect(screen.getByText("נגה", { selector: "bdi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+  });
+
+  it("names her on the schedule too", async () => {
+    renderStudioApp("/?src=abc123xy", { routes: link("נגה") });
+    expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
+  });
+
+  it("shows nothing when her name is hidden", async () => {
+    const { stub } = renderStudioApp(url, { routes: link(null) });
+    expect(await screen.findByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+    await waitFor(() => expect(stub.requests.some((request) => request.url.endsWith("/links/abc123xy"))).toBe(true));
+    expect(screen.queryByText("מזמינה אותך")).not.toBeInTheDocument();
+  });
+
+  it("still shows the class when the link is unknown", async () => {
+    renderStudioApp(url);
+    expect(await screen.findByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+    expect(screen.queryByText("מזמינה אותך")).not.toBeInTheDocument();
+  });
+
+  it("looks nothing up without a source", async () => {
+    const { stub } = renderStudioApp(`/c/${prenatal.id}`);
+    expect(await screen.findByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+    expect(stub.requests.some((request) => request.url.includes("/links/"))).toBe(false);
+  });
+
+  it("renders a hostile name as text", async () => {
+    const hostile = "<img src=x onerror=alert(1)>";
+    renderStudioApp(url, { routes: link(hostile) });
+    expect(await screen.findByText(hostile, { selector: "bdi" })).toBeInTheDocument();
+    expect(document.querySelector("img[src='x']")).toBeNull();
+  });
+});
