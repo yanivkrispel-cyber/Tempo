@@ -67,6 +67,9 @@ const productionConfig: TempoEnvironmentConfig = {
 
   corsAllowedOrigins: ["https://app.tempo.example", "https://client.tempo.example"],
 
+  // The members app's host; a change means members register their passkeys again (docs/36 F-4).
+  passkeyRelyingPartyId: "client.tempo.example",
+
   cognitoCallbackUrls: {
     adminWeb: ["https://app.tempo.example/auth/callback"],
     clientWeb: ["https://client.tempo.example/auth/callback"],

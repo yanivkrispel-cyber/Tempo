@@ -64,6 +64,9 @@ const stagingConfig: TempoEnvironmentConfig = {
 
   corsAllowedOrigins: ["https://staging-admin.tempo.example", "https://staging-client.tempo.example"],
 
+  // The members app's host; a change means members register their passkeys again (docs/36 F-4).
+  passkeyRelyingPartyId: "staging-client.tempo.example",
+
   cognitoCallbackUrls: {
     adminWeb: ["https://staging-admin.tempo.example/auth/callback"],
     clientWeb: ["https://staging-client.tempo.example/auth/callback"],

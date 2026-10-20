@@ -149,6 +149,13 @@ export interface TempoEnvironmentConfig {
   /** Exact, non-wildcard CORS origins allowed to call the HTTP API. */
   readonly corsAllowedOrigins: readonly string[];
 
+  /**
+   * The passkey's relying party (docs/36 F-4): the members app's host. Named here rather than taken from the first
+   * callback, so reordering the callbacks can't move every member's passkeys to another host (#386 review). It must be
+   * the host of one of the members app's callbacks; changing it means members register their passkeys again.
+   */
+  readonly passkeyRelyingPartyId: string;
+
   /** Exact, non-wildcard Cognito callback URLs, per app client. */
   readonly cognitoCallbackUrls: {
     readonly adminWeb: readonly string[];
@@ -188,6 +195,11 @@ export function validateEnvironmentConfig(config: TempoEnvironmentConfig): Tempo
 
   if (config.edgeDistributionId !== undefined && !/^E[A-Z0-9]{8,20}$/.test(config.edgeDistributionId)) {
     errors.push(`edgeDistributionId must be a CloudFront distribution id, got "${config.edgeDistributionId}"`);
+  }
+
+  const clientHosts = config.cognitoCallbackUrls.clientWeb.map((url) => new URL(url).hostname);
+  if (!clientHosts.includes(config.passkeyRelyingPartyId)) {
+    errors.push(`passkeyRelyingPartyId must be the host of a members app callback (${clientHosts.join(", ")}), got "${config.passkeyRelyingPartyId}"`);
   }
 
   if (config.region !== "eu-central-1") {
