@@ -39,6 +39,7 @@ const messages: Record<string, string> = {
   "health.signed_name_invalid": "צריך לכתוב שם מלא, בין 2 ל-100 תווים.",
   "health.guardian_name_required": "צריך לכתוב את השם המלא של ההורה או האפוטרופוס.",
   "health.key_unavailable": "אי אפשר לשמור את ההצהרה כרגע. נסו שוב בעוד כמה דקות.",
+  "join.closed": "הסטודיו מצרף מתאמנים בהזמנה בלבד. בקשו מהסטודיו קישור הצטרפות.",
   "billing.restricted": "ההרשמה לשיעורים בסטודיו מושהית כרגע. אפשר עדיין לראות ולבטל הזמנות קיימות.",
 };
 
