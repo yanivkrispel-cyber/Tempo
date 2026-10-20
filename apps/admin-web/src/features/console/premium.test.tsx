@@ -151,8 +151,16 @@ describe("the owner's day (docs/33 section 9)", () => {
           ],
           amountAgorot: 90_000,
         },
-        // A story card (MK5) waits for its own screen (MO4): the "waiting for you" list leaves it out until then.
+        // The story cards (MK5) open the story they mean on the publish page (MO4).
         { kind: "story_weekly", count: 6, people: [] },
+        {
+          kind: "story_spot_opened",
+          count: 1,
+          people: [],
+          sessionId: id(10),
+          className: "רפורמר בוקר",
+          startsAt: "2026-10-14T17:00:00Z",
+        },
       ],
     },
     [`GET ${base}/insights/activity`]: {
@@ -197,6 +205,13 @@ describe("the owner's day (docs/33 section 9)", () => {
     const waiting = await screen.findByRole("region", { name: "מחכה לך" });
     expect(within(waiting).getByText("2 כרטיסיות מסתיימות השבוע")).toBeInTheDocument();
     expect(within(waiting).getByRole("link", { name: "לרשימת האנשים" })).toHaveAttribute("href", "/o/neshima/people");
+    expect(within(waiting).getByText("הסטורי של השבוע מוכן")).toBeInTheDocument();
+    expect(within(waiting).getByText("התפנה מקום ב-20:00, לפרסם?")).toBeInTheDocument();
+    expect(
+      within(waiting)
+        .getAllByRole("link", { name: "לסטורי" })
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/o/neshima/publish?template=week", `/o/neshima/publish?template=spot_opened&session=${id(10)}`]);
 
     const feed = await screen.findByRole("complementary", { name: "מה קורה בסטודיו" });
     expect(await within(feed).findByText("לפני 5 דק׳")).toBeInTheDocument();
@@ -210,8 +225,8 @@ describe("the owner's day (docs/33 section 9)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "בוקר טוב, דנה" })).toBeInTheDocument();
 
     // The bell counts what waits, and it and the line under the greeting take the owner to it.
-    const [bell, line] = await screen.findAllByRole("button", { name: "דבר אחד מחכה לך" });
-    expect(bell).toHaveTextContent("1");
+    const [bell, line] = await screen.findAllByRole("button", { name: "3 דברים מחכים לך" });
+    expect(bell).toHaveTextContent("3");
     await userEvent.click(bell!);
     const waiting = screen.getByRole("heading", { level: 2, name: "מחכה לך" });
     expect(waiting).toHaveFocus();

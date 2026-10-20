@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useSearchParams } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
 import { CopyLink } from "../../shared/CopyLink";
@@ -59,6 +60,10 @@ export function PublishPage() {
   return <Publisher ownOnly={!canAll} />;
 }
 
+function templateFrom(value: string | null): TemplateId {
+  return templates.find((item) => item.id === value)?.id ?? "week";
+}
+
 function Publisher({ ownOnly }: { ownOnly: boolean }) {
   const api = useApi();
   const studio = useStudio();
@@ -80,9 +85,14 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
   const accentId: AccentId = brand.data?.accentId ?? "sage";
   const accent = (ACCENTS.find((item) => item.id === accentId) ?? ACCENTS[0]!).ground;
 
-  const [template, setTemplate] = useState<TemplateId>("week");
+  // A suggestion card on the Today page opens the story it means (`?template=spot_opened&session=…`, MO4).
+  const [search] = useSearchParams();
+  const [template, setTemplate] = useState<TemplateId>(() => templateFrom(search.get("template")));
   const [week, setWeek] = useState<"this" | "next">("this");
-  const [chosen, setChosen] = useState<Partial<Record<string, string[]>>>({});
+  const [chosen, setChosen] = useState<Partial<Record<string, string[]>>>(() => {
+    const session = search.get("session");
+    return session && search.get("template") === "spot_opened" ? { spot_opened: [session] } : {};
+  });
   const [showInstructors, setShowInstructors] = useState(true);
   const [showLeft, setShowLeft] = useState(false);
   const [note, setNote] = useState("");
@@ -115,7 +125,9 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
         : all.filter((slot) => slot.date <= addDays(today, 7));
     return candidates(template, range, { today, time: clockTime(now, timeZone) });
   }, [all, template, today, timeZone, weekStart, now]);
-  const picked = chosen[choiceKey] ?? shown;
+  // A class from the link that is no longer offered (it filled up again) falls back to the default choice.
+  const kept = chosen[choiceKey];
+  const picked = kept && (template !== "spot_opened" || offered.some((slot) => kept.includes(slot.id))) ? kept : shown;
   const slots = offered.filter((slot) => picked.includes(slot.id)).slice(0, maxSlots[template]);
 
   const canvas = useRef<HTMLCanvasElement>(null);
