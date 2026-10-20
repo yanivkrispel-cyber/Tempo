@@ -8,7 +8,8 @@ import { useStudio } from "./studio";
 
 export type Sales = Schemas["Sales"];
 export type Occupancy = Schemas["Occupancy"];
-export type Suggestion = Schemas["Suggestion"];
+/** The cards the Today page draws; the `story_*` cards get their own screen (board #380 MO4). */
+export type Suggestion = Schemas["Suggestion"] & { kind: "passes_ending" | "members_at_risk" | "waitlist_pressure" };
 export type Activity = Schemas["Activity"];
 export type SessionSpots = Schemas["SessionSpots"];
 export type SessionSpot = Schemas["SessionSpot"];
@@ -72,11 +73,15 @@ export function useSuggestions(enabled: boolean) {
         api.GET("/api/v1/organizations/{organizationId}/insights/suggestions", {
           params: { path: { organizationId } },
         }),
-      ).then((list) => list.items),
+      ).then((list) => list.items.filter(isCareSuggestion)),
     enabled,
     staleTime: 60_000,
     retry: retryOnce,
   });
+}
+
+function isCareSuggestion(suggestion: Schemas["Suggestion"]): suggestion is Suggestion {
+  return !suggestion.kind.startsWith("story_");
 }
 
 /** The last 48 hours, refreshed every minute while the page is open. */
