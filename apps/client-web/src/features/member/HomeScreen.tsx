@@ -38,6 +38,7 @@ import { ListSkeleton, LoadError } from "./StudioGate";
 import { useNow } from "./clock";
 import { clockTime, defaultTimeZone, hasStarted, minutesBetween, studioToday } from "./studioTime";
 import { StudioNotices } from "./StudioNotices";
+import { StudioSwitcher, useSwitchableStudios } from "./StudioSwitcher";
 
 /** The state chip of a class row: the member's own place first, then what is left. */
 function badge(session: Session, now: Date): { text: string; tone: "sage" | "rose" | "amber" | "plain" } {
@@ -108,6 +109,7 @@ function HomeFrame({
   const me = useAccount();
   const name = nameOf(me);
   const firstName = name.split(" ")[0];
+  const switching = Boolean(useSwitchableStudios()) && studio;
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.home}`}>
       <header className={styles.header}>
@@ -115,8 +117,9 @@ function HomeFrame({
           <Avatar name={name} src={avatar ?? undefined} size="lg" />
         </Link>
         <div className={styles.heading}>
+          {switching && <StudioSwitcher studio={studio} />}
           <span className="tp-eyebrow">
-            {studio && <>{studio.name} · </>}
+            {studio && !switching && <>{studio.name} · </>}
             {dayName(today)}, {shortDate(today)}
           </span>
           <h1 className={styles.title}>

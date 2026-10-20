@@ -1,6 +1,6 @@
 import tokens from "@tempo/design-system/tokens.json";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCENTS, DEFAULT_ACCENT, applyAccent, isAccentId } from "./accent";
+import { ACCENTS, DEFAULT_ACCENT, accentOfThemeColor, applyAccent, isAccentId } from "./accent";
 
 // The design system's tokens.json is the source of the eight accents (WL2, docs/35 section 3).
 
@@ -12,6 +12,15 @@ describe("accents", () => {
       tokens.accents.list.map(({ id, label }) => ({ id, label })),
     );
     expect(DEFAULT_ACCENT).toBe(tokens.accents.default);
+  });
+
+  it("knows each accent by its light brand colour, as a studio's manifest writes its theme_color", () => {
+    expect(ACCENTS.map(({ id, brand }) => ({ id, brand }))).toEqual(
+      tokens.accents.list.map(({ id, value }) => ({ id, brand: value.light.brand })),
+    );
+    expect(accentOfThemeColor("#4A7088")).toBe("ocean");
+    expect(accentOfThemeColor("#ff0000")).toBeNull();
+    expect(accentOfThemeColor(undefined)).toBeNull();
   });
 
   it("knows an accent id and refuses anything else", () => {

@@ -6,6 +6,8 @@ import { ApiProvider } from "../api/ApiProvider";
 import { AuthProvider } from "../auth/AuthProvider";
 import { ClockProvider } from "../features/member/clock";
 import { ToastProvider } from "../shared/design-system";
+import { StudioLook } from "./studioLook";
+import { StudioPathProvider } from "./studioPath";
 
 type Router = ReturnType<typeof createBrowserRouter>;
 
@@ -19,9 +21,11 @@ export interface AppProps {
   fetch?: typeof globalThis.fetch;
   /** The member screens' clock; the device clock by default. Tests pass a fixed moment. */
   now?: Date;
+  /** The studio of a studio's own app (`/s/<slug>/`, the router's basename); null for the generic app. */
+  studioSlug?: string | null;
 }
 
-export function App({ router, auth, apiUrl = "", fetch, now }: AppProps) {
+export function App({ router, auth, apiUrl = "", fetch, now, studioSlug = null }: AppProps) {
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1 } } }));
 
   return (
@@ -29,9 +33,12 @@ export function App({ router, auth, apiUrl = "", fetch, now }: AppProps) {
       <ApiProvider baseUrl={apiUrl} auth={auth} fetch={fetch}>
         <QueryClientProvider client={queryClient}>
           <ClockProvider now={now}>
-            <ToastProvider>
-              <RouterProvider router={router} />
-            </ToastProvider>
+            <StudioPathProvider value={studioSlug}>
+              {studioSlug && <StudioLook slug={studioSlug} />}
+              <ToastProvider>
+                <RouterProvider router={router} />
+              </ToastProvider>
+            </StudioPathProvider>
           </ClockProvider>
         </QueryClientProvider>
       </ApiProvider>
