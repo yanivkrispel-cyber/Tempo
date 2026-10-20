@@ -10,7 +10,8 @@ public sealed record PublicPageResponse(
     string? SuggestWeeklyAt,
     string Version,
     string? InstagramHandle,
-    Guid? ReferralRewardProductId);
+    Guid? ReferralRewardProductId,
+    IReadOnlyList<ListedProductBody> ListedProducts);
 
 /// <summary>
 /// `PublicPageInput`: `enabled` and `openJoin` are required. Every other field is kept when it is left out and cleared
@@ -22,7 +23,11 @@ public sealed record UpdatePublicPageRequest(
     JsonElement IntroProductId = default,
     JsonElement SuggestWeeklyAt = default,
     JsonElement InstagramHandle = default,
-    JsonElement ReferralRewardProductId = default);
+    JsonElement ReferralRewardProductId = default,
+    IReadOnlyList<ListedProductBody>? ListedProducts = null);
+
+/// <summary>`ListedProduct` (SL-4, SL-5): the array order is the public order.</summary>
+public sealed record ListedProductBody(Guid ProductId, bool NewcomersOnly, DateOnly? PublicUntil, string? Blurb);
 
 /// <summary>`PublicStudio` (docs/37 section 4.2): what anyone sees of a studio whose public page is on.</summary>
 public sealed record PublicStudioResponse(
@@ -50,7 +55,30 @@ public sealed record PublicSessionResponse(
     string Availability,
     int? SpotsLeft,
     bool WaitlistOpen,
-    PublicEventResponse? Event);
+    PublicEventResponse? Event,
+    bool Past,
+    IReadOnlyList<PublicSessionSummaryResponse> Alternatives);
+
+/// <summary>`PublicSessionSummary` (SL-3): an upcoming class with room, offered instead of a full, cancelled or past one.</summary>
+public sealed record PublicSessionSummaryResponse(Guid Id, DateTimeOffset StartsAt, int Minutes, string ClassName, string? InstructorName, string Availability, int? SpotsLeft);
+
+/// <summary>`PublicProduct` (SL-4, SL-5): shown only; payment is at the studio.</summary>
+public sealed record PublicProductResponse(
+    Guid Id,
+    string Name,
+    string Kind,
+    int? PriceAgorot,
+    int? Entries,
+    int? PricePerClassAgorot,
+    int ValidDays,
+    bool NewcomersOnly,
+    DateOnly? PublicUntil,
+    string? Blurb);
+
+public sealed record PublicProductListResponse(IReadOnlyList<PublicProductResponse> Items);
+
+/// <summary>`PublicProductDetail`: `Ended` with no product when the offer ended or was archived (SL-4).</summary>
+public sealed record PublicProductDetailResponse(bool Ended, PublicProductResponse? Product);
 
 /// <summary>An event's public face: shown in its own layout on the public page (docs/37 section 8.4).</summary>
 public sealed record PublicEventResponse(string Title, string? Description, int? PriceAgorot, bool PassRequired);

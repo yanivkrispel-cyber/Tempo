@@ -544,7 +544,7 @@ export interface paths {
         put?: never;
         /**
          * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
-         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. 400 `channel.invalid` for `member_card` and `referral`, which are a member's own links (`me/share-link`). Audit `marketing.link.created` (channel, template).
          */
         post: operations["createMarketingLink"];
         delete?: never;
@@ -4380,8 +4380,8 @@ export interface components {
              * @description One pass of it per friend's first attended class (M-17); null means no reward.
              */
             referralRewardProductId: string | null;
-            /** @description SL-4, SL-5 (SK2): the products shown on the prices page, in this order. Until SK2 the API leaves it out. */
-            listedProducts?: components["schemas"]["ListedProduct"][];
+            /** @description SL-4, SL-5: the products shown on the prices page, in this order. */
+            listedProducts: components["schemas"]["ListedProduct"][];
         };
         ListedProduct: {
             /**
@@ -4475,9 +4475,9 @@ export interface components {
                 priceAgorot: number | null;
                 passRequired: boolean;
             } | null;
-            /** @description SL-3 (SK2): the session has started or ended. Until SK2 the API leaves it out. */
+            /** @description SL-3: the session has started or ended. Always sent (optional in the schema so older fixtures stay valid). */
             past?: boolean;
-            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise. Only on the single-session read. */
+            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise, and always empty in the list. */
             alternatives?: components["schemas"]["PublicSessionSummary"][];
         };
         PublicSessionSummary: {

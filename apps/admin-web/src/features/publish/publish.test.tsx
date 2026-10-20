@@ -77,7 +77,11 @@ const link = (body: { channel: string; template: string; sessionId: string | nul
 function renderPublish(
   permissions: readonly string[],
   role: "owner" | "staff" = "owner",
-  { classes = sessions, studioName }: { classes?: unknown[]; studioName?: string } = {},
+  {
+    classes = sessions,
+    studioName,
+    url = "/o/neshima/publish",
+  }: { classes?: unknown[]; studioName?: string; url?: string } = {},
 ) {
   const member = membershipAs(role, { permissions });
   const api = apiStub({
@@ -95,7 +99,7 @@ function renderPublish(
   });
   render(
     <App
-      router={createMemoryRouter(routes, { initialEntries: ["/o/neshima/publish"] })}
+      router={createMemoryRouter(routes, { initialEntries: [url] })}
       auth={signedInAuth()}
       apiUrl="https://api.test"
       fetch={api.fetch}
@@ -167,6 +171,17 @@ describe("the console's publishing (MO3)", () => {
     );
     expect(linkBodies(api)).toEqual([{ channel: "whatsapp", template: "spot_opened", sessionId: id(10) }]);
     expect(clipboard).toEqual([(text as HTMLTextAreaElement).value]);
+  });
+
+  it("opens the story a suggestion card means, with its class (MO4)", async () => {
+    renderPublish(owner, "owner", { url: `/o/neshima/publish?template=spot_opened&session=${id(11)}` });
+    expect(await screen.findByRole("combobox", { name: "השיעור" })).toHaveValue(id(11));
+    expect(screen.getByRole("button", { name: /התפנה מקום/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("falls back to the first class when the one in the link is no longer offered", async () => {
+    renderPublish(owner, "owner", { url: `/o/neshima/publish?template=spot_opened&session=${id(99)}` });
+    expect(await screen.findByRole("combobox", { name: "השיעור" })).toHaveValue(id(10));
   });
 
   it("shows an instructor only their own classes, and links the story to one of them (M-4)", async () => {
