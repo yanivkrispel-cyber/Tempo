@@ -33,3 +33,214 @@
   font-weight: 600;
   font-size: 14px;
 }
+
+/* The studio's brand (WL3): the home-screen preview on top on a phone, beside the form on a computer. */
+.brand {
+  display: grid;
+  gap: 24px;
+  grid-template-areas: "preview" "form";
+  margin-top: 20px;
+}
+.brandForm {
+  grid-area: form;
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .brand {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-areas: "form preview";
+    align-items: start;
+    gap: 32px;
+  }
+  .preview {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.counted {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.accents {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (min-width: 1100px) {
+  .accents {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+.accent {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.accent:hover {
+  background: var(--surface-sunken);
+}
+.accent:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.accent[aria-checked="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.accent:disabled {
+  cursor: default;
+}
+.swatch {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+.accent[aria-checked="true"] .swatch {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px currentColor;
+}
+
+.preview {
+  grid-area: preview;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: 0;
+}
+/* A phone: what it shows is the icon, so its colours are fixed whatever the console's theme. */
+.phone {
+  width: min(100%, 280px);
+  padding: 9px;
+  border-radius: 34px;
+  background: #23211f;
+  box-shadow: var(--shadow-float);
+}
+.screen {
+  display: grid;
+  gap: 18px;
+  padding: 12px 16px 14px;
+  border-radius: 26px;
+  background: linear-gradient(165deg, #7f9486 0%, #a9a08f 52%, #d6c3ae 100%);
+}
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  direction: ltr;
+  padding: 0 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.statusIcons {
+  display: flex;
+  gap: 3px;
+}
+.statusIcons i {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.85);
+}
+.apps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 10px;
+}
+.app {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.tile {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 52px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 23%;
+  color: #fff;
+}
+.tileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mark {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+}
+.initials,
+.initial {
+  font-weight: 600;
+  line-height: 1;
+}
+.initials {
+  font-size: 21px;
+}
+.initial {
+  font-size: 27px;
+}
+.neighbour {
+  background: rgb(255 255 255 / 0.32);
+  color: rgb(255 255 255 / 0.9);
+  backdrop-filter: blur(6px);
+}
+.appName {
+  max-width: 100%;
+  overflow: hidden;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+.nameBar {
+  width: 70%;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.45);
+}
+.dock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.22);
+}
+.sample {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.sampleRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
