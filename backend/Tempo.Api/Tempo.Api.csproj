@@ -4,6 +4,9 @@
     <RootNamespace>Tempo.Api</RootNamespace>
     <AWSProjectType>Lambda</AWSProjectType>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Precompiled code for the linux-arm64 publish: the first request on a new Lambda instance no longer
+         waits for the JIT (perf audit 2026-10-20: about 3 s on the first request). Ignored by build and test. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
