@@ -35,5 +35,5 @@ public static partial class SourceLinks
     }
 
     [GeneratedRegex("^[a-z0-9]{6,10}$")]
-    private static partial Regex CodePattern();
+    internal static partial Regex CodePattern();
 }

@@ -273,7 +273,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicLink
-      x-tempo-planned: true
       summary: Where one of a public studio's links leads, and the inviter's first name for a member's invite (anyone)
       description: >-
         SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404
@@ -295,7 +294,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicStudioCover
-      x-tempo-planned: true
       summary: The studio's cover picture for link previews (anyone)
       description: >-
         SL-9, SK4. `302` to a short-lived presigned URL of the studio's cover, or of its 512 px icon when there is
@@ -313,7 +311,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicSessionCover
-      x-tempo-planned: true
       summary: A session's class cover for link previews (anyone)
       description: >-
         SL-9, SK4. `302` to a short-lived presigned URL of the class type's cover, else the studio's cover, else its
@@ -6052,7 +6049,7 @@ components:
           items: { $ref: "#/components/schemas/LinkSource" }
         byTarget:
           type: array
-          description: "SK4: the same counts per target kind (SL-1). Until SK4 the API leaves it out."
+          description: "The same counts per target kind (SL-1). Always sent; optional in the schema so older fixtures stay valid."
           items:
             type: object
             required: [kind, members, bookings, attended]

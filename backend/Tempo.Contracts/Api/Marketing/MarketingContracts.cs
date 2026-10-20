@@ -101,20 +101,29 @@ public sealed record PublicJoinBookingResponse(Guid BookingId, Guid SessionId, s
 public sealed record PublicIntroPassResponse(Guid PassId, string ProductName, bool ToPayAtStudio);
 
 /// <summary>`MarketingLinkInput`: where the link goes, which template made it, and the class it points at.</summary>
-public sealed record CreateMarketingLinkRequest(string? Channel, string? Template, Guid? SessionId);
+public sealed record CreateMarketingLinkRequest(string? Channel, string? Template, Guid? SessionId, MarketingTargetBody? Target = null);
+
+/// <summary>`MarketingTarget` (SL-1): `session`, `schedule`, `offer` or `prices`, with the session's or product's id.</summary>
+public sealed record MarketingTargetBody(string Kind, Guid? Id);
+
+/// <summary>`PublicLinkTarget` (SL-1, SL-8).</summary>
+public sealed record PublicLinkTargetResponse(MarketingTargetBody Target, string? InviterFirstName);
 
 /// <summary>`MarketingLink`: `Url` is the members-app address with `?src=`.</summary>
-public sealed record MarketingLinkResponse(Guid Id, string Code, string Channel, string? Template, Guid? SessionId, Uri Url, DateTimeOffset CreatedAt);
+public sealed record MarketingLinkResponse(Guid Id, string Code, string Channel, string? Template, Guid? SessionId, Uri Url, DateTimeOffset CreatedAt, MarketingTargetBody Target, bool? ShowName);
 
 /// <summary>`SourceReport` (docs/37 section 6): per channel and per link, new members, bookings and attended bookings.</summary>
-public sealed record SourceReportResponse(int Days, IReadOnlyList<ChannelSourceResponse> ByChannel, IReadOnlyList<LinkSourceResponse> ByLink);
+public sealed record SourceReportResponse(int Days, IReadOnlyList<ChannelSourceResponse> ByChannel, IReadOnlyList<LinkSourceResponse> ByLink, IReadOnlyList<TargetSourceResponse> ByTarget);
+
+/// <summary>The report's counts per kind of target (SL-1).</summary>
+public sealed record TargetSourceResponse(string Kind, int Members, int Bookings, int Attended);
 
 public sealed record ChannelSourceResponse(string Channel, int Members, int Bookings, int Attended);
 
-public sealed record LinkSourceResponse(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, int Members, int Bookings, int Attended);
+public sealed record LinkSourceResponse(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, int Members, int Bookings, int Attended, MarketingTargetBody Target);
 
 /// <summary>`ShareLinkInput`: a member's own link for a card or a referral.</summary>
-public sealed record ShareLinkRequest(string? Channel, Guid? SessionId);
+public sealed record ShareLinkRequest(string? Channel, Guid? SessionId, bool? ShowName = null);
 
 /// <summary>`MyMilestones` (docs/37 section 8.2).</summary>
 public sealed record MyMilestonesResponse(

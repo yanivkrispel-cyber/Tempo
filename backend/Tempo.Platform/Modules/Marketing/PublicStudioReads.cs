@@ -14,6 +14,9 @@ public sealed record PublicStudioView(
     bool HasIntroOffer,
     bool OpenJoin);
 
+/// <summary>Where a public link leads (SL-1), and the inviter's first name for a member's own link while she shows it (SL-8).</summary>
+public sealed record PublicLinkView(string TargetKind, Guid? TargetId, string? InviterFirstName);
+
 /// <summary>The instructor as strangers may see them: only with their own consent (M-14).</summary>
 public sealed record PublicInstructorView(string DisplayName, Guid? PhotoMediaId, string? Headline, string? InstagramHandle);
 
@@ -66,6 +69,9 @@ public interface IPublicStudioReads
     Task<IReadOnlyList<PublicSessionView>> ListSessionsAsync(PublicStudio studio, DateOnly? firstDay, DateOnly? lastDay, CancellationToken cancellationToken);
 
     Task<PublicSessionView> GetSessionAsync(PublicStudio studio, Guid sessionId, CancellationToken cancellationToken);
+
+    /// <summary>SL-1, SL-8: one of the studio's links by its code; 404 `link.not_found` otherwise.</summary>
+    Task<PublicLinkView> GetLinkAsync(PublicStudio studio, string code, CancellationToken cancellationToken);
 
     /// <summary>SL-5: listed, active products whose last day hasn't passed, offers first, then the owner's order.</summary>
     Task<IReadOnlyList<PublicProductView>> ListProductsAsync(PublicStudio studio, CancellationToken cancellationToken);
@@ -323,6 +329,44 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
         }
 
         return placesLeft <= FewPlaces ? "few" : "open";
+    }
+
+    public async Task<PublicLinkView> GetLinkAsync(PublicStudio studio, string code, CancellationToken cancellationToken)
+    {
+        var notFound = new DomainRuleViolationException(ViolationKind.NotFound, "link.not_found", "This link doesn't lead anywhere.");
+        if (!SourceLinks.CodePattern().IsMatch(code))
+        {
+            throw notFound;
+        }
+
+        await using var unitOfWork = await BeginAsync(studio, cancellationToken);
+        var (enabled, _) = await PageAsync(unitOfWork, studio, cancellationToken);
+        if (!enabled)
+        {
+            throw NotFound();
+        }
+
+        // The inviter's first name only: the first word of the name the studio holds for her, never a surname, and only
+        // on a member's own link while "להציג את השם שלי" is on (SL-8).
+        await using var read = unitOfWork.Command(
+            """
+            SELECT l.target_kind, l.target_id,
+                   CASE WHEN l.channel IN ('member_card', 'referral') AND l.show_name
+                        THEN nullif(split_part(btrim(p.display_name), ' ', 1), '') END
+            FROM marketing.links l
+            LEFT JOIN people.people p ON p.organization_id = l.organization_id AND p.membership_id = l.created_by AND p.status = 'active'
+            WHERE l.organization_id = $1 AND l.code = $2
+            """,
+            studio.Id, code);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw notFound;
+        }
+
+        Guid? target = reader.IsDBNull(1) ? null : reader.GetGuid(1);
+        string? inviter = reader.IsDBNull(2) ? null : reader.GetString(2);
+        return new PublicLinkView(reader.GetString(0), target, inviter);
     }
 
     private static async Task<(bool Enabled, string TimeZone)> PageAsync(UnitOfWork unitOfWork, PublicStudio studio, CancellationToken cancellationToken)
