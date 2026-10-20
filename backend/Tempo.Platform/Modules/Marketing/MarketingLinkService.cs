@@ -94,8 +94,8 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
             {
                 await using var insert = unitOfWork.Command(
                     """
-                    INSERT INTO marketing.links (organization_id, id, code, channel, template, session_id, created_by, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+                    INSERT INTO marketing.links (organization_id, id, code, channel, template, session_id, target_kind, target_id, created_by, created_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $6::uuid IS NULL THEN 'schedule' ELSE 'session' END, $6, $7, now())
                     RETURNING created_at
                     """,
                     tenant.OrganizationId, id, code, channel, template, link.SessionId, tenant.MembershipId);
