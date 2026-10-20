@@ -328,26 +328,57 @@ describe("a class and cancelling", () => {
   });
 
   it("shares the class with her first name on, and sends showName false when she turns it off (SL-8)", async () => {
-    const { api } = renderAt(`/classes/${sessionIds.prenatal}`);
+    const { api, studio } = renderAt(`/classes/${sessionIds.prenatal}`);
+    studio.routes[`POST /api/v1/organizations/${organizationId}/me/share-link`] = async (request: Request) => {
+      const body = (await request.clone().json()) as { showName: boolean };
+      return Response.json({
+        url: `https://members.test/s/studio/c/${sessionIds.prenatal}?src=${body.showName ? "named001" : "plain001"}`,
+      });
+    };
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
     await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
     const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
     const toggle = within(done).getByRole("switch", { name: "להציג את השם שלי" });
     expect(toggle).toBeChecked();
-    vi.stubGlobal("navigator", { ...navigator, share: async () => undefined });
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share });
     const shares = () =>
       api.requests.flatMap((request, index) =>
         request.method === "POST" && request.url.endsWith("/me/share-link") ? [api.bodies[index]] : [],
       );
-    await userEvent.click(within(done).getByRole("button", { name: "שליחה לחברה" }));
+    // The link is made when the dialog opens, so the tap goes straight to the share sheet.
     await waitFor(() => expect(shares()).toHaveLength(1));
     expect(shares()[0]).toEqual({ channel: "member_card", sessionId: sessionIds.prenatal, showName: true });
+    await waitFor(() => expect(within(done).getByRole("button", { name: "שליחה לחברה" })).toBeEnabled());
+    await act(async () => within(done).getByRole("button", { name: "שליחה לחברה" }).click());
+    expect(share).toHaveBeenLastCalledWith(expect.objectContaining({ url: expect.stringContaining("src=named001") }));
 
     await userEvent.click(toggle);
     expect(toggle).not.toBeChecked();
-    await userEvent.click(within(done).getByRole("button", { name: "שליחה לחברה" }));
     await waitFor(() => expect(shares()).toHaveLength(2));
     expect(shares()[1]).toEqual({ channel: "member_card", sessionId: sessionIds.prenatal, showName: false });
+    await waitFor(async () => {
+      within(done).getByRole("button", { name: "שליחה לחברה" }).click();
+      expect(share).toHaveBeenLastCalledWith(expect.objectContaining({ url: expect.stringContaining("src=plain001") }));
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("opens the share sheet in the tap itself, with the plain class address while her link is on its way", async () => {
+    const { studio } = renderAt(`/classes/${sessionIds.prenatal}`);
+    // The link never comes back: the tap must not wait on it.
+    studio.routes[`POST /api/v1/organizations/${organizationId}/me/share-link`] = () => new Promise<Response>(() => {});
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share });
+    within(done).getByRole("button", { name: "שליחה לחברה" }).click();
+    // Same task as the click: no await ran before navigator.share.
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({ url: `${window.location.origin}/s/neshima/c/${sessionIds.prenatal}` }),
+    );
     vi.unstubAllGlobals();
   });
 

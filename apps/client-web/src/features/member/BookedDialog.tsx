@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMe } from "../../account/account";
 import { studioBasename } from "../../app/studioPath";
 import { Button, Dialog, Icon, shortDate, Toggle, useToast, type IconName } from "../../shared/design-system";
@@ -41,8 +41,15 @@ export function BookedDialog({
   const me = useMe();
   const toast = useToast();
   const shareLink = useShareLink(studio.id);
+  const mintLink = shareLink.mutate;
   // SL-8: the invite names her by first name unless she turns it off; on by default.
   const [showName, setShowName] = useState(true);
+  // Her own link is made when the dialog opens and again when the toggle changes, not on the tap: a phone's share
+  // sheet opens only from the tap itself, and waiting on the API first would use that up.
+  const bookingId = booking?.id;
+  useEffect(() => {
+    if (bookingId) mintLink({ sessionId: session.id, showName });
+  }, [bookingId, session.id, showName, mintLink]);
   const first = me.data?.displayName?.trim().split(/\s+/)[0];
   const time = clockTime(session.startsAt, timeZone);
   const day =
@@ -56,10 +63,10 @@ export function BookedDialog({
   if (pass) notes.push({ key: "pass", icon: "credit-card", text: pass });
 
   async function share() {
-    let url = `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
-    // Her own link carries the invite; when it cannot be made, the plain class address still goes out.
-    const link = await shareLink.mutateAsync({ sessionId: session.id, showName }).catch(() => null);
-    if (link) url = link.url;
+    // Her own link carries the invite; while it is on its way or when it cannot be made, the plain class address goes.
+    const url = shareLink.isSuccess
+      ? shareLink.data.url
+      : `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
     const text = `בואי איתי ל${session.classType.name}, ${day} ב-${time}`;
     if (navigator.share) {
       await navigator.share({ text, url }).catch(() => undefined);
