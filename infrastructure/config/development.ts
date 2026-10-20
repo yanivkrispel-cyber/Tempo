@@ -104,6 +104,9 @@ const developmentConfig: TempoEnvironmentConfig = {
     "http://localhost:5175"
   ],
 
+  // The members app's host; a change means members register their passkeys again (docs/36 F-4).
+  passkeyRelyingPartyId: "tempo-members.pages.dev",
+
   cognitoCallbackUrls: {
     adminWeb: ["https://tempo-studio-console.pages.dev/auth/callback", "http://localhost:5173/auth/callback"],
     clientWeb: ["https://tempo-members.pages.dev/auth/callback", "http://localhost:5174/auth/callback"],
