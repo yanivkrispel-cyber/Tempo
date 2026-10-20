@@ -72,6 +72,8 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   size?: ButtonSize;
   /** Sage instead of the default cream tile. */
   primary?: boolean;
+  /** A small count in the corner, as on IconButtonLink; hidden from screen readers, so `label` carries it. */
+  count?: number;
 }
 
 export function IconButton({
@@ -79,6 +81,7 @@ export function IconButton({
   label,
   size = "md",
   primary = false,
+  count,
   type = "button",
   className,
   ...rest
@@ -97,6 +100,11 @@ export function IconButton({
       {...rest}
     >
       <Icon name={icon} />
+      {count !== undefined && count > 0 && (
+        <span className="tp-chip tp-chip--count tp-btn__count" aria-hidden="true">
+          {count}
+        </span>
+      )}
     </button>
   );
 }

@@ -103,6 +103,13 @@ export class ApiStack extends Stack {
           allowedOrigins: [...config.corsAllowedOrigins],
           allowedHeaders: ["content-type"],
           maxAge: 3600
+        },
+        // The console draws stories on a canvas from the presigned GETs (docs/37 section 7.3): without CORS the canvas
+        // is tainted and can't be exported. An <img> needs none, so nothing else changes. Same origins, no headers.
+        {
+          allowedMethods: [HttpMethods.GET],
+          allowedOrigins: [...config.corsAllowedOrigins],
+          maxAge: 3600
         }
       ]
     });
