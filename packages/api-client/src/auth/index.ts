@@ -11,4 +11,12 @@ export {
   otpauthUri,
 } from "./cognitoAccount";
 export type { CognitoAccountErrorCode, CognitoAccountOptions, TotpStatus } from "./cognitoAccount";
+export { CognitoSignIn, CognitoSignInError } from "./cognitoSignIn";
+export type {
+  CognitoSignInErrorCode,
+  CognitoSignInOptions,
+  CognitoTokens,
+  SignInFactor,
+  SignInStep,
+} from "./cognitoSignIn";
 export { codeChallenge, randomUrlSafe } from "./pkce";
