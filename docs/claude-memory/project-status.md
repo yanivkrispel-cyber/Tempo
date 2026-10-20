@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-10-18, night (board #347, DAY-PLAN-8: installable apps, #345 hardening, the premium flows on dev, white
-label plan). Earlier: boards #232, #253 and #321 (2026-10-17).
+Updated 2026-10-20, morning (board #380, DAY-PLAN-9: white label, the branded sign-in, studio marketing stages A
+and B). Earlier: board #347 (2026-10-18, night). Earlier: boards #232, #253 and #321 (2026-10-17).
 
 ## In one paragraph
 
@@ -165,6 +165,35 @@ search), progress weeks, the design system v1.0 and both apps. All of it is on `
 - Running the .NET tests on this machine: Smart App Control also blocked Debug DLLs on 2026-10-18; run them in the
   `mcr.microsoft.com/dotnet/sdk:10.0` container (local-dev-quirks.md).
 
+## White label, branded sign-in and studio marketing (2026-10-19 night, board #380)
+
+Kris approved docs/35 (D21, W-10 changed: a branded sign-in, D22) and docs/37 (D23, studio marketing). Lane [O] was
+down from 18:54 to 21:20 and again from 21:52 to the morning, so most of the night's [K] work is reviewed in part and
+waits on `main` in a chain of stacked PRs.
+
+**On `main` and dev:**
+
+| Piece | PR |
+|---|---|
+| The eight accents in the design system (`data-accent`, contrast floors) | O1 #382 |
+| The console's today page in the OwnerDashboard layout | O2 #383 |
+| docs/36 branded sign-in LLD and ADR-0028 (our own screen over Cognito `USER_AUTH`; managed login has no Hebrew) | K3 #385, #388 |
+| Cognito: `ALLOW_USER_AUTH` on the member app client (writes email only), first factors password and passkey, passkey RP `tempo-members.pages.dev`; verified live | K4 #386 |
+| The picture bucket allows `GET` from the app origins (story canvas) | MK5 #390 |
+| D21, D22; docs/35 approved | K8 #388 |
+| Design B sign-in boards as HTML | #400 |
+
+**Open, in merge order** (each stacked on the one before; retarget to `main` when its base lands, then CI):
+#384 K1 brand row (**migration 0032**) → #387 K2 public manifest and icons → #389 MK1 stage A schema (**0034**) →
+#392 MK2 public page → #393 MK3 open join → #394 MK4 links and report → #395 MK5 suggestions → #396 MK7 stage B
+schema (**0035**) → #397 MK8a share links, milestones, referral reward → #398 MK8b events → #402 icon cache fix.
+Off `main`: #391 (`marketing-live-check.mjs`), [O]'s #399 (O3a, approved) and #401 (O3b screens, approved).
+
+- **0033 is reserved for #374** (drop `checkin_secret`): 4 fictional records on dev still hold a plain secret.
+- K6, MK6 and MK9 (live checks) run with `node tools/scripts/marketing-live-check.mjs --brand --stage-a --stage-b`
+  once the chain is deployed.
+- Email codes wait for an SES sender (#304); passkeys work only on `tempo-members.pages.dev` (docs/36 F-4).
+
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in
@@ -195,7 +224,7 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `TEMPO_STUDIO_REMOVAL_MIN_DAYS` and Neon's point-in-time history | 30 days by default outside dev; a removed studio stays in Neon's history until it ages out |
 | Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
 | The real logo | The icons use K1's redraw of LOGO1.png as a temporary logo (Kris, 2026-10-18) |
-| `docs/35` W-1 to W-12 (white label) | Defaults apply unless Kris changes them; then WL1 to WL6 |
+| Turn `branded_login` on for dev | After the chain lands and K6 passes (docs/36 section 6) |
 | `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
 
 ## Who works on what
