@@ -28,22 +28,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.hero {
-  min-height: 280px;
-}
 .studioHero {
   min-height: 200px;
-}
-.instructor {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.instructor > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 .offer {
   display: flex;
@@ -106,4 +92,215 @@
 .dayTitle {
   font-size: 15px;
   margin: 0;
+}
+
+/* A class's page (boards א and ז): the class's photo, and a glass sheet rising over its lower edge. */
+.stage {
+  display: flex;
+  flex-direction: column;
+}
+.photo {
+  position: relative;
+  height: 300px;
+  border-radius: 32px;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--taupe), var(--taupe-deep));
+  isolation: isolate;
+}
+.photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.photo[data-closed] img {
+  filter: saturate(0.6);
+}
+.photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #141a1d73 0%, #141a1d00 40%, #141a1d00 70%, #141a1d59 100%);
+}
+.photoTop {
+  position: absolute;
+  top: 14px;
+  inset-inline: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.studioPill,
+.weekLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  min-width: 0;
+}
+.studioPill {
+  height: 44px;
+  padding-inline: 16px 6px;
+}
+.studioPill:not(:has(img)) {
+  padding-inline: 16px;
+}
+.studioPill img {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  object-fit: cover;
+  order: 1;
+}
+.studioPill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.weekLink {
+  flex: none;
+  height: 36px;
+  padding-inline: 14px;
+  font-size: 13px;
+}
+.sheet {
+  position: relative;
+  margin-top: -72px;
+  padding: 26px 22px 20px;
+  border-radius: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.title {
+  margin: 0;
+  font-size: 34px;
+  line-height: 40px;
+}
+.heading p {
+  margin: 0;
+  font-size: 16px;
+}
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.instructor,
+.fact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.instructor > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fact {
+  color: var(--ink-muted);
+}
+.fact :global(.tp-icon) {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.offerRow {
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.offerRow > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+.center {
+  margin: 0;
+  text-align: center;
+}
+
+/* Classes with room instead (board ז): one card, a row each. */
+.slots {
+  border-radius: var(--radius-xl);
+  padding: 4px 16px;
+}
+.slotList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.slotList li + li {
+  border-top: 1px solid var(--line);
+}
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding-block: 10px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.slot:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+.slotTime {
+  flex: none;
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 48px;
+}
+.slotBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.slot :global(.tp-chip) {
+  flex: none;
+}
+
+@media (min-width: 720px) {
+  .photo {
+    height: 360px;
+  }
+  .sheet {
+    margin-inline: 24px;
+    padding: 30px 32px 22px;
+  }
 }

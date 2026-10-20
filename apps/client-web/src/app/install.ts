@@ -50,8 +50,13 @@ export function isIos(): boolean {
   return /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1);
 }
 
+/** Instagram's, Facebook's or TikTok's own browser: it cannot add a page to the home screen. */
+export function isInAppBrowser(): boolean {
+  return /Instagram|FBAN|FBAV|FB_IAB|musical_ly|BytedanceWebview|TikTok|Line\//.test(navigator.userAgent);
+}
+
 function currentWay(): InstallWay {
-  if (installed || isStandalone()) return null;
+  if (installed || isStandalone() || isInAppBrowser()) return null;
   if (deferred) return "prompt";
   return isIos() ? "ios" : null;
 }

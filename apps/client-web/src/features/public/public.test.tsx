@@ -10,6 +10,7 @@ import { routes } from "../../app/routes";
 import { apiStub, json, problem, sampleMe } from "../../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../../test/auth";
 import { createStudio, organizationId, sessionIds, testNow } from "../../test/studio";
+import { dateLine, roomChip, shortWhen } from "./publicText";
 import { captureSource, currentSource, SOURCE_KEY } from "./source";
 
 const api = "/api/v1/public/studios/neshima";
@@ -133,6 +134,20 @@ describe("the source of a shared link (docs/37 section 6)", () => {
   });
 });
 
+describe("what a class's public page says (boards א and ז)", () => {
+  it("names the day and both ends of the class", () => {
+    expect(dateLine(prenatal, "Asia/Jerusalem", "2026-10-13")).toBe("היום 13.10, בין 19:00 ל-20:00");
+    expect(dateLine(prenatalLater, "Asia/Jerusalem", "2026-10-13")).toBe("שלישי 20.10, בין 19:00 ל-20:00");
+    expect(shortWhen(vinyasa, "Asia/Jerusalem", "2026-10-13")).toBe("מחר 07:00");
+  });
+
+  it("says how much room an alternative has", () => {
+    expect(roomChip(prenatal)).toEqual({ label: "נשארו 2", tone: "warning" });
+    expect(roomChip({ ...prenatal, spotsLeft: 1 }).label).toBe("מקום אחרון");
+    expect(roomChip(vinyasa)).toEqual({ label: "יש מקום", tone: "brand" });
+  });
+});
+
 describe("a studio's public page (/s/<slug>/)", () => {
   it("shows a visitor the studio, its offer and the week by day, without the classes already over", async () => {
     renderStudioApp("/");
@@ -197,9 +212,15 @@ describe("a class's public page (/s/<slug>/c/<id>, SL-2, SL-3)", () => {
     const flowStorage = memoryStorage();
     renderStudioApp(`/c/${prenatal.id}`, { auth: signedOutAuth({ redirect, flowStorage, basePath: "/s/neshima" }) });
     expect(await screen.findByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
-    expect(screen.getByText("היום 19:00 · 60 דק׳")).toBeInTheDocument();
+    expect(screen.getByText("היום 13.10, בין 19:00 ל-20:00")).toBeInTheDocument();
     expect(screen.getByText("נשארו 2 מקומות")).toBeInTheDocument();
+    expect(screen.getByText("נועה")).toBeInTheDocument();
     expect(screen.getByText("מורה ליוגה")).toBeInTheDocument();
+    expect(screen.getByText("החדר הקטן")).toBeInTheDocument();
+    expect(screen.getByText("שיעור ניסיון · ₪45")).toBeInTheDocument();
+    expect(screen.getByText("משלמים בסטודיו, בלי כרטיס אשראי עכשיו")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "כל המערכת" })).toHaveAttribute("href", "/s/neshima");
+    expect(screen.getByText("Tempo")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "@noa.yoga" })).toHaveAttribute(
       "href",
       "https://www.instagram.com/noa.yoga/",
@@ -266,10 +287,30 @@ describe("a class's public page (/s/<slug>/c/<id>, SL-2, SL-3)", () => {
     expect(await screen.findByRole("dialog", { name: /הרשמה לשיעור/ })).toBeInTheDocument();
   });
 
-  it("offers the waitlist of a full class", async () => {
+  it("says a full class filled up, offers classes with room, and its waitlist", async () => {
     renderStudioApp(`/c/${yin.id}`);
-    expect(await screen.findByText("מלא · יש רשימת המתנה")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "הצטרפות לרשימת ההמתנה" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "יין יוגה ונשימה, היום 20:15" })).toBeInTheDocument();
+    expect(screen.getByText("השיעור התמלא")).toBeInTheDocument();
+    expect(screen.getByText("הקישור עדיין עובד. אלה השיעורים הקרובים עם מקום:")).toBeInTheDocument();
+    const instead = await screen.findByRole("region", { name: "שיעורים עם מקום" });
+    const first = (await within(instead).findAllByRole("link"))[0]!;
+    expect(first).toHaveAttribute("href", `/s/neshima/c/${prenatal.id}`);
+    expect(first).toHaveTextContent("19:00");
+    expect(first).toHaveTextContent("היום 13.10 · נועה");
+    expect(within(first).getByText("נשארו 2")).toBeInTheDocument();
+    expect(within(instead).getAllByText("יש מקום")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "שריינו לי מקום" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "רשימת המתנה להיום 20:15" }));
+    expect(screen.getByRole("dialog", { name: "רשימת המתנה להיום 20:15" })).toBeInTheDocument();
+  });
+
+  it("offers no waitlist when a full class has none", async () => {
+    const closed = { ...yin, waitlistOpen: false };
+    renderStudioApp(`/c/${yin.id}`, { routes: { [`GET ${api}/sessions/${yin.id}`]: closed } });
+    expect(await screen.findByText("השיעור התמלא")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "שיעורים עם מקום" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /רשימת המתנה/ })).not.toBeInTheDocument();
   });
 
   it.each([
