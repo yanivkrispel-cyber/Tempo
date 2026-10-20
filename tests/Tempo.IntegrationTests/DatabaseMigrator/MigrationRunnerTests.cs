@@ -30,7 +30,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(36);
+        result.AppliedScripts.Should().HaveCount(37);
         result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
         result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
         result.AppliedScripts[2].Should().EndWith("0003_join_attempts.sql");
@@ -68,6 +68,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         result.AppliedScripts[33].Should().EndWith("0035_marketing_stage_b.sql");
         result.AppliedScripts[34].Should().EndWith("0036_share_links_by_intent.sql");
         result.AppliedScripts[35].Should().EndWith("0037_rate_counters.sql");
+        result.AppliedScripts[36].Should().EndWith("0038_booking_cancelled_at.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -106,7 +107,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(36);
+        result.AppliedScripts.Should().HaveCount(37);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();

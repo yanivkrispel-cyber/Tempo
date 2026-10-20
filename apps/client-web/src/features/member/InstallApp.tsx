@@ -89,3 +89,38 @@ export function InstallAppCard() {
     </Card>
   );
 }
+
+/** After a booking (board ח): the studio's app on the home screen, once; "אחר כך" holds for 30 days like the card. */
+export function InstallOffer({ appName }: { appName: string }) {
+  const { way, start, sheet } = useStartInstall();
+  const [dismissed, setDismissed] = useState(() => installDismissed());
+  if (!way || dismissed) return sheet || null;
+  return (
+    <section className={styles.installOffer} aria-labelledby="install-offer-title">
+      <div className={styles.installCard}>
+        <img src="/icons/icon-192.png" alt="" width={44} height={44} className={styles.installIcon} />
+        <div className={styles.settingText}>
+          <h3 id="install-offer-title" className={styles.installTitle}>
+            <bdi>{appName}</bdi> במסך הבית
+          </h3>
+          <span className="tp-caption">ביטול, מעבר שיעור ותזכורת, בלחיצה</span>
+        </div>
+      </div>
+      <Button block onClick={start}>
+        הוספה למסך הבית
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className={styles.installLater}
+        onClick={() => {
+          dismissInstall();
+          setDismissed(true);
+        }}
+      >
+        אחר כך
+      </Button>
+      {sheet}
+    </section>
+  );
+}

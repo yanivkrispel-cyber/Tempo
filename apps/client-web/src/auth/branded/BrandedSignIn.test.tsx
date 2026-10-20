@@ -1,7 +1,7 @@
 import { CognitoSignInError, type CognitoSignInErrorCode, type CognitoTokens } from "@tempo/api-client/auth";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { memoryStorage } from "../../test/auth";
 import { BrandedSignIn, PASSKEY_OFFER_KEY, type SignInApi } from "./BrandedSignIn";
 
@@ -398,5 +398,100 @@ describe("BrandedSignIn: a forgotten password", () => {
     await enterPassword(user);
     expect(await screen.findByText(/אם יש חשבון עם האימייל הזה, שלחנו אליו קוד/)).toBeInTheDocument();
     expect(cognito.forgotPassword).toHaveBeenCalledWith(email);
+  });
+});
+
+describe("BrandedSignIn: what it keeps on the device", () => {
+  const hostile = '<script>alert(1)</script> "x"';
+
+  it("shows the studio's name as text, never as markup", () => {
+    render(
+      <BrandedSignIn brand={{ name: hostile }} cognito={fakeCognito()} onSignedIn={vi.fn()} onHostedUi={vi.fn()} />,
+    );
+    expect(document.body.textContent).toContain(hostile);
+    expect(document.body.querySelector("script")).toBeNull();
+  });
+
+  it("never writes the password, a code or a token to web storage or a cookie", async () => {
+    const writes: string[] = [];
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation((key, value) => {
+      writes.push(`${key}=${value}`);
+    });
+    const deviceWrites: string[] = [];
+    const cookies: string[] = [];
+    const cookie = vi.spyOn(document, "cookie", "set").mockImplementation((value) => void cookies.push(value));
+    try {
+      // Password sign-in.
+      const first = setup(fakeCognito());
+      await enterEmail(first.user);
+      await enterPassword(first.user);
+      await waitFor(() => expect(first.onSignedIn).toHaveBeenCalledWith(tokens));
+      document.body.replaceChildren();
+
+      // Sign-up, then the emailed code.
+      const second = setup(fakeCognito(), { initialView: "signup" });
+      await second.user.type(screen.getByLabelText("אימייל"), email);
+      await second.user.type(screen.getByLabelText("סיסמה"), password);
+      await second.user.click(screen.getByRole("button", { name: "יצירת חשבון" }));
+      await enterCode(second.user);
+      await second.user.click(screen.getByRole("button", { name: "אישור" }));
+      await waitFor(() => expect(second.onSignedIn).toHaveBeenCalledWith(tokens));
+      for (const { deviceStorage } of [first, second]) {
+        for (let i = 0; i < deviceStorage.length; i++) {
+          const key = deviceStorage.key(i)!;
+          deviceWrites.push(`${key}=${deviceStorage.getItem(key)}`);
+        }
+      }
+    } finally {
+      setItem.mockRestore();
+      cookie.mockRestore();
+    }
+    const secrets = [password, "123456", tokens.accessToken, tokens.refreshToken, "session-1"];
+    for (const line of [...writes, ...cookies, ...deviceWrites])
+      for (const secret of secrets) expect(line).not.toContain(secret);
+    expect(cookies).toEqual([]);
+  });
+});
+
+describe("BrandedSignIn: inside Instagram, Facebook or TikTok (SL-7)", () => {
+  const instagram =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 390.0.0.27.80";
+  afterEach(() => vi.restoreAllMocks());
+
+  it("goes straight to the password, though the email has a passkey and the phone could use it", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(instagram);
+    const cognito = fakeCognito({
+      passkeysSupported: true,
+      start: vi.fn().mockResolvedValue({ kind: "choose", ...challenge, factors: ["PASSWORD", "WEB_AUTHN"] }),
+    });
+    const { user, onSignedIn } = setup(cognito);
+    await enterEmail(user);
+    expect(screen.queryByRole("button", { name: "כניסה עם Face ID או טביעת אצבע" })).not.toBeInTheDocument();
+    await enterPassword(user);
+    await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(tokens));
+    expect(cognito.passkey).not.toHaveBeenCalled();
+  });
+
+  it("takes the password when Cognito asks for the passkey first", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(instagram);
+    const cognito = fakeCognito({
+      passkeysSupported: true,
+      start: vi.fn().mockResolvedValue({ kind: "passkey", ...challenge, options: {} }),
+    });
+    const { user } = setup(cognito);
+    await enterEmail(user);
+    expect(await screen.findByLabelText("סיסמה")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "כניסה עם Face ID או טביעת אצבע" })).not.toBeInTheDocument();
+  });
+
+  it("does not offer Face ID after the sign-in", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(instagram);
+    const cognito = fakeCognito({ passkeysSupported: true });
+    const { user, onSignedIn, deviceStorage } = setup(cognito);
+    await enterEmail(user);
+    await enterPassword(user);
+    await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(tokens));
+    expect(screen.queryByRole("button", { name: "הפעלה" })).not.toBeInTheDocument();
+    expect(deviceStorage.getItem(PASSKEY_OFFER_KEY)).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import {
   type SignInStep,
 } from "@tempo/api-client/auth";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { isInAppBrowser } from "../../app/inAppBrowser";
 import { Banner, Button, Field, Input } from "../../shared/design-system";
 import { PASSWORD_POLICY, signInErrorText } from "./messages";
 import styles from "./signin.module.css";
@@ -107,6 +108,8 @@ export function BrandedSignIn({
   const storage = deviceStorage ?? safeLocalStorage();
   const formRef = useRef<HTMLFormElement>(null);
   const firstView = useRef(true);
+  // Inside Instagram, Facebook or TikTok passkeys usually fail: only the code and the password there (SL-7).
+  const passkeys = cognito.passkeysSupported && !isInAppBrowser();
 
   // Each new step takes the focus to its first field (or button), so a keyboard and a screen reader follow along.
   useEffect(() => {
@@ -136,7 +139,7 @@ export function BrandedSignIn({
       case "choose": {
         const challenge = challengeOf(step);
         offeredFactors.current = step.factors;
-        if (step.factors.includes("WEB_AUTHN") && cognito.passkeysSupported && readOffer(storage) !== "failed")
+        if (step.factors.includes("WEB_AUTHN") && passkeys && readOffer(storage) !== "failed")
           go({ name: "passkey", challenge, factors: step.factors });
         else go({ name: "password", challenge, factors: step.factors });
         return;
@@ -144,6 +147,7 @@ export function BrandedSignIn({
       case "password":
         return go({ name: "password", challenge: challengeOf(step), factors: offeredFactors.current });
       case "passkey":
+        if (!passkeys) return go({ name: "password", challenge: challengeOf(step), factors: offeredFactors.current });
         return go({ name: "passkey", challenge: challengeOf(step), factors: offeredFactors.current });
       case "email_code":
         return go({ name: "email_code", challenge: challengeOf(step) });
@@ -156,7 +160,7 @@ export function BrandedSignIn({
       case "signed_in": {
         // Offered once per device, never to someone who has a passkey or just used one.
         const offer =
-          cognito.passkeysSupported &&
+          passkeys &&
           !usedPasskey.current &&
           !offeredFactors.current.includes("WEB_AUTHN") &&
           readOffer(storage) === null;
@@ -584,7 +588,7 @@ function Heading({ title, lead, ltrLead = false }: { title: string; lead: string
   );
 }
 
-function EmailField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function EmailField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <Field label="אימייל">
       <Input
@@ -605,7 +609,7 @@ function EmailField({ value, onChange }: { value: string; onChange: (value: stri
  * Six digits shown as six boxes. One real input sits over the boxes, so the phone still offers the code from the SMS
  * or mail bar, a paste fills all six, and anything but digits is dropped.
  */
-function CodeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function CodeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <Field label="קוד בן שש ספרות">
       <div className={styles.codeBoxes} dir="ltr">
@@ -673,7 +677,7 @@ function NoticeBanner({ notice, onHostedUi }: { notice: Notice | null; onHostedU
   );
 }
 
-function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+export function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" className={styles.link} onClick={onClick}>
       {children}
@@ -682,7 +686,7 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
 }
 
 /** "Send again" opens after 60 seconds (docs/36 section 4). */
-function ResendButton({ onResend, disabled }: { onResend: () => void; disabled: boolean }) {
+export function ResendButton({ onResend, disabled }: { onResend: () => void; disabled: boolean }) {
   const [left, setLeft] = useState(RESEND_SECONDS);
   useEffect(() => {
     if (left <= 0) return;

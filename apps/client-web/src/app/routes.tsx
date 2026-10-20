@@ -13,6 +13,8 @@ import { HomeScreen } from "../features/member/HomeScreen";
 import { InboxScreen } from "../features/member/InboxScreen";
 import { MemberLayout } from "../features/member/MemberLayout";
 import { PublicClassPage } from "../features/public/PublicClassPage";
+import { PublicOfferPage } from "../features/public/PublicOfferPage";
+import { PublicPricesPage } from "../features/public/PublicPricesPage";
 import { PublicWeekPage } from "../features/public/PublicStudioPage";
 import { ProfileScreen } from "../features/member/ProfileScreen";
 import { NotificationsScreen } from "../features/member/NotificationsScreen";
@@ -49,6 +51,8 @@ export const routes: RouteObject[] = [
   // member app's own screens. `/` is the public page for a visitor, from <RequireAuth>.
   { path: "/c/:sessionId", element: <PublicClassPage /> },
   { path: "/week/:date", element: <PublicWeekPage /> },
+  { path: "/o/:productId", element: <PublicOfferPage /> },
+  { path: "/prices", element: <PublicPricesPage /> },
   { path: "/login", element: <LoginPage /> },
   // Cognito's exact callback URL (infrastructure/config/<env>.ts, cognitoCallbackUrls.clientWeb).
   { path: "/auth/callback", element: <CallbackPage /> },

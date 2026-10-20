@@ -7,7 +7,7 @@ import { installDismissed, dismissInstall, listenForInstall, resetInstallForTest
 import { routes } from "../../app/routes";
 import { apiStub } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { createStudio, testNow } from "../../test/studio";
+import { createStudio, sessionIds, testNow } from "../../test/studio";
 
 // Board #347, P-3: never on the first visit. The member app offers itself after a booking (a card on the home that
 // can be dismissed for 30 days) and always in the profile. Android and desktop take the browser's own prompt; an
@@ -101,6 +101,16 @@ describe("installing the app from the profile (P-3)", () => {
     expect(screen.queryByRole("dialog", { name: "התקנה באייפון" })).not.toBeInTheDocument();
   });
 
+  it("says nothing inside Instagram's browser, even when it fires a prompt (SL-7)", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      `${iphone.replace(" Safari/604.1", "")} Instagram 390.0.0.27.80`,
+    );
+    renderAt("/profile");
+    await screen.findByRole("heading", { level: 1 });
+    offerInstall();
+    expect(screen.queryByRole("button", { name: /התקנת האפליקציה/ })).not.toBeInTheDocument();
+  });
+
   it("says nothing when the app already runs installed", async () => {
     runInstalled();
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(iphone);
@@ -108,6 +118,45 @@ describe("installing the app from the profile (P-3)", () => {
     await screen.findByRole("heading", { level: 1 });
     offerInstall();
     expect(screen.queryByRole("button", { name: /התקנת האפליקציה/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("the install offer after booking a class (board ח)", () => {
+  it("takes the browser's prompt from the 'place held' dialog", async () => {
+    const event = offerInstall();
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: /שמרנו לך מקום/ });
+    const offer = within(done).getByRole("region", { name: "סטודיו נשימה במסך הבית" });
+    await userEvent.click(within(offer).getByRole("button", { name: "הוספה למסך הבית" }));
+    expect(event.prompt).toHaveBeenCalledOnce();
+  });
+
+  it("goes for 30 days on 'later'", async () => {
+    offerInstall();
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: /שמרנו לך מקום/ });
+    await userEvent.click(within(done).getByRole("button", { name: "אחר כך" }));
+    expect(within(done).queryByRole("region", { name: "סטודיו נשימה במסך הבית" })).not.toBeInTheDocument();
+    expect(installDismissed()).toBe(true);
+  });
+
+  it("points Instagram's browser on Android to Chrome instead (SL-7, board ו)", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.0.0 Mobile Safari/537.36 Instagram 390.0.0.43.81 Android",
+    );
+    offerInstall();
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: /שמרנו לך מקום/ });
+    expect(within(done).queryByRole("region", { name: "סטודיו נשימה במסך הבית" })).not.toBeInTheDocument();
+    expect(within(done).getByRole("link", { name: "פתיחה בדפדפן" }).getAttribute("href")).toMatch(
+      /^intent:\/\/.+#Intent;scheme=https?;package=com\.android\.chrome;/,
+    );
   });
 });
 

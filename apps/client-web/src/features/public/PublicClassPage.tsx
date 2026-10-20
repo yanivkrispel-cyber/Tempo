@@ -1,15 +1,14 @@
-import { useState } from "react";
-import { Navigate, useLocation, useParams } from "react-router";
+import { useState, type ReactNode } from "react";
+import { Link, Navigate, useLocation, useParams } from "react-router";
 import { useMe } from "../../account/account";
 import { NotFoundPage } from "../../app/NotFoundPage";
 import { useStudioPath } from "../../app/studioPath";
 import { useAuth } from "../../auth/AuthProvider";
-import { Avatar, Button, ButtonLink, Card, Chip, EmptyState } from "../../shared/design-system";
+import { Avatar, Button, ButtonLink, Chip, EmptyState, Icon, Skeleton } from "../../shared/design-system";
 import { addDays, type IsoDate } from "../../shared/utilities/dates";
 import { useNow } from "../member/clock";
-import { relativeDay } from "../member/format";
 import { LoadError } from "../member/StudioGate";
-import { defaultTimeZone, studioDate, studioToday } from "../member/studioTime";
+import { clockTime, defaultTimeZone, studioToday } from "../member/studioTime";
 import { PublicFrame, PublicSkeleton, StudioNotFound } from "./PublicFrame";
 import {
   isMemberOf,
@@ -21,8 +20,18 @@ import {
   type PublicSession,
   type PublicStudio,
 } from "./publicStudio";
-import { PublicSessionRow } from "./PublicSessionRow";
-import { alternatives, availabilityChip, offerText, publicState, whenText } from "./publicText";
+import {
+  alternatives,
+  availabilityChip,
+  closedChip,
+  dateLine,
+  offerText,
+  publicState,
+  roomChip,
+  shortWhen,
+  slotMeta,
+  type PublicClassState,
+} from "./publicText";
 import { ReserveSheet } from "./ReserveSheet";
 import styles from "./public.module.css";
 
@@ -76,107 +85,205 @@ function ClassView({ studio, session, now }: { studio: PublicStudio; session: Pu
   const timeZone = studio.timeZone || defaultTimeZone;
   const today = studioToday(timeZone, now);
   const location = useLocation();
-  const state = session ? publicState(session, now) : null;
-  const canReserve = state === "open" || state === "waitlist";
-  const action = state === "open" ? "שריינו לי מקום" : "הצטרפות לרשימת ההמתנה";
   // Back from signing in with `?reserve=1`: the sheet opens again where the visitor left it.
   const [sheetOpen, setSheetOpen] = useState(() => new URLSearchParams(location.search).has("reserve"));
-  const chip = session && availabilityChip(session, now);
 
-  return (
-    <PublicFrame studio={studio}>
-      {session ? (
-        <section className={`tp-hero ${styles.hero}`} aria-labelledby="public-class-title">
-          {session.coverUrl && <img className="tp-hero__photo" src={session.coverUrl} alt="" />}
-          <div className="tp-hero__top">
-            {chip && (
-              <Chip tone={chip.tone} plain={chip.tone === "neutral"} className="tp-glass-dark">
-                {chip.label}
-              </Chip>
-            )}
-          </div>
-          <div className="tp-hero__body">
-            <div className="tp-hero__text">
-              <span className={styles.when}>{whenText(session, timeZone, today)}</span>
-              <h1 id="public-class-title" className="tp-hero__title">
-                <bdi>{session.event?.title ?? session.classType.name}</bdi>
-              </h1>
-              {(session.instructor || session.roomName) && (
-                <span className="tp-hero__meta">
-                  {[session.instructor && `עם ${session.instructor.displayName}`, session.roomName]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              )}
-            </div>
-          </div>
-        </section>
-      ) : (
+  if (!session) {
+    return (
+      <PublicFrame studio={studio}>
         <EmptyState icon="calendar" title="השיעור לא נמצא" titleAs="h1">
           ייתכן שהוסר מהמערכת או שהקישור ישן.
         </EmptyState>
-      )}
+        <Instead studio={studio} session={null} now={now} today={today} />
+        <ButtonLink to="/" variant="secondary" block>
+          לכל מערכת השיעורים
+        </ButtonLink>
+      </PublicFrame>
+    );
+  }
 
-      {session?.event?.description && (
-        <Card>
-          {/* Studio text is shown as text, never as markup (S-C). */}
-          <p className={styles.description}>{session.event.description}</p>
-        </Card>
-      )}
+  const state = publicState(session, now);
+  const title = session.event?.title ?? session.classType.name;
+  const waitlistAction = `רשימת המתנה ל${shortWhen(session, timeZone, today)}`;
 
-      {session?.instructor && (
-        <Card className={styles.instructor}>
-          <Avatar name={session.instructor.displayName} src={session.instructor.photoUrl ?? undefined} />
-          <div>
-            <strong>
-              <bdi>{session.instructor.displayName}</bdi>
-            </strong>
-            {session.instructor.headline && <span className="tp-muted">{session.instructor.headline}</span>}
-            {session.instructor.instagramHandle && (
-              <a
-                href={`https://www.instagram.com/${encodeURIComponent(session.instructor.instagramHandle)}/`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <bdi dir="ltr">@{session.instructor.instagramHandle}</bdi>
-              </a>
-            )}
+  return (
+    <main className={`tp-page ${styles.page}`}>
+      <section className={styles.stage} aria-labelledby="public-class-title">
+        <div className={styles.photo} data-closed={state === "open" ? undefined : true}>
+          {session.coverUrl && <img src={session.coverUrl} alt="" />}
+          <div className={styles.photoTop}>
+            <Link to="/" className={`tp-glass-dark ${styles.studioPill}`}>
+              {studio.logoUrl && <img src={studio.logoUrl} alt="" />}
+              <span>
+                <bdi>{studio.name}</bdi>
+              </span>
+            </Link>
+            <Link to="/" className={`tp-glass-dark ${styles.weekLink}`}>
+              כל המערכת
+            </Link>
           </div>
-        </Card>
-      )}
-
-      {studio.introOffer && canReserve && (
-        <Card className={styles.offer}>
-          <span className="tp-label tp-muted">פעם ראשונה בסטודיו?</span>
-          <strong>{offerText(studio.introOffer)}</strong>
-          <span className="tp-muted">נרשמים כאן, משלמים בסטודיו.</span>
-        </Card>
-      )}
-
-      {canReserve ? (
-        <div className={styles.actions}>
-          <Button size="lg" block onClick={() => setSheetOpen(true)}>
-            {action}
-          </Button>
         </div>
-      ) : (
-        <Instead studio={studio} session={session} now={now} today={today} />
-      )}
 
-      {session && canReserve && (
+        <div className={`tp-glass ${styles.sheet}`}>
+          {state === "open" ? (
+            <Open
+              studio={studio}
+              session={session}
+              now={now}
+              title={title}
+              line={dateLine(session, timeZone, today)}
+              onReserve={() => setSheetOpen(true)}
+            />
+          ) : (
+            <Closed state={state} title={`${title}, ${shortWhen(session, timeZone, today)}`}>
+              <Instead studio={studio} session={session} now={now} today={today} />
+              {state === "waitlist" && (
+                <div className={styles.actions}>
+                  <Button variant="secondary" size="lg" block onClick={() => setSheetOpen(true)}>
+                    {waitlistAction}
+                  </Button>
+                  <p className={`tp-caption tp-muted ${styles.center}`}>נודיע לך אם מתפנה מקום.</p>
+                </div>
+              )}
+            </Closed>
+          )}
+          <p className={`tp-caption tp-muted ${styles.center}`}>
+            נבנה עם <bdi>Tempo</bdi>
+          </p>
+        </div>
+      </section>
+
+      {(state === "open" || state === "waitlist") && (
         <ReserveSheet
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
           studio={studio}
-          title={action}
+          title={state === "open" ? "שריינו לי מקום" : waitlistAction}
           returnTo={`/c/${session.id}`}
         />
       )}
-    </PublicFrame>
+    </main>
   );
 }
 
-/** Classes with room instead of one that is full, cancelled, over or gone (SL-3, board ז). */
+/** A class with room: who teaches it, where, the first-class offer and the button (board א). */
+function Open({
+  studio,
+  session,
+  now,
+  title,
+  line,
+  onReserve,
+}: {
+  studio: PublicStudio;
+  session: PublicSession;
+  now: Date;
+  title: string;
+  line: string;
+  onReserve: () => void;
+}) {
+  const left = availabilityChip(session, now);
+  const { instructor } = session;
+  return (
+    <>
+      <div className={styles.heading}>
+        {left && (
+          <div className={styles.chips}>
+            <Chip tone={left.tone}>{left.label}</Chip>
+          </div>
+        )}
+        <h1 id="public-class-title" className={`tp-display ${styles.title}`}>
+          <bdi>{title}</bdi>
+        </h1>
+        <p className="tp-muted">{line}</p>
+      </div>
+
+      {(instructor || session.roomName) && (
+        <ul className={styles.facts}>
+          {instructor && (
+            <li className={styles.instructor}>
+              <Avatar name={instructor.displayName} src={instructor.photoUrl ?? undefined} />
+              <div>
+                <strong>
+                  עם <bdi>{instructor.displayName}</bdi>
+                </strong>
+                {instructor.headline && <span className="tp-caption tp-muted">{instructor.headline}</span>}
+                {instructor.instagramHandle && (
+                  <a
+                    className="tp-caption"
+                    href={`https://www.instagram.com/${encodeURIComponent(instructor.instagramHandle)}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <bdi dir="ltr">@{instructor.instagramHandle}</bdi>
+                  </a>
+                )}
+              </div>
+            </li>
+          )}
+          {session.roomName && (
+            <li className={styles.fact}>
+              <Icon name="pin" />
+              <bdi>{session.roomName}</bdi>
+            </li>
+          )}
+        </ul>
+      )}
+
+      {session.event?.description && (
+        // Studio text is shown as text, never as markup (S-C).
+        <p className={styles.description}>{session.event.description}</p>
+      )}
+
+      {studio.introOffer && (
+        <div className={`tp-paper ${styles.offerRow}`}>
+          <span className={styles.tile} aria-hidden="true">
+            <Icon name="gift" />
+          </span>
+          <div>
+            <strong>{offerText(studio.introOffer)}</strong>
+            <span className="tp-caption tp-muted">משלמים בסטודיו, בלי כרטיס אשראי עכשיו</span>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.actions}>
+        <Button size="lg" block onClick={onReserve}>
+          שריינו לי מקום
+        </Button>
+      </div>
+    </>
+  );
+}
+
+/** A class a visitor can no longer book, and what to book instead (board ז). */
+function Closed({ state, title, children }: { state: PublicClassState; title: string; children: ReactNode }) {
+  const chip = closedChip(state);
+  const lead =
+    state === "full" || state === "waitlist"
+      ? "הקישור עדיין עובד. אלה השיעורים הקרובים עם מקום:"
+      : "אלה השיעורים הקרובים עם מקום:";
+  return (
+    <>
+      <div className={styles.heading}>
+        {chip && (
+          <div className={styles.chips}>
+            <Chip tone={chip.tone} plain={chip.tone === "neutral"}>
+              {chip.label}
+            </Chip>
+          </div>
+        )}
+        <h1 id="public-class-title" className={`tp-display ${styles.title}`}>
+          <bdi>{title}</bdi>
+        </h1>
+        <p className="tp-muted">{lead}</p>
+      </div>
+      {children}
+    </>
+  );
+}
+
+/** Up to three classes with room instead of one that is full, cancelled, over or gone (SL-3, board ז). */
 function Instead({
   studio,
   session,
@@ -192,29 +299,36 @@ function Instead({
   const timeZone = studio.timeZone || defaultTimeZone;
   const picks = alternatives(sessions.data ?? [], session, now);
   return (
-    <section className={styles.section} aria-labelledby="public-instead">
-      <h2 id="public-instead" className={styles.sectionTitle}>
-        שיעורים עם מקום
-      </h2>
-      {picks.length > 0 && (
-        <ul className={styles.list}>
-          {picks.map((pick) => (
-            <PublicSessionRow
-              key={pick.id}
-              session={pick}
-              timeZone={timeZone}
-              now={now}
-              day={relativeDay(studioDate(pick.startsAt, timeZone), today)}
-            />
-          ))}
-        </ul>
-      )}
-      {sessions.isSuccess && picks.length === 0 && (
+    <section aria-label="שיעורים עם מקום">
+      {sessions.isPending ? (
+        <Skeleton height={180} />
+      ) : picks.length > 0 ? (
+        <div className={`tp-paper ${styles.slots}`}>
+          <ul className={styles.slotList}>
+            {picks.map((pick) => {
+              const chip = roomChip(pick);
+              return (
+                <li key={pick.id}>
+                  <Link to={`/c/${pick.id}`} className={styles.slot}>
+                    <time className={`tp-num ${styles.slotTime}`} dateTime={pick.startsAt}>
+                      {clockTime(pick.startsAt, timeZone)}
+                    </time>
+                    <span className={styles.slotBody}>
+                      <strong>
+                        <bdi>{pick.event?.title ?? pick.classType.name}</bdi>
+                      </strong>
+                      <span className="tp-caption tp-muted">{slotMeta(pick, timeZone, today)}</span>
+                    </span>
+                    <Chip tone={chip.tone}>{chip.label}</Chip>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
         <p className="tp-muted">אין כרגע שיעורים עם מקום בשבועיים הקרובים.</p>
       )}
-      <ButtonLink to="/" variant="secondary" block>
-        לכל מערכת השיעורים
-      </ButtonLink>
     </section>
   );
 }
