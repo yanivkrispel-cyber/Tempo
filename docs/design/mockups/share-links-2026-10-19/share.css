@@ -1,0 +1,77 @@
+/* Share-link landing mockups. Warm Glass grounds from Tempo; the studio "סטודיו נשימה" uses the ocean accent (W-1). Same tokens as the sign-in canvas. */
+:root {
+  --canvas: #f5f4f2; --paper: #fbfaf8; --cream: #ece9e4; --sand: #e4dbd4;
+  --ink: #2b2420; --ink-2: #5e544c; --ink-3: #6f6359;
+  --hair: rgba(43, 36, 32, 0.08); --hair-2: rgba(43, 36, 32, 0.16);
+  --brand: #2f6577; --brand-deep: #24505f; --brand-soft: #dfeaee; --brand-glow: rgba(143, 196, 214, 0.55);
+  --warn: #8a5a12; --warn-soft: #f6ead2; --rose: #9b3f4a; --rose-soft: #f5e1e3;
+  --focus: #8fc4ee;
+  --serif: 'Frank Ruhl Libre', 'David Libre', Georgia, serif;
+  --sans: 'IBM Plex Sans Hebrew', 'Heebo', 'Segoe UI', sans-serif;
+  --rim: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --lift: 0 1px 1px rgba(43, 36, 32, 0.04), 0 10px 26px -14px rgba(43, 36, 32, 0.24);
+  --well: inset 0 2px 6px rgba(43, 36, 32, 0.10), inset 0 -1px 0 rgba(255, 255, 255, 0.75);
+}
+.tp { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+.tp *, .tp *::before, .tp *::after { box-sizing: border-box; }
+.tp h1, .tp h2, .tp h3, .tp p, .tp ul { margin: 0; }
+.tp ul { padding: 0; list-style: none; }
+.serif { font-family: var(--serif); font-weight: 300; }
+.eyebrow { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-3); }
+.muted { color: var(--ink-2); }
+.glass {
+  background: rgba(251, 250, 248, 0.78);
+  -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 0.5px rgba(43, 36, 32, 0.22), 0 18px 44px -18px rgba(43, 36, 32, 0.5);
+}
+.glass-dark {
+  background: rgba(24, 30, 33, 0.38); color: #fff;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+.card { background: var(--paper); border-radius: 22px; box-shadow: var(--rim), 0 0 0 1px var(--hair), var(--lift); }
+.btn {
+  appearance: none; border: 0; margin: 0; cursor: pointer; text-decoration: none; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: 54px; padding: 0 24px; border-radius: 999px; width: 100%;
+  font-family: var(--sans); font-size: 16px; font-weight: 600; line-height: 1;
+}
+.btn-brand {
+  color: #fff; background: linear-gradient(180deg, #3a7487 0%, #2f6577 58%, #295a6a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 0 0 0.5px rgba(20, 40, 48, 0.4), 0 12px 26px -12px rgba(36, 80, 95, 0.85);
+}
+.btn-paper { color: var(--ink); background: var(--paper); box-shadow: var(--rim), 0 0 0 1px var(--hair-2), var(--lift); }
+.btn-ghost { color: var(--brand-deep); background: transparent; height: 44px; width: auto; padding: 0 6px; }
+.btn-sm { height: 40px; font-size: 14px; padding: 0 16px; width: auto; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.input {
+  height: 52px; border: 0; border-radius: 16px; padding: 0 16px; width: 100%;
+  font-family: var(--sans); font-size: 16px; color: var(--ink); background: var(--cream); box-shadow: var(--well);
+}
+.input--focus { background: var(--paper); box-shadow: 0 0 0 1.5px var(--brand), 0 0 0 5px var(--brand-glow); }
+.tp a:focus-visible, .tp button:focus-visible, .tp input:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus); }
+.icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.mark { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: var(--brand); color: #fff; flex: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 18px -10px rgba(36, 80, 95, 0.9); }
+.built { font-size: 12px; color: var(--ink-3); text-align: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chip-brand { background: var(--brand-soft); color: var(--brand-deep); }
+.chip-warn { background: var(--warn-soft); color: var(--warn); }
+.chip-rose { background: var(--rose-soft); color: var(--rose); }
+.chip-glass { background: rgba(255,255,255,0.86); color: var(--ink); }
+.row { display: flex; align-items: center; gap: 10px; }
+.meta { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.seats { display: flex; gap: 4px; }
+.seat { width: 18px; height: 6px; border-radius: 3px; background: var(--brand); }
+.seat--free { background: var(--cream); box-shadow: var(--well); }
+.avatar { width: 40px; height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; flex: none; }
+.daypill { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; height: 58px; border-radius: 16px; font-size: 12px; color: var(--ink-2); background: var(--paper); box-shadow: var(--rim), 0 0 0 1px var(--hair); }
+.daypill b { font-size: 17px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.daypill--on { background: var(--brand); color: #e7f1f4; box-shadow: none; }
+.daypill--on b { color: #fff; }
+.slot { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.slot time { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; width: 48px; flex: none; }
+.divider { height: 1px; background: var(--hair); }
+/* The canvas's photos are not in this public repository: a placeholder of the same size. */
+.photo { background: linear-gradient(160deg, #8fa7ad 0%, #4e6a73 55%, #2a3a40 100%); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.75); font-size: 13px; font-weight: 600; }
