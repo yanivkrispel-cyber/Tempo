@@ -114,6 +114,11 @@ const messages: Record<string, string> = {
   "media.too_large": "התמונה גדולה מדי. אפשר עד 8 מגה.",
   "media.type": "אפשר להעלות תמונות JPEG, PNG או WebP.",
   "media.not_an_image": "הקובץ הזה לא נראה כמו תמונה.",
+  "media.icon_too_small": "הסמל צריך להיות ריבוע של 512 על 512 פיקסלים לפחות.",
+  // The studio's brand (docs/35 section 2, WL1).
+  "appName.invalid": "שם האפליקציה צריך להיות באורך 1 עד 12 תווים.",
+  "accentId.invalid": "בחרו אחד משמונת הצבעים.",
+  "iconBackground.invalid": "בחרו רקע בהיר או בצבע המותג.",
   "instructor.not_found": "המדריך או המדריכה לא נמצאו.",
   "instagram.invalid": "שם המשתמש באינסטגרם לא תקין.",
   "playlist.invalid": "קישור לפלייליסט צריך להיות מ־Spotify, Apple Music או YouTube Music.",

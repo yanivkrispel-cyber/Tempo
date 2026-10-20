@@ -277,6 +277,22 @@ export function useUploadPicture() {
   });
 }
 
+/** Removes a picture by its purpose and owner (DELETE /media), the same rule as uploading it. */
+export function useRemovePicture() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { organizationId } = useStudio();
+  return useMutation({
+    mutationFn: ({ purpose, ownerId }: { purpose: Schemas["MediaPurpose"]; ownerId: string }) =>
+      unwrap(
+        api.DELETE("/api/v1/organizations/{organizationId}/media", {
+          params: { path: { organizationId }, query: { purpose, ownerId } },
+        }),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId] }),
+  });
+}
+
 /**
  * Sends the file to storage as the ticket's presigned POST (H-1): every field as given, the file last, as S3 asks.
  * S3 itself refuses a file over the ticket's size. Its XML refusal becomes a Problem (`media.too_large`, or
