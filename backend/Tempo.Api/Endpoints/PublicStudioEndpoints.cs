@@ -143,12 +143,14 @@ public static class PublicStudioEndpoints
 
         var studio = PublicStudioRouteFilter.Current(httpContext);
         var correlationId = httpContext.Items[CorrelationIdMiddleware.ItemKey] as string ?? httpContext.TraceIdentifier;
-        var joined = await joins.JoinAsync(caller, studio, request?.Src, correlationId, httpContext.RequestAborted);
+        var joined = await joins.JoinAsync(caller, studio, new PublicJoinRequestView(request?.Src, request?.ProductId, request?.SessionId), correlationId, httpContext.RequestAborted);
         return Results.Ok(new PublicJoinResponse(
             studio.Id,
             joined.Membership.MembershipId,
             joined.Created,
-            joined.IntroPass is { } p ? new PublicIntroPassResponse(p.PassId, p.ProductName, p.ToPayAtStudio) : null));
+            joined.IntroPass is { } p ? new PublicIntroPassResponse(p.PassId, p.ProductName, p.ToPayAtStudio) : null,
+            joined.Booking is { } b ? new PublicJoinBookingResponse(b.BookingId, b.SessionId, b.Status) : null,
+            joined.Next));
     }
 
     private static IResult ManifestAsync(HttpContext httpContext, AppLinks links)

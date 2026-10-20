@@ -90,10 +90,13 @@ public sealed record PublicInstructorResponse(string DisplayName, Uri? PhotoUrl,
 public sealed record PublicSessionListResponse(IReadOnlyList<PublicSessionResponse> Items);
 
 /// <summary>`PublicJoinRequest`: the first-touch source code the members app kept, if any.</summary>
-public sealed record PublicJoinRequest(string? Src);
+public sealed record PublicJoinRequest(string? Src, Guid? ProductId = null, Guid? SessionId = null);
 
 /// <summary>`PublicJoinResponse`: the membership, whether it is new, and the intro pass granted now, if any.</summary>
-public sealed record PublicJoinResponse(Guid OrganizationId, Guid MembershipId, bool Created, PublicIntroPassResponse? IntroPass);
+public sealed record PublicJoinResponse(Guid OrganizationId, Guid MembershipId, bool Created, PublicIntroPassResponse? IntroPass, PublicJoinBookingResponse? Booking = null, string? Next = null);
+
+/// <summary>The place the offer join took (SK3).</summary>
+public sealed record PublicJoinBookingResponse(Guid BookingId, Guid SessionId, string Status);
 
 public sealed record PublicIntroPassResponse(Guid PassId, string ProductName, bool ToPayAtStudio);
 
