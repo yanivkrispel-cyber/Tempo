@@ -177,6 +177,32 @@ export interface paths {
         patch: operations["updateOrganization"];
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's brand: app name, accent, icon background, logo and icon (`organization.view`)
+         * @description docs/35 section 2 (WL1). Any member reads it, since the member app wears it. Until the studio saves, the defaults answer with `customized: false` and version `0`: the display name (or its first word, at most 12 characters), `sage` and `paper`. The logo and the icon are set and removed through the picture flow with the purposes `studio_logo` and `studio_icon` and the studio's id as `ownerId`.
+         */
+        get: operations["getBrand"];
+        /**
+         * Change the studio's app name, accent and icon background (`organization.settings.manage`)
+         * @description Every field is required. 400 `appName.invalid` (1 to 12 characters after trimming, no control characters), `accentId.invalid` (one of the eight) or `iconBackground.invalid`; 409 `concurrency.conflict` when If-Match names an older version. Every change bumps `version`, which the public icon and manifest URLs carry (W-6); a new accent or background draws the icon's PNGs again. Audit `brand.updated` with the changed field names only.
+         */
+        put: operations["updateBrand"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/members": {
         parameters: {
             query?: never;
@@ -3888,13 +3914,52 @@ export interface components {
             /** @description Also the weekly class's note and its future sessions. */
             applyToWeekly?: boolean;
         };
-        /** @enum {string} */
-        MediaPurpose: "class_cover" | "instructor_photo" | "studio_cover" | "avatar";
+        /**
+         * @description The eight vetted accents of the design system (docs/35 section 3, W-1); never a free colour.
+         * @enum {string}
+         */
+        AccentId: "sage" | "olive" | "ocean" | "plum" | "rose" | "terracotta" | "sand" | "graphite";
+        Brand: {
+            /** @description What a phone shows under the icon. */
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /** @enum {string} */
+            iconBackground: "paper" | "accent";
+            /**
+             * Format: uri
+             * @description The logo at 1600 px (WebP); short-lived.
+             */
+            logoUrl: string | null;
+            /**
+             * Format: uri
+             * @description The logo at 400 px (WebP); short-lived.
+             */
+            logoSmallUrl: string | null;
+            /**
+             * Format: uri
+             * @description The icon's 512 px PNG as it installs, on its background; short-lived. Null without an icon.
+             */
+            iconUrl: string | null;
+            /** @description False while the defaults stand (nothing saved yet). */
+            customized: boolean;
+            version: string;
+        };
+        BrandInput: {
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /** @enum {string} */
+            iconBackground: "paper" | "accent";
+        };
+        /**
+         * @description `studio_logo` and `studio_icon` are the brand's (docs/35 section 2), owned by the studio itself (`organization.settings.manage`). An icon must be at least 512 x 512 (400 `media.icon_too_small`); its finalize also draws the PNGs a phone installs (192 and 512 `any`, 512 `maskable`, 180 for iOS) on the brand's icon background.
+         * @enum {string}
+         */
+        MediaPurpose: "class_cover" | "instructor_photo" | "studio_cover" | "avatar" | "studio_logo" | "studio_icon";
         MediaUploadRequest: {
             purpose: components["schemas"]["MediaPurpose"];
             /**
              * Format: uuid
-             * @description The class type, the instructor's membership, the studio or the person the picture belongs to.
+             * @description The class type, the instructor's membership, the studio (cover, logo, icon) or the person the picture belongs to.
              */
             ownerId: string;
             /** @enum {string} */
@@ -5358,6 +5423,66 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateBrand: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];

@@ -78,4 +78,16 @@ public static class MediaLinks
         var key = small ? MediaKeys.Small(organizationId, id) : MediaKeys.Large(organizationId, id);
         return Store.PresignGet(key, MediaKeys.UrlLifetime);
     }
+
+    /// <summary>The studio icon's 512 px PNG as it installs (on its ground), for the console's home-screen preview.</summary>
+    public static Uri? IconUrl(Guid? mediaId)
+    {
+        if (mediaId is not { } id || !Store.Available)
+        {
+            return null;
+        }
+
+        var organizationId = TenantRouteFilter.Current(Current.Value!).OrganizationId;
+        return Store.PresignGet(MediaKeys.Icon(organizationId, id, "512"), MediaKeys.UrlLifetime);
+    }
 }

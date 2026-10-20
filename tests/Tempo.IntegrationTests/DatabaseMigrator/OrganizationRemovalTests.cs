@@ -182,6 +182,7 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO people.buddy_attempts (organization_id, person_id, attempted_at) VALUES (org, person, now());
                 INSERT INTO media.media_objects (organization_id, id, purpose, owner_id, status, content_type, declared_bytes, created_by, created_at, updated_at) VALUES (org, gen_random_uuid(), 'avatar', person, 'ready', 'image/png', 100, owner_membership, now(), now());
                 INSERT INTO organizations.staff_profiles (organization_id, membership_id, headline, updated_at) VALUES (org, owner_membership, 'מורה', now());
+                INSERT INTO organizations.brands (organization_id, app_name, accent_id, updated_at) VALUES (org, 'סטודיו', 'ocean', now());
                 INSERT INTO people.checkin_attempts (organization_id, membership_id, attempted_at) VALUES (org, owner_membership, now());
 
                 INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, created_at) VALUES (org, gen_random_uuid(), person, 'booking.confirmed', now());

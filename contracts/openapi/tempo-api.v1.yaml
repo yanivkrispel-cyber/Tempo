@@ -365,6 +365,57 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/organizations/{organizationId}/brand:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Organizations]
+      operationId: getBrand
+      summary: "The studio's brand: app name, accent, icon background, logo and icon (`organization.view`)"
+      description: >-
+        docs/35 section 2 (WL1). Any member reads it, since the member app wears it. Until the studio saves, the
+        defaults answer with `customized: false` and version `0`: the display name (or its first word, at most 12
+        characters), `sage` and `paper`. The logo and the icon are set and removed through the picture flow with
+        the purposes `studio_logo` and `studio_icon` and the studio's id as `ownerId`.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Brand" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Organizations]
+      operationId: updateBrand
+      summary: "Change the studio's app name, accent and icon background (`organization.settings.manage`)"
+      description: >-
+        Every field is required. 400 `appName.invalid` (1 to 12 characters after trimming, no control characters),
+        `accentId.invalid` (one of the eight) or `iconBackground.invalid`; 409 `concurrency.conflict` when
+        If-Match names an older version. Every change bumps `version`, which the public icon and manifest URLs
+        carry (W-6); a new accent or background draws the icon's PNGs again. Audit `brand.updated` with the
+        changed field names only.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BrandInput" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Brand" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/organizations/{organizationId}/members:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -5211,9 +5262,43 @@ components:
         note: { type: [string, "null"], maxLength: 200, description: Null or empty clears it. }
         applyToWeekly: { type: boolean, description: "Also the weekly class's note and its future sessions." }
 
+    AccentId:
+      type: string
+      enum: [sage, olive, ocean, plum, rose, terracotta, sand, graphite]
+      description: The eight vetted accents of the design system (docs/35 section 3, W-1); never a free colour.
+
+    Brand:
+      type: object
+      required: [appName, accentId, iconBackground, logoUrl, logoSmallUrl, iconUrl, customized, version]
+      properties:
+        appName: { type: string, minLength: 1, maxLength: 12, description: What a phone shows under the icon. }
+        accentId: { $ref: "#/components/schemas/AccentId" }
+        iconBackground: { type: string, enum: [paper, accent] }
+        logoUrl: { type: [string, "null"], format: uri, description: The logo at 1600 px (WebP); short-lived. }
+        logoSmallUrl: { type: [string, "null"], format: uri, description: The logo at 400 px (WebP); short-lived. }
+        iconUrl:
+          type: [string, "null"]
+          format: uri
+          description: The icon's 512 px PNG as it installs, on its background; short-lived. Null without an icon.
+        customized: { type: boolean, description: False while the defaults stand (nothing saved yet). }
+        version: { type: string }
+
+    BrandInput:
+      type: object
+      required: [appName, accentId, iconBackground]
+      properties:
+        appName: { type: string, minLength: 1, maxLength: 12 }
+        accentId: { $ref: "#/components/schemas/AccentId" }
+        iconBackground: { type: string, enum: [paper, accent] }
+
     MediaPurpose:
       type: string
-      enum: [class_cover, instructor_photo, studio_cover, avatar]
+      enum: [class_cover, instructor_photo, studio_cover, avatar, studio_logo, studio_icon]
+      description: >-
+        `studio_logo` and `studio_icon` are the brand's (docs/35 section 2), owned by the studio itself
+        (`organization.settings.manage`). An icon must be at least 512 x 512 (400 `media.icon_too_small`); its
+        finalize also draws the PNGs a phone installs (192 and 512 `any`, 512 `maskable`, 180 for iOS) on the
+        brand's icon background.
 
     MediaUploadRequest:
       type: object
@@ -5223,7 +5308,7 @@ components:
         ownerId:
           type: string
           format: uuid
-          description: "The class type, the instructor's membership, the studio or the person the picture belongs to."
+          description: "The class type, the instructor's membership, the studio (cover, logo, icon) or the person the picture belongs to."
         contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
         bytes: { type: integer, minimum: 1, maximum: 8388608 }
 

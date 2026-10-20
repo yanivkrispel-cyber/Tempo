@@ -37,3 +37,20 @@ public sealed record MemberPageResponse(IReadOnlyList<MemberResponse> Items, Gui
 
 /// <summary>`UpdateMemberRequest`: role is admin, staff or client; status is active or suspended.</summary>
 public sealed record UpdateMemberRequest(string? Role, string? Status);
+
+/// <summary>
+/// `Brand` (docs/35 section 2): the studio's app name, accent, icon background, logo and icon. `Customized` is false
+/// while the defaults stand. Send `Version` back in If-Match.
+/// </summary>
+public sealed record BrandResponse(
+    string AppName,
+    string AccentId,
+    string IconBackground,
+    Uri? LogoUrl,
+    Uri? LogoSmallUrl,
+    Uri? IconUrl,
+    bool Customized,
+    string Version);
+
+/// <summary>`BrandInput`: every field, as the console's brand settings save them.</summary>
+public sealed record UpdateBrandRequest(string? AppName, string? AccentId, string? IconBackground);
