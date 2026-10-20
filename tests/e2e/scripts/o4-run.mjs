@@ -2,7 +2,7 @@
 // usage: O4_STATE=... node o4-run.mjs <run> <width> <ua: std|ig> ; writes screenshots to O4_SHOTS.
 import { readFileSync, mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
-import { APP, API, authFor, confirmUser, createUser, deleteUser, newPassword, call } from "./o4-lib.mjs";
+import { APP, API, authFor, confirmUser, deleteUser, newPassword, call } from "./o4-lib.mjs";
 
 const [run, widthArg, uaArg] = process.argv.slice(2);
 const width = Number(widthArg);
@@ -40,31 +40,24 @@ const overflow = async (label) => {
 const withUrl = (url) => url;
 let created = false;
 
-/** Deployed dev has no in-sheet sign-up (branded_login is off): the sheet sends to the Hosted UI. Show its sign-up page,
- *  then sign in with a user made by the admin API (the emailed code cannot be read for an example.com address). */
-async function hostedSignIn(openSheet) {
+/** Dev has the in-sheet sign-up (branded_login, #440): fill it and reach the emailed-code step. The code cannot be read
+ *  for an example.com address, so the user is confirmed as admin and the session adopted; then the page reloads and
+ *  the sheet opens again, signed in. */
+async function brandedSignIn(openSheet) {
   await openSheet();
-  await shot("sheet");
-  await page.getByRole("dialog").getByRole("button", { name: "הרשמה" }).click();
-  await page.waitForURL(/amazoncognito\.com/, { timeout: 30000 });
-  await page.waitForTimeout(1500);
-  await shot("hosted-signup");
-  await page.goBack();
-  await page.waitForTimeout(1500);
-  if (!(await page.getByRole("dialog").count())) await openSheet();
-  createUser(email, password); created = true;
-  await page.getByRole("dialog").getByRole("button", { name: "התחברות" }).click();
-  await hostedUi();
-}
-async function hostedUi() {
-  const form = page.locator('input[name="username"]:visible').first();
-  await form.waitFor({ timeout: 30000 });
-  const f = page.locator("form").filter({ has: page.locator('input[name="username"]:visible') }).first();
-  await f.locator('input[name="username"]').fill(email);
-  await f.locator('input[name="password"]').fill(password);
-  await f.locator('input[name="signInSubmitButton"]').click();
-  await page.waitForURL((u) => u.origin === APP && !u.pathname.startsWith("/auth/"), { timeout: 30000 });
-  await page.waitForLoadState("networkidle");
+  const dlg = page.getByRole("dialog");
+  await dlg.getByLabel("שם מלא").fill("נועה בדיקה");
+  await dlg.getByLabel("אימייל").fill(email);
+  await dlg.getByLabel("סיסמה").fill(password);
+  await shot("sheet-filled");
+  await dlg.getByRole("button", { name: "שלחו קוד ושריינו" }).click();
+  await dlg.getByRole("button", { name: "אישור ושריון" }).waitFor({ timeout: 20000 });
+  created = true; await shot("code-step"); await overflow("code step");
+  confirmUser(email);
+  const t = authFor(email, password);
+  await page.evaluate((x) => localStorage.setItem("tempo.client-web.session", JSON.stringify(x)), { accessToken: t.AccessToken, refreshToken: t.RefreshToken, expiresAt: Date.now() + t.ExpiresIn * 1000 });
+  await page.reload({ waitUntil: "networkidle" });
+  await openSheet();
 }
 
 try {
@@ -98,7 +91,7 @@ try {
     await shot("booked-after-actions");
   };
   const signInAndJoin = async (openSheet) => {
-    await hostedSignIn(openSheet);
+    await brandedSignIn(openSheet);
     await page.waitForTimeout(2500); // the account is provisioned by POST /session just after the return
     await shot("back-from-login");
     const join = page.getByRole("dialog").getByRole("button", { name: /הצטרפות לסטודיו|לקחת את המבצע ולשריין/ });
@@ -153,7 +146,11 @@ try {
     note((await radios.count()) >= 1, `offer page lists ${await radios.count()} first-class choices`);
     if ((await radios.count()) > 1) await radios.nth(1).check();
     await shot("picked");
-    await signInAndJoin(async () => { await page.getByRole("button", { name: "לקחת את המבצע ולשריין" }).first().click(); });
+    await signInAndJoin(async () => {
+      const choices = page.getByRole("radio");
+      if ((await choices.count()) > 1) await choices.nth(1).check();
+      await page.getByRole("button", { name: "לקחת את המבצע ולשריין" }).first().click();
+    });
     const done = await visible(page.getByText(/המבצע שמור והשיעור שוריין|המבצע שמור, והמקום שלכם|המבצע שמור. הסטודיו מבקש/), "offer: joined and booked (or declaration asked)", 20000);
     await shot("joined"); await overflow("offer joined");
     if (done) await igChecks();
