@@ -171,9 +171,11 @@ function Sources({ report }: { report: SourceReport }) {
 }
 
 /** "סטורי · השבוע בסטודיו", or the channel alone; a link to one class says so. */
-export function linkTitle(link: Pick<LinkSource, "channel" | "template" | "sessionId">): string {
+export function linkTitle(link: Pick<LinkSource, "channel" | "template" | "sessionId" | "target">): string {
   const template = templates.find((item) => item.id === link.template)?.name;
-  const parts = [channelLabel[link.channel], template ?? (link.sessionId ? "שיעור אחד" : null)];
+  // Where the link leads (SL-1), for a link with no story template: the prices page or one offer.
+  const place = link.target?.kind === "prices" ? "מחירון" : link.target?.kind === "offer" ? "הצעה למצטרפים" : null;
+  const parts = [channelLabel[link.channel], template ?? place ?? (link.sessionId ? "שיעור אחד" : null)];
   return parts.filter(Boolean).join(" · ");
 }
 

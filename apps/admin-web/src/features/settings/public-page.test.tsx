@@ -23,6 +23,7 @@ const page = (overrides: Record<string, unknown> = {}) => ({
   version: "0",
   instagramHandle: null,
   referralRewardProductId: rewardId,
+  listedProducts: [],
   ...overrides,
 });
 
@@ -135,6 +136,71 @@ describe("the studio's public page in the settings", () => {
     await userEvent.type(await within(region).findByRole("textbox", { name: "האינסטגרם של הסטודיו" }), "a b");
     await userEvent.click(within(region).getByRole("button", { name: "שמירה" }));
     expect(await within(region).findByText(/שם המשתמש באינסטגרם לא תקין/)).toBeInTheDocument();
+  });
+});
+
+describe("the products on the public page (SL-4, SL-5)", () => {
+  const listedTrial = { productId: trial.id, newcomersOnly: true, publicUntil: "2026-11-30", blurb: "לכל מי שמתחילה" };
+  const listedTen = { productId: ten.id, newcomersOnly: false, publicUntil: null, blurb: null };
+
+  function renderListed(listedProducts: unknown[]) {
+    return renderSettings({
+      [`GET ${base}/public-page`]: page({ enabled: true, listedProducts }),
+      [`PUT ${base}/public-page`]: () => json(page({ enabled: true, version: "1", listedProducts })),
+    });
+  }
+  const putBody = (api: ReturnType<typeof apiStub>) =>
+    api.bodies[api.requests.findIndex((request) => request.method === "PUT")] as Record<string, unknown>;
+
+  it("lists a product from the active ones only, with its blurb and a last day, and saves the set", async () => {
+    const api = renderListed([]);
+    const region = await card();
+    const add = await within(region).findByRole("combobox", { name: "הוספת מוצר לעמוד" });
+    // The archived product cannot be listed.
+    expect(within(add).queryByRole("option", { name: /מבצע קיץ/ })).not.toBeInTheDocument();
+    await userEvent.selectOptions(add, trial.id);
+
+    await userEvent.type(within(region).getByRole("textbox", { name: "משפט קצר: שיעור ניסיון" }), "לכל מי שמתחילה");
+    await userEvent.click(within(region).getByRole("checkbox", { name: "הצעה למצטרפים חדשים", hidden: false }));
+    await userEvent.type(
+      within(region).getByRole("textbox", { name: "היום האחרון להצעה: שיעור ניסיון" }),
+      "30.11.2026",
+    );
+    await userEvent.click(within(region).getByRole("button", { name: "שמירה" }));
+
+    await waitFor(() => expect(api.requests.some((request) => request.method === "PUT")).toBe(true));
+    expect(putBody(api)["listedProducts"]).toEqual([listedTrial]);
+  });
+
+  it("reorders and removes products, and sends the new order", async () => {
+    const api = renderListed([listedTrial, listedTen]);
+    const region = await card();
+    expect(await within(region).findByRole("button", { name: "הזזה למעלה: שיעור ניסיון" })).toBeDisabled();
+    await userEvent.click(within(region).getByRole("button", { name: "הזזה למעלה: כרטיסייה 10" }));
+    const names = within(region)
+      .getAllByRole("listitem")
+      .map((item) => within(item).getByRole("strong", { hidden: true }).textContent);
+    expect(names).toEqual(["כרטיסייה 10 · ₪650", "שיעור ניסיון · ₪45"]);
+    await userEvent.click(within(region).getByRole("button", { name: "שמירה" }));
+    await waitFor(() => expect(api.requests.some((request) => request.method === "PUT")).toBe(true));
+    expect((putBody(api)["listedProducts"] as { productId: string }[]).map((item) => item.productId)).toEqual([
+      ten.id,
+      trial.id,
+    ]);
+  });
+
+  it("leaves an archived product out of the saved set", async () => {
+    const archived = { productId: old.id, newcomersOnly: true, publicUntil: null, blurb: null };
+    const api = renderListed([archived, listedTen]);
+    const region = await card();
+    await within(region).findByRole("button", { name: "הסרה מהעמוד: כרטיסייה 10" });
+    expect(within(region).queryByText(/מבצע קיץ/, { selector: "strong" })).not.toBeInTheDocument();
+    // Untouched: no save, so the archived product is never sent back.
+    expect(within(region).getByRole("button", { name: "שמירה" })).toBeDisabled();
+    await userEvent.click(within(region).getByRole("button", { name: "הסרה מהעמוד: כרטיסייה 10" }));
+    await userEvent.click(within(region).getByRole("button", { name: "שמירה" }));
+    await waitFor(() => expect(api.requests.some((request) => request.method === "PUT")).toBe(true));
+    expect(putBody(api)["listedProducts"]).toEqual([]);
   });
 });
 
