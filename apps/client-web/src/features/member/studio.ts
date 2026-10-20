@@ -5,6 +5,7 @@ import { TempoApiError, unwrap, type Schemas } from "@tempo/api-client";
 import { activeMemberships, useAccount, type MyMembership } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { useStudioPath } from "../../app/studioPath";
+import { currentSource } from "../public/source";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { useNow } from "./clock";
 import { useChosenStudio } from "./studioChoice";
@@ -213,17 +214,19 @@ export const targetSessionId = (target: BookTarget): string => (typeof target ==
 
 /**
  * Books the caller; a full session puts them on the waitlist instead (the response's `status` says which). Without a
- * spot the server takes the usual spot when it is free, else the first free one.
+ * spot the server takes the usual spot when it is free, else the first free one. The source of the last shared link
+ * the member opened goes with it (docs/37 section 6, the last touch).
  */
 export function useBook(organizationId: string) {
   const api = useApi();
   return useScheduleMutation(organizationId, (target: BookTarget) => {
     const sessionId = targetSessionId(target);
     const spotId = typeof target === "string" ? null : (target.spotId ?? null);
+    const src = currentSource();
     return unwrap(
       api.POST("/api/v1/organizations/{organizationId}/sessions/{sessionId}/bookings", {
         params: { path: { organizationId, sessionId } },
-        ...(spotId ? { body: { spotId } } : {}),
+        ...(spotId || src ? { body: { ...(spotId ? { spotId } : {}), ...(src ? { src } : {}) } } : {}),
       }),
     );
   });

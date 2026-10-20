@@ -95,6 +95,15 @@ public static class AttendanceEffects
             entries = reader.IsDBNull(4) ? null : reader.GetInt32(4);
         }
 
+        // One reward decision at a time per referrer (#397 review): two marks of the same friend's classes, or two
+        // friends of one referrer at the monthly cap, would otherwise both pass the check below and the second would
+        // fail on the reward's key. The lock ends with the transaction; under READ COMMITTED the check that follows
+        // sees the reward the other transaction committed.
+        await using (var serialize = unitOfWork.Command("SELECT pg_advisory_xact_lock(hashtextextended('marketing.referral:' || $1::text, 0))", referrer))
+        {
+            await serialize.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         await using (var cap = unitOfWork.Command(
             """
             SELECT
