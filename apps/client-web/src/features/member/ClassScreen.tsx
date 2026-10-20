@@ -77,7 +77,8 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const calendar = useCalendarFile(studio.id);
   const navigate = useNavigate();
   const location = useLocation();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // `?book=1` comes from the class's public page (docs/37 section 4.3): the booking sheet opens on arrival.
+  const [sheetOpen, setSheetOpen] = useState(() => new URLSearchParams(location.search).get("book") === "1");
   const [confirming, setConfirming] = useState(false);
   const [cancelled, setCancelled] = useState<{ booking: Booking; waited: boolean } | null>(null);
   const [booked, setBooked] = useState<Booking | null>(null);
@@ -461,7 +462,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
       </Dialog>
 
       <BookingSheet
-        session={sheetOpen ? session : null}
+        session={sheetOpen && (canBook || canWait) ? session : null}
         timeZone={timeZone}
         today={today}
         policy={policy.data}
