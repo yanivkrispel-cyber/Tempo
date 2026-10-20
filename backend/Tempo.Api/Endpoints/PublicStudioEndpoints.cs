@@ -40,6 +40,7 @@ public static class PublicStudioEndpoints
         studio.MapGet("/sessions/{sessionId:guid}", SessionAsync).AllowAnonymous().WithName("getPublicSession");
         studio.MapGet("/manifest.webmanifest", ManifestAsync).AllowAnonymous().WithName("getStudioManifest");
         studio.MapGet("/icons/{size}", IconAsync).AllowAnonymous().WithName("getStudioIcon");
+        studio.MapGet("/brand", BrandAsync).AllowAnonymous().WithName("getPublicBrand");
         // Joining needs a customer token and a verified email (docs/37 section 4.3).
         studio.MapPost("/join", JoinAsync).RequireAuthorization().WithName("joinPublicStudio").Produces<PublicJoinResponse>();
 
@@ -93,6 +94,17 @@ public static class PublicStudioEndpoints
             s.SpotsLeft,
             s.WaitlistOpen,
             s.Event is { } e ? new PublicEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null);
+
+    /// <summary>
+    /// docs/35 W-4, W-10: what the studio's own app and its sign-in wear, for any active studio, public page on or off.
+    /// The manifest already says the name and the accent; the logo is the only addition.
+    /// </summary>
+    private static IResult BrandAsync(HttpContext httpContext)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Ok(new PublicBrandResponse(studio.Slug, studio.Brand.AppName, studio.Brand.AccentId, MediaLinks.UrlFor(studio.Id, studio.Brand.LogoMediaId, small: true)));
+    }
 
     private static DateOnly? Date(string? value, string field)
     {

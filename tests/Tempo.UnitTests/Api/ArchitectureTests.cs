@@ -27,7 +27,9 @@ public sealed class ArchitectureTests
         "/api/v1/public/studios/{slug}/",
         "/api/v1/public/studios/{slug}/sessions",
         "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}",
-        "/api/v1/public/studios/{slug}/icons/{size}"
+        "/api/v1/public/studios/{slug}/icons/{size}",
+        // The studio's name, accent and logo for its own app (K-WL5, docs/35 W-4); the manifest already shows the first two.
+        "/api/v1/public/studios/{slug}/brand"
     ];
 
     [Fact]
