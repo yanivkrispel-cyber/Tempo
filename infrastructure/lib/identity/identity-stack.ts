@@ -19,11 +19,11 @@ export function smokeTestParameterPath(config: TempoEnvironmentConfig): string {
 }
 
 /**
- * The passkey's relying party (docs/36 F-4): the members app's host, from its first Cognito callback URL. A passkey
- * works only on that host and its subdomains, so the members' own sign-in screen (ADR-0028) can use it there.
+ * The passkey's relying party (docs/36 F-4): the members app's host, named in the environment config. A passkey works
+ * only on that host and its subdomains, so the members' own sign-in screen (ADR-0028) can use it there.
  */
 export function passkeyRelyingPartyId(config: TempoEnvironmentConfig): string {
-  return new URL(config.cognitoCallbackUrls.clientWeb[0]).hostname;
+  return config.passkeyRelyingPartyId;
 }
 
 export interface IdentityStackProps extends StackProps {

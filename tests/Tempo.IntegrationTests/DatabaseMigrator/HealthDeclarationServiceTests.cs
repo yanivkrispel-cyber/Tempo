@@ -38,10 +38,17 @@ public sealed class HealthDeclarationServiceTests(PostgresFixture postgres) : IC
 
         signed.Declaration.Status.Should().Be(HealthStatus.SignedStatus);
         signed.Declaration.SignerRole.Should().Be("guardian");
-        var raw = await RawRowAsync(db);
+        var (text, decoded) = await RawRowAsync(db);
         foreach (var plaintext in new[] { MemberName, GuardianName, "q1", "false" })
         {
-            raw.Should().NotContain(plaintext, "no column holds an answer or a name in plain text");
+            text.Should().NotContain(plaintext, "no column holds an answer or a name in plain text");
+        }
+
+        // The ciphertext's bytes read as text: only markers long enough that random bytes can't spell them (two
+        // letters did, once in a few hundred runs, on #422's CI).
+        foreach (var plaintext in new[] { MemberName, GuardianName, "\"q1\":" })
+        {
+            decoded.Should().NotContain(plaintext, "no ciphertext column holds an answer or a name in plain text");
         }
 
         var answers = await health.GetAnswersAsync(studio.Owner, studio.Person, CancellationToken.None);
@@ -348,11 +355,12 @@ public sealed class HealthDeclarationServiceTests(PostgresFixture postgres) : IC
             true);
 
     /// <summary>Every byte of the declaration rows, as UTF-8 text and as hex, to search for plaintext.</summary>
-    private static async Task<string> RawRowAsync(MigratedDatabase db)
+    /// <summary>The row as Postgres prints it (bytea as hex), and the ciphertext columns' bytes read as UTF-8.</summary>
+    private static async Task<(string Text, string Decoded)> RawRowAsync(MigratedDatabase db)
     {
         var text = (string)(await db.AsMasterAsync("SELECT string_agg(d::text, ' ') FROM people.health_declarations d"))!;
         var bytes = (byte[])(await db.AsMasterAsync("SELECT answers_ciphertext || signed_name_ciphertext || coalesce(guardian_name_ciphertext, ''::bytea) FROM people.health_declarations"))!;
-        return text + " " + Encoding.UTF8.GetString(bytes);
+        return (text, Encoding.UTF8.GetString(bytes));
     }
 
     private sealed record Studio(TenantContext Owner, TenantContext Member, Guid Person, Guid ClassType);

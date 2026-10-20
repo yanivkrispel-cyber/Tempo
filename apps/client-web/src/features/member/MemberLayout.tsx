@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { Outlet, useSearchParams } from "react-router";
+import { useStudioAccent } from "../../app/studioLook";
+import { useStudioPath } from "../../app/studioPath";
+import { activeMemberships, useAccount } from "../../account/account";
 import { useMarkRead, useStudio } from "./studio";
+import { chooseStudio } from "./studioChoice";
 import { SideNav, TabBar, type TabBarLink } from "../../shared/design-system";
 import { useMediaQuery, WIDE_SCREEN } from "../../shared/useMediaQuery";
 
@@ -24,6 +28,9 @@ export function MemberLayout() {
   useOpenedNotification();
   const wide = useMediaQuery(WIDE_SCREEN);
   const studio = useStudio();
+  // A studio's own app wears its accent from the first screen (StudioLook); the generic app takes the chosen one's.
+  const path = useStudioPath();
+  useStudioAccent(path ? null : studio?.slug);
 
   if (!wide) {
     return (
@@ -53,8 +60,8 @@ export function MemberLayout() {
 }
 
 /**
- * A tapped push notification opens `/inbox` or the class with `?studio=…&notification=…` (public/sw.js): mark that
- * inbox item read, then drop the parameters.
+ * A tapped push notification opens `/inbox` or the class with `?studio=…&notification=…` (public/sw.js): show that
+ * studio in the generic app, mark that inbox item read, then drop the parameters.
  */
 function useOpenedNotification() {
   const [params, setParams] = useSearchParams();
@@ -62,6 +69,14 @@ function useOpenedNotification() {
   const itemId = params.get("notification");
   const markRead = useMarkRead(organizationId ?? "");
   const { mutate } = markRead;
+  const memberships = activeMemberships(useAccount());
+  const path = useStudioPath();
+  const switchTo =
+    !path && memberships.some((membership) => membership.organization.id === organizationId) ? organizationId : null;
+
+  useEffect(() => {
+    if (switchTo) chooseStudio(switchTo);
+  }, [switchTo]);
 
   useEffect(() => {
     if (!organizationId || !itemId) return;

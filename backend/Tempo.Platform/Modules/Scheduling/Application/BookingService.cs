@@ -77,6 +77,19 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         }
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var bookingId = await BookInAsync(unitOfWork, tenant, sessionId, personId, spotId, sourceCode, cancellationToken);
+        var booking = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, bookingId)).Single();
+        await unitOfWork.CommitAsync(cancellationToken);
+        return booking;
+    }
+
+    /// <summary>
+    /// The booking itself inside the caller's transaction, so the public offer join (SK3) can join, grant and book in
+    /// one: every rule of <see cref="BookAsync"/>, nothing committed here. The health gate is checked before anything
+    /// is written, so a caller may catch `health.declaration_required` and still commit its own work.
+    /// </summary>
+    internal async Task<Guid> BookInAsync(UnitOfWork unitOfWork, TenantContext tenant, Guid sessionId, Guid? personId, Guid? spotId, string? sourceCode, CancellationToken cancellationToken)
+    {
         var person = personId ?? await MyPersonIdAsync(unitOfWork, tenant, cancellationToken);
         await LivePersonAsync(unitOfWork, tenant.OrganizationId, person, cancellationToken);
         var session = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken);
@@ -177,9 +190,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
             await AuditAsync(unitOfWork, tenant, "booking.health_gate_bypassed", bookingId, new { personId = person, status = healthStatus }, cancellationToken);
         }
 
-        var booking = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, bookingId)).Single();
-        await unitOfWork.CommitAsync(cancellationToken);
-        return booking;
+        return bookingId;
     }
 
     public async Task<BookingView> CancelAsync(TenantContext tenant, Guid bookingId, bool returnEntry, CancellationToken cancellationToken)

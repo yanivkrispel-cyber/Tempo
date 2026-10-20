@@ -100,3 +100,16 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   stories for their own classes only. Stage B: member "I'm in" and milestone cards, meet the
   instructor, events, bring a friend, QR poster, highlight covers. Stage C (video, Meta auto-publishing, AI captions)
   only after the first paying studio; everything stays $0 until then (ADR-0021).
+- **D24 the public surface's protections (2026-10-20, board #404 S-A to S-D):** two layers of rate limits at $0, no
+  WAF: API Gateway route throttling on the public routes (reads and the join), both bursts together below the API's
+  reserved concurrency, and per-address and per-account counters in our own database for joins and share links
+  (429 with `Retry-After`; the numbers are config). An unknown, suspended or removed studio answers the same 404.
+  Public JSON never carries a person beyond an instructor's consented profile and an inviter's first name (SL-8);
+  member-only class details never appear in public. Studio text is text everywhere. Join needs a verified email;
+  `returnTo` stays under `/s/<slug>/`. docs/37 section 12.9.
+- **D25 share links by intent (approved 2026-10-19 night, built 2026-10-20 on board #404, SL-1 to SL-10):** a link
+  leads to a class, the week, an offer or the prices, each with its own page in the studio's look and `?src=`; the
+  owner lists products publicly with offers for newcomers; the offer join joins, grants and books in one
+  transaction; a full or past class offers alternatives; a member's invite shows their first name only while they
+  allow it; in-app browsers get code and password only; link previews through a Cloudflare Pages worker; the home
+  screen offer only after booking. docs/37 section 12.

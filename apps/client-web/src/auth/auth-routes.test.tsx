@@ -2,10 +2,11 @@ import type { AuthClient } from "@tempo/api-client/auth";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiProvider, useApi } from "../api/ApiProvider";
 import { App } from "../app/App";
 import { routes } from "../app/routes";
+import { studioSlugOf } from "../app/studioPath";
 import { apiStub, problem, signedInRoutes } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
 
@@ -40,6 +41,28 @@ describe("protected routes", () => {
     const router = renderAt("/login?returnTo=%2F%2Fevil.example", signedInAuth());
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
   });
+
+  it.each(["https://evil.example", "/\\evil.example", "/\t/evil.example", "javascript:alert(1)", "/auth/callback"])(
+    "lands on the safe default for the hostile returnTo %j",
+    async (returnTo) => {
+      const router = renderAt(`/login?returnTo=${encodeURIComponent(returnTo)}`, signedInAuth());
+      await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+      expect(router.state.location.search).toBe("");
+    },
+  );
+
+  it.each(["/s/other-studio/", "/s/other-studio/../../admin"])(
+    "keeps a returnTo of %s inside the studio's own app on that studio's sign-in",
+    async (returnTo) => {
+      const flowStorage = memoryStorage();
+      const redirect = vi.fn();
+      await signedOutAuth({ flowStorage, redirect, basePath: "/s/neshima" }).signIn(returnTo);
+      const stored = JSON.parse(flowStorage.getItem("tempo.client-web.signin")!) as { returnTo: string };
+      const resolved = new URL(stored.returnTo, "https://app.example");
+      expect(resolved.origin).toBe("https://app.example");
+      expect(studioSlugOf(resolved.pathname)).toBe("neshima");
+    },
+  );
 
   it("explains a missing sign-in configuration instead of offering a dead button", async () => {
     renderAt("/", null);
@@ -107,5 +130,86 @@ describe("API client", () => {
   it("keeps the session when the API asks for a fresh sign-in for one action (step-up)", async () => {
     const { auth } = await callMe(problem(401, "auth.step_up_required"));
     expect(auth.isSignedIn).toBe(true);
+  });
+});
+
+describe("branded_login (docs/36)", () => {
+  const password = "Correct-Horse-9";
+  const secrets = [password, "cognito-session-1", "access-from-cognito", "refresh-from-cognito"];
+
+  /** Cognito's JSON API, by `X-Amz-Target`, as the sign-in screen calls it. */
+  function cognitoStub() {
+    const calls: string[] = [];
+    const fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const target = String(new Headers(init?.headers).get("X-Amz-Target")).split(".").pop()!;
+      calls.push(target);
+      const body =
+        target === "InitiateAuth"
+          ? { ChallengeName: "SELECT_CHALLENGE", Session: "cognito-session-1", AvailableChallenges: ["PASSWORD"] }
+          : {
+              AuthenticationResult: {
+                AccessToken: "access-from-cognito",
+                RefreshToken: "refresh-from-cognito",
+                ExpiresIn: 3600,
+              },
+            };
+      return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/x-amz-json-1.1" } });
+    });
+    vi.stubGlobal("fetch", fetch);
+    return calls;
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the Hosted UI page while the flag is off", async () => {
+    renderAt("/login", signedOutAuth());
+    expect(await screen.findByRole("heading", { name: "ברוכים הבאים ל־Tempo" })).toBeInTheDocument();
+  });
+
+  it("signs in on our own screen, stores the session and opens the remembered page, without logging a secret", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    const consoleCalls = (["log", "info", "warn", "error", "debug"] as const).map((method) =>
+      vi.spyOn(console, method).mockImplementation(() => {}),
+    );
+    const calls = cognitoStub();
+    const storage = memoryStorage();
+    const router = renderAt("/login?returnTo=%2Fbookings", signedOutAuth({ storage }));
+
+    await userEvent.type(await screen.findByLabelText("אימייל"), "noga@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "המשך" }));
+    await userEvent.type(await screen.findByLabelText("סיסמה"), password);
+    await userEvent.click(screen.getByRole("button", { name: "כניסה" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/bookings"));
+    expect(calls).toEqual(["InitiateAuth", "RespondToAuthChallenge"]);
+    expect(JSON.parse(storage.getItem("tempo.client-web.session")!)).toMatchObject({
+      accessToken: "access-from-cognito",
+      refreshToken: "refresh-from-cognito",
+    });
+    const logged = consoleCalls.flatMap((spy) => spy.mock.calls).map((args) => args.map(String).join(" "));
+    for (const secret of secrets) expect(logged.filter((line) => line.includes(secret))).toEqual([]);
+  });
+
+  it("keeps the usual sign-in one tap away", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    const redirect = vi.fn();
+    const flowStorage = memoryStorage();
+    renderAt("/login?returnTo=%2Fbookings", signedOutAuth({ redirect, flowStorage }));
+    await userEvent.click(await screen.findByRole("button", { name: "כניסה בדרך הרגילה" }));
+    await waitFor(() => expect(redirect).toHaveBeenCalledOnce());
+    expect(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!)).toMatchObject({ returnTo: "/bookings" });
+  });
+
+  it("opens the sign-up step from a sign-up button elsewhere in the app", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    const router = renderAt("/invite#tok_QW5faW52aXRhdGlvbi10b2tlbi1mb3ItdGVzdHM", signedOutAuth());
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה" }));
+    expect(await screen.findByRole("button", { name: "יצירת חשבון" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/login");
+    expect(new URLSearchParams(router.state.location.search).get("returnTo")).toBe("/invite");
   });
 });

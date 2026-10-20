@@ -14,15 +14,32 @@ public sealed record PublicPageView(
     string? SuggestWeeklyAt,
     long Version,
     string? InstagramHandle = null,
-    Guid? ReferralRewardProductId = null);
+    Guid? ReferralRewardProductId = null,
+    IReadOnlyList<ListedProduct>? ListedProducts = null)
+{
+    /// <summary>The products on the prices page, in their public order (SL-4, SL-5); empty when none.</summary>
+    public IReadOnlyList<ListedProduct> Listed => ListedProducts ?? [];
+}
 
+/// <summary>A product the studio lists publicly (SL-4, SL-5): an offer when `NewcomersOnly`, until its last day.</summary>
+public sealed record ListedProduct(Guid ProductId, bool NewcomersOnly, DateOnly? PublicUntil, string? Blurb);
+
+/// <summary>
+/// A PUT of the public page. `enabled` and `openJoin` are required; every other field is kept when it isn't sent
+/// (null here) and cleared when it is sent as null (a <see cref="Sent{T}"/> holding null), so a form that doesn't know a
+/// field never erases it (#396 review).
+/// </summary>
 public sealed record PublicPageChanges(
     bool? Enabled,
     bool? OpenJoin,
-    Guid? IntroProductId,
-    string? SuggestWeeklyAt,
-    string? InstagramHandle = null,
-    Guid? ReferralRewardProductId = null);
+    Sent<Guid?>? IntroProductId = null,
+    Sent<string?>? SuggestWeeklyAt = null,
+    Sent<string?>? InstagramHandle = null,
+    Sent<Guid?>? ReferralRewardProductId = null,
+    IReadOnlyList<ListedProduct>? ListedProducts = null);
+
+/// <summary>A field the request did send, null included.</summary>
+public readonly record struct Sent<T>(T Value);
 
 /// <summary>
 /// The studio's public page (docs/37 sections 4.4 and 5, M-7, M-8, M-9, M-13): whether strangers see it, whether they
@@ -55,13 +72,8 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
 
         var enabled = changes.Enabled ?? throw Required("enabled");
         var openJoin = changes.OpenJoin ?? throw Required("openJoin");
-        var weekly = string.IsNullOrWhiteSpace(changes.SuggestWeeklyAt) ? null : changes.SuggestWeeklyAt.Trim().ToLowerInvariant();
-        if (weekly is not null && !WeeklyPattern().IsMatch(weekly))
-        {
-            throw new DomainRuleViolationException(ViolationKind.Validation, "suggestWeeklyAt.invalid", "Use a day and a time, like \"sun 09:00\".", "suggestWeeklyAt");
-        }
-
-        var handle = Handle(changes.InstagramHandle);
+        var weekly = changes.SuggestWeeklyAt is { } sentWeekly ? Weekly(sentWeekly.Value) : null;
+        var handle = changes.InstagramHandle is { } sentHandle ? Handle(sentHandle.Value) : null;
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         var before = await ReadAsync(unitOfWork, tenant.OrganizationId, lockRow: true, cancellationToken) ?? Defaults;
         if (expectedVersion is { } expected && expected != before.Version)
@@ -69,10 +81,29 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             throw new DomainRuleViolationException(ViolationKind.Conflict, "concurrency.conflict", "Someone changed this in the meantime. Reload and try again.");
         }
 
-        await ActiveProductAsync(unitOfWork, tenant.OrganizationId, changes.IntroProductId, "introProductId", cancellationToken);
-        await ActiveProductAsync(unitOfWork, tenant.OrganizationId, changes.ReferralRewardProductId, "referralRewardProductId", cancellationToken);
+        // A product is checked only when it is sent: a kept one stays as it was.
+        var intro = changes.IntroProductId is { } sentIntro ? sentIntro.Value : before.IntroProductId;
+        var reward = changes.ReferralRewardProductId is { } sentReward ? sentReward.Value : before.ReferralRewardProductId;
+        if (changes.IntroProductId is not null)
+        {
+            await ActiveProductAsync(unitOfWork, tenant.OrganizationId, intro, "introProductId", cancellationToken);
+        }
 
-        var after = new PublicPageView(enabled, openJoin, changes.IntroProductId, weekly, before.Version + 1, handle, changes.ReferralRewardProductId);
+        if (changes.ReferralRewardProductId is not null)
+        {
+            await ActiveProductAsync(unitOfWork, tenant.OrganizationId, reward, "referralRewardProductId", cancellationToken);
+        }
+
+        var listed = changes.ListedProducts is { } sentList ? await ValidListAsync(unitOfWork, tenant.OrganizationId, sentList, cancellationToken) : before.Listed;
+        var after = new PublicPageView(
+            enabled,
+            openJoin,
+            intro,
+            changes.SuggestWeeklyAt is null ? before.SuggestWeeklyAt : weekly,
+            before.Version + 1,
+            changes.InstagramHandle is null ? before.InstagramHandle : handle,
+            reward,
+            listed);
         var fields = new[]
         {
             (after.Enabled != before.Enabled, "enabled"),
@@ -80,7 +111,8 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             (after.IntroProductId != before.IntroProductId, "introProductId"),
             (after.SuggestWeeklyAt != before.SuggestWeeklyAt, "suggestWeeklyAt"),
             (after.InstagramHandle != before.InstagramHandle, "instagramHandle"),
-            (after.ReferralRewardProductId != before.ReferralRewardProductId, "referralRewardProductId")
+            (after.ReferralRewardProductId != before.ReferralRewardProductId, "referralRewardProductId"),
+            (!after.Listed.SequenceEqual(before.Listed), "listedProducts")
         }.Where(f => f.Item1).Select(f => f.Item2).ToList();
         if (fields.Count == 0 && before.Version > 0)
         {
@@ -98,9 +130,14 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
                 referral_reward_product_id = EXCLUDED.referral_reward_product_id, version = organizations.public_pages.version + 1,
                 updated_at = now(), updated_by = EXCLUDED.updated_by
             """,
-            tenant.OrganizationId, enabled, openJoin, changes.IntroProductId, weekly, tenant.MembershipId, handle, changes.ReferralRewardProductId))
+            tenant.OrganizationId, after.Enabled, after.OpenJoin, after.IntroProductId, after.SuggestWeeklyAt, tenant.MembershipId, after.InstagramHandle, after.ReferralRewardProductId))
         {
             await upsert.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        if (fields.Contains("listedProducts"))
+        {
+            await WriteListAsync(unitOfWork, tenant.OrganizationId, after.Listed, cancellationToken);
         }
 
         // Field names only (docs/37 section 5).
@@ -127,7 +164,87 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
         string? weekly = reader.IsDBNull(3) ? null : reader.GetString(3);
         string? handle = reader.IsDBNull(5) ? null : reader.GetString(5);
         Guid? reward = reader.IsDBNull(6) ? null : reader.GetGuid(6);
-        return new PublicPageView(reader.GetBoolean(0), reader.GetBoolean(1), product, weekly, reader.GetInt64(4), handle, reward);
+        var page = new PublicPageView(reader.GetBoolean(0), reader.GetBoolean(1), product, weekly, reader.GetInt64(4), handle, reward);
+        await reader.DisposeAsync();
+        return page with { ListedProducts = await ReadListAsync(unitOfWork, organizationId, cancellationToken) };
+    }
+
+    /// <summary>The listed products, in their public order (0036's columns on the studio's products).</summary>
+    private static async Task<IReadOnlyList<ListedProduct>> ReadListAsync(UnitOfWork unitOfWork, Guid organizationId, CancellationToken cancellationToken)
+    {
+        var list = new List<ListedProduct>();
+        await using var read = unitOfWork.Command(
+            "SELECT id, newcomers_only, public_until, public_blurb FROM scheduling.pass_products WHERE organization_id = $1 AND public_listed ORDER BY public_order NULLS LAST, name, id",
+            organizationId);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            list.Add(new ListedProduct(
+                reader.GetGuid(0),
+                reader.GetBoolean(1),
+                reader.IsDBNull(2) ? null : reader.GetFieldValue<DateOnly>(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3)));
+        }
+
+        return list;
+    }
+
+    /// <summary>
+    /// SL-4, SL-5: at most 20, each an active product of this studio and listed once, a blurb of 1 to 120 characters or
+    /// none. 400 `listedProducts.invalid` otherwise.
+    /// </summary>
+    private static async Task<IReadOnlyList<ListedProduct>> ValidListAsync(UnitOfWork unitOfWork, Guid organizationId, IReadOnlyList<ListedProduct> sent, CancellationToken cancellationToken)
+    {
+        static DomainRuleViolationException Invalid(string title) =>
+            new(ViolationKind.Validation, "listedProducts.invalid", title, "listedProducts");
+
+        if (sent.Count > 20)
+        {
+            throw Invalid("List at most 20 products.");
+        }
+
+        if (sent.Select(p => p.ProductId).Distinct().Count() != sent.Count)
+        {
+            throw Invalid("List each product once.");
+        }
+
+        var list = sent.Select(p => p with { Blurb = string.IsNullOrWhiteSpace(p.Blurb) ? null : p.Blurb.Trim() }).ToList();
+        if (list.Any(p => p.Blurb is { Length: > 120 }))
+        {
+            throw Invalid("A line is at most 120 characters.");
+        }
+
+        foreach (var item in list)
+        {
+            await ActiveProductAsync(unitOfWork, organizationId, item.ProductId, "listedProducts", cancellationToken);
+        }
+
+        return list;
+    }
+
+    private static async Task WriteListAsync(UnitOfWork unitOfWork, Guid organizationId, IReadOnlyList<ListedProduct> list, CancellationToken cancellationToken)
+    {
+        await using (var clear = unitOfWork.Command(
+            "UPDATE scheduling.pass_products SET public_listed = false, public_order = NULL, updated_at = now() WHERE organization_id = $1 AND public_listed",
+            organizationId))
+        {
+            await clear.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        for (var order = 0; order < list.Count; order++)
+        {
+            var item = list[order];
+            await using var set = unitOfWork.Command(
+                """
+                UPDATE scheduling.pass_products
+                SET public_listed = true, public_order = $3, newcomers_only = $4, public_until = $5, public_blurb = $6, updated_at = now()
+                WHERE organization_id = $1 AND id = $2
+                """,
+                organizationId, item.ProductId, order, item.NewcomersOnly, item.PublicUntil, item.Blurb);
+            set.Parameters[4].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Date;
+            set.Parameters[5].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Text;
+            await set.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     /// <summary>A handle, "@handle" or an instagram.com link become the handle alone (M-15); empty clears it.</summary>
@@ -143,6 +260,14 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
         return HandlePattern().IsMatch(handle)
             ? handle
             : throw new DomainRuleViolationException(ViolationKind.Validation, "instagramHandle.invalid", "Use the studio's Instagram handle.", "instagramHandle");
+    }
+
+    private static string? Weekly(string? value)
+    {
+        var weekly = string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToLowerInvariant();
+        return weekly is null || WeeklyPattern().IsMatch(weekly)
+            ? weekly
+            : throw new DomainRuleViolationException(ViolationKind.Validation, "suggestWeeklyAt.invalid", "Use a day and a time, like \"sun 09:00\".", "suggestWeeklyAt");
     }
 
     private static async Task ActiveProductAsync(UnitOfWork unitOfWork, Guid organizationId, Guid? productId, string field, CancellationToken cancellationToken)

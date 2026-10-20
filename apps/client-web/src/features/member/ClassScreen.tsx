@@ -19,6 +19,7 @@ import {
 } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
+import { BookedDialog } from "./BookedDialog";
 import { BookingSheet, useBookingFlow } from "./BookingSheet";
 import {
   categoryName,
@@ -77,7 +78,8 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
   const calendar = useCalendarFile(studio.id);
   const navigate = useNavigate();
   const location = useLocation();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // `?book=1` comes from the class's public page (docs/37 section 4.3): the booking sheet opens on arrival.
+  const [sheetOpen, setSheetOpen] = useState(() => new URLSearchParams(location.search).get("book") === "1");
   const [confirming, setConfirming] = useState(false);
   const [cancelled, setCancelled] = useState<{ booking: Booking; waited: boolean } | null>(null);
   const [booked, setBooked] = useState<Booking | null>(null);
@@ -461,7 +463,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
       </Dialog>
 
       <BookingSheet
-        session={sheetOpen ? session : null}
+        session={sheetOpen && (canBook || canWait) ? session : null}
         timeZone={timeZone}
         today={today}
         policy={policy.data}
@@ -480,7 +482,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
             (booking) => {
               setSheetOpen(false);
               setChosen(null);
-              if (booking.status === "booked" && booking.spot) setBooked(booking);
+              if (booking.status === "booked") setBooked(booking);
               setFocusTitle((count) => count + 1);
             },
             chosenSpot?.state === "free" ? chosenSpot.id : null,
@@ -491,82 +493,19 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
           setSheetOpen(false);
         }}
       />
-      <Dialog
-        open={booked !== null}
-        onClose={() => setBooked(null)}
-        title={`נתראה ${relativeDay(session.localDate, today)}`}
-      >
-        {booked && (
-          <div className={`tp-rise ${styles.done}`}>
-            <span className={styles.doneCheck} aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                width="30"
-                height="30"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path className="tp-check-draw" d="M20 6 9 17l-5-5" />
-              </svg>
-            </span>
-            <div className="tp-ticket">
-              {session.classType.coverUrl && (
-                <div className="tp-ticket__photo">
-                  <img src={session.classType.coverUrl} alt="" />
-                </div>
-              )}
-              <div className={styles.ticketBody}>
-                <dl className={styles.ticketFacts}>
-                  <div>
-                    <dt className="tp-eyebrow">שיעור</dt>
-                    <dd>
-                      <bdi>{session.classType.name}</bdi>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="tp-eyebrow">מתי</dt>
-                    <dd>
-                      {shortDate(session.localDate)} · {clockTime(session.startsAt, timeZone)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="tp-eyebrow">מכשיר</dt>
-                    <dd>{booked.spot?.label}</dd>
-                  </div>
-                  {session.instructor && (
-                    <div>
-                      <dt className="tp-eyebrow">מדריכה</dt>
-                      <dd>
-                        <bdi>{session.instructor.displayName}</bdi>
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            </div>
-            <div className={styles.sheetActions}>
-              <Button
-                variant="secondary"
-                size="lg"
-                block
-                icon="calendar"
-                loading={calendar.isPending}
-                onClick={() =>
-                  calendar.mutate(booked.id, { onSuccess: (file) => saveFile(file, `tempo-${session.localDate}.ics`) })
-                }
-              >
-                הוספה ליומן
-              </Button>
-              <Button variant="ghost" block onClick={() => setBooked(null)}>
-                סגירה
-              </Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
+      <BookedDialog
+        studio={studio}
+        session={session}
+        booking={booked}
+        timeZone={timeZone}
+        today={today}
+        freeCancelUntil={inFreeWindow ? deadlineText : null}
+        calendar={calendar}
+        onClose={() => {
+          setBooked(null);
+          setFocusTitle((count) => count + 1);
+        }}
+      />
       <CheckinPass organizationId={studio.id} timeZone={timeZone} open={passOpen} onClose={() => setPassOpen(false)} />
     </main>
   );
