@@ -122,10 +122,10 @@ public static class PublicStudioEndpoints
         }
 
         // S-A (board #404): per source address and per account, counted before the join so refused tries count too.
-        // The address is API Gateway's source IP, never a header the caller sets.
-        if (httpContext.Connection.RemoteIpAddress is { } address)
+        // The address is API Gateway's source IP, or CloudFront's viewer address on the edge path (ClientAddress).
+        if (ClientAddress.Of(httpContext) is { } address)
         {
-            await limiter.HitAsync("public.join.ip", address.ToString(), limits.JoinPerIpPerHour, httpContext.RequestAborted);
+            await limiter.HitAsync("public.join.ip", address, limits.JoinPerIpPerHour, httpContext.RequestAborted);
         }
 
         await limiter.HitAsync("public.join.user", caller.UserAccountId.ToString(), limits.JoinPerUserPerHour, httpContext.RequestAborted);
