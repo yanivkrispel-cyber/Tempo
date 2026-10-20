@@ -13,10 +13,12 @@ import {
 } from "../../shared/design-system";
 import { PictureField } from "../../shared/PictureField";
 import { useInstructorProfiles, useSaveInstructorProfile, type Instructor } from "../console/experience";
+import { useStudio } from "../console/studio";
 
 /**
  * An instructor's profile as members see it on a class (docs/33 section 5): photo, one line, a short bio, Instagram
- * and the class playlist. Managers edit anyone's; an instructor edits their own.
+ * and the class playlist. Managers edit anyone's; an instructor edits their own, and only they choose whether strangers
+ * see it on the public page and stories too (docs/37 M-14).
  */
 export function InstructorProfileDialog({
   membershipId,
@@ -60,6 +62,9 @@ function ProfileForm({
   const [instagram, setInstagram] = useState(profile?.instagramHandle ? `@${profile.instagramHandle}` : "");
   const [playlist, setPlaylist] = useState(profile?.playlistUrl ?? "");
   const [visible, setVisible] = useState(profile?.visible ?? true);
+  const [publicProfile, setPublicProfile] = useState(profile?.publicProfile ?? false);
+  // The consent is the instructor's own; the API refuses it from anyone else (M-14).
+  const own = membershipId === useStudio().membership.membershipId;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -70,6 +75,7 @@ function ProfileForm({
         instagramHandle: instagram.trim() || null,
         playlistUrl: playlist.trim() || null,
         visible,
+        ...(own ? { publicProfile } : {}),
       },
       {
         onSuccess: () => {
@@ -124,6 +130,24 @@ function ProfileForm({
         checked={visible}
         onChange={(event) => setVisible(event.target.checked)}
       />
+      {own ? (
+        <div className="tp-stack" style={{ gap: 4 }}>
+          <Checkbox
+            label="להציג את הפרופיל שלי גם בעמוד הציבורי"
+            checked={publicProfile}
+            onChange={(event) => setPublicProfile(event.target.checked)}
+          />
+          <p className="tp-field__help">
+            השם, התמונה, השורה עליך והאינסטגרם יופיעו גם למי שעוד לא מתאמן בסטודיו ובסטוריז.
+          </p>
+        </div>
+      ) : (
+        <p className="tp-caption tp-muted">
+          {profile?.publicProfile
+            ? "הפרופיל מוצג גם בעמוד הציבורי."
+            : "הפרופיל לא מוצג בעמוד הציבורי. אפשר להפעיל את זה רק מהפרופיל האישי."}
+        </p>
+      )}
       {save.isError && (
         <Banner tone="danger" icon="info">
           {errorMessage(save.error, "לא הצלחנו לשמור את הפרופיל. נסו שוב.")}
