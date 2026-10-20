@@ -318,6 +318,9 @@ function parse<T>(raw: string | null, isValid: (value: Record<string, unknown>) 
 
 /** Only same-app paths: an open redirect through `returnTo` would let a link send a signed-in user anywhere. */
 export function safeReturnTo(path: string): string {
+  // Browsers drop tabs and line breaks when they parse a URL, so "/<TAB>/evil.example" would become "//evil.example".
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(path)) return "/";
   return path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") && !path.startsWith("/auth/")
     ? path
     : "/";

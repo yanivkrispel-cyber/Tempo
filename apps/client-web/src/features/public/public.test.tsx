@@ -306,3 +306,37 @@ describe("a class's public page (/s/<slug>/c/<id>, SL-2, SL-3)", () => {
     expect(await screen.findByRole("heading", { name: "הדף לא נמצא" })).toBeInTheDocument();
   });
 });
+
+describe("text a studio typed is shown as text, never as markup", () => {
+  const hostile = '<script>alert(1)</script> "x" & <b>bold</b>';
+  const hostileStudio: Schemas["PublicStudio"] = { ...publicStudio, name: hostile, appName: hostile };
+  const hostileClass = publicSession(sessionIds.vinyasa, "2026-10-14T04:00:00Z", hostile, {
+    event: { title: hostile, description: hostile, priceAgorot: null, passRequired: false },
+  });
+
+  const noMarkup = () => {
+    expect(document.body.querySelector("script")).toBeNull();
+    expect(document.body.querySelector("b")).toBeNull();
+  };
+
+  it("on the studio's public page", async () => {
+    renderStudioApp("/", {
+      routes: {
+        [`GET ${api}`]: hostileStudio,
+        [`GET ${api}/sessions`]: json({ items: [hostileClass] }),
+      },
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: hostile })).toBeInTheDocument();
+    expect(document.body.textContent).toContain(hostile);
+    noMarkup();
+  });
+
+  it("on a class's public page", async () => {
+    renderStudioApp(`/c/${hostileClass.id}`, {
+      routes: { [`GET ${api}`]: hostileStudio, [`GET ${api}/sessions/${hostileClass.id}`]: hostileClass },
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: hostile })).toBeInTheDocument();
+    expect(document.body.textContent).toContain(hostile);
+    noMarkup();
+  });
+});

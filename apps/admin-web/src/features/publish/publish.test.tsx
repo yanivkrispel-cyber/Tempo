@@ -74,11 +74,21 @@ const link = (body: { channel: string; template: string; sessionId: string | nul
   createdAt: "2026-10-14T08:50:00Z",
 });
 
-function renderPublish(permissions: readonly string[], role: "owner" | "staff" = "owner") {
+function renderPublish(
+  permissions: readonly string[],
+  role: "owner" | "staff" = "owner",
+  { classes = sessions, studioName }: { classes?: unknown[]; studioName?: string } = {},
+) {
+  const member = membershipAs(role, { permissions });
   const api = apiStub({
-    "POST /api/v1/session": { ...sampleMe, memberships: [membershipAs(role, { permissions })] },
+    "POST /api/v1/session": {
+      ...sampleMe,
+      memberships: [
+        studioName ? { ...member, organization: { ...member.organization, displayName: studioName } } : member,
+      ],
+    },
     [`GET ${base}`]: organization,
-    [`GET ${base}/sessions`]: { items: sessions },
+    [`GET ${base}/sessions`]: { items: classes },
     [`GET ${base}/instructors`]: instructors,
     [`GET ${base}/brand`]: { accentId: "ocean" },
     [`POST ${base}/marketing/links`]: async (request: Request) => json(link(await request.json()), 201),
@@ -166,6 +176,23 @@ describe("the console's publishing (MO3)", () => {
     expect(within(classes).getByRole("checkbox", { name: "יום חמישי 18:00 · יוגה זורמת" })).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "הורדה והעתקת הלינק" }));
     await waitFor(() => expect(linkBodies(api)).toEqual([{ channel: "story", template: "week", sessionId: id(11) }]));
+  });
+
+  it("shows a studio's and a class's name as literal text, never as markup", async () => {
+    const hostile = '<script>alert(1)</script> "מרווח"';
+    const studioName = `סטודיו ${hostile}`;
+    const classes = [session({ classType: { id: id(1), name: hostile, category: "pilates", color: "rose" } })];
+    renderPublish(owner, "owner", { classes, studioName });
+    const group = await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    expect(within(group).getByRole("checkbox", { name: `יום רביעי 12:00 · ${hostile}` })).toBeInTheDocument();
+    expect(document.body.textContent).toContain(hostile);
+    expect(document.body.textContent).toContain(studioName);
+    expect(document.body.querySelector("script")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "טקסט לוואטסאפ" }));
+    const text = (await screen.findByRole("textbox", { name: "הטקסט לוואטסאפ" })) as HTMLTextAreaElement;
+    expect(text.value).toContain(hostile);
+    expect(document.body.querySelector("script")).toBeNull();
   });
 
   it("is not in the menu without a publishing permission", async () => {
