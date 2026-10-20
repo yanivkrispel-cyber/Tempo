@@ -1,10 +1,23 @@
 namespace Tempo.Contracts.Api.Marketing;
 
 /// <summary>`PublicPage` (docs/37 section 4.4): the studio's public page settings. Send `Version` back in If-Match.</summary>
-public sealed record PublicPageResponse(bool Enabled, bool OpenJoin, Guid? IntroProductId, string? SuggestWeeklyAt, string Version);
+public sealed record PublicPageResponse(
+    bool Enabled,
+    bool OpenJoin,
+    Guid? IntroProductId,
+    string? SuggestWeeklyAt,
+    string Version,
+    string? InstagramHandle,
+    Guid? ReferralRewardProductId);
 
 /// <summary>`PublicPageInput`: `enabled` and `openJoin` are required; a null intro product or weekly time clears it.</summary>
-public sealed record UpdatePublicPageRequest(bool? Enabled, bool? OpenJoin, Guid? IntroProductId, string? SuggestWeeklyAt);
+public sealed record UpdatePublicPageRequest(
+    bool? Enabled,
+    bool? OpenJoin,
+    Guid? IntroProductId,
+    string? SuggestWeeklyAt,
+    string? InstagramHandle = null,
+    Guid? ReferralRewardProductId = null);
 
 /// <summary>`PublicStudio` (docs/37 section 4.2): what anyone sees of a studio whose public page is on.</summary>
 public sealed record PublicStudioResponse(

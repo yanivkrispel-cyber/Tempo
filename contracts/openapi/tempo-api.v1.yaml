@@ -517,6 +517,56 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/organizations/{organizationId}/me/share-link:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Marketing]
+      operationId: getMyShareLink
+      x-tempo-planned: true
+      summary: "The caller's own link for a member card or for bringing a friend (`schedule.view`)"
+      description: >-
+        docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at
+        the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts
+        for the bring-a-friend reward (M-17).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShareLinkInput" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketingLink" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/me/milestones:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Marketing]
+      operationId: getMyMilestones
+      x-tempo-planned: true
+      summary: "The caller's attended-class milestones in this studio, computed live (`schedule.view`)"
+      description: >-
+        docs/37 section 8.2 (MK8, M-16): the thresholds reached (10, 25, 50, 100, 200), the next one, hours on the
+        mat, the longest run of weeks in a row, the usual class time and the most frequent instructor (a name only
+        when their profile is public). Nothing here is visible to other members.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyMilestones" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/public-page:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -5527,15 +5577,48 @@ components:
         note: { type: [string, "null"], maxLength: 200, description: Null or empty clears it. }
         applyToWeekly: { type: boolean, description: "Also the weekly class's note and its future sessions." }
 
+    ShareLinkInput:
+      type: object
+      required: [channel]
+      properties:
+        channel: { type: string, enum: [member_card, referral] }
+        sessionId: { type: [string, "null"], format: uuid, description: "`member_card` only: the class the card is about." }
+
+    MyMilestones:
+      type: object
+      required: [attended, reached, next, hoursOnTheMat, longestWeekStreak, usualTime, topInstructor]
+      properties:
+        attended: { type: integer }
+        reached: { type: array, items: { type: integer, enum: [10, 25, 50, 100, 200] } }
+        next: { type: [integer, "null"] }
+        hoursOnTheMat: { type: number }
+        longestWeekStreak: { type: integer }
+        usualTime: { type: [string, "null"], description: "Local `HH:mm` of the most frequent start." }
+        topInstructor: { type: [string, "null"], description: Only when that instructor's profile is public (M-14). }
+
+    SessionEvent:
+      type: object
+      description: >-
+        docs/37 section 8.4 (MK8): a one-off session that is an event or a workshop. With `passRequired` false a booking
+        holds no pass entry and is marked `toPayAtStudio`.
+      required: [title, description, priceAgorot, passRequired]
+      properties:
+        title: { type: string, maxLength: 60 }
+        description: { type: [string, "null"], maxLength: 600 }
+        priceAgorot: { type: [integer, "null"], minimum: 0, description: Shown only; nothing charges it. }
+        passRequired: { type: boolean }
+
     PublicPage:
       type: object
-      required: [enabled, openJoin, introProductId, suggestWeeklyAt, version]
+      required: [enabled, openJoin, introProductId, suggestWeeklyAt, version, instagramHandle, referralRewardProductId]
       properties:
         enabled: { type: boolean, description: Strangers see the page (M-7). }
         openJoin: { type: boolean, description: "Anyone signed in may join from the page, no code (M-9)." }
         introProductId: { type: [string, "null"], format: uuid, description: "Granted once to a newcomer, to pay at the studio (M-8)." }
         suggestWeeklyAt: { type: [string, "null"], pattern: "^(sun|mon|tue|wed|thu|fri|sat) ([01][0-9]|2[0-3]):[0-5][0-9]$", description: "Studio time; null means off (M-13)." }
         version: { type: string }
+        instagramHandle: { type: [string, "null"], description: "The studio's handle on member cards (M-15); null shows none." }
+        referralRewardProductId: { type: [string, "null"], format: uuid, description: "One pass of it per friend's first attended class (M-17); null means no reward." }
 
     PublicPageInput:
       type: object
@@ -5545,6 +5628,8 @@ components:
         openJoin: { type: boolean }
         introProductId: { type: [string, "null"], format: uuid }
         suggestWeeklyAt: { type: [string, "null"] }
+        instagramHandle: { type: [string, "null"], description: "A handle, @handle or an instagram.com link; 400 `instagramHandle.invalid`." }
+        referralRewardProductId: { type: [string, "null"], format: uuid, description: "400 `referralRewardProductId.invalid` unless an active product of this studio." }
 
     PublicStudio:
       type: object
@@ -6312,7 +6397,7 @@ components:
         groups:
           type: array
           minItems: 1
-          maxItems: 3
+          maxItems: 4
           description: Groups left out keep their current channels.
           items: { $ref: "#/components/schemas/NotificationGroupPreference" }
         reminders: { $ref: "#/components/schemas/ReminderSwitches" }
@@ -6409,7 +6494,8 @@ components:
 
     NotificationGroup:
       type: string
-      enum: [bookings, reminders, studio]
+      enum: [bookings, reminders, studio, celebrations]
+      description: "`celebrations` (docs/37 stage B): a member's milestones and bring-a-friend rewards; on by default."
 
     NotificationTemplateList:
       type: object

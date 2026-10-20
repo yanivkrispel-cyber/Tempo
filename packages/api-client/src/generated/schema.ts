@@ -320,6 +320,50 @@ export interface paths {
         patch: operations["updateOrganization"];
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/share-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The caller's own link for a member card or for bringing a friend (`schedule.view`)
+         * @description docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts for the bring-a-friend reward (M-17).
+         */
+        post: operations["getMyShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's attended-class milestones in this studio, computed live (`schedule.view`)
+         * @description docs/37 section 8.2 (MK8, M-16): the thresholds reached (10, 25, 50, 100, 200), the next one, hours on the mat, the longest run of weeks in a row, the usual class time and the most frequent instructor (a name only when their profile is public). Nothing here is visible to other members.
+         */
+        get: operations["getMyMilestones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/public-page": {
         parameters: {
             query?: never;
@@ -4133,6 +4177,34 @@ export interface components {
             /** @description Also the weekly class's note and its future sessions. */
             applyToWeekly?: boolean;
         };
+        ShareLinkInput: {
+            /** @enum {string} */
+            channel: "member_card" | "referral";
+            /**
+             * Format: uuid
+             * @description `member_card` only: the class the card is about.
+             */
+            sessionId?: string | null;
+        };
+        MyMilestones: {
+            attended: number;
+            reached: (10 | 25 | 50 | 100 | 200)[];
+            next: number | null;
+            hoursOnTheMat: number;
+            longestWeekStreak: number;
+            /** @description Local `HH:mm` of the most frequent start. */
+            usualTime: string | null;
+            /** @description Only when that instructor's profile is public (M-14). */
+            topInstructor: string | null;
+        };
+        /** @description docs/37 section 8.4 (MK8): a one-off session that is an event or a workshop. With `passRequired` false a booking holds no pass entry and is marked `toPayAtStudio`. */
+        SessionEvent: {
+            title: string;
+            description: string | null;
+            /** @description Shown only; nothing charges it. */
+            priceAgorot: number | null;
+            passRequired: boolean;
+        };
         PublicPage: {
             /** @description Strangers see the page (M-7). */
             enabled: boolean;
@@ -4146,6 +4218,13 @@ export interface components {
             /** @description Studio time; null means off (M-13). */
             suggestWeeklyAt: string | null;
             version: string;
+            /** @description The studio's handle on member cards (M-15); null shows none. */
+            instagramHandle: string | null;
+            /**
+             * Format: uuid
+             * @description One pass of it per friend's first attended class (M-17); null means no reward.
+             */
+            referralRewardProductId: string | null;
         };
         PublicPageInput: {
             enabled: boolean;
@@ -4153,6 +4232,13 @@ export interface components {
             /** Format: uuid */
             introProductId?: string | null;
             suggestWeeklyAt?: string | null;
+            /** @description A handle, @handle or an instagram.com link; 400 `instagramHandle.invalid`. */
+            instagramHandle?: string | null;
+            /**
+             * Format: uuid
+             * @description 400 `referralRewardProductId.invalid` unless an active product of this studio.
+             */
+            referralRewardProductId?: string | null;
         };
         PublicStudio: {
             slug: string;
@@ -4862,8 +4948,11 @@ export interface components {
             quietHours: components["schemas"]["QuietHours"];
             reminders: components["schemas"]["ReminderTiming"];
         };
-        /** @enum {string} */
-        NotificationGroup: "bookings" | "reminders" | "studio";
+        /**
+         * @description `celebrations` (docs/37 stage B): a member's milestones and bring-a-friend rewards; on by default.
+         * @enum {string}
+         */
+        NotificationGroup: "bookings" | "reminders" | "studio" | "celebrations";
         NotificationTemplateList: {
             items: {
                 /** @example booking.promoted */
@@ -5971,6 +6060,61 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getMyShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareLinkInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketingLink"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMyMilestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyMilestones"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getPublicPage: {

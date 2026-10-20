@@ -199,6 +199,7 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO notifications.announcements (organization_id, id, sent_by, subject, body, recipients, created_at) VALUES (org, gen_random_uuid(), owner_membership, 'הודעה', 'תוכן לדוגמה', 1, now());
                 INSERT INTO organizations.public_pages (organization_id, enabled, intro_product_id, updated_at, updated_by) VALUES (org, true, product, now(), owner_membership);
                 INSERT INTO marketing.links (organization_id, id, code, channel, template, session_id, created_by, created_at) VALUES (org, gen_random_uuid(), 'abc123', 'story', 'week', session, owner_membership, now());
+                INSERT INTO marketing.referral_rewards (organization_id, friend_membership_id, referrer_membership_id, pass_id, rewarded_at) VALUES (org, admin_membership, owner_membership, pass, now());
             END
             $seed$;
             """.Replace("__ORG__", studio.OrganizationId.ToString(), StringComparison.Ordinal).Replace("__MEMBERSHIP__", studio.MembershipId.ToString(), StringComparison.Ordinal));

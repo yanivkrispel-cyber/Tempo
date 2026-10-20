@@ -70,6 +70,21 @@ public sealed class PublicPageSettingsFlowTests(PostgresFixture postgres) : ICla
         saved.GetProperty("version").GetString().Should().Be("1");
         (await RawAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = false, openJoin = false }, "0")).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
+        // Stage B (docs/37 M-15, M-17): the studio's handle from a link, and a referral reward of its own products only.
+        await ProblemAsync(client, $"{studioPath}/public-page", new { enabled = true, openJoin = true, instagramHandle = "not a handle!" }, "instagramHandle.invalid");
+        await ProblemAsync(client, $"{studioPath}/public-page", new { enabled = true, openJoin = true, referralRewardProductId = foreign.GetProperty("id").GetGuid() }, "referralRewardProductId.invalid");
+        var stageB = await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new
+        {
+            enabled = true,
+            openJoin = false,
+            introProductId = card.GetProperty("id").GetGuid(),
+            suggestWeeklyAt = "sun 09:00",
+            instagramHandle = "https://www.instagram.com/neshima.example/",
+            referralRewardProductId = card.GetProperty("id").GetGuid()
+        });
+        stageB.GetProperty("instagramHandle").GetString().Should().Be("neshima.example");
+        stageB.GetProperty("referralRewardProductId").GetGuid().Should().Be(card.GetProperty("id").GetGuid());
+
         // 3. The instructor's public profile is her own consent (M-14): default off, she turns it on, a manager can't.
         var dana = (await SendAsync(client, HttpMethod.Put, $"{studioPath}/me/staff-profile", Customer("dana"), new { headline = "פילאטיס" }));
         dana.GetProperty("publicProfile").GetBoolean().Should().BeFalse();
@@ -86,7 +101,9 @@ public sealed class PublicPageSettingsFlowTests(PostgresFixture postgres) : ICla
             .Where(e => e.GetProperty("action").GetString() == "public_page.updated")
             .Select(e => e.GetProperty("data").GetProperty("fields").EnumerateArray().Select(f => f.GetString()).ToList())
             .ToList();
-        audit.Should().ContainSingle().Which.Should().BeEquivalentTo("enabled", "openJoin", "introProductId", "suggestWeeklyAt");
+        audit.Select(fields => string.Join(',', fields.Order(StringComparer.Ordinal))).Should().BeEquivalentTo(
+            "enabled,introProductId,openJoin,suggestWeeklyAt",
+            "instagramHandle,referralRewardProductId");
     }
 
     private async Task ProblemAsync(HttpClient client, string path, object body, string code)
