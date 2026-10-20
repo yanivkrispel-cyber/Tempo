@@ -101,6 +101,16 @@ describe("installing the app from the profile (P-3)", () => {
     expect(screen.queryByRole("dialog", { name: "התקנה באייפון" })).not.toBeInTheDocument();
   });
 
+  it("says nothing inside Instagram's browser, even when it fires a prompt (SL-7)", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      `${iphone.replace(" Safari/604.1", "")} Instagram 390.0.0.27.80`,
+    );
+    renderAt("/profile");
+    await screen.findByRole("heading", { level: 1 });
+    offerInstall();
+    expect(screen.queryByRole("button", { name: /התקנת האפליקציה/ })).not.toBeInTheDocument();
+  });
+
   it("says nothing when the app already runs installed", async () => {
     runInstalled();
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(iphone);
