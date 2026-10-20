@@ -87,6 +87,11 @@ public sealed class StorySuggestionsFlowTests(PostgresFixture postgres) : IClass
         stories["story_spot_opened"].GetProperty("count").GetInt32().Should().Be(6);
         stories["story_schedule_changed"].GetProperty("count").GetInt32().Should().Be(1);
         stories["story_weekly"].GetProperty("count").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+
+        // The card follows when the place was given up, not a later edit of the cancelled row (#395 review): a
+        // cancellation from before the window, touched again now, opens nothing.
+        await db.AsMasterAsync("UPDATE scheduling.bookings SET cancelled_at = now() - interval '1 day', updated_at = now() WHERE id = $1", booking.GetProperty("id").GetGuid());
+        Kinds(await SendAsync(client, HttpMethod.Get, $"{studioPath}/insights/suggestions", Customer("owner"))).Should().NotContain("story_spot_opened");
     }
 
     private static List<string> Kinds(JsonElement page) =>
