@@ -1,20 +1,33 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, NavLink } from "react-router";
 import { ButtonLink, EmptyState, Skeleton } from "../../shared/design-system";
 import type { PublicStudio } from "./publicStudio";
 import styles from "./public.module.css";
 
-/** A public page: the studio's logo and name at the top, linking to its week. */
+/**
+ * A public page: the studio's logo and name at the top, linking to its week, and a small nav to the week and the
+ * prices (SL-5).
+ */
 export function PublicFrame({ studio, children }: { studio: PublicStudio | null; children: ReactNode }) {
   return (
     <main className={`tp-page ${styles.page}`}>
       {studio && (
-        <Link to="/" className={styles.brand}>
-          {studio.logoUrl && <img src={studio.logoUrl} alt="" />}
-          <span>
-            <bdi>{studio.name}</bdi>
-          </span>
-        </Link>
+        <header className={styles.header}>
+          <Link to="/" className={styles.brand}>
+            {studio.logoUrl && <img src={studio.logoUrl} alt="" />}
+            <span>
+              <bdi>{studio.name}</bdi>
+            </span>
+          </Link>
+          <nav className={styles.nav} aria-label="עמודי הסטודיו">
+            <NavLink to="/" end className={styles.navLink}>
+              מערכת
+            </NavLink>
+            <NavLink to="/prices" className={styles.navLink}>
+              מחירים
+            </NavLink>
+          </nav>
+        </header>
       )}
       {children}
     </main>
