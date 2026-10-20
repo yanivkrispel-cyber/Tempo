@@ -31,7 +31,25 @@ public sealed record PublicSessionView(
     string Availability,
     int? SpotsLeft,
     bool WaitlistOpen,
-    PublicEventView? Event = null);
+    PublicEventView? Event = null,
+    bool Past = false,
+    IReadOnlyList<PublicSessionSummaryView>? Alternatives = null);
+
+/// <summary>An upcoming session with room, offered when the one asked for is full, cancelled or past (SL-3).</summary>
+public sealed record PublicSessionSummaryView(Guid Id, DateTimeOffset StartsAt, int Minutes, string ClassName, string? InstructorName, string Availability, int? SpotsLeft);
+
+/// <summary>A product the studio lists publicly (SL-4, SL-5); prices are shown only, paid at the studio.</summary>
+public sealed record PublicProductView(
+    Guid Id,
+    string Name,
+    string Kind,
+    int? PriceAgorot,
+    int? Entries,
+    int? PricePerClassAgorot,
+    int ValidDays,
+    bool NewcomersOnly,
+    DateOnly? PublicUntil,
+    string? Blurb);
 
 /// <summary>An event's public face (docs/37 section 8.4): its title, description, price shown, and whether a pass is needed.</summary>
 public sealed record PublicEventView(string Title, string? Description, int? PriceAgorot, bool PassRequired);
@@ -48,6 +66,12 @@ public interface IPublicStudioReads
     Task<IReadOnlyList<PublicSessionView>> ListSessionsAsync(PublicStudio studio, DateOnly? firstDay, DateOnly? lastDay, CancellationToken cancellationToken);
 
     Task<PublicSessionView> GetSessionAsync(PublicStudio studio, Guid sessionId, CancellationToken cancellationToken);
+
+    /// <summary>SL-5: listed, active products whose last day hasn't passed, offers first, then the owner's order.</summary>
+    Task<IReadOnlyList<PublicProductView>> ListProductsAsync(PublicStudio studio, CancellationToken cancellationToken);
+
+    /// <summary>SL-4: one listed product; null when it ended (archived or past its last day); 404 when not listed here.</summary>
+    Task<PublicProductView?> GetProductAsync(PublicStudio studio, Guid productId, CancellationToken cancellationToken);
 }
 
 public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvider clock) : IPublicStudioReads
@@ -134,9 +158,100 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
         await using var read = unitOfWork.Command(
             $"{SessionSelect} AND s.id = $2 AND s.starts_at BETWEEN $3 AND $4",
             studio.Id, sessionId, now.AddDays(-1), now.AddDays(MaxDaysAhead));
-        return (await ReadSessionsAsync(read, cancellationToken)).SingleOrDefault()
+        var session = (await ReadSessionsAsync(read, cancellationToken)).SingleOrDefault()
             ?? throw new DomainRuleViolationException(ViolationKind.NotFound, "session.not_found", "Class not found.");
+        await read.DisposeAsync();
+        if (session.Availability is "open" or "few" && !session.Past)
+        {
+            return session;
+        }
+
+        // SL-3: the link from a story outlives its class. Up to three upcoming classes with room in the next 14 days,
+        // the same class type first.
+        await using var others = unitOfWork.Command(
+            $"""
+            {SessionSelect} AND s.status = 'scheduled' AND s.booked_count < s.capacity AND s.id <> $2
+              AND s.starts_at > $3 AND s.starts_at < $4
+            ORDER BY (s.class_type_id = (SELECT class_type_id FROM scheduling.sessions WHERE organization_id = $1 AND id = $2)) DESC, s.starts_at, s.id
+            LIMIT 3
+            """,
+            studio.Id, sessionId, now, now.AddDays(MaxDays));
+        var alternatives = (await ReadSessionsAsync(others, cancellationToken))
+            .Select(a => new PublicSessionSummaryView(a.Id, a.StartsAt, a.Minutes, a.ClassTypeName, a.Instructor?.DisplayName, a.Availability, a.SpotsLeft))
+            .ToList();
+        return session with { Alternatives = alternatives };
     }
+
+    public async Task<IReadOnlyList<PublicProductView>> ListProductsAsync(PublicStudio studio, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(studio, cancellationToken);
+        var (enabled, timeZone) = await PageAsync(unitOfWork, studio, cancellationToken);
+        if (!enabled)
+        {
+            throw NotFound();
+        }
+
+        await using var read = unitOfWork.Command(
+            $"{ProductSelect} AND p.status = 'active' AND (p.public_until IS NULL OR p.public_until >= $2) ORDER BY p.newcomers_only DESC, p.public_order NULLS LAST, p.name, p.id",
+            studio.Id, Today(timeZone));
+        var products = new List<PublicProductView>();
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            products.Add(ProductOf(reader));
+        }
+
+        return products;
+    }
+
+    public async Task<PublicProductView?> GetProductAsync(PublicStudio studio, Guid productId, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(studio, cancellationToken);
+        var (enabled, timeZone) = await PageAsync(unitOfWork, studio, cancellationToken);
+        if (!enabled)
+        {
+            throw NotFound();
+        }
+
+        await using var read = unitOfWork.Command($"{ProductSelect} AND p.id = $2", studio.Id, productId);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new DomainRuleViolationException(ViolationKind.NotFound, "product.not_found", "There is no such offer here.");
+        }
+
+        var product = ProductOf(reader);
+        var ended = reader.GetString(10) != "active" || (product.PublicUntil is { } until && until < Today(timeZone));
+        return ended ? null : product;
+    }
+
+    private const string ProductSelect =
+        """
+        SELECT p.id, p.name, p.kind, p.price_agorot, p.entries, p.valid_days, p.newcomers_only, p.public_until, p.public_blurb, p.public_order, p.status
+        FROM scheduling.pass_products p
+        WHERE p.organization_id = $1 AND p.public_listed
+        """;
+
+    private static PublicProductView ProductOf(Npgsql.NpgsqlDataReader reader)
+    {
+        int? price = reader.IsDBNull(3) ? null : reader.GetInt32(3);
+        int? entries = reader.IsDBNull(4) ? null : reader.GetInt32(4);
+        int? perClass = price is { } total && entries is > 0 ? (int)Math.Round(total / (double)entries.Value, MidpointRounding.AwayFromZero) : null;
+        return new PublicProductView(
+            reader.GetGuid(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            price,
+            entries,
+            perClass,
+            reader.GetInt32(5),
+            reader.GetBoolean(6),
+            reader.IsDBNull(7) ? null : reader.GetFieldValue<DateOnly>(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8));
+    }
+
+    private DateOnly Today(string timeZone) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(timeZone)).DateTime);
 
     private async Task<List<PublicSessionView>> ReadSessionsAsync(Npgsql.NpgsqlCommand read, CancellationToken cancellationToken)
     {
@@ -174,7 +289,8 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
                 availability,
                 availability == "few" ? left : null,
                 waitlistOpen,
-                EventOf(reader)));
+                EventOf(reader),
+                Past: now >= startsAt));
         }
 
         return sessions;

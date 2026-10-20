@@ -27,7 +27,10 @@ public sealed class ArchitectureTests
         "/api/v1/public/studios/{slug}/",
         "/api/v1/public/studios/{slug}/sessions",
         "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}",
-        "/api/v1/public/studios/{slug}/icons/{size}"
+        "/api/v1/public/studios/{slug}/icons/{size}",
+        // The prices and offers of SL-4 and SL-5 (SK2): products the owner listed, their prices shown only, no person.
+        "/api/v1/public/studios/{slug}/products",
+        "/api/v1/public/studios/{slug}/products/{productId:guid}"
     ];
 
     [Fact]

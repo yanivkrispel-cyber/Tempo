@@ -14,7 +14,15 @@ public sealed record PublicPageView(
     string? SuggestWeeklyAt,
     long Version,
     string? InstagramHandle = null,
-    Guid? ReferralRewardProductId = null);
+    Guid? ReferralRewardProductId = null,
+    IReadOnlyList<ListedProduct>? ListedProducts = null)
+{
+    /// <summary>The products on the prices page, in their public order (SL-4, SL-5); empty when none.</summary>
+    public IReadOnlyList<ListedProduct> Listed => ListedProducts ?? [];
+}
+
+/// <summary>A product the studio lists publicly (SL-4, SL-5): an offer when `NewcomersOnly`, until its last day.</summary>
+public sealed record ListedProduct(Guid ProductId, bool NewcomersOnly, DateOnly? PublicUntil, string? Blurb);
 
 /// <summary>
 /// A PUT of the public page. `enabled` and `openJoin` are required; every other field is kept when it isn't sent
@@ -27,7 +35,8 @@ public sealed record PublicPageChanges(
     Sent<Guid?>? IntroProductId = null,
     Sent<string?>? SuggestWeeklyAt = null,
     Sent<string?>? InstagramHandle = null,
-    Sent<Guid?>? ReferralRewardProductId = null);
+    Sent<Guid?>? ReferralRewardProductId = null,
+    IReadOnlyList<ListedProduct>? ListedProducts = null);
 
 /// <summary>A field the request did send, null included.</summary>
 public readonly record struct Sent<T>(T Value);
@@ -85,6 +94,7 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             await ActiveProductAsync(unitOfWork, tenant.OrganizationId, reward, "referralRewardProductId", cancellationToken);
         }
 
+        var listed = changes.ListedProducts is { } sentList ? await ValidListAsync(unitOfWork, tenant.OrganizationId, sentList, cancellationToken) : before.Listed;
         var after = new PublicPageView(
             enabled,
             openJoin,
@@ -92,7 +102,8 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             changes.SuggestWeeklyAt is null ? before.SuggestWeeklyAt : weekly,
             before.Version + 1,
             changes.InstagramHandle is null ? before.InstagramHandle : handle,
-            reward);
+            reward,
+            listed);
         var fields = new[]
         {
             (after.Enabled != before.Enabled, "enabled"),
@@ -100,7 +111,8 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             (after.IntroProductId != before.IntroProductId, "introProductId"),
             (after.SuggestWeeklyAt != before.SuggestWeeklyAt, "suggestWeeklyAt"),
             (after.InstagramHandle != before.InstagramHandle, "instagramHandle"),
-            (after.ReferralRewardProductId != before.ReferralRewardProductId, "referralRewardProductId")
+            (after.ReferralRewardProductId != before.ReferralRewardProductId, "referralRewardProductId"),
+            (!after.Listed.SequenceEqual(before.Listed), "listedProducts")
         }.Where(f => f.Item1).Select(f => f.Item2).ToList();
         if (fields.Count == 0 && before.Version > 0)
         {
@@ -121,6 +133,11 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             tenant.OrganizationId, after.Enabled, after.OpenJoin, after.IntroProductId, after.SuggestWeeklyAt, tenant.MembershipId, after.InstagramHandle, after.ReferralRewardProductId))
         {
             await upsert.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        if (fields.Contains("listedProducts"))
+        {
+            await WriteListAsync(unitOfWork, tenant.OrganizationId, after.Listed, cancellationToken);
         }
 
         // Field names only (docs/37 section 5).
@@ -147,7 +164,87 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
         string? weekly = reader.IsDBNull(3) ? null : reader.GetString(3);
         string? handle = reader.IsDBNull(5) ? null : reader.GetString(5);
         Guid? reward = reader.IsDBNull(6) ? null : reader.GetGuid(6);
-        return new PublicPageView(reader.GetBoolean(0), reader.GetBoolean(1), product, weekly, reader.GetInt64(4), handle, reward);
+        var page = new PublicPageView(reader.GetBoolean(0), reader.GetBoolean(1), product, weekly, reader.GetInt64(4), handle, reward);
+        await reader.DisposeAsync();
+        return page with { ListedProducts = await ReadListAsync(unitOfWork, organizationId, cancellationToken) };
+    }
+
+    /// <summary>The listed products, in their public order (0036's columns on the studio's products).</summary>
+    private static async Task<IReadOnlyList<ListedProduct>> ReadListAsync(UnitOfWork unitOfWork, Guid organizationId, CancellationToken cancellationToken)
+    {
+        var list = new List<ListedProduct>();
+        await using var read = unitOfWork.Command(
+            "SELECT id, newcomers_only, public_until, public_blurb FROM scheduling.pass_products WHERE organization_id = $1 AND public_listed ORDER BY public_order NULLS LAST, name, id",
+            organizationId);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            list.Add(new ListedProduct(
+                reader.GetGuid(0),
+                reader.GetBoolean(1),
+                reader.IsDBNull(2) ? null : reader.GetFieldValue<DateOnly>(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3)));
+        }
+
+        return list;
+    }
+
+    /// <summary>
+    /// SL-4, SL-5: at most 20, each an active product of this studio and listed once, a blurb of 1 to 120 characters or
+    /// none. 400 `listedProducts.invalid` otherwise.
+    /// </summary>
+    private static async Task<IReadOnlyList<ListedProduct>> ValidListAsync(UnitOfWork unitOfWork, Guid organizationId, IReadOnlyList<ListedProduct> sent, CancellationToken cancellationToken)
+    {
+        static DomainRuleViolationException Invalid(string title) =>
+            new(ViolationKind.Validation, "listedProducts.invalid", title, "listedProducts");
+
+        if (sent.Count > 20)
+        {
+            throw Invalid("List at most 20 products.");
+        }
+
+        if (sent.Select(p => p.ProductId).Distinct().Count() != sent.Count)
+        {
+            throw Invalid("List each product once.");
+        }
+
+        var list = sent.Select(p => p with { Blurb = string.IsNullOrWhiteSpace(p.Blurb) ? null : p.Blurb.Trim() }).ToList();
+        if (list.Any(p => p.Blurb is { Length: > 120 }))
+        {
+            throw Invalid("A line is at most 120 characters.");
+        }
+
+        foreach (var item in list)
+        {
+            await ActiveProductAsync(unitOfWork, organizationId, item.ProductId, "listedProducts", cancellationToken);
+        }
+
+        return list;
+    }
+
+    private static async Task WriteListAsync(UnitOfWork unitOfWork, Guid organizationId, IReadOnlyList<ListedProduct> list, CancellationToken cancellationToken)
+    {
+        await using (var clear = unitOfWork.Command(
+            "UPDATE scheduling.pass_products SET public_listed = false, public_order = NULL, updated_at = now() WHERE organization_id = $1 AND public_listed",
+            organizationId))
+        {
+            await clear.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        for (var order = 0; order < list.Count; order++)
+        {
+            var item = list[order];
+            await using var set = unitOfWork.Command(
+                """
+                UPDATE scheduling.pass_products
+                SET public_listed = true, public_order = $3, newcomers_only = $4, public_until = $5, public_blurb = $6, updated_at = now()
+                WHERE organization_id = $1 AND id = $2
+                """,
+                organizationId, item.ProductId, order, item.NewcomersOnly, item.PublicUntil, item.Blurb);
+            set.Parameters[4].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Date;
+            set.Parameters[5].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Text;
+            await set.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     /// <summary>A handle, "@handle" or an instagram.com link become the handle alone (M-15); empty clears it.</summary>
