@@ -63,7 +63,7 @@ describe.each([
     }
   });
 
-  it("no app client allows SRP or a direct password sign-in from a browser (#124)", () => {
+  it("no app client allows SRP, the plain password flow or custom auth (#124)", () => {
     const clients = Object.values(template.findResources("AWS::Cognito::UserPoolClient"));
     expect(clients).toHaveLength(3);
     for (const client of clients) {
@@ -71,9 +71,41 @@ describe.each([
       expect(flows).toContain("ALLOW_REFRESH_TOKEN_AUTH");
       expect(flows).not.toContain("ALLOW_USER_SRP_AUTH");
       expect(flows).not.toContain("ALLOW_USER_PASSWORD_AUTH");
-      expect(flows).not.toContain("ALLOW_USER_AUTH");
       expect(flows).not.toContain("ALLOW_CUSTOM_AUTH");
     }
+  });
+
+  it("only client-web allows choice-based sign-in, for the members' own sign-in screen (ADR-0028)", () => {
+    const clients = Object.values(template.findResources("AWS::Cognito::UserPoolClient"));
+    const withUserAuth = clients
+      .filter((client) => (client.Properties.ExplicitAuthFlows as string[]).includes("ALLOW_USER_AUTH"))
+      .map((client) => client.Properties.ClientName as string);
+    expect(withUserAuth).toEqual([`tempo-${env}-client-web`]);
+  });
+
+  it("client-web writes only email and reads only email and its verification (docs/36 F-7)", () => {
+    template.hasResourceProperties("AWS::Cognito::UserPoolClient", {
+      ClientName: `tempo-${env}-client-web`,
+      WriteAttributes: ["email"],
+      ReadAttributes: Match.arrayEquals(["email", "email_verified"])
+    });
+  });
+
+  it("the customer pool offers password and passkey first, with the members app as the passkey's relying party", () => {
+    template.hasResourceProperties("AWS::Cognito::UserPool", {
+      UserPoolName: `tempo-${env}-users`,
+      UserPoolTier: "ESSENTIALS",
+      Policies: Match.objectLike({ SignInPolicy: { AllowedFirstAuthFactors: ["PASSWORD", "WEB_AUTHN"] } }),
+      WebAuthnRelyingPartyID: env === "dev" ? "tempo-members.pages.dev" : "client.tempo.example",
+      WebAuthnUserVerification: "preferred"
+    });
+  });
+
+  it("the operator pool keeps password sign-in only", () => {
+    const pools = template.findResources("AWS::Cognito::UserPool", { Properties: { UserPoolName: `tempo-${env}-operators` } });
+    const pool = Object.values(pools)[0].Properties;
+    expect(pool.WebAuthnRelyingPartyID).toBeUndefined();
+    expect(pool.Policies?.SignInPolicy?.AllowedFirstAuthFactors ?? ["PASSWORD"]).toEqual(["PASSWORD"]);
   });
 
   it("the customer pool has only admin-web and client-web", () => {
@@ -93,7 +125,7 @@ describe.each([
     });
   });
 
-  it("client-web does not get the user-admin scope", () => {
+  it("client-web does not ask for the user-admin scope through OAuth", () => {
     const clients = template.findResources("AWS::Cognito::UserPoolClient", {
       Properties: { ClientName: `tempo-${env}-client-web` }
     });

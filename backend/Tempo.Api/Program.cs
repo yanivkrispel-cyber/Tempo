@@ -65,6 +65,9 @@ try
     app.MapHealthEndpoints();
     app.MapAccountEndpoints();
     app.MapOrganizationEndpoints();
+    app.MapBrandEndpoints();
+    app.MapPublicStudioEndpoints();
+    app.MapMarketingEndpoints();
     app.MapRoleEndpoints();
     app.MapOwnershipEndpoints();
     app.MapPeopleEndpoints();

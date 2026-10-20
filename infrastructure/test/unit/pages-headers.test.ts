@@ -25,7 +25,15 @@ describe("Cloudflare Pages headers (ADR-0027)", () => {
 
   it("shows pictures from the bucket's presigned URLs (docs/33 section 6; board #347: avatars were blocked)", () => {
     const csp = file.split("\n").find((line) => line.includes("Content-Security-Policy"));
-    expect(csp).toContain("img-src 'self' data: blob: https://tempo-dev-media-687239340846.s3.eu-central-1.amazonaws.com;");
+    expect(csp).toContain(
+      "img-src 'self' data: blob: https://tempo-dev-media-687239340846.s3.eu-central-1.amazonaws.com " +
+        "https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com;"
+    );
+  });
+
+  it("lets a studio's path load its manifest and icons from the API (docs/35 W-6, WL4)", () => {
+    const csp = file.split("\n").find((line) => line.includes("Content-Security-Policy"));
+    expect(csp).toContain("manifest-src 'self' https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com;");
   });
 
   it("carries the headers of CloudFront's managed SecurityHeadersPolicy", () => {

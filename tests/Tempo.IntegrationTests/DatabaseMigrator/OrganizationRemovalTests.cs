@@ -182,6 +182,7 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO people.buddy_attempts (organization_id, person_id, attempted_at) VALUES (org, person, now());
                 INSERT INTO media.media_objects (organization_id, id, purpose, owner_id, status, content_type, declared_bytes, created_by, created_at, updated_at) VALUES (org, gen_random_uuid(), 'avatar', person, 'ready', 'image/png', 100, owner_membership, now(), now());
                 INSERT INTO organizations.staff_profiles (organization_id, membership_id, headline, updated_at) VALUES (org, owner_membership, 'מורה', now());
+                INSERT INTO organizations.brands (organization_id, app_name, accent_id, updated_at) VALUES (org, 'סטודיו', 'ocean', now());
                 INSERT INTO people.checkin_attempts (organization_id, membership_id, attempted_at) VALUES (org, owner_membership, now());
 
                 INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, created_at) VALUES (org, gen_random_uuid(), person, 'booking.confirmed', now());
@@ -196,6 +197,9 @@ public sealed class OrganizationRemovalTests(PostgresFixture postgres) : IClassF
                 INSERT INTO notifications.requests (organization_id, id, kind, person_id, subject_type, subject_id, dedupe_key, created_at) VALUES (org, request, 'booking.confirmed', person, 'booking', booking, 'e2e-' || booking, now());
                 INSERT INTO notifications.deliveries (organization_id, id, request_id, channel, status, created_at, updated_at) VALUES (org, gen_random_uuid(), request, 'inbox', 'queued', now(), now());
                 INSERT INTO notifications.announcements (organization_id, id, sent_by, subject, body, recipients, created_at) VALUES (org, gen_random_uuid(), owner_membership, 'הודעה', 'תוכן לדוגמה', 1, now());
+                INSERT INTO organizations.public_pages (organization_id, enabled, intro_product_id, updated_at, updated_by) VALUES (org, true, product, now(), owner_membership);
+                INSERT INTO marketing.links (organization_id, id, code, channel, template, session_id, created_by, created_at) VALUES (org, gen_random_uuid(), 'abc123', 'story', 'week', session, owner_membership, now());
+                INSERT INTO marketing.referral_rewards (organization_id, friend_membership_id, referrer_membership_id, pass_id, rewarded_at) VALUES (org, admin_membership, owner_membership, pass, now());
             END
             $seed$;
             """.Replace("__ORG__", studio.OrganizationId.ToString(), StringComparison.Ordinal).Replace("__MEMBERSHIP__", studio.MembershipId.ToString(), StringComparison.Ordinal));

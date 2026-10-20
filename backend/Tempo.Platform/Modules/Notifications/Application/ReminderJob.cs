@@ -2,7 +2,7 @@ using Tempo.Platform.BuildingBlocks.Persistence;
 
 namespace Tempo.Platform.Modules.Notifications.Application;
 
-public sealed record ReminderRun(int ClassTomorrow, int ClassSoon, int PassEnding, int EntriesLow);
+public sealed record ReminderRun(int ClassTomorrow, int ClassSoon, int PassEnding, int EntriesLow, int EventWeek = 0);
 
 /// <summary>
 /// The reminder job (docs/30 sections 7 and 8, D-5), run by the worker as the platform role on the hourly daytime
@@ -22,6 +22,9 @@ public sealed class ReminderJob(IDataSourceProvider dataSources, TimeProvider cl
 {
     /// <summary>The last tick of the day (infrastructure: `cron(0 7-21 * * ? *)`); a later send time sends then.</summary>
     public static readonly TimeOnly LastTickLocal = new(21, 0);
+
+    /// <summary>The event-week reminder goes from this studio time on (docs/37 section 8.4).</summary>
+    public static readonly TimeOnly EventWeekSendAt = new(10, 0);
 
     public async Task<ReminderRun> RunAsync(CancellationToken cancellationToken)
     {
@@ -116,8 +119,27 @@ public sealed class ReminderJob(IDataSourceProvider dataSources, TimeProvider cl
             """,
             now, "reminder.entries_low", "entries_low"), cancellationToken);
 
+        // An event a week ahead (docs/37 section 8.4), from 10:00 studio time on that day, to everyone booked.
+        var eventWeek = await WriteAsync(unitOfWork, "reminder.event_week", "session", Due(
+            """
+            SELECT b.organization_id, b.person_id, s.id, b.id, s.local_date::text
+            FROM scheduling.bookings b
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            JOIN organizations.organizations o ON o.id = b.organization_id AND o.status = 'active'
+            JOIN people.people pe ON pe.organization_id = b.organization_id AND pe.id = b.person_id AND pe.status = 'active'
+            JOIN organizations.memberships m ON m.organization_id = pe.organization_id AND m.id = pe.membership_id AND m.status = 'active'
+            WHERE b.status = 'booked' AND s.status = 'scheduled' AND s.event_title IS NOT NULL
+              AND s.local_date = ($1::timestamptz AT TIME ZONE o.time_zone)::date + 7
+              AND ($1::timestamptz AT TIME ZONE o.time_zone)::time >= $3::time
+              AND NOT EXISTS (SELECT 1 FROM notifications.requests r
+                              WHERE r.organization_id = b.organization_id AND r.dedupe_key = $2 || ':' || s.id || ':' || b.person_id || ':' || s.local_date::text)
+            ORDER BY s.starts_at
+            LIMIT 2000
+            """,
+            now, "reminder.event_week", EventWeekSendAt), cancellationToken);
+
         await unitOfWork.CommitAsync(cancellationToken);
-        return new ReminderRun(classTomorrow, classSoon, passEnding, entriesLow);
+        return new ReminderRun(classTomorrow, classSoon, passEnding, entriesLow, eventWeek);
     }
 
     private static (string Sql, object[] Parameters) Due(string sql, params object[] parameters) => (sql, parameters);

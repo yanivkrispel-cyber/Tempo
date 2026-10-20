@@ -52,7 +52,13 @@ public sealed record SessionView(
     long Version,
     PassSummaryView? PassPreview = null,
     DateOnly? FrozenUntil = null,
-    string? MemberNote = null);
+    string? MemberNote = null,
+    SessionEventView? Event = null);
+
+/// <summary>A one-off session that is an event or a workshop (docs/37 section 8.4); price is shown only.</summary>
+public sealed record SessionEventView(string Title, string? Description, int? PriceAgorot, bool PassRequired);
+
+public sealed record NewSessionEvent(string? Title, string? Description, int? PriceAgorot, bool? PassRequired);
 
 public sealed record TemplateChange(TemplateView Template, IReadOnlyList<SessionView> UntouchedSessions);
 
@@ -84,7 +90,7 @@ public sealed record TemplateChanges(
     int? Capacity,
     Change<DateOnly?> ValidUntil);
 
-public sealed record NewSession(Guid ClassTypeId, DateOnly? LocalDate, TimeOnly? LocalStart, int? Minutes, Guid? InstructorMembershipId, Guid? RoomId, int? Capacity);
+public sealed record NewSession(Guid ClassTypeId, DateOnly? LocalDate, TimeOnly? LocalStart, int? Minutes, Guid? InstructorMembershipId, Guid? RoomId, int? Capacity, NewSessionEvent? Event = null);
 
 public sealed record SessionQuery(DateOnly From, DateOnly To, Guid? ClassTypeId, Guid? InstructorMembershipId);
 
@@ -162,7 +168,8 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                    (SELECT count(*)::int FROM scheduling.bookings w WHERE w.organization_id = s.organization_id AND w.session_id = s.id
                       AND w.status = 'waitlisted' AND w.waitlist_position <= mine.waitlist_position)
                END,
-               s.member_note, ct.cover_media_id, coalesce(r.spot_selection, false)
+               s.member_note, ct.cover_media_id, coalesce(r.spot_selection, false),
+               s.event_title, s.event_description, s.event_price_agorot, s.pass_required
         FROM scheduling.sessions s
         JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
         LEFT JOIN scheduling.rooms r ON r.organization_id = s.organization_id AND r.id = s.room_id
@@ -470,6 +477,7 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
         var date = session.LocalDate ?? throw Required("localDate");
         var start = session.LocalStart ?? throw Required("localStart");
         var capacity = Capacity(session.Capacity ?? throw Required("capacity"), "capacity");
+        var sessionEvent = ValidEvent(session.Event);
         var id = Guid.CreateVersion7();
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
@@ -486,15 +494,17 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
 
         await using (var insert = unitOfWork.Command(
             """
-            INSERT INTO scheduling.sessions (organization_id, id, template_id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, room_id, capacity, status, created_at, updated_at)
-            VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, 'scheduled', now(), now())
+            INSERT INTO scheduling.sessions (organization_id, id, template_id, local_date, class_type_id, starts_at, ends_at, instructor_membership_id, room_id, capacity, status, created_at, updated_at,
+                                             event_title, event_description, event_price_agorot, pass_required)
+            VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, 'scheduled', now(), now(), $10, $11, $12, $13)
             """,
-            tenant.OrganizationId, id, date, classType.Id, startsAt, startsAt.AddMinutes(minutes), session.InstructorMembershipId, session.RoomId, capacity))
+            tenant.OrganizationId, id, date, classType.Id, startsAt, startsAt.AddMinutes(minutes), session.InstructorMembershipId, session.RoomId, capacity,
+            sessionEvent?.Title, sessionEvent?.Description, sessionEvent?.PriceAgorot, sessionEvent?.PassRequired ?? true))
         {
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await AuditAsync(unitOfWork, tenant, "session.created", "session", id, new { classTypeId = classType.Id }, cancellationToken);
+        await AuditAsync(unitOfWork, tenant, "session.created", "session", id, new { classTypeId = classType.Id, isEvent = sessionEvent is not null }, cancellationToken);
         var created = (await SessionsAsync(unitOfWork, tenant, "WHERE s.organization_id = $1 AND s.id = $3", cancellationToken, id)).Single();
         await unitOfWork.CommitAsync(cancellationToken);
         return created;
@@ -605,13 +615,55 @@ public sealed class TimetableService(IDataSourceProvider dataSources, TimeProvid
                 reader.GetString(23),
                 mine,
                 reader.GetInt64(24),
-                MemberNote: await reader.IsDBNullAsync(28, cancellationToken) ? null : reader.GetString(28)));
+                MemberNote: await reader.IsDBNullAsync(28, cancellationToken) ? null : reader.GetString(28),
+                Event: await EventAsync(reader, cancellationToken)));
         }
 
         await reader.CloseAsync();
         var bookable = sessions.Where(s => s.Status == "scheduled" && s.MyBooking is null).Select(s => (s.Id, s.LocalDate, s.ClassType.Category)).ToList();
         var previews = await BookingService.PreviewAsync(unitOfWork, tenant.OrganizationId, tenant.MembershipId, bookable, cancellationToken);
         return [.. sessions.Select(s => previews.TryGetValue(s.Id, out var p) ? s with { PassPreview = p.Preview, FrozenUntil = p.FrozenUntil } : s)];
+    }
+
+    /// <summary>The event's fields, columns 31 to 34 of <see cref="SessionSelect"/>; null for a regular class.</summary>
+    private static async Task<SessionEventView?> EventAsync(NpgsqlDataReader reader, CancellationToken cancellationToken)
+    {
+        if (await reader.IsDBNullAsync(31, cancellationToken))
+        {
+            return null;
+        }
+
+        string? description = await reader.IsDBNullAsync(32, cancellationToken) ? null : reader.GetString(32);
+        int? price = await reader.IsDBNullAsync(33, cancellationToken) ? null : reader.GetInt32(33);
+        return new SessionEventView(reader.GetString(31), description, price, reader.GetBoolean(34));
+    }
+
+    /// <summary>docs/37 section 8.4: a title of 1 to 60 characters, a description up to 600, a price of 0 or more.</summary>
+    private static SessionEventView? ValidEvent(NewSessionEvent? input)
+    {
+        if (input is null)
+        {
+            return null;
+        }
+
+        var title = input.Title?.Trim();
+        if (string.IsNullOrEmpty(title) || title.Length > 60)
+        {
+            throw Invalid("event.title", "An event needs a title of up to 60 characters.");
+        }
+
+        var description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim();
+        if (description is { Length: > 600 })
+        {
+            throw Invalid("event.description", "Use up to 600 characters.");
+        }
+
+        if (input.PriceAgorot is < 0)
+        {
+            throw Invalid("event.priceAgorot", "A price can't be negative.");
+        }
+
+        return new SessionEventView(title, description, input.PriceAgorot, input.PassRequired ?? true);
     }
 
     private static async Task<TemplateView?> TemplateAsync(UnitOfWork unitOfWork, Guid organizationId, Guid templateId, CancellationToken cancellationToken, bool forUpdate = false)

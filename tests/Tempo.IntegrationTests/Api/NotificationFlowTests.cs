@@ -60,7 +60,7 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
 
         // 1. Defaults: every group on inbox and push, no own quiet hours, the studio's 22:00 to 08:00.
         var mine = await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notification-preferences", Customer("noga"));
-        mine.GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("channels").GetProperty("push").GetBoolean()).Should().Equal(true, true, true);
+        mine.GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("channels").GetProperty("push").GetBoolean()).Should().Equal(true, true, true, true);
         mine.GetProperty("quietHours").ValueKind.Should().Be(JsonValueKind.Null);
         mine.GetProperty("studioQuietHours").GetProperty("startsLocal").GetString().Should().Be("22:00");
         mine.GetProperty("timeZone").GetString().Should().Be("Asia/Jerusalem");
@@ -291,7 +291,7 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
 
         // 1. Every templated kind is listed on the defaults; a member may not read or change them.
         var list = await SendAsync(client, HttpMethod.Get, templates, Customer("owner"));
-        list.GetProperty("items").GetArrayLength().Should().Be(10);
+        list.GetProperty("items").GetArrayLength().Should().Be(13);
         list.GetProperty("items").EnumerateArray().Should().OnlyContain(i => i.GetProperty("customized").GetArrayLength() == 0);
         (await RawAsync(client, HttpMethod.Get, templates, Customer("rina"))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var promoted = await SendAsync(client, HttpMethod.Get, $"{templates}/booking.promoted", Customer("owner"));
@@ -682,7 +682,7 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
         return (await inFlight).StatusCode;
     }
 
-    private static readonly string[] Groups = ["bookings", "reminders", "studio"];
+    private static readonly string[] Groups = ["bookings", "reminders", "studio", "celebrations"];
 
     // The browser key and auth secret of RFC 8291 section 5: published test values, no real device. The browser key
     // doubles as a well-formed VAPID public key for the key route.

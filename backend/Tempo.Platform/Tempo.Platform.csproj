@@ -13,4 +13,9 @@
     <PackageReference Include="libphonenumber-csharp" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The initials icon (docs/35 W-2) draws Hebrew and Latin letters; Lambda has no system fonts. SIL OFL 1.1. -->
+    <EmbeddedResource Include="Modules/Media/Fonts/IBMPlexSansHebrew-Bold.ttf" LogicalName="Tempo.Platform.Fonts.IBMPlexSansHebrew-Bold.ttf" />
+  </ItemGroup>
+
 </Project>

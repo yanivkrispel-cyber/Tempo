@@ -14,6 +14,7 @@ const list = {
   items: [
     { kind: "booking.promoted", group: "bookings", customized: [], updatedAt: null },
     { kind: "reminder.class_soon", group: "reminders", customized: ["inbox"], updatedAt: "2026-10-16T10:00:00Z" },
+    { kind: "member.milestone", group: "celebrations", customized: [], updatedAt: null },
   ],
 };
 
@@ -69,6 +70,8 @@ describe("notification templates", () => {
     const reminders = await within(card).findByRole("region", { name: "תזכורות" });
     expect(within(reminders).getByText("נוסח של הסטודיו בתיבה")).toBeInTheDocument();
     expect(within(within(card).getByRole("region", { name: "הרשמות" })).getByText("נוסח Tempo")).toBeInTheDocument();
+    const celebrations = within(card).getByRole("region", { name: "חגיגות" });
+    expect(within(celebrations).getByRole("link", { name: "אבן דרך במספר השיעורים" })).toBeInTheDocument();
 
     await userEvent.click(within(reminders).getByRole("link", { name: "תזכורת זמן קצר לפני שיעור" }));
     expect(await screen.findByRole("heading", { level: 1, name: "תזכורת זמן קצר לפני שיעור" })).toBeInTheDocument();

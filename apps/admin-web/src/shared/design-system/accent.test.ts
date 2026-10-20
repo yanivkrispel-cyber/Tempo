@@ -14,6 +14,12 @@ describe("accents", () => {
     expect(DEFAULT_ACCENT).toBe(tokens.accents.default);
   });
 
+  it("draws an icon's ground in each accent's light brand colour", () => {
+    expect(ACCENTS.map(({ id, ground }) => ({ id, ground }))).toEqual(
+      tokens.accents.list.map(({ id, value }) => ({ id, ground: value.light.brand })),
+    );
+  });
+
   it("knows an accent id and refuses anything else", () => {
     expect(isAccentId("ocean")).toBe(true);
     expect(isAccentId("#ff0000")).toBe(false);

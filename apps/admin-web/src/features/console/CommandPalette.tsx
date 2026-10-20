@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { Avatar, Icon, type IconName } from "../../shared/design-system";
@@ -21,6 +21,16 @@ interface Option {
   hint?: string;
   icon?: IconName;
   person?: { displayName: string; avatarUrl?: string | null };
+}
+
+const PaletteOpener = createContext<(() => void) | null>(null);
+
+/** Lets a page open the console's palette from its own search field (the today page's top bar). */
+export const CommandPaletteProvider = PaletteOpener.Provider;
+
+/** Opens the palette; null outside the console frame. */
+export function useOpenCommandPalette(): (() => void) | null {
+  return useContext(PaletteOpener);
 }
 
 /** Ctrl K or ⌘K anywhere in the console opens the palette (docs/33 section 9, P8). */

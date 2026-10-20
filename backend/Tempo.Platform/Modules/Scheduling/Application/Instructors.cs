@@ -15,9 +15,11 @@ public sealed record InstructorProfileView(
     string? PlaylistUrl,
     Guid? PhotoMediaId,
     bool Visible,
-    IReadOnlyList<SessionView> NextSessions);
+    IReadOnlyList<SessionView> NextSessions,
+    bool PublicProfile = false);
 
-public sealed record StaffProfileInput(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible);
+/// <summary><paramref name="PublicProfile"/> is the instructor's own consent (docs/37 M-14): null keeps it, and only they set it.</summary>
+public sealed record StaffProfileInput(string? Headline, string? Bio, string? InstagramHandle, string? PlaylistUrl, bool? Visible, bool? PublicProfile = null);
 
 /// <summary>Instructor profiles and the instructor's note to a class (docs/33 sections 5 and 7).</summary>
 public interface IInstructorService
@@ -40,7 +42,8 @@ public sealed class InstructorService(IDataSourceProvider dataSources, TimeProvi
 
     private const string ProfileSelect =
         """
-        SELECT m.id, coalesce(pe.display_name, ''), sp.headline, sp.bio, sp.instagram_handle, sp.playlist_url, sp.photo_media_id, coalesce(sp.visible, true)
+        SELECT m.id, coalesce(pe.display_name, ''), sp.headline, sp.bio, sp.instagram_handle, sp.playlist_url, sp.photo_media_id, coalesce(sp.visible, true),
+               coalesce(sp.public_profile, false)
         FROM organizations.memberships m
         LEFT JOIN people.people pe ON pe.organization_id = m.organization_id AND pe.membership_id = m.id
         LEFT JOIN organizations.staff_profiles sp ON sp.organization_id = m.organization_id AND sp.membership_id = m.id
@@ -98,6 +101,13 @@ public sealed class InstructorService(IDataSourceProvider dataSources, TimeProvi
         var bio = Text(input.Bio, 600, "bio");
         var instagram = Instagram(input.InstagramHandle);
         var playlist = Playlist(input.PlaylistUrl);
+        // Showing one's profile to strangers is the instructor's own consent (docs/37 M-14): a manager editing someone
+        // else's profile can't turn it on.
+        if (input.PublicProfile is not null && target != tenant.MembershipId)
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "permission.denied", "Only the instructor can show their profile publicly.", "publicProfile");
+        }
+
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         await using (var staff = unitOfWork.Command(
             "SELECT 1 FROM organizations.memberships WHERE organization_id = $1 AND id = $2 AND status = 'active' AND role <> 'client'",
@@ -111,14 +121,15 @@ public sealed class InstructorService(IDataSourceProvider dataSources, TimeProvi
 
         await using (var upsert = unitOfWork.Command(
             """
-            INSERT INTO organizations.staff_profiles (organization_id, membership_id, headline, bio, instagram_handle, playlist_url, visible, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+            INSERT INTO organizations.staff_profiles (organization_id, membership_id, headline, bio, instagram_handle, playlist_url, visible, public_profile, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, coalesce($8, false), now())
             ON CONFLICT (organization_id, membership_id) DO UPDATE SET
                 headline = EXCLUDED.headline, bio = EXCLUDED.bio, instagram_handle = EXCLUDED.instagram_handle,
-                playlist_url = EXCLUDED.playlist_url, visible = EXCLUDED.visible, updated_at = now(),
+                playlist_url = EXCLUDED.playlist_url, visible = EXCLUDED.visible,
+                public_profile = coalesce($8, organizations.staff_profiles.public_profile), updated_at = now(),
                 version = organizations.staff_profiles.version + 1
             """,
-            tenant.OrganizationId, target, headline, bio, instagram, playlist, input.Visible ?? true))
+            tenant.OrganizationId, target, headline, bio, instagram, playlist, input.Visible ?? true, input.PublicProfile))
         {
             await upsert.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -126,7 +137,7 @@ public sealed class InstructorService(IDataSourceProvider dataSources, TimeProvi
         await AuditWriter.WriteAsync(
             unitOfWork,
             new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, "staff_profile.updated", "membership", target, tenant.CorrelationId,
-                new { headline = headline is not null, bio = bio is not null, instagram = instagram is not null, playlist = playlist is not null, visible = input.Visible ?? true }),
+                new { headline = headline is not null, bio = bio is not null, instagram = instagram is not null, playlist = playlist is not null, visible = input.Visible ?? true, publicProfile = input.PublicProfile }),
             cancellationToken);
         var saved = (await ReadAsync(unitOfWork, tenant.OrganizationId, $"{ProfileSelect} AND m.id = $2", cancellationToken, target)).Single();
         await unitOfWork.CommitAsync(cancellationToken);
@@ -201,7 +212,8 @@ public sealed class InstructorService(IDataSourceProvider dataSources, TimeProvi
                 await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5),
                 await reader.IsDBNullAsync(6, cancellationToken) ? null : reader.GetGuid(6),
                 reader.GetBoolean(7),
-                []));
+                [],
+                reader.GetBoolean(8)));
         }
 
         return profiles;
