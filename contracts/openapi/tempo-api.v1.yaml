@@ -333,7 +333,8 @@ paths:
         and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records
         the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person
         and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts
-        against the join attempts (429 with `Retry-After`). **SK3:** with `productId` (a listed
+        against the join attempts (429 with `Retry-After`), and against the per-address and per-account limits of
+        board #404 S-A (`RateLimits:JoinPerIpPerHour`, `JoinPerUserPerHour`; 429 `rate_limited`). **SK3:** with `productId` (a listed
         product) and/or `sessionId`, one transaction joins, grants that product once, marked to pay at the studio,
         and books; on any error nothing is granted or booked. 404 `product.not_found` or `session.not_found`;
         409 `offer.ended`, `offer.not_newcomer` (the caller holds or held this newcomers-only product here),
@@ -655,7 +656,7 @@ paths:
       description: >-
         docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at
         the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts
-        for the bring-a-friend reward (M-17).
+        for the bring-a-friend reward (M-17). Counts against the caller's link limit (S-A, 429 `rate_limited`).
       requestBody:
         required: true
         content:
@@ -671,6 +672,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/organizations/{organizationId}/me/milestones:
     parameters:
@@ -752,7 +754,8 @@ paths:
         `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without
         `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no
         session. 400 `channel.invalid` for `member_card` and `referral`, which are a member's own links
-        (`me/share-link`). Audit `marketing.link.created` (channel, template).
+        (`me/share-link`). Audit `marketing.link.created` (channel, template). Counts against the caller's link limit
+        (S-A, `RateLimits:LinksPerUserPerHour`; 429 `rate_limited` with `Retry-After`).
       requestBody:
         required: true
         content:
@@ -769,6 +772,7 @@ paths:
         "402": { $ref: "#/components/responses/Restricted" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/organizations/{organizationId}/reports/sources:
     parameters:
