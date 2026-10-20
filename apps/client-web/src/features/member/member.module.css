@@ -31,6 +31,20 @@
   flex: 1;
   min-width: 0;
 }
+/* The studio switcher stands where the studio's name was, a quiet button whose text lines up with the date. */
+.switcher {
+  align-self: flex-start;
+  margin-inline-start: -14px;
+  margin-block: -4px;
+}
+.switcher > button {
+  color: var(--ink-muted);
+}
+/* It sits at the start of the header, so its menu opens toward the end. */
+.switcher :global(.tp-menu--popover) {
+  inset-inline: 0 auto;
+  min-width: 220px;
+}
 .title {
   font-size: 30px;
   line-height: 36px;
