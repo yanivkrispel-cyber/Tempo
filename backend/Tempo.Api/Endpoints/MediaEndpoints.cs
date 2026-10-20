@@ -79,6 +79,18 @@ public static class MediaLinks
         return Store.PresignGet(key, MediaKeys.UrlLifetime);
     }
 
+    /// <summary>A picture of a studio named by the caller, for the public routes, which have no tenant (docs/37 section 4.2).</summary>
+    public static Uri? UrlFor(Guid organizationId, Guid? mediaId, bool small = false)
+    {
+        if (mediaId is not { } id || !Store.Available)
+        {
+            return null;
+        }
+
+        var key = small ? MediaKeys.Small(organizationId, id) : MediaKeys.Large(organizationId, id);
+        return Store.PresignGet(key, MediaKeys.UrlLifetime);
+    }
+
     /// <summary>The studio icon's 512 px PNG as it installs (on its ground), for the console's home-screen preview.</summary>
     public static Uri? IconUrl(Guid? mediaId)
     {

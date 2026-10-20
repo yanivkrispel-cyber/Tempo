@@ -1,6 +1,10 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tempo.Api.Tenancy;
+using Tempo.Contracts.Api.Marketing;
+using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.Organizations.Domain;
 
@@ -27,10 +31,72 @@ public static class PublicStudioEndpoints
     {
         var studio = endpoints.MapPublicStudioGroup();
 
+        studio.MapGet(string.Empty, StudioAsync).WithName("getPublicStudio");
+        studio.MapGet("/sessions", SessionsAsync).WithName("listPublicSessions");
+        studio.MapGet("/sessions/{sessionId:guid}", SessionAsync).WithName("getPublicSession");
         studio.MapGet("/manifest.webmanifest", ManifestAsync).WithName("getStudioManifest");
         studio.MapGet("/icons/{size}", IconAsync).WithName("getStudioIcon");
 
         return endpoints;
+    }
+
+    /// <summary>docs/37 section 4.2: the page's studio. Picture URLs live an hour, so the cache stays below it.</summary>
+    private static async Task<IResult> StudioAsync(HttpContext httpContext, IPublicStudioReads reads)
+    {
+        var page = await reads.GetStudioAsync(PublicStudioRouteFilter.Current(httpContext), httpContext.RequestAborted);
+        var studio = page.Studio;
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Ok(new PublicStudioResponse(
+            studio.Slug,
+            studio.DisplayName,
+            studio.Brand.AppName,
+            studio.Brand.AccentId,
+            MediaLinks.UrlFor(studio.Id, studio.Brand.LogoMediaId, small: true),
+            MediaLinks.UrlFor(studio.Id, page.CoverMediaId),
+            page.TimeZone,
+            page.HasIntroOffer ? new PublicIntroOfferResponse(page.IntroProductName!, page.IntroPriceAgorot) : null,
+            page.OpenJoin));
+    }
+
+    private static async Task<IResult> SessionsAsync(HttpContext httpContext, string? from, string? to, IPublicStudioReads reads)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        var sessions = await reads.ListSessionsAsync(studio, Date(from, "from"), Date(to, "to"), httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=60";
+        return Results.Ok(new PublicSessionListResponse([.. sessions.Select(s => ToResponse(studio.Id, s))]));
+    }
+
+    private static async Task<IResult> SessionAsync(HttpContext httpContext, Guid sessionId, IPublicStudioReads reads)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        var session = await reads.GetSessionAsync(studio, sessionId, httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "public, max-age=60";
+        return Results.Ok(ToResponse(studio.Id, session));
+    }
+
+    private static PublicSessionResponse ToResponse(Guid studioId, PublicSessionView s) =>
+        new(
+            s.Id,
+            s.StartsAt,
+            s.Minutes,
+            new PublicClassTypeResponse(s.ClassTypeName, s.ClassTypeCategory, s.ClassTypeColor),
+            s.RoomName,
+            MediaLinks.UrlFor(studioId, s.CoverMediaId),
+            s.Instructor is { } i ? new PublicInstructorResponse(i.DisplayName, MediaLinks.UrlFor(studioId, i.PhotoMediaId, small: true), i.Headline, i.InstagramHandle) : null,
+            s.Availability,
+            s.SpotsLeft,
+            s.WaitlistOpen);
+
+    private static DateOnly? Date(string? value, string field)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        return DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date
+            : throw new DomainRuleViolationException(ViolationKind.Validation, "range.invalid", "Dates are yyyy-mm-dd.", field);
     }
 
     private static IResult ManifestAsync(HttpContext httpContext, AppLinks links)

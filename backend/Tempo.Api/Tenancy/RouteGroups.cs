@@ -27,6 +27,7 @@ public static class RouteGroups
     public static RouteGroupBuilder MapPublicStudioGroup(this IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup($"/api/v1/public/studios/{{{PublicStudioRouteFilter.RouteValue}}}")
             .AllowAnonymous()
+            .AddEndpointFilter<PublicRateLimitFilter>()
             .AddEndpointFilter<PublicStudioRouteFilter>();
 
     /// <summary>`/api/v1/platform/...` with an operator token only (ADR-0023), from a registered operator.</summary>
