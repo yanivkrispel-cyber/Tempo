@@ -2,6 +2,8 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Organizations.Domain;
+using Tempo.Platform.Modules.Organizations.Infrastructure;
 
 namespace Tempo.Platform.Modules.Media;
 
@@ -10,7 +12,8 @@ public sealed record UploadTicketView(Guid MediaId, PresignedForm UploadForm, in
 public sealed record MediaView(Guid Id, string Purpose, Guid OwnerId, int Width, int Height);
 
 /// <summary>
-/// Pictures (docs/33 section 6): a class type's cover, the studio's cover, an instructor's photo, a person's avatar.
+/// Pictures (docs/33 section 6): a class type's cover, the studio's cover, an instructor's photo, a person's avatar,
+/// and the studio's brand logo and icon (docs/35 section 2).
 /// The app asks for an upload ticket, POSTs the file to S3 itself, then finalizes; the API re-encodes it and points
 /// the owner at it. Who may set each kind of picture is the same rule that lets them edit its owner.
 /// </summary>
@@ -31,7 +34,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
     /// <summary>Upload tickets one membership may take in an hour: with the POST's size cap, this bounds what a caller can leave in incoming/.</summary>
     public const int UploadsPerHour = 20;
-    private static readonly string[] Purposes = ["class_cover", "instructor_photo", "studio_cover", "avatar"];
+    private static readonly string[] Purposes = ["class_cover", "instructor_photo", "studio_cover", "avatar", "studio_logo", "studio_icon"];
     private static readonly string[] ContentTypes = ["image/jpeg", "image/png", "image/webp"];
 
     public async Task<UploadTicketView> StartUploadAsync(TenantContext tenant, string? purpose, Guid? ownerId, string? contentType, int? bytes, CancellationToken cancellationToken)
@@ -124,6 +127,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
             owner = reader.GetGuid(1);
         }
 
+        var ground = kind == "studio_icon" ? await IconGroundAsync(tenant, cancellationToken) : null;
         var incoming = MediaKeys.Incoming(tenant.OrganizationId, mediaId);
         var original = await store.ReadAsync(incoming, MaxUploadBytes, cancellationToken)
             ?? throw new DomainRuleViolationException(ViolationKind.Conflict, "media.not_uploaded", "The file was not uploaded, or it is over 8 MB.");
@@ -135,8 +139,26 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
             throw new DomainRuleViolationException(ViolationKind.Validation, "media.not_an_image", "This file is not a picture we can use.", "file");
         }
 
+        // A home-screen icon needs a mark of at least 512 x 512 (docs/35 section 2); its PNG sizes are drawn now.
+        IReadOnlyDictionary<string, byte[]>? icons = null;
+        if (ground is not null)
+        {
+            icons = Math.Min(image.Width, image.Height) >= StudioIcons.MinimumSide ? StudioIcons.Render(image.Large, ground) : null;
+            if (icons is null)
+            {
+                await SetStatusAsync(tenant, mediaId, "rejected", cancellationToken);
+                await store.DeleteAsync([incoming], cancellationToken);
+                throw new DomainRuleViolationException(ViolationKind.Validation, "media.icon_too_small", "An icon is at least 512 x 512 pixels.", "file");
+            }
+        }
+
         await store.WriteAsync(MediaKeys.Large(tenant.OrganizationId, mediaId), image.Large, "image/webp", cancellationToken);
         await store.WriteAsync(MediaKeys.Small(tenant.OrganizationId, mediaId), image.Small, "image/webp", cancellationToken);
+        foreach (var (size, png) in icons ?? new Dictionary<string, byte[]>())
+        {
+            await store.WriteAsync(MediaKeys.Icon(tenant.OrganizationId, mediaId, size), png, "image/png", cancellationToken);
+        }
+
         await store.DeleteAsync([incoming], cancellationToken);
 
         Guid? previous;
@@ -178,7 +200,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
         if (previous is { } replaced)
         {
-            await store.DeleteAsync([MediaKeys.Large(tenant.OrganizationId, replaced), MediaKeys.Small(tenant.OrganizationId, replaced)], cancellationToken);
+            await store.DeleteAsync(MediaKeys.Objects(tenant.OrganizationId, replaced, kind), cancellationToken);
         }
 
         return new MediaView(mediaId, kind, owner, image.Width, image.Height);
@@ -206,7 +228,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
 
         if (previous is { } removed)
         {
-            await store.DeleteAsync([MediaKeys.Large(tenant.OrganizationId, removed), MediaKeys.Small(tenant.OrganizationId, removed)], cancellationToken);
+            await store.DeleteAsync(MediaKeys.Objects(tenant.OrganizationId, removed, kind), cancellationToken);
         }
     }
 
@@ -256,7 +278,7 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
                 exists = await ExistsAsync(unitOfWork, "SELECT 1 FROM scheduling.class_types WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, owner, cancellationToken);
                 allowed = tenant.Has(Permissions.ScheduleManage);
                 break;
-            case "studio_cover":
+            case "studio_cover" or "studio_logo" or "studio_icon":
                 exists = owner == tenant.OrganizationId;
                 allowed = tenant.Has(Permissions.OrganizationSettingsManage);
                 break;
@@ -285,6 +307,11 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
     /// <summary>Points the owner at <paramref name="mediaId"/> (null clears it) and returns the picture it replaced.</summary>
     private static async Task<Guid?> PointAsync(UnitOfWork unitOfWork, Guid organizationId, string kind, Guid owner, Guid? mediaId, CancellationToken cancellationToken)
     {
+        if (kind is "studio_logo" or "studio_icon")
+        {
+            return await PointBrandAsync(unitOfWork, organizationId, kind == "studio_logo" ? "logo_media_id" : "icon_media_id", mediaId, cancellationToken);
+        }
+
         var (table, column, key) = kind switch
         {
             "class_cover" => ("scheduling.class_types", "cover_media_id", "id"),
@@ -315,6 +342,33 @@ public sealed class MediaService(IDataSourceProvider dataSources, IMediaStore st
         }
 
         return previous;
+    }
+
+    /// <summary>The brand's logo or icon: the row is made on first use, and every change bumps its version (W-6).</summary>
+    private static async Task<Guid?> PointBrandAsync(UnitOfWork unitOfWork, Guid organizationId, string column, Guid? mediaId, CancellationToken cancellationToken)
+    {
+        await BrandRows.EnsureAsync(unitOfWork, organizationId, cancellationToken);
+        Guid? previous;
+        await using (var read = unitOfWork.Command($"SELECT {column} FROM organizations.brands WHERE organization_id = $1 FOR UPDATE", organizationId))
+        {
+            previous = await read.ExecuteScalarAsync(cancellationToken) as Guid?;
+        }
+
+        await using (var update = unitOfWork.Command($"UPDATE organizations.brands SET {column} = $2, version = version + 1, updated_at = now() WHERE organization_id = $1", organizationId, mediaId))
+        {
+            await update.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        return previous;
+    }
+
+    /// <summary>The ground a new icon is drawn on: the brand's background and accent, or paper before any brand.</summary>
+    private async Task<string> IconGroundAsync(TenantContext tenant, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        await using var read = unitOfWork.Command("SELECT accent_id, icon_background FROM organizations.brands WHERE organization_id = $1", tenant.OrganizationId);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? Brand.IconGroundHex(reader.GetString(0), reader.GetString(1)) : Brand.PaperHex;
     }
 
     private static async Task MarkDeletedAsync(UnitOfWork unitOfWork, Guid organizationId, Guid mediaId, CancellationToken cancellationToken)

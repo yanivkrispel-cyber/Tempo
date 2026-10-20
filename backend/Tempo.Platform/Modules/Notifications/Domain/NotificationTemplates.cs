@@ -44,7 +44,15 @@ public static class TemplateCatalog
         Class("reminder.class_tomorrow", "תזכורת: יש לך שיעור מחר", "אם התוכניות השתנו, אפשר לבטל בעמוד השיעור ולפנות את המקום."),
         Class("reminder.class_soon", "תזכורת: השיעור מתחיל בקרוב", "כל הפרטים בעמוד השיעור."),
         PassKind("reminder.pass_ending", "המנוי או הכרטיסייה עומדים לפוג", "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לחידוש."),
-        PassKind("reminder.entries_low", "נשארו מעט כניסות בכרטיסייה", "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לכרטיסייה חדשה.")
+        PassKind("reminder.entries_low", "נשארו מעט כניסות בכרטיסייה", "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לכרטיסייה חדשה."),
+        // Stage B of studio marketing (docs/37 section 8): an event a week ahead, a milestone, a friend's first class.
+        Class("reminder.event_week", "תזכורת: האירוע בעוד שבוע", "כל הפרטים בעמוד האירוע. אם התוכניות השתנו, אפשר לבטל שם ולפנות את המקום."),
+        new("member.milestone", NotificationGroups.Celebrations, Common,
+            new("הגעת לאבן דרך ב{{studio.name}}", "הכרטיס שלך מוכן, אם בא לך לשתף."),
+            new("הגעת לאבן דרך ב{{studio.name}}", "הכרטיס שלך מוכן באפליקציה.")),
+        new("member.referral_rewarded", NotificationGroups.Celebrations, Common,
+            new("חברה שהזמנת הגיעה לשיעור הראשון", "תודה שהבאת אותה. קיבלת כרטיסייה מהסטודיו, והיא כבר אצלך בפרופיל."),
+            new("חברה שהזמנת הגיעה לשיעור הראשון", "קיבלת כרטיסייה מהסטודיו."))
     ];
 
     private static readonly Dictionary<string, TemplatedKind> ByKind = All.ToDictionary(k => k.Kind, StringComparer.Ordinal);

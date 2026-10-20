@@ -11,11 +11,15 @@ public sealed class NotificationTemplatesTests
     private static readonly TemplatedKind Promoted = TemplateCatalog.Find("booking.promoted")!;
 
     [Fact]
-    public void Catalog_HasTheTenTemplatedKinds_AndNoneForStaffText()
+    public void Catalog_HasTheThirteenTemplatedKinds_AndNoneForStaffText()
     {
         TemplateCatalog.Kinds.Select(k => k.Kind).Should().BeEquivalentTo(
             "booking.promoted", "booking.promotion_failed", "booking.moved", "session.cancelled", "waitlist.expired", "pass.frozen",
-            "reminder.class_tomorrow", "reminder.class_soon", "reminder.pass_ending", "reminder.entries_low");
+            "reminder.class_tomorrow", "reminder.class_soon", "reminder.pass_ending", "reminder.entries_low",
+            "reminder.event_week", "member.milestone", "member.referral_rewarded");
+        TemplateCatalog.Find("member.milestone")!.Group.Should().Be("celebrations");
+        TemplateCatalog.Find("member.referral_rewarded")!.Group.Should().Be("celebrations");
+        TemplateCatalog.Find("reminder.event_week")!.Group.Should().Be("reminders");
         TemplateCatalog.Find("session.message").Should().BeNull();
         TemplateCatalog.Find("studio.announcement").Should().BeNull();
         TemplateCatalog.Find("pass.frozen")!.Variables.Should().Contain("pass.frozenUntil");

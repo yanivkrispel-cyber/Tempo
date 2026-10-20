@@ -19,6 +19,149 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/studios/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A studio's public page, when the studio turned it on (anyone)
+         * @description docs/37 section 4.2 (MK2). 404 `studio.not_found` for an unknown, suspended or removed studio, or one whose public page is off (M-7). No person's data. `Cache-Control: public, max-age=300`.
+         */
+        get: operations["getPublicStudio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A public studio's sessions for up to 14 days, with occupancy buckets (anyone)
+         * @description MK2. `from` and `to` are local dates (`yyyy-mm-dd`, the studio's time zone); `to` at most 13 days after `from`, default today and the next 6 days. 400 `range.invalid` otherwise. Availability is a bucket (M-10), never a count of people. `Cache-Control: public, max-age=60`.
+         */
+        get: operations["listPublicSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * One session of a public studio (anyone)
+         * @description MK2. 404 `session.not_found` for a session of another studio or more than 60 days away.
+         */
+        get: operations["getPublicSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join a public studio as a client, without a code (a signed-in customer)
+         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`).
+         */
+        post: operations["joinPublicStudio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/manifest.webmanifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * An active studio's web app manifest, for its own installable app (anyone)
+         * @description docs/35 section 5 (W-6, WL4). `id`, `start_url` and `scope` are absolute on the members app (`<members app>/s/<slug>/`); `icons[].src` are relative to this URL and carry the brand's version. Cached for five minutes. 404 `studio.not_found` for an unknown, suspended or removed studio. No person's data.
+         */
+        get: operations["getStudioManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/icons/{size}": {
+        parameters: {
+            query?: {
+                /** @description The brand's version, so a changed icon gets a new URL. */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                size: "192" | "512" | "512-maskable" | "180";
+            };
+            cookie?: never;
+        };
+        /**
+         * An active studio's home-screen icon as PNG (anyone)
+         * @description The studio's icon on its background, or its initials on its accent when it has none (W-2). `180` is for iOS's `apple-touch-icon`. `Cache-Control: public, max-age=31536000, immutable` when `v` is the brand's current version, else `max-age=60`. 404 for an unknown size or studio.
+         */
+        get: operations["getStudioIcon"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -175,6 +318,146 @@ export interface paths {
         head?: never;
         /** Change studio settings (owner, admin) */
         patch: operations["updateOrganization"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/share-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The caller's own link for a member card or for bringing a friend (`schedule.view`)
+         * @description docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at the studio's public page (`member_card` may name a session). A friend who joins with a `referral` code counts for the bring-a-friend reward (M-17).
+         */
+        post: operations["getMyShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/me/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's attended-class milestones in this studio, computed live (`schedule.view`)
+         * @description docs/37 section 8.2 (MK8, M-16): the thresholds reached (10, 25, 50, 100, 200), the next one, hours on the mat, the longest run of weeks in a row, the usual class time and the most frequent instructor (a name only when their profile is public). Nothing here is visible to other members.
+         */
+        get: operations["getMyMilestones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/public-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's public page settings (`organization.view`)
+         * @description docs/37 section 4.4 (MK1). Defaults until the first save: off, open join on, no intro product, no weekly suggestion, version `0`. The page's address is `<members app>/s/<slug>/`.
+         */
+        get: operations["getPublicPage"];
+        /**
+         * Turn the public page and open join on or off, pick the intro product and the weekly suggestion (`organization.settings.manage`)
+         * @description 400 `enabled.required`, `openJoin.required`, `introProductId.invalid` (not an active product of this studio) or `suggestWeeklyAt.invalid` (`sun 09:00` style, studio time); 409 `concurrency.conflict`. Audit `public_page.updated` with field names only.
+         */
+        put: operations["updatePublicPage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/marketing/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
+         * @description docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         */
+        post: operations["createMarketingLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/reports/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where sign-ups came from: new members, bookings and attended bookings per channel and per link (`reports.view`)
+         * @description docs/37 section 6 (MK4, "מאיפה הגיעו ההרשמות"). A live query, the last 7 or 30 days.
+         */
+        get: operations["getSourceReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's brand: app name, accent, icon background, logo and icon (`organization.view`)
+         * @description docs/35 section 2 (WL1). Any member reads it, since the member app wears it. Until the studio saves, the defaults answer with `customized: false` and version `0`: the display name (or its first word, at most 12 characters), `sage` and `paper`. The logo and the icon are set and removed through the picture flow with the purposes `studio_logo` and `studio_icon` and the studio's id as `ownerId`.
+         */
+        get: operations["getBrand"];
+        /**
+         * Change the studio's app name, accent and icon background (`organization.settings.manage`)
+         * @description Every field is required. 400 `appName.invalid` (1 to 12 characters after trimming, no control characters), `accentId.invalid` (one of the eight) or `iconBackground.invalid`; 409 `concurrency.conflict` when If-Match names an older version. Every change bumps `version`, which the public icon and manifest URLs carry (W-6); a new accent or background draws the icon's PNGs again. Audit `brand.updated` with the changed field names only.
+         */
+        put: operations["updateBrand"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/members": {
@@ -3643,6 +3926,8 @@ export interface components {
             /** @description The instructor's note to the class (docs/33 section 7), e.g. what to bring. */
             memberNote?: string | null;
             version: string;
+            /** @description Set on a one-off session that is an event or a workshop (docs/37 section 8.4). */
+            event?: components["schemas"]["SessionEvent"] | null;
         };
         SessionList: {
             items: components["schemas"]["Session"][];
@@ -3659,6 +3944,14 @@ export interface components {
             /** Format: uuid */
             roomId?: string;
             capacity: number;
+            /** @description Makes the one-off session an event or a workshop (docs/37 section 8.4): 400 `event.title.invalid` (1 to 60 characters), `event.description.invalid` (up to 600), `event.priceAgorot.invalid` (0 or more). `passRequired` defaults to true; false books without a pass, to pay at the studio. */
+            event?: {
+                title?: string;
+                description?: string | null;
+                priceAgorot?: number | null;
+                /** @default true */
+                passRequired: boolean;
+            } | null;
         };
         UpdateSessionRequest: {
             /** Format: uuid */
@@ -3705,6 +3998,8 @@ export interface components {
             version: string;
             /** @description The spot this place holds in a room with spot selection (docs/33 section 3); null otherwise. */
             spot?: components["schemas"]["SpotRef"] | null;
+            /** @description A place at an event without a pass (docs/37 8.4): paid at the studio, shown on the roster. */
+            toPayAtStudio?: boolean;
         };
         CreateBookingRequest: {
             /**
@@ -3719,6 +4014,8 @@ export interface components {
              *     it is taken. Ignored when the class is full and the booking joins the waitlist.
              */
             spotId?: string;
+            /** @description The last-touch source code the members app kept (docs/37 section 6, M-12). Kept on one's own booking only; a malformed or unknown code is ignored. */
+            src?: string | null;
         };
         SpotRef: {
             /** Format: uuid */
@@ -3866,6 +4163,8 @@ export interface components {
             photoSmallUrl?: string | null;
             /** @description Shown to members. */
             visible: boolean;
+            /** @description Shown to strangers (docs/37 M-14); the instructor's own consent, default off. */
+            publicProfile?: boolean;
             /** @description The next five classes; only on `getInstructor`. */
             nextSessions?: components["schemas"]["Session"][] | null;
         };
@@ -3881,6 +4180,8 @@ export interface components {
             playlistUrl?: string | null;
             /** @default true */
             visible: boolean;
+            /** @description Show my name, photo, headline and handle to strangers on the public page and stories (docs/37 M-14). Only the instructor sets their own; null or absent keeps it (403 when a manager sends it for someone else). */
+            publicProfile?: boolean | null;
         };
         MemberNoteRequest: {
             /** @description Null or empty clears it. */
@@ -3888,13 +4189,257 @@ export interface components {
             /** @description Also the weekly class's note and its future sessions. */
             applyToWeekly?: boolean;
         };
+        ShareLinkInput: {
+            /** @enum {string} */
+            channel: "member_card" | "referral";
+            /**
+             * Format: uuid
+             * @description `member_card` only: the class the card is about.
+             */
+            sessionId?: string | null;
+        };
+        MyMilestones: {
+            attended: number;
+            reached: (10 | 25 | 50 | 100 | 200)[];
+            next: number | null;
+            hoursOnTheMat: number;
+            longestWeekStreak: number;
+            /** @description Local `HH:mm` of the most frequent start. */
+            usualTime: string | null;
+            /** @description Only when that instructor's profile is public (M-14). */
+            topInstructor: string | null;
+        };
+        /** @description docs/37 section 8.4 (MK8): a one-off session that is an event or a workshop. With `passRequired` false a booking holds no pass entry and is marked `toPayAtStudio`. */
+        SessionEvent: {
+            title: string;
+            description: string | null;
+            /** @description Shown only; nothing charges it. */
+            priceAgorot: number | null;
+            passRequired: boolean;
+        };
+        PublicPage: {
+            /** @description Strangers see the page (M-7). */
+            enabled: boolean;
+            /** @description Anyone signed in may join from the page, no code (M-9). */
+            openJoin: boolean;
+            /**
+             * Format: uuid
+             * @description Granted once to a newcomer, to pay at the studio (M-8).
+             */
+            introProductId: string | null;
+            /** @description Studio time; null means off (M-13). */
+            suggestWeeklyAt: string | null;
+            version: string;
+            /** @description The studio's handle on member cards (M-15); null shows none. */
+            instagramHandle: string | null;
+            /**
+             * Format: uuid
+             * @description One pass of it per friend's first attended class (M-17); null means no reward.
+             */
+            referralRewardProductId: string | null;
+        };
+        PublicPageInput: {
+            enabled: boolean;
+            openJoin: boolean;
+            /** Format: uuid */
+            introProductId?: string | null;
+            suggestWeeklyAt?: string | null;
+            /** @description A handle, @handle or an instagram.com link; 400 `instagramHandle.invalid`. */
+            instagramHandle?: string | null;
+            /**
+             * Format: uuid
+             * @description 400 `referralRewardProductId.invalid` unless an active product of this studio.
+             */
+            referralRewardProductId?: string | null;
+        };
+        PublicStudio: {
+            slug: string;
+            name: string;
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /**
+             * Format: uri
+             * @description Presigned, valid one hour.
+             */
+            logoUrl: string | null;
+            /**
+             * Format: uri
+             * @description Presigned, valid one hour.
+             */
+            coverUrl: string | null;
+            timeZone: string;
+            introOffer: {
+                name: string;
+                priceAgorot: number | null;
+            } | null;
+            openJoin: boolean;
+        };
+        /**
+         * @description M-10: `few` is 3 or fewer places left (then `spotsLeft`); `full` may still have a waitlist.
+         * @enum {string}
+         */
+        PublicSessionAvailability: "open" | "few" | "full" | "cancelled";
+        PublicSession: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            startsAt: string;
+            minutes: number;
+            classType: {
+                name: string;
+                category: string;
+                color: string;
+            };
+            roomName: string | null;
+            /** Format: uri */
+            coverUrl: string | null;
+            /** @description Only when the instructor turned on their public profile (M-14). */
+            instructor: {
+                displayName: string;
+                /** Format: uri */
+                photoUrl: string | null;
+                headline: string | null;
+                instagramHandle: string | null;
+            } | null;
+            availability: components["schemas"]["PublicSessionAvailability"];
+            /** @description Only when `few`. */
+            spotsLeft: number | null;
+            waitlistOpen: boolean;
+            /** @description An event shows in its own layout (docs/37 section 8.4). */
+            event: {
+                title: string;
+                description: string | null;
+                priceAgorot: number | null;
+                passRequired: boolean;
+            } | null;
+        };
+        PublicSessionList: {
+            items: components["schemas"]["PublicSession"][];
+        };
+        PublicJoinRequest: {
+            /** @description The first-touch source code the app kept (section 6). */
+            src?: string | null;
+        };
+        PublicJoinResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            membershipId: string;
+            /** @description False when the caller was already a member. */
+            created: boolean;
+            introPass: {
+                /** Format: uuid */
+                passId: string;
+                productName: string;
+                toPayAtStudio: boolean;
+            } | null;
+        };
         /** @enum {string} */
-        MediaPurpose: "class_cover" | "instructor_photo" | "studio_cover" | "avatar";
+        MarketingChannel: "story" | "whatsapp" | "bio" | "poster" | "member_card" | "referral" | "other";
+        MarketingLinkInput: {
+            channel: components["schemas"]["MarketingChannel"];
+            /**
+             * @example week
+             * @example today
+             * @example spot_opened
+             * @example change
+             */
+            template?: string | null;
+            /** Format: uuid */
+            sessionId?: string | null;
+        };
+        MarketingLink: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            channel: components["schemas"]["MarketingChannel"];
+            template: string | null;
+            /** Format: uuid */
+            sessionId: string | null;
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ChannelSource: {
+            channel: components["schemas"]["MarketingChannel"];
+            /** @description New memberships whose first touch is this source. */
+            members: number;
+            /** @description Bookings whose last touch is this source. */
+            bookings: number;
+            /** @description Of those bookings, how many were attended. */
+            attended: number;
+        };
+        LinkSource: {
+            /** Format: uuid */
+            linkId: string;
+            code: string;
+            channel: components["schemas"]["MarketingChannel"];
+            template: string | null;
+            /** Format: uuid */
+            sessionId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            members: number;
+            bookings: number;
+            attended: number;
+        };
+        SourceReport: {
+            days: number;
+            byChannel: components["schemas"]["ChannelSource"][];
+            /** @description Links with sign-ups or bookings in the window, and links made in it; at most 200. */
+            byLink: components["schemas"]["LinkSource"][];
+        };
+        /** @description A W3C web app manifest for one studio, so its member names are the standard's own (snake_case): `id`, `name`, `short_name` (the brand's app name), `lang` `he`, `dir` `rtl`, `start_url`, `scope`, `display` `standalone`, `orientation`, `background_color`, `theme_color` (the accent) and `icons` (`src`, `sizes`, `type` `image/png`, `purpose` `any` or `maskable`). */
+        StudioManifest: {
+            [key: string]: unknown;
+        };
+        /**
+         * @description The eight vetted accents of the design system (docs/35 section 3, W-1); never a free colour.
+         * @enum {string}
+         */
+        AccentId: "sage" | "olive" | "ocean" | "plum" | "rose" | "terracotta" | "sand" | "graphite";
+        Brand: {
+            /** @description What a phone shows under the icon. */
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /** @enum {string} */
+            iconBackground: "paper" | "accent";
+            /**
+             * Format: uri
+             * @description The logo at 1600 px (WebP); short-lived.
+             */
+            logoUrl: string | null;
+            /**
+             * Format: uri
+             * @description The logo at 400 px (WebP); short-lived.
+             */
+            logoSmallUrl: string | null;
+            /**
+             * Format: uri
+             * @description The icon's 512 px PNG as it installs, on its background; short-lived. Null without an icon.
+             */
+            iconUrl: string | null;
+            /** @description False while the defaults stand (nothing saved yet). */
+            customized: boolean;
+            version: string;
+        };
+        BrandInput: {
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /** @enum {string} */
+            iconBackground: "paper" | "accent";
+        };
+        /**
+         * @description `studio_logo` and `studio_icon` are the brand's (docs/35 section 2), owned by the studio itself (`organization.settings.manage`). An icon must be at least 512 x 512 (400 `media.icon_too_small`); its finalize also draws the PNGs a phone installs (192 and 512 `any`, 512 `maskable`, 180 for iOS) on the brand's icon background.
+         * @enum {string}
+         */
+        MediaPurpose: "class_cover" | "instructor_photo" | "studio_cover" | "avatar" | "studio_logo" | "studio_icon";
         MediaUploadRequest: {
             purpose: components["schemas"]["MediaPurpose"];
             /**
              * Format: uuid
-             * @description The class type, the instructor's membership, the studio or the person the picture belongs to.
+             * @description The class type, the instructor's membership, the studio (cover, logo, icon) or the person the picture belongs to.
              */
             ownerId: string;
             /** @enum {string} */
@@ -4009,8 +4554,11 @@ export interface components {
             }[];
         };
         Suggestion: {
-            /** @enum {string} */
-            kind: "passes_ending" | "members_at_risk" | "waitlist_pressure";
+            /**
+             * @description The `story_*` cards (docs/37 section 7.4, M-13) come with `marketing.publish` and the public page on: `story_weekly` from the owner's day and time (count = this week's classes), `story_spot_opened` for a place freed after the waitlist closed, 90 minutes or more before the class (count = places, with the session), `story_schedule_changed` for classes of the next 7 days cancelled or given a new instructor in the last 24 hours (count).
+             * @enum {string}
+             */
+            kind: "passes_ending" | "members_at_risk" | "waitlist_pressure" | "story_weekly" | "story_spot_opened" | "story_schedule_changed";
             count: number;
             people: components["schemas"]["PersonRef"][];
             amountAgorot?: number | null;
@@ -4419,8 +4967,11 @@ export interface components {
             quietHours: components["schemas"]["QuietHours"];
             reminders: components["schemas"]["ReminderTiming"];
         };
-        /** @enum {string} */
-        NotificationGroup: "bookings" | "reminders" | "studio";
+        /**
+         * @description `celebrations` (docs/37 stage B): a member's milestones and bring-a-friend rewards; on by default.
+         * @enum {string}
+         */
+        NotificationGroup: "bookings" | "reminders" | "studio" | "celebrations";
         NotificationTemplateList: {
             items: {
                 /** @example booking.promoted */
@@ -4984,6 +5535,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description The studio's slug, as in its public links. */
+        StudioSlug: string;
         OrganizationId: string;
         MembershipId: string;
         /** @description The `id` of the last item on the previous page. */
@@ -5031,6 +5584,171 @@ export interface operations {
             };
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["Problem"];
+        };
+    };
+    getPublicStudio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicStudio"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPublicSessions: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicSessionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicSession"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    joinPublicStudio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublicJoinRequest"];
+            };
+        };
+        responses: {
+            /** @description The membership (new or existing). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJoinResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getStudioManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The manifest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/manifest+json": components["schemas"]["StudioManifest"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getStudioIcon: {
+        parameters: {
+            query?: {
+                /** @description The brand's version, so a changed icon gets a new URL. */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                size: "192" | "512" | "512-maskable" | "180";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PNG. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     startSession: {
@@ -5358,6 +6076,240 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getMyShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareLinkInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketingLink"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMyMilestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyMilestones"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPublicPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePublicPage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicPageInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createMarketingLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarketingLinkInput"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketingLink"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSourceReport: {
+        parameters: {
+            query?: {
+                days?: 7 | 30;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateBrand: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];

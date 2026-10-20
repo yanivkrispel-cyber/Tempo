@@ -2,6 +2,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.People.Application;
 
 namespace Tempo.Platform.Modules.Scheduling.Application;
@@ -130,6 +131,10 @@ public sealed partial class BookingService : IClassService
         // A no-show keeps the entry used; attendance never returns or takes an entry.
         await SetStatusAsync(unitOfWork, tenant.OrganizationId, bookingId, state, null, cancellationToken);
         await AuditAsync(unitOfWork, tenant, "booking.attendance_marked", bookingId, new { sessionId, state }, cancellationToken);
+        if (state == "attended" && status != "attended")
+        {
+            await AttendanceEffects.OnAttendedAsync(unitOfWork, tenant.OrganizationId, bookingId, tenant.UserAccountId, tenant.CorrelationId, cancellationToken);
+        }
         var marked = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, bookingId)).Single();
         await unitOfWork.CommitAsync(cancellationToken);
         return marked;

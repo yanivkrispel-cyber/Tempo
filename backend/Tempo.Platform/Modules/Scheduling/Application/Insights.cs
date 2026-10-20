@@ -189,8 +189,104 @@ public sealed class InsightService(IDataSourceProvider dataSources, TimeProvider
             cards.Add(pressure);
         }
 
-        // Money at stake first: renewals, then the people who stopped coming, then a class that could open.
-        return [.. cards.OrderBy(c => c.Kind switch { "passes_ending" => 0, "members_at_risk" => 1, _ => 2 })];
+        if (tenant.Has(Permissions.MarketingPublish))
+        {
+            cards.AddRange(await StorySuggestionsAsync(unitOfWork, tenant.OrganizationId, cancellationToken));
+        }
+
+        // Money at stake first: renewals, then the people who stopped coming, then a class that could open, then stories.
+        return [.. cards.OrderBy(c => c.Kind switch { "passes_ending" => 0, "members_at_risk" => 1, "waitlist_pressure" => 2, _ => 3 })];
+    }
+
+    /// <summary>A place frees up this close to the class (after the waitlist closed) and is still worth a story.</summary>
+    public static readonly TimeSpan StoryLeadTime = TimeSpan.FromMinutes(90);
+
+    /// <summary>
+    /// Story suggestions for a studio whose public page is on (docs/37 section 7.4, M-13), at most one of each, so at
+    /// most three: the weekly story from the owner's day and time on, a place that freed up after the waitlist
+    /// closed (at least 90 minutes before the class), and a timetable change in the next 7 days (a cancelled class or
+    /// a new instructor in the last 24 hours). Live, like the other cards; no table and no job.
+    /// </summary>
+    private async Task<IReadOnlyList<SuggestionView>> StorySuggestionsAsync(UnitOfWork unitOfWork, Guid organizationId, CancellationToken cancellationToken)
+    {
+        string? weekly;
+        await using (var page = unitOfWork.Command(
+            "SELECT suggest_weekly_at FROM organizations.public_pages WHERE organization_id = $1 AND enabled",
+            organizationId))
+        await using (var reader = await page.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return [];
+            }
+
+            weekly = reader.IsDBNull(0) ? null : reader.GetString(0);
+        }
+
+        var now = clock.GetUtcNow();
+        var zone = await TimetableService.StudioZoneAsync(unitOfWork, organizationId, cancellationToken);
+        var local = TimeZoneInfo.ConvertTime(now, zone).DateTime;
+        var cards = new List<SuggestionView>();
+        if (weekly is not null && WeeklyStoryDue(weekly, local))
+        {
+            await using var week = unitOfWork.Command(
+                "SELECT count(*) FROM scheduling.sessions WHERE organization_id = $1 AND status = 'scheduled' AND local_date BETWEEN $2 AND $3",
+                organizationId, DateOnly.FromDateTime(local), DateOnly.FromDateTime(local).AddDays(6));
+            cards.Add(new SuggestionView("story_weekly", (int)(long)(await week.ExecuteScalarAsync(cancellationToken))!, []));
+        }
+
+        await using (var opened = unitOfWork.Command(
+            """
+            SELECT s.id, ct.name, s.starts_at, s.capacity - s.booked_count
+            FROM scheduling.sessions s
+            JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
+            LEFT JOIN scheduling.booking_policies bp ON bp.organization_id = s.organization_id
+            WHERE s.organization_id = $1 AND s.status = 'scheduled' AND s.booked_count < s.capacity
+              AND s.starts_at > $2 AND $3 >= s.starts_at - make_interval(hours => coalesce(bp.waitlist_cutoff_hours, 2))
+              AND EXISTS (SELECT 1 FROM scheduling.bookings b
+                          WHERE b.organization_id = s.organization_id AND b.session_id = s.id AND b.status = 'cancelled'
+                            AND b.updated_at >= s.starts_at - make_interval(hours => coalesce(bp.waitlist_cutoff_hours, 2)))
+            ORDER BY s.starts_at
+            LIMIT 1
+            """,
+            organizationId, now.Add(StoryLeadTime), now))
+        await using (var reader = await opened.ExecuteReaderAsync(cancellationToken))
+        {
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                cards.Add(new SuggestionView("story_spot_opened", reader.GetInt32(3), [], null, reader.GetGuid(0), reader.GetString(1), reader.GetFieldValue<DateTimeOffset>(2)));
+            }
+        }
+
+        await using (var changed = unitOfWork.Command(
+            """
+            SELECT count(*) FROM scheduling.sessions s
+            WHERE s.organization_id = $1 AND s.starts_at BETWEEN $2 AND $2 + interval '7 days'
+              AND ((s.status = 'cancelled' AND s.updated_at >= $2 - interval '24 hours')
+                   OR EXISTS (SELECT 1 FROM audit.audit_events a
+                              WHERE a.organization_id = s.organization_id AND a.target_id = s.id AND a.action = 'session.updated'
+                                AND a.data ->> 'instructor' = 'true' AND a.occurred_at >= $2 - interval '24 hours'))
+            """,
+            organizationId, now))
+        {
+            var count = (int)(long)(await changed.ExecuteScalarAsync(cancellationToken))!;
+            if (count > 0)
+            {
+                cards.Add(new SuggestionView("story_schedule_changed", count, []));
+            }
+        }
+
+        return cards;
+    }
+
+    /// <summary>`sun 09:00`: due from that day and time until the day ends, in the studio's time.</summary>
+    public static bool WeeklyStoryDue(string weekly, DateTime local)
+    {
+        var parts = weekly.Split(' ');
+        var day = Array.IndexOf(["sun", "mon", "tue", "wed", "thu", "fri", "sat"], parts[0]);
+        return day == (int)local.DayOfWeek
+            && TimeOnly.TryParseExact(parts[1], "HH:mm", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var at)
+            && TimeOnly.FromDateTime(local) >= at;
     }
 
     public async Task<IReadOnlyList<ActivityView>> ActivityAsync(TenantContext tenant, int limit, CancellationToken cancellationToken)

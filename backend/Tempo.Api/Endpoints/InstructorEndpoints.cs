@@ -39,7 +39,7 @@ public static class InstructorEndpoints
     private static async Task<IResult> SetNoteAsync(HttpContext httpContext, Guid sessionId, MemberNoteRequest request, IInstructorService instructors) =>
         Results.Ok(ScheduleEndpoints.ToResponse(await instructors.SetMemberNoteAsync(TenantRouteFilter.Current(httpContext), sessionId, request.Note, request.ApplyToWeekly == true, httpContext.RequestAborted)));
 
-    private static StaffProfileInput Input(StaffProfileRequest r) => new(r.Headline, r.Bio, r.InstagramHandle, r.PlaylistUrl, r.Visible);
+    private static StaffProfileInput Input(StaffProfileRequest r) => new(r.Headline, r.Bio, r.InstagramHandle, r.PlaylistUrl, r.Visible, r.PublicProfile);
 
     private static InstructorProfileResponse ToResponse(InstructorProfileView p) =>
         new(
@@ -52,5 +52,6 @@ public static class InstructorEndpoints
             MediaLinks.Url(p.PhotoMediaId),
             MediaLinks.Url(p.PhotoMediaId, small: true),
             p.Visible,
-            p.NextSessions.Count == 0 ? null : [.. p.NextSessions.Select(ScheduleEndpoints.ToResponse)]);
+            p.NextSessions.Count == 0 ? null : [.. p.NextSessions.Select(ScheduleEndpoints.ToResponse)],
+            p.PublicProfile);
 }

@@ -7,6 +7,7 @@ import { routes } from "../../app/routes";
 import { apiStub, json, roleSummary, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 import { permissionsFor } from "../../test/permissions";
+import { screenWidth } from "../../test/screens";
 
 const studio = sampleMe.memberships[0]!;
 const base = `/api/v1/organizations/${studio.organization.id}`;
@@ -150,6 +151,8 @@ describe("the owner's day (docs/33 section 9)", () => {
           ],
           amountAgorot: 90_000,
         },
+        // A story card (MK5) waits for its own screen (MO4): the "waiting for you" list leaves it out until then.
+        { kind: "story_weekly", count: 6, people: [] },
       ],
     },
     [`GET ${base}/insights/activity`]: {
@@ -198,6 +201,43 @@ describe("the owner's day (docs/33 section 9)", () => {
     const feed = await screen.findByRole("complementary", { name: "מה קורה בסטודיו" });
     expect(await within(feed).findByText("לפני 5 דק׳")).toBeInTheDocument();
     expect(within(feed).getByRole("link", { name: "מאיה כהן" })).toHaveAttribute("href", `/o/neshima/people/${id(61)}`);
+  });
+
+  it("greets the owner and opens the day from the top bar: search, what waits, and a new class (#378 item 1)", async () => {
+    renderAt("/o/neshima/today", insights);
+
+    // 11:50 in the studio.
+    expect(await screen.findByRole("heading", { level: 1, name: "בוקר טוב, דנה" })).toBeInTheDocument();
+
+    // The bell counts what waits, and it and the line under the greeting take the owner to it.
+    const [bell, line] = await screen.findAllByRole("button", { name: "דבר אחד מחכה לך" });
+    expect(bell).toHaveTextContent("1");
+    await userEvent.click(bell!);
+    const waiting = screen.getByRole("heading", { level: 2, name: "מחכה לך" });
+    expect(waiting).toHaveFocus();
+    (document.activeElement as HTMLElement).blur();
+    await userEvent.click(line!);
+    expect(waiting).toHaveFocus();
+
+    await userEvent.click(screen.getByRole("button", { name: /^חיפוש מתאמנת, שיעור או פעולה/ }));
+    expect(await screen.findByRole("combobox", { name: "חיפוש אנשים, שיעורים ומסכים" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByRole("button", { name: "שיעור חדש" }));
+    expect(await screen.findByRole("dialog", { name: "שיעור חדש" })).toBeInTheDocument();
+  });
+
+  it("leaves the search to the phone's app bar", async () => {
+    const restore = screenWidth(360);
+    try {
+      renderAt("/o/neshima/today", insights);
+      await screen.findByRole("heading", { level: 1, name: "בוקר טוב, דנה" });
+      expect(screen.queryByRole("button", { name: /חיפוש מתאמנת/ })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "חיפוש" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "שיעור חדש" })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   it("keeps the numbers from someone without reports", async () => {
@@ -346,7 +386,7 @@ describe("the command palette (P8)", () => {
         sessions: [{ id: id(10), className: "רפורמר בוקר", startsAt: "2026-10-14T09:00:00Z", instructorName: null }],
       },
     });
-    await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" });
+    await screen.findByRole("heading", { level: 1, name: "בוקר טוב, דנה" });
     await userEvent.keyboard("{Control>}k{/Control}");
     const box = await screen.findByRole("combobox", { name: "חיפוש אנשים, שיעורים ומסכים" });
     await userEvent.type(box, "מא");
@@ -362,7 +402,7 @@ describe("the command palette (P8)", () => {
     renderAt("/o/neshima/today", {
       [`GET ${base}/search`]: json({ title: "error" }, 500),
     });
-    await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" });
+    await screen.findByRole("heading", { level: 1, name: "בוקר טוב, דנה" });
     await userEvent.keyboard("{Control>}k{/Control}");
     const box = await screen.findByRole("combobox", { name: "חיפוש אנשים, שיעורים ומסכים" });
     await userEvent.type(box, "מא");

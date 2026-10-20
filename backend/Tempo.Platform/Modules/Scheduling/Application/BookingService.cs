@@ -3,6 +3,7 @@ using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Audit;
+using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Notifications.Application;
@@ -29,7 +30,8 @@ public sealed record BookingView(
     DateTimeOffset CreatedAt,
     long Version,
     string? CancelledFrom = null,
-    SpotRefView? Spot = null);
+    SpotRefView? Spot = null,
+    bool ToPayAtStudio = false);
 
 public sealed record SpotRefView(Guid Id, string Label);
 
@@ -47,7 +49,8 @@ public interface IBookingService
     /// Books <paramref name="personId"/>, or the caller when null (the self rule). In a room with spots the place
     /// takes <paramref name="spotId"/>, or the usual or first free spot when null (docs/33 section 3.3).
     /// </summary>
-    Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null);
+    /// <summary><paramref name="sourceCode"/> is the link a member came from (docs/37 M-12), kept on their own booking only.</summary>
+    Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null, string? sourceCode = null);
 
     Task<BookingView> CancelAsync(TenantContext tenant, Guid bookingId, bool returnEntry, CancellationToken cancellationToken);
 
@@ -61,11 +64,12 @@ public interface IBookingService
 
 public sealed partial class BookingService(IDataSourceProvider dataSources, TimeProvider clock, IHealthDataKeys? healthKeys = null) : IBookingService
 {
-    private sealed record SessionFacts(Guid Id, DateOnly LocalDate, DateTimeOffset StartsAt, string Status, string Category);
+    /// <summary><paramref name="PassRequired"/> is false for an event booked without a pass (docs/37 section 8.4).</summary>
+    private sealed record SessionFacts(Guid Id, DateOnly LocalDate, DateTimeOffset StartsAt, string Status, string Category, bool PassRequired = true);
 
     private sealed record Policy(int FreeCancelHours, int WaitlistCutoffHours, int HorizonDays, bool WaitlistEnabled, bool RequireHealthDeclaration);
 
-    public async Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null)
+    public async Task<BookingView> BookAsync(TenantContext tenant, Guid sessionId, Guid? personId, CancellationToken cancellationToken, Guid? spotId = null, string? sourceCode = null)
     {
         if (personId is not null && !tenant.Has(Permissions.BookingsManage))
         {
@@ -108,8 +112,11 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
             throw Conflict("health.declaration_required", "Sign the studio's health declaration before booking.");
         }
 
-        var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, person, session, lockRows: true, cancellationToken)
-            ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, person, session, "No punch card or membership is valid for this class.", cancellationToken);
+        // An event without a pass (docs/37 section 8.4) holds no entry; the place is paid at the studio.
+        var pass = session.PassRequired
+            ? await PickPassAsync(unitOfWork, tenant.OrganizationId, person, session, lockRows: true, cancellationToken)
+                ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, person, session, "No punch card or membership is valid for this class.", cancellationToken)
+            : null;
         var bookingId = Guid.CreateVersion7();
         try
         {
@@ -132,8 +139,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
             if (placed)
             {
                 await InsertBookingAsync(unitOfWork, tenant, bookingId, session.Id, person, "booked", null, cancellationToken, spot);
-                await HoldEntryAsync(unitOfWork, tenant.OrganizationId, pass, bookingId, cancellationToken);
-                await AuditAsync(unitOfWork, tenant, "booking.created", bookingId, new { sessionId = session.Id, personId = person, passId = pass.Id, spotId = spot }, cancellationToken);
+                await HoldOrPayAtStudioAsync(unitOfWork, tenant.OrganizationId, pass, bookingId, cancellationToken);
+                await AuditAsync(unitOfWork, tenant, "booking.created", bookingId, new { sessionId = session.Id, personId = person, passId = pass?.Id, spotId = spot }, cancellationToken);
             }
             else if (policy.WaitlistEnabled && now < session.StartsAt.AddHours(-policy.WaitlistCutoffHours))
             {
@@ -157,6 +164,11 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation && e.ConstraintName == "ux_bookings_session_spot")
         {
             throw Conflict("booking.spot_unavailable", "Someone already holds this spot.");
+        }
+
+        if (personId is null)
+        {
+            await SourceLinks.MarkBookingAsync(unitOfWork, tenant.OrganizationId, bookingId, sourceCode, cancellationToken);
         }
 
         if (healthStatus != HealthStatus.SignedStatus)
@@ -308,6 +320,11 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
             throw Conflict("session.cancelled", "This class was cancelled.");
         }
 
+        if (!from.PassRequired || !to.PassRequired)
+        {
+            throw Conflict("booking.move_event", "Places at an event without a pass are not moved; cancel and book instead.");
+        }
+
         // The entry comes back and is held again for the new class inside this transaction: once it commits
         // nothing was spent or returned, and a pass that does not cover the new class rolls the whole move back.
         await ReturnEntryAsync(unitOfWork, tenant.OrganizationId, bookingId, cancellationToken);
@@ -410,8 +427,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 return;
             }
 
-            var pass = await PickPassAsync(unitOfWork, tenant.OrganizationId, personId, session, lockRows: true, cancellationToken);
-            if (pass is null)
+            var pass = session.PassRequired ? await PickPassAsync(unitOfWork, tenant.OrganizationId, personId, session, lockRows: true, cancellationToken) : null;
+            if (pass is null && session.PassRequired)
             {
                 await using (var undo = unitOfWork.Command(
                     "UPDATE scheduling.sessions SET booked_count = booked_count - 1 WHERE organization_id = $1 AND id = $2",
@@ -447,9 +464,9 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 await place.ExecuteNonQueryAsync(cancellationToken);
             }
 
-            await HoldEntryAsync(unitOfWork, tenant.OrganizationId, pass, bookingId, cancellationToken);
+            await HoldOrPayAtStudioAsync(unitOfWork, tenant.OrganizationId, pass, bookingId, cancellationToken);
             await InboxAsync(unitOfWork, tenant.OrganizationId, personId, "booking.promoted", session.Id, bookingId, cancellationToken);
-            await AuditAsync(unitOfWork, tenant, "booking.promoted", bookingId, new { sessionId = session.Id, passId = pass.Id }, cancellationToken);
+            await AuditAsync(unitOfWork, tenant, "booking.promoted", bookingId, new { sessionId = session.Id, passId = pass?.Id }, cancellationToken);
         }
     }
 
@@ -576,6 +593,21 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         await release.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>The pass's entry for a class; for an event without a pass, the place is marked to pay at the studio (M-8).</summary>
+    private static async Task HoldOrPayAtStudioAsync(UnitOfWork unitOfWork, Guid organizationId, PassCandidate? pass, Guid bookingId, CancellationToken cancellationToken)
+    {
+        if (pass is not null)
+        {
+            await HoldEntryAsync(unitOfWork, organizationId, pass, bookingId, cancellationToken);
+            return;
+        }
+
+        await using var mark = unitOfWork.Command(
+            "UPDATE scheduling.bookings SET to_pay_at_studio = true WHERE organization_id = $1 AND id = $2",
+            organizationId, bookingId);
+        await mark.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private static async Task HoldEntryAsync(UnitOfWork unitOfWork, Guid organizationId, PassCandidate pass, Guid bookingId, CancellationToken cancellationToken)
     {
         if (pass.Entries is not null)
@@ -681,7 +713,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                    ps.id, pp.name, pp.kind, ps.ends_on, ps.entries - ps.entries_used,
                    b.created_at, b.version,
                    CASE WHEN b.status = 'cancelled' THEN CASE WHEN u.pass_id IS NULL THEN 'waitlisted' ELSE 'booked' END END,
-                   rs.id, rs.label
+                   rs.id, rs.label, b.to_pay_at_studio
             FROM scheduling.bookings b
             LEFT JOIN scheduling.room_spots rs ON rs.organization_id = b.organization_id AND rs.id = b.spot_id
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
@@ -718,7 +750,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
                 await reader.GetFieldValueAsync<DateTimeOffset>(13, cancellationToken),
                 reader.GetInt64(14),
                 await reader.IsDBNullAsync(15, cancellationToken) ? null : reader.GetString(15),
-                await reader.IsDBNullAsync(16, cancellationToken) ? null : new SpotRefView(reader.GetGuid(16), reader.GetString(17))));
+                await reader.IsDBNullAsync(16, cancellationToken) ? null : new SpotRefView(reader.GetGuid(16), reader.GetString(17)),
+                reader.GetBoolean(18)));
         }
 
         return bookings;
@@ -728,7 +761,7 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
     {
         await using var command = unitOfWork.Command(
             $"""
-            SELECT s.id, s.local_date, s.starts_at, s.status, ct.category
+            SELECT s.id, s.local_date, s.starts_at, s.status, ct.category, s.pass_required
             FROM scheduling.sessions s
             JOIN scheduling.class_types ct ON ct.organization_id = s.organization_id AND ct.id = s.class_type_id
             WHERE s.organization_id = $1 AND s.id = $2
@@ -746,7 +779,8 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
             await reader.GetFieldValueAsync<DateOnly>(1, cancellationToken),
             await reader.GetFieldValueAsync<DateTimeOffset>(2, cancellationToken),
             reader.GetString(3),
-            reader.GetString(4));
+            reader.GetString(4),
+            reader.GetBoolean(5));
     }
 
     private static async Task<Policy> PolicyAsync(UnitOfWork unitOfWork, Guid organizationId, CancellationToken cancellationToken)

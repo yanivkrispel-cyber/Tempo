@@ -19,6 +19,16 @@ public static class RouteGroups
             .RequireAuthorization()
             .AddEndpointFilter<TenantRouteFilter>();
 
+    /// <summary>
+    /// `/api/v1/public/studios/{slug}/...`: an active studio's public face (docs/35 W-6, docs/37). Each route says
+    /// whether it is for anyone (`AllowAnonymous`, listed in ArchitectureTests, no person's data) or for a signed-in
+    /// customer (joining). CORS is API Gateway's, for the two app origins.
+    /// </summary>
+    public static RouteGroupBuilder MapPublicStudioGroup(this IEndpointRouteBuilder endpoints) =>
+        endpoints.MapGroup($"/api/v1/public/studios/{{{PublicStudioRouteFilter.RouteValue}}}")
+            .AddEndpointFilter<PublicRateLimitFilter>()
+            .AddEndpointFilter<PublicStudioRouteFilter>();
+
     /// <summary>`/api/v1/platform/...` with an operator token only (ADR-0023), from a registered operator.</summary>
     public static RouteGroupBuilder MapPlatformGroup(this IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/api/v1/platform")
