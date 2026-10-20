@@ -151,6 +151,8 @@ describe("the owner's day (docs/33 section 9)", () => {
           ],
           amountAgorot: 90_000,
         },
+        // A story card (MK5) waits for its own screen (MO4): the "waiting for you" list leaves it out until then.
+        { kind: "story_weekly", count: 6, people: [] },
       ],
     },
     [`GET ${base}/insights/activity`]: {
