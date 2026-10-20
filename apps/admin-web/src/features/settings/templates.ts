@@ -8,6 +8,7 @@ export const groupLabels: Record<NotificationGroup, string> = {
   bookings: "הרשמות",
   reminders: "תזכורות",
   studio: "הודעות מהסטודיו",
+  celebrations: "חגיגות",
 };
 
 /** What each templated kind is about (docs/30 step 7); an unknown kind shows its code. */
@@ -22,6 +23,8 @@ const kindLabels: Record<string, string> = {
   "reminder.class_soon": "תזכורת זמן קצר לפני שיעור",
   "reminder.pass_ending": "המנוי או הכרטיסייה עומדים לפוג",
   "reminder.entries_low": "נשארו מעט כניסות בכרטיסייה",
+  "member.milestone": "אבן דרך במספר השיעורים",
+  "member.referral_rewarded": "פרס על חבר.ה שהגיע.ה בפעם הראשונה",
 };
 
 export const kindLabel = (kind: string) => kindLabels[kind] ?? kind;
