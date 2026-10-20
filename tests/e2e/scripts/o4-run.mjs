@@ -2,7 +2,7 @@
 // usage: O4_STATE=... node o4-run.mjs <run> <width> <ua: std|ig> ; writes screenshots to O4_SHOTS.
 import { readFileSync, mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
-import { APP, API, authFor, confirmUser, deleteUser, newPassword, call } from "./o4-lib.mjs";
+import { APP, API, authFor, confirmUser, newPassword } from "./o4-lib.mjs";
 
 const [run, widthArg, uaArg] = process.argv.slice(2);
 const width = Number(widthArg);
@@ -57,11 +57,11 @@ const shot = async (name) => {
   await page.screenshot({ path: `${shots}/${tag}-${name}.png`, fullPage: false });
 };
 const overflow = async (label) => {
-  const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const o = await page.evaluate(
+    () => globalThis.document.documentElement.scrollWidth - globalThis.document.documentElement.clientWidth,
+  );
   if (o > 1) note(false, `${label}: page scrolls sideways by ${o}px`);
 };
-const withUrl = (url) => url;
-let created = false;
 
 /** Dev has the in-sheet sign-up (branded_login, #440): fill it and reach the emailed-code step. The code cannot be read
  *  for an example.com address, so the user is confirmed as admin and the session adopted; then the page reloads and
@@ -75,7 +75,6 @@ async function brandedSignIn(openSheet) {
   await shot("sheet-filled");
   await dlg.getByRole("button", { name: "שלחו קוד ושריינו" }).click();
   await dlg.getByRole("button", { name: "אישור ושריון" }).waitFor({ timeout: 20000 });
-  created = true;
   await shot("code-step");
   await overflow("code step");
   confirmUser(email);
@@ -170,7 +169,6 @@ try {
     await shot("sheet-filled");
     await dlg.getByRole("button", { name: "שלחו קוד ושריינו" }).click();
     await visible(dlg.getByRole("button", { name: "אישור ושריון" }), "sheet: moved to the emailed-code step", 20000);
-    created = true;
     await shot("code-step");
     await overflow("code step");
     confirmUser(email); // the emailed code is unreadable for an example.com address: confirm as admin, adopt the session

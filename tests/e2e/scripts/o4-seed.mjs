@@ -1,5 +1,5 @@
 // Seeds the smoke studio for the O4 run and writes ./o4-state.json (no secrets); `--cleanup` undoes it.
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { call, smokeToken, localAt, e2eUsers, deleteUser } from "./o4-lib.mjs";
 
 const STATE = process.env.O4_STATE;
