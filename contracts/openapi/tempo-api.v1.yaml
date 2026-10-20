@@ -570,7 +570,6 @@ paths:
     post:
       tags: [Marketing]
       operationId: createMarketingLink
-      x-tempo-planned: true
       summary: "A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)"
       description: >-
         docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else
@@ -599,7 +598,6 @@ paths:
     get:
       tags: [Marketing]
       operationId: getSourceReport
-      x-tempo-planned: true
       summary: "Where sign-ups came from: new members, bookings and attended bookings per channel and per link (`reports.view`)"
       description: docs/37 section 6 (MK4, "מאיפה הגיעו ההרשמות"). A live query, the last 7 or 30 days.
       parameters:
@@ -5653,13 +5651,28 @@ components:
         url: { type: string, format: uri }
         createdAt: { type: string, format: date-time }
 
-    SourceCounts:
+    ChannelSource:
       type: object
-      required: [members, bookings, attended]
+      required: [channel, members, bookings, attended]
       properties:
+        channel: { $ref: "#/components/schemas/MarketingChannel" }
         members: { type: integer, description: New memberships whose first touch is this source. }
         bookings: { type: integer, description: Bookings whose last touch is this source. }
         attended: { type: integer, description: "Of those bookings, how many were attended." }
+
+    LinkSource:
+      type: object
+      required: [linkId, code, channel, template, sessionId, createdAt, members, bookings, attended]
+      properties:
+        linkId: { type: string, format: uuid }
+        code: { type: string }
+        channel: { $ref: "#/components/schemas/MarketingChannel" }
+        template: { type: [string, "null"] }
+        sessionId: { type: [string, "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        members: { type: integer }
+        bookings: { type: integer }
+        attended: { type: integer }
 
     SourceReport:
       type: object
@@ -5668,27 +5681,11 @@ components:
         days: { type: integer }
         byChannel:
           type: array
-          items:
-            allOf:
-              - $ref: "#/components/schemas/SourceCounts"
-              - type: object
-                required: [channel]
-                properties:
-                  channel: { $ref: "#/components/schemas/MarketingChannel" }
+          items: { $ref: "#/components/schemas/ChannelSource" }
         byLink:
           type: array
-          items:
-            allOf:
-              - $ref: "#/components/schemas/SourceCounts"
-              - type: object
-                required: [linkId, code, channel, template, sessionId, createdAt]
-                properties:
-                  linkId: { type: string, format: uuid }
-                  code: { type: string }
-                  channel: { $ref: "#/components/schemas/MarketingChannel" }
-                  template: { type: [string, "null"] }
-                  sessionId: { type: [string, "null"], format: uuid }
-                  createdAt: { type: string, format: date-time }
+          description: Links with sign-ups or bookings in the window, and links made in it; at most 200.
+          items: { $ref: "#/components/schemas/LinkSource" }
 
     StudioManifest:
       type: object
