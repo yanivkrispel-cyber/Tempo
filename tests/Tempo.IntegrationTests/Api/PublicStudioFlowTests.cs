@@ -93,6 +93,8 @@ public sealed class PublicStudioFlowTests(PostgresFixture postgres) : IClassFixt
         manifest.GetProperty("theme_color").GetString().Should().Be("#4a7088");
         manifest.GetProperty("icons")[2].GetProperty("src").GetString().Should().Be("icons/512-maskable?v=2");
         (await client.GetAsync($"{publicPath}/icons/512-maskable?v=0")).Headers.CacheControl!.ToString().Should().Be("public, max-age=60", "an old version's URL");
+        (await client.GetAsync($"{publicPath}/icons/512-maskable?v=2")).Headers.CacheControl!.ToString()
+            .Should().Be("public, max-age=31536000, immutable", "the current version's URL is cached for a year");
         var own = await client.GetByteArrayAsync($"{publicPath}/icons/512-maskable?v=2");
         own.Should().Equal(await store.ReadAsync(MediaKeys.Icon(studioId, icon.GetProperty("id").GetGuid(), "512-maskable"), int.MaxValue, CancellationToken.None));
 

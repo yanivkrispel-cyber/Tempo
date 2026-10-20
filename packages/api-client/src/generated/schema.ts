@@ -4238,6 +4238,7 @@ export interface components {
              */
             referralRewardProductId: string | null;
         };
+        /** @description `enabled` and `openJoin` are required. Any other field left out keeps its value; sent as null, it is cleared. */
         PublicPageInput: {
             enabled: boolean;
             openJoin: boolean;
