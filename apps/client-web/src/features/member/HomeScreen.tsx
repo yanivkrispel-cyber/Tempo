@@ -39,6 +39,8 @@ import { useNow } from "./clock";
 import { clockTime, defaultTimeZone, hasStarted, minutesBetween, studioToday } from "./studioTime";
 import { StudioNotices } from "./StudioNotices";
 import { StudioSwitcher, useSwitchableStudios } from "./StudioSwitcher";
+import { useStudioPath } from "../../app/studioPath";
+import { PublicStudioPage } from "../public/PublicStudioPage";
 
 /** The state chip of a class row: the member's own place first, then what is left. */
 function badge(session: Session, now: Date): { text: string; tone: "sage" | "rose" | "amber" | "plain" } {
@@ -75,7 +77,10 @@ function greeting(timeZone: string, now: Date): string {
 
 export function HomeScreen() {
   const studio = useStudio();
-  return studio ? <StudioHome studio={studio} /> : <NoStudioHome />;
+  const studioPath = useStudioPath();
+  if (studio) return <StudioHome studio={studio} />;
+  // A studio's own app shows a visitor who has not joined it the studio's public page, with the join button.
+  return studioPath ? <PublicStudioPage /> : <NoStudioHome />;
 }
 
 function NoStudioHome() {

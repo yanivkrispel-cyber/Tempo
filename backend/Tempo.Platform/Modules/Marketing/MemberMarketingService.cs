@@ -22,14 +22,18 @@ public sealed record MyMilestonesView(
 /// </summary>
 public interface IMemberMarketingService
 {
-    Task<MarketingLinkView> ShareLinkAsync(TenantContext tenant, string? channel, Guid? sessionId, CancellationToken cancellationToken);
+    /// <summary>
+    /// The member's own link per channel (and class, for a card), made on first use. <paramref name="showName"/> switches
+    /// whether the invite shows their first name (SL-8, default on); left out, it stays as it was.
+    /// </summary>
+    Task<MarketingLinkView> ShareLinkAsync(TenantContext tenant, string? channel, Guid? sessionId, CancellationToken cancellationToken, bool? showName = null);
 
     Task<MyMilestonesView> MilestonesAsync(TenantContext tenant, CancellationToken cancellationToken);
 }
 
 public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IMemberMarketingService
 {
-    public async Task<MarketingLinkView> ShareLinkAsync(TenantContext tenant, string? channel, Guid? sessionId, CancellationToken cancellationToken)
+    public async Task<MarketingLinkView> ShareLinkAsync(TenantContext tenant, string? channel, Guid? sessionId, CancellationToken cancellationToken, bool? showName = null)
     {
         if (channel is not ("member_card" or "referral"))
         {
@@ -55,7 +59,7 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
 
         await using (var find = unitOfWork.Command(
             """
-            SELECT id, code, created_at FROM marketing.links
+            SELECT id, code, created_at, show_name FROM marketing.links
             WHERE organization_id = $1 AND created_by = $2 AND channel = $3 AND session_id IS NOT DISTINCT FROM $4
             ORDER BY created_at LIMIT 1
             """,
@@ -65,7 +69,20 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
             await using var reader = await find.ExecuteReaderAsync(cancellationToken);
             if (await reader.ReadAsync(cancellationToken))
             {
-                return new MarketingLinkView(reader.GetGuid(0), reader.GetString(1), channel, null, session, slug, reader.GetFieldValue<DateTimeOffset>(2));
+                var existing = new MarketingLinkView(reader.GetGuid(0), reader.GetString(1), channel, null, session, slug, reader.GetFieldValue<DateTimeOffset>(2), Kind(session), session, reader.GetBoolean(3));
+                await reader.DisposeAsync();
+                if (showName is not { } wanted || wanted == existing.ShowName)
+                {
+                    return existing;
+                }
+
+                // Only the member's own link (created_by): the app role may update show_name on any link of the studio.
+                await using var update = unitOfWork.Command(
+                    "UPDATE marketing.links SET show_name = $4 WHERE organization_id = $1 AND id = $2 AND created_by = $3",
+                    tenant.OrganizationId, existing.Id, tenant.MembershipId, wanted);
+                await update.ExecuteNonQueryAsync(cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+                return existing with { ShowName = wanted };
             }
         }
 
@@ -79,8 +96,8 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
             try
             {
                 await using var insert = unitOfWork.Command(
-                    "INSERT INTO marketing.links (organization_id, id, code, channel, session_id, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING created_at",
-                    tenant.OrganizationId, linkId, code, channel, session, tenant.MembershipId);
+                    "INSERT INTO marketing.links (organization_id, id, code, channel, session_id, target_kind, target_id, show_name, created_by, created_at) VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::uuid IS NULL THEN 'schedule' ELSE 'session' END, $5, $7, $6, now()) RETURNING created_at",
+                    tenant.OrganizationId, linkId, code, channel, session, tenant.MembershipId, showName ?? true);
                 insert.Parameters[4].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Uuid;
                 DateTimeOffset createdAt;
                 await using (var inserted = await insert.ExecuteReaderAsync(cancellationToken))
@@ -90,7 +107,7 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
                 }
 
                 await unitOfWork.CommitAsync(cancellationToken);
-                return new MarketingLinkView(linkId, code, channel, null, session, slug, createdAt);
+                return new MarketingLinkView(linkId, code, channel, null, session, slug, createdAt, Kind(session), session, showName ?? true);
             }
             catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UniqueViolation && attempt < Attempts - 1)
             {
@@ -164,4 +181,6 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
 
     private Task<UnitOfWork> BeginAsync(TenantContext tenant, CancellationToken cancellationToken) =>
         UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, tenant.UserAccountId, tenant.OrganizationId, cancellationToken);
+
+    private static string Kind(Guid? session) => session is null ? "schedule" : "session";
 }

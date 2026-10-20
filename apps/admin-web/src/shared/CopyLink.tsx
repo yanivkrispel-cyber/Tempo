@@ -2,10 +2,11 @@ import { useId, useState } from "react";
 import { Button, Input } from "./design-system";
 
 /**
- * A link the API shows only once (an invitation or a join link): read-only, selected on focus, with a copy button.
+ * A link to copy, by default one the API shows only once (an invitation or a join link; `note` says otherwise):
+ * read-only, selected on focus, with a copy button.
  * When the clipboard is blocked the text stays selected, so Ctrl+C still works.
  */
-export function CopyLink({ link, label }: { link: string; label: string }) {
+export function CopyLink({ link, label, note }: { link: string; label: string; note?: string }) {
   const [copied, setCopied] = useState(false);
   const id = useId();
 
@@ -38,7 +39,7 @@ export function CopyLink({ link, label }: { link: string; label: string }) {
         </Button>
       </div>
       <span className="tp-caption tp-muted" role="status">
-        {copied ? "הקישור הועתק. שלחו אותו בהודעה או במייל." : "הקישור מוצג פעם אחת בלבד: העתיקו אותו עכשיו."}
+        {copied ? "הקישור הועתק. שלחו אותו בהודעה או במייל." : (note ?? "הקישור מוצג פעם אחת בלבד: העתיקו אותו עכשיו.")}
       </span>
     </div>
   );

@@ -12,6 +12,7 @@ import { BrandCard } from "./BrandCard";
 import { InstallAppCard } from "./InstallAppCard";
 import { NotificationSettingsCard } from "./NotificationSettingsCard";
 import { PlanCard } from "./PlanCard";
+import { PublicPageCard } from "./PublicPageCard";
 import { TagsCard } from "./TagsCard";
 import { TemplatesCard } from "./TemplatesCard";
 
@@ -26,7 +27,7 @@ const timeZones = [{ value: "Asia/Jerusalem", label: "ישראל (Asia/Jerusalem
 
 /**
  * `/o/:slug/settings`: the studio's name, language and time zone (GET and PATCH /organizations/{id}), its brand for
- * members (WL3), the health gate of its booking policy, its notification settings, the words of its notifications, its tags and its plan.
+ * members (WL3), its public page (MO2), the health gate of its booking policy, its notification settings, the words of its notifications, its tags and its plan.
  */
 export function SettingsPage() {
   const api = useApi();
@@ -54,6 +55,7 @@ export function SettingsPage() {
         <SettingsForm key={organization.data.version} organization={organization.data} />
       )}
       <BrandCard />
+      <PublicPageCard />
       <BookingPolicyCard />
       <NotificationSettingsCard />
       <TemplatesCard />

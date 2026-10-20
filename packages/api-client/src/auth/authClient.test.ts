@@ -378,7 +378,22 @@ describe("safeReturnTo", () => {
     ["/\\evil.example", "/"],
     ["/auth/callback", "/"],
     ["bookings", "/"],
-  ])("%s -> %s", (input, expected) => {
+    ["javascript:alert(1)", "/"],
+    ["/\t/evil.example", "/"],
+    ["/\n/evil.example", "/"],
+    ["", "/"],
+  ])("%j -> %j", (input, expected) => {
     expect(safeReturnTo(input)).toBe(expected);
   });
+
+  it.each(["/s/other-studio/", "/s/neshima/../../admin", "/s/neshima/..//evil.example"])(
+    "%s never leaves the origin or the studio's own app, resolved the way the browser does",
+    (input) => {
+      const kept = safeReturnTo(input);
+      // On studio A's sign-in the stored path is basePath + returnTo (see signIn), so it stays under /s/a-studio.
+      const stored = new URL(`/s/a-studio${kept}`, "https://app.example");
+      expect(stored.origin).toBe("https://app.example");
+      expect(stored.pathname.startsWith("/s/a-studio/") || stored.pathname === "/s/a-studio").toBe(true);
+    },
+  );
 });

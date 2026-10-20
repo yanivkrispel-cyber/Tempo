@@ -111,7 +111,7 @@ public sealed class PublicStudioPageFlowTests(PostgresFixture postgres) : IClass
         foreach (var session in list)
         {
             session.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(
-                ["id", "startsAt", "minutes", "classType", "roomName", "coverUrl", "instructor", "availability", "spotsLeft", "waitlistOpen", "event"],
+                ["id", "startsAt", "minutes", "classType", "roomName", "coverUrl", "instructor", "availability", "spotsLeft", "waitlistOpen", "event", "past", "alternatives"],
                 "no roster, booking count or person beyond a consenting instructor");
         }
 

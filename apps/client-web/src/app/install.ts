@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { isInAppBrowser } from "./inAppBrowser";
 
 /**
  * Installing the app from inside it (board #347, P-3). Chrome, Edge and Samsung Internet fire `beforeinstallprompt`
@@ -51,7 +52,8 @@ export function isIos(): boolean {
 }
 
 function currentWay(): InstallWay {
-  if (installed || isStandalone()) return null;
+  // Inside Instagram, Facebook or TikTok it would install the social app's view, not the studio's (SL-7).
+  if (installed || isStandalone() || isInAppBrowser()) return null;
   if (deferred) return "prompt";
   return isIos() ? "ios" : null;
 }

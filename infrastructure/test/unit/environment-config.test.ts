@@ -26,6 +26,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     github: { owner: "yanivkrispel-cyber", ownerId: 282451313, repo: "Tempo", repoId: 1317067674, allowedBranch: "main", githubEnvironment: undefined },
     featureFlags: { enableCustomDomain: false, enableFrontendHosting: false, enableWaf: false },
     corsAllowedOrigins: ["http://localhost:5173"],
+    publicThrottle: { reads: { rateLimit: 5, burstLimit: 6 }, join: { rateLimit: 1, burstLimit: 2 } },
     cognitoCallbackUrls: {
       adminWeb: ["http://localhost:5173/auth/callback"],
       clientWeb: ["http://localhost:5174/auth/callback"],
@@ -195,5 +196,21 @@ describe("dev's reserved concurrency fits the account's quota of 40 (case 179192
     // One API function and one worker (worker-outbox) reserve concurrency; AWS keeps 10 unreserved at least.
     expect(development.lambda.apiReservedConcurrency).toBe(20);
     expect(development.lambda.apiReservedConcurrency + development.lambda.workerReservedConcurrency).toBeLessThanOrEqual(40 - 10);
+  });
+});
+
+describe("the public routes' throttle (board #404, S-A)", () => {
+  it("keeps both public bursts together below the API's reserved concurrency", () => {
+    const tooWide = baseConfig({ publicThrottle: { reads: { rateLimit: 10, burstLimit: 8 }, join: { rateLimit: 2, burstLimit: 2 } } });
+    expect(() => validateEnvironmentConfig(tooWide)).toThrow(/publicThrottle/);
+  });
+
+  it("never lets a rate exceed its burst", () => {
+    const odd = baseConfig({ publicThrottle: { reads: { rateLimit: 5, burstLimit: 4 }, join: { rateLimit: 1, burstLimit: 1 } } });
+    expect(() => validateEnvironmentConfig(odd)).toThrow(/publicThrottle/);
+  });
+
+  it("holds for development", () => {
+    expect(() => validateEnvironmentConfig(development)).not.toThrow();
   });
 });

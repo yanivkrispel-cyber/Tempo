@@ -22,3 +22,8 @@ export function readAppConfig(env: ImportMetaEnv = import.meta.env, origin = win
         : null,
   };
 }
+
+/** The `branded_login` flag (docs/36 section 6): our own sign-in screen instead of the Hosted UI. Off by default. */
+export function brandedLoginEnabled(env: ImportMetaEnv = import.meta.env): boolean {
+  return env.VITE_BRANDED_LOGIN === "true";
+}

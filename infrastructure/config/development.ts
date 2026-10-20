@@ -88,6 +88,14 @@ const developmentConfig: TempoEnvironmentConfig = {
   // The Cloudflare Pages sites come first: the API builds invitation and join
   // links from the first callback of each app (ADR-0027). localhost stays for
   // developers running the apps on their machines.
+  // Below the stage's 50 and 100 (board #404, S-A), and both bursts together below the API's reserved concurrency,
+  // so anonymous traffic can never take every execution (a 70-request burst gave 50 503s on 2026-10-20). Per-client
+  // limits are the API's own counters.
+  publicThrottle: {
+    reads: { rateLimit: 10, burstLimit: 12 },
+    join: { rateLimit: 2, burstLimit: 4 }
+  },
+
   corsAllowedOrigins: [
     "https://tempo-studio-console.pages.dev",
     "https://tempo-members.pages.dev",

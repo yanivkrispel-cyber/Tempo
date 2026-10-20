@@ -210,6 +210,8 @@ jobs:
           VITE_API_URL: ${{ needs.deploy.outputs.api-url }}
           VITE_COGNITO_DOMAIN: ${{ env.COGNITO_DOMAIN }}
           VITE_COGNITO_CLIENT_ID: ${{ needs.deploy.outputs.client-client-id }}
+          # Our own branded sign-in (docs/36, branded_login) instead of the Hosted UI. Kris, 2026-10-20: on in dev.
+          VITE_BRANDED_LOGIN: "true"
 
       - name: Write the security headers
         if: steps.secrets.outputs.ready == 'true'
