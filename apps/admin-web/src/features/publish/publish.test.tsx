@@ -221,6 +221,7 @@ describe("the console's publishing (MO3)", () => {
     renderPublish(owner, "owner", undefined, {
       "POST /api/v1/session": {
         ...sampleMe,
+        // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag -- test code: the `<script>` text is the hostile fixture this test proves is shown as text.
         memberships: [{ ...member, organization: { ...member.organization, displayName: studioName } }],
       },
       [`GET ${base}/sessions`]: { items: classes },
