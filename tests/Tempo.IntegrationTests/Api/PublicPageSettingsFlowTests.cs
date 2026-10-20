@@ -85,6 +85,18 @@ public sealed class PublicPageSettingsFlowTests(PostgresFixture postgres) : ICla
         stageB.GetProperty("instagramHandle").GetString().Should().Be("neshima.example");
         stageB.GetProperty("referralRewardProductId").GetGuid().Should().Be(card.GetProperty("id").GetGuid());
 
+        // A PUT keeps what it doesn't send (#396 review): a form without the stage B fields leaves them alone, and an
+        // explicit null still clears one.
+        var partial = await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true });
+        partial.GetProperty("openJoin").GetBoolean().Should().BeTrue();
+        partial.GetProperty("introProductId").GetGuid().Should().Be(card.GetProperty("id").GetGuid());
+        partial.GetProperty("suggestWeeklyAt").GetString().Should().Be("sun 09:00");
+        partial.GetProperty("instagramHandle").GetString().Should().Be("neshima.example");
+        partial.GetProperty("referralRewardProductId").GetGuid().Should().Be(card.GetProperty("id").GetGuid());
+        var cleared = await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true, instagramHandle = (string?)null });
+        cleared.GetProperty("instagramHandle").ValueKind.Should().Be(JsonValueKind.Null);
+        cleared.GetProperty("referralRewardProductId").GetGuid().Should().Be(card.GetProperty("id").GetGuid());
+
         // 3. The instructor's public profile is her own consent (M-14): default off, she turns it on, a manager can't.
         var dana = (await SendAsync(client, HttpMethod.Put, $"{studioPath}/me/staff-profile", Customer("dana"), new { headline = "פילאטיס" }));
         dana.GetProperty("publicProfile").GetBoolean().Should().BeFalse();
@@ -103,7 +115,9 @@ public sealed class PublicPageSettingsFlowTests(PostgresFixture postgres) : ICla
             .ToList();
         audit.Select(fields => string.Join(',', fields.Order(StringComparer.Ordinal))).Should().BeEquivalentTo(
             "enabled,introProductId,openJoin,suggestWeeklyAt",
-            "instagramHandle,referralRewardProductId");
+            "instagramHandle,referralRewardProductId",
+            "openJoin",
+            "instagramHandle");
     }
 
     private async Task ProblemAsync(HttpClient client, string path, object body, string code)

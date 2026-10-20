@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Tempo.Contracts.Api.Marketing;
 
 /// <summary>`PublicPage` (docs/37 section 4.4): the studio's public page settings. Send `Version` back in If-Match.</summary>
@@ -10,14 +12,17 @@ public sealed record PublicPageResponse(
     string? InstagramHandle,
     Guid? ReferralRewardProductId);
 
-/// <summary>`PublicPageInput`: `enabled` and `openJoin` are required; a null intro product or weekly time clears it.</summary>
+/// <summary>
+/// `PublicPageInput`: `enabled` and `openJoin` are required. Every other field is kept when it is left out and cleared
+/// when it is sent as null, so each is a raw element: `Undefined` when absent, `Null` when cleared (#396 review).
+/// </summary>
 public sealed record UpdatePublicPageRequest(
     bool? Enabled,
     bool? OpenJoin,
-    Guid? IntroProductId,
-    string? SuggestWeeklyAt,
-    string? InstagramHandle = null,
-    Guid? ReferralRewardProductId = null);
+    JsonElement IntroProductId = default,
+    JsonElement SuggestWeeklyAt = default,
+    JsonElement InstagramHandle = default,
+    JsonElement ReferralRewardProductId = default);
 
 /// <summary>`PublicStudio` (docs/37 section 4.2): what anyone sees of a studio whose public page is on.</summary>
 public sealed record PublicStudioResponse(

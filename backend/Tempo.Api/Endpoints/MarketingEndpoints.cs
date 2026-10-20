@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Tempo.Api.Tenancy;
 using Tempo.Contracts.Api.Marketing;
+using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Marketing;
 
@@ -39,11 +41,34 @@ public static class MarketingEndpoints
     {
         var updated = await pages.UpdateAsync(
             TenantRouteFilter.Current(httpContext),
-            new PublicPageChanges(request.Enabled, request.OpenJoin, request.IntroProductId, request.SuggestWeeklyAt, request.InstagramHandle, request.ReferralRewardProductId),
+            new PublicPageChanges(
+                request.Enabled,
+                request.OpenJoin,
+                SentGuid(request.IntroProductId, "introProductId"),
+                SentText(request.SuggestWeeklyAt, "suggestWeeklyAt"),
+                SentText(request.InstagramHandle, "instagramHandle"),
+                SentGuid(request.ReferralRewardProductId, "referralRewardProductId")),
             OrganizationEndpoints.ParseVersion(ifMatch),
             httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
     }
+
+    /// <summary>Left out: null (kept). Sent as null: a <see cref="Sent{T}"/> of null (cleared). Anything else: the id, or 400.</summary>
+    private static Sent<Guid?>? SentGuid(JsonElement element, string field) => element.ValueKind switch
+    {
+        JsonValueKind.Undefined => null,
+        JsonValueKind.Null => new Sent<Guid?>(null),
+        JsonValueKind.String when element.TryGetGuid(out var id) => new Sent<Guid?>(id),
+        _ => throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", "Use an id or null.", field)
+    };
+
+    private static Sent<string?>? SentText(JsonElement element, string field) => element.ValueKind switch
+    {
+        JsonValueKind.Undefined => null,
+        JsonValueKind.Null => new Sent<string?>(null),
+        JsonValueKind.String => new Sent<string?>(element.GetString()),
+        _ => throw new DomainRuleViolationException(ViolationKind.Validation, $"{field}.invalid", "Use text or null.", field)
+    };
 
     private static async Task<IResult> CreateLinkAsync(HttpContext httpContext, CreateMarketingLinkRequest request, IMarketingLinkService links, AppLinks apps)
     {
