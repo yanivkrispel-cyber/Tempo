@@ -1,5 +1,14 @@
 import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
-import { AccountRecovery, ClientAttributes, Mfa, OAuthScope, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
+import {
+  AccountRecovery,
+  ClientAttributes,
+  FeaturePlan,
+  Mfa,
+  OAuthScope,
+  PasskeyUserVerification,
+  UserPool,
+  UserPoolClient
+} from "aws-cdk-lib/aws-cognito";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
@@ -7,6 +16,14 @@ import { applyStandardTags } from "../constructs/tagging";
 /** SSM path of the smoke-test user's `email` (String) and `password` (SecureString), created by hand. */
 export function smokeTestParameterPath(config: TempoEnvironmentConfig): string {
   return `/tempo/${config.environmentName}/smoke-test`;
+}
+
+/**
+ * The passkey's relying party (docs/36 F-4): the members app's host, from its first Cognito callback URL. A passkey
+ * works only on that host and its subdomains, so the members' own sign-in screen (ADR-0028) can use it there.
+ */
+export function passkeyRelyingPartyId(config: TempoEnvironmentConfig): string {
+  return new URL(config.cognitoCallbackUrls.clientWeb[0]).hostname;
 }
 
 export interface IdentityStackProps extends StackProps {
@@ -62,6 +79,13 @@ export class IdentityStack extends Stack {
       mfa: Mfa.OPTIONAL,
       mfaSecondFactor: { otp: true, sms: false },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
+      // Choice-based sign-in for the members' own screen (ADR-0028, docs/36 section 3): password or passkey first.
+      // Email codes wait for an SES sender (#304, docs/36 F-2). Users with TOTP keep password + TOTP; Cognito refuses
+      // them passwordless factors (F-3). Essentials is the plan the pool already has, stated so it can't drift.
+      featurePlan: FeaturePlan.ESSENTIALS,
+      signInPolicy: { allowedFirstAuthFactors: { password: true, passkey: true } },
+      passkeyRelyingPartyId: passkeyRelyingPartyId(config),
+      passkeyUserVerification: PasskeyUserVerification.PREFERRED,
       deletionProtection: config.enableDeletionProtection,
       removalPolicy: config.environmentName === "prod" ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY
     });
@@ -90,7 +114,13 @@ export class IdentityStack extends Stack {
       callbackUrls: config.cognitoCallbackUrls.clientWeb,
       logoutUrls: config.cognitoLogoutUrls.clientWeb,
       // AdminInitiateAuth needs IAM credentials, so browsers cannot use this flow; the smoke test can.
-      adminUserPassword: config.featureFlags.enableSmokeTestSignIn === true
+      adminUserPassword: config.featureFlags.enableSmokeTestSignIn === true,
+      // The members' own sign-in screen calls USER_AUTH from the browser (ADR-0028); the console stays on the Hosted UI.
+      userAuth: true,
+      // Tokens from USER_AUTH carry the user-admin scope (docs/36 F-7), so this client may write only email (a change
+      // needs verification) and read only email and its verification, like admin-web.
+      readAttributes: new ClientAttributes().withStandardAttributes({ email: true, emailVerified: true }),
+      writeAttributes: new ClientAttributes().withStandardAttributes({ email: true })
     });
 
     // Read by tools/scripts/smoke-test.mjs from cdk-outputs.json. Ids, not secrets.
@@ -152,6 +182,7 @@ export class IdentityStack extends Stack {
       accessTokenValidity?: Duration;
       refreshTokenValidity?: Duration;
       adminUserPassword?: boolean;
+      userAuth?: boolean;
       extraScopes?: readonly OAuthScope[];
       readAttributes?: ClientAttributes;
       writeAttributes?: ClientAttributes;
@@ -162,9 +193,10 @@ export class IdentityStack extends Stack {
       userPoolClientName: props.clientName,
       // Browser-based public clients never receive a client secret.
       generateSecret: false,
-      // The apps sign in only through the Hosted UI (authorization code), so no direct password or SRP flow is
-      // open to the browser (#124). Refresh stays; the admin-only password flow is for the dev smoke test.
-      authFlows: { userSrp: false, adminUserPassword: props.adminUserPassword ?? false },
+      // The console signs in only through the Hosted UI (authorization code), so no password or SRP flow is open to
+      // its browser (#124). The members app may also use choice-based sign-in (`userAuth`, ADR-0028). Refresh stays;
+      // the admin-only password flow is for the dev smoke test.
+      authFlows: { userSrp: false, adminUserPassword: props.adminUserPassword ?? false, user: props.userAuth ?? false },
       preventUserExistenceErrors: true,
       oAuth: {
         flows: { authorizationCodeGrant: true },
