@@ -1,19 +1,24 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { Link, useSearchParams } from "react-router";
+import { nameOf, useAccount } from "../../account/account";
 import { errorMessage } from "../../api/errors";
 import {
   Avatar,
   Banner,
+  Button,
   ButtonLink,
   Card,
   Chip,
   EmptyState,
   Icon,
+  IconButton,
   Segmented,
   Skeleton,
+  cx,
   type ChipTone,
   type IconName,
 } from "../../shared/design-system";
+import { useMediaQuery, WIDE_SCREEN } from "../../shared/useMediaQuery";
 import { StudioClock } from "../../shared/studio/StudioClock";
 import { addDays, dayOfWeek, formatDate, todayIn } from "../../shared/utilities/dates";
 import { clockTime } from "../../shared/utilities/times";
@@ -28,9 +33,11 @@ import {
   type Sales,
   type Suggestion,
 } from "../console/experience";
+import { useOpenCommandPalette } from "../console/CommandPalette";
 import { useStudio } from "../console/studio";
 import { priceLabel } from "../passes/queries";
 import { ScanDialog } from "../schedule/LiveRoom";
+import { NewClassDialog } from "../schedule/NewClassDialog";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "../schedule/queries";
 import styles from "./today.module.css";
 
@@ -49,25 +56,43 @@ export function TodayPage() {
 
 function DayView({ timeZone }: { timeZone: string }) {
   const studio = useStudio();
+  const me = useAccount();
+  const wide = useMediaQuery(WIDE_SCREEN, true);
+  const openPalette = useOpenCommandPalette();
   const [day, setDay] = useState<Day>("today");
+  const [creating, setCreating] = useState(false);
   // When the page opened: a class that started meanwhile shows as started after a reload, as on the class page.
   const [openedAt] = useState(() => Date.now());
   const today = todayIn(timeZone);
   const date = day === "today" ? today : addDays(today, 1);
   const sessions = useSessions(date, date);
   const reports = studio.can("reports.view");
+  const suggestions = useSuggestions(reports);
+  const waiting = reports ? (suggestions.data?.length ?? 0) : 0;
   // The feed hides when it can't load (a role without it, or an API without it) rather than showing an error box.
   const activity = useActivity(reports && studio.can("people.view"));
   const feed = reports && studio.can("people.view") && !activity.isError;
   // The installed app's "door scan" shortcut: the server finds the class whose check-in is open.
   const [params, setParams] = useSearchParams();
   const scanning = params.get("open") === "scan" && studio.can("attendance.mark");
+  const attention = useRef<HTMLHeadingElement>(null);
 
   const all = [...(sessions.data ?? [])].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const mine = all.filter((session) => session.instructor?.membershipId === studio.membership.membershipId);
   const others = all.filter((session) => !mine.includes(session));
   const dayWord = day === "today" ? "היום" : "מחר";
   const live = day === "today" ? liveSession(all, openedAt) : null;
+  const summary = sessions.data && day === "today" ? daySummary(all, dayWord) : null;
+
+  // "מחכה לך" further down: the bell and the greeting's link take the owner there and focus its heading.
+  const showWaiting = () => {
+    const heading = attention.current;
+    if (!heading) return;
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    heading.scrollIntoView?.({ behavior: still ? "auto" : "smooth", block: "start" });
+    heading.focus({ preventScroll: true });
+  };
+  const waitingWords = waiting === 1 ? "דבר אחד מחכה לך" : `${waiting} דברים מחכים לך`;
 
   const list = (items: Session[]) => (
     <Card className={styles.day}>
@@ -78,103 +103,172 @@ function DayView({ timeZone }: { timeZone: string }) {
       </ul>
     </Card>
   );
-  const summary = sessions.data ? daySummary(all, dayWord) : null;
 
   return (
     <>
       {scanning && <ScanDialog onClose={() => setParams({}, { replace: true })} />}
-      <header className={styles.header}>
-        <div className={styles.heading}>
-          <span className="tp-eyebrow tp-num">
-            יום {weekdayNames[dayOfWeek(date)]} · {formatDate(date)}
-          </span>
-          <h1>היום בסטודיו</h1>
-          {/* While the day loads, an empty line holds the summary's place so the page does not jump (O5). */}
-          {(summary || sessions.isPending) && (
-            <p className={`tp-muted ${styles.summary}`} aria-hidden={summary ? undefined : true}>
-              {summary ?? " "}
-            </p>
-          )}
-        </div>
-        <div className={styles.tools}>
-          <Segmented
-            label="איזה יום"
-            value={day}
-            onChange={setDay}
-            options={[
-              { value: "today", label: "היום" },
-              { value: "tomorrow", label: "מחר" },
-            ]}
-          />
-          <ButtonLink to={`/o/${studio.slug}/schedule`} variant="secondary" icon="calendar">
-            מערכת שבועית
-          </ButtonLink>
-        </div>
-      </header>
-
-      <div className={feed ? styles.board : styles.main}>
-        <div className={styles.main}>
-          {live && <LiveCard session={live} timeZone={timeZone} openedAt={openedAt} />}
-
-          {reports && (
-            <div className={styles.kpis}>
-              <SalesCard />
-              <OccupancyCard />
-            </div>
-          )}
-          {reports && <Suggestions timeZone={timeZone} />}
-
-          {sessions.isError ? (
-            <Banner tone="danger" icon="info">
-              {errorMessage(sessions.error, "לא הצלחנו לטעון את השיעורים. נסו שוב.")}
-            </Banner>
-          ) : !sessions.data ? (
-            <div aria-busy="true" className="tp-stack">
-              <span className="tp-sr-only">טוענים את השיעורים…</span>
-              <Skeleton height={96} />
-              <Skeleton height={96} />
-            </div>
-          ) : all.length === 0 ? (
-            <EmptyState
-              icon="calendar"
-              title={`אין שיעורים ${dayWord}.`}
-              action={
-                <ButtonLink to={`/o/${studio.slug}/schedule`} variant="secondary">
-                  למערכת השבועית
-                </ButtonLink>
-              }
-            >
-              שיעור חדש או שיעור קבוע נוספים מהמערכת השבועית.
-            </EmptyState>
-          ) : mine.length > 0 ? (
-            <>
-              <section className={styles.section} aria-labelledby="today-mine">
-                <h2 id="today-mine">השיעורים שלי</h2>
-                {list(mine)}
-              </section>
-              {others.length > 0 && (
-                <section className={styles.section} aria-labelledby="today-others">
-                  <h2 id="today-others">שאר השיעורים {dayWord}</h2>
-                  {list(others)}
-                </section>
-              )}
-            </>
-          ) : (
-            <section className={styles.section} aria-labelledby="today-all">
-              <h2 id="today-all">השיעורים {dayWord}</h2>
-              {list(all)}
-            </section>
-          )}
-        </div>
-
-        {feed && (
-          <aside className={styles.side} aria-labelledby="activity-title">
-            <ActivityFeed timeZone={timeZone} openedAt={openedAt} />
-          </aside>
+      {/* The OwnerDashboard mockup's top bar. On a phone the console's app bar already holds the search. */}
+      <div className={styles.topbar}>
+        {wide && openPalette && (
+          <button type="button" className={styles.search} onClick={openPalette}>
+            <Icon name="search" />
+            <span>חיפוש מתאמנת, שיעור או פעולה</span>
+            <kbd className="tp-kbd" dir="ltr">
+              Ctrl K
+            </kbd>
+          </button>
+        )}
+        <span className={styles.spacer} />
+        {waiting > 0 && <IconButton icon="bell" label={waitingWords} count={waiting} onClick={showWaiting} />}
+        {studio.can("schedule.manage") && (
+          <Button icon="plus" onClick={() => setCreating(true)}>
+            שיעור חדש
+          </Button>
         )}
       </div>
+
+      <header className={styles.heading}>
+        <span className="tp-eyebrow tp-num">
+          יום {weekdayNames[dayOfWeek(today)]} · {formatDate(today)}
+        </span>
+        <h1 className={styles.greeting}>
+          {greeting(openedAt, timeZone)}, <bdi>{firstName(nameOf(me))}</bdi>
+        </h1>
+        {/* While the day loads, an empty line holds the summary's place so the page does not jump (O5). */}
+        {(summary || waiting > 0 || (sessions.isPending && day === "today")) && (
+          <p className={`tp-muted ${styles.summary}`} aria-hidden={summary || waiting > 0 ? undefined : true}>
+            {summary ?? (waiting > 0 ? "" : " ")}
+            {waiting > 0 && (
+              <>
+                {summary && " "}
+                <button type="button" className={styles.summaryLink} onClick={showWaiting}>
+                  {waitingWords}
+                </button>
+                .
+              </>
+            )}
+          </p>
+        )}
+      </header>
+
+      <div className={styles.page}>
+        {(live || reports) && (
+          <div className={live ? styles.first : `${styles.first} ${styles.firstEven}`}>
+            {live && <LiveCard session={live} timeZone={timeZone} openedAt={openedAt} />}
+            {reports && <SalesCard />}
+            {reports && <OccupancyCard wide={live !== null} />}
+          </div>
+        )}
+
+        {reports && <Suggestions suggestions={suggestions.data ?? []} timeZone={timeZone} heading={attention} />}
+
+        <div className={feed ? styles.lower : undefined}>
+          <section className={styles.dayPart} aria-labelledby="today-day">
+            <div className={styles.dayHead}>
+              <div className={styles.heading}>
+                <h2 id="today-day" className={styles.dayTitle}>
+                  {dayWord} בסטודיו
+                </h2>
+                {day === "tomorrow" && (
+                  <span className="tp-caption tp-num">
+                    יום {weekdayNames[dayOfWeek(date)]} · {formatDate(date)}
+                  </span>
+                )}
+              </div>
+              <div className={styles.tools}>
+                <Segmented
+                  label="איזה יום"
+                  value={day}
+                  onChange={setDay}
+                  options={[
+                    { value: "today", label: "היום" },
+                    { value: "tomorrow", label: "מחר" },
+                  ]}
+                />
+                <ButtonLink to={`/o/${studio.slug}/schedule`} variant="ghost" size="sm" icon="calendar">
+                  מערכת שבועית
+                </ButtonLink>
+              </div>
+            </div>
+
+            {sessions.isError ? (
+              <Banner tone="danger" icon="info">
+                {errorMessage(sessions.error, "לא הצלחנו לטעון את השיעורים. נסו שוב.")}
+              </Banner>
+            ) : !sessions.data ? (
+              <div aria-busy="true" className="tp-stack">
+                <span className="tp-sr-only">טוענים את השיעורים…</span>
+                <Skeleton height={96} />
+                <Skeleton height={96} />
+              </div>
+            ) : all.length === 0 ? (
+              <EmptyState
+                icon="calendar"
+                title={`אין שיעורים ${dayWord}.`}
+                action={
+                  <ButtonLink to={`/o/${studio.slug}/schedule`} variant="secondary">
+                    למערכת השבועית
+                  </ButtonLink>
+                }
+              >
+                שיעור חדש או שיעור קבוע נוספים מהמערכת השבועית.
+              </EmptyState>
+            ) : mine.length > 0 ? (
+              <>
+                <section className={styles.section} aria-labelledby="today-mine">
+                  <h3 id="today-mine" className={styles.subTitle}>
+                    השיעורים שלי
+                  </h3>
+                  {list(mine)}
+                </section>
+                {others.length > 0 && (
+                  <section className={styles.section} aria-labelledby="today-others">
+                    <h3 id="today-others" className={styles.subTitle}>
+                      שאר השיעורים {dayWord}
+                    </h3>
+                    {list(others)}
+                  </section>
+                )}
+              </>
+            ) : (
+              <section className={styles.section} aria-label={`השיעורים ${dayWord}`}>
+                {list(all)}
+              </section>
+            )}
+          </section>
+
+          {feed && (
+            <aside className={styles.side} aria-labelledby="activity-title">
+              <ActivityFeed timeZone={timeZone} openedAt={openedAt} />
+            </aside>
+          )}
+        </div>
+      </div>
+
+      {creating && <NewClassDialog day={date} today={today} onClose={() => setCreating(false)} />}
     </>
   );
+}
+
+const hourFormat = new Map<string, Intl.DateTimeFormat>();
+
+/** "בוקר טוב" by the studio's own clock, as the mockup greets the owner. */
+function greeting(at: number, timeZone: string): string {
+  let format = hourFormat.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone });
+    hourFormat.set(timeZone, format);
+  }
+  const hour = Number(format.format(at));
+  if (hour >= 5 && hour < 12) return "בוקר טוב";
+  if (hour >= 12 && hour < 17) return "צהריים טובים";
+  if (hour >= 17 && hour < 22) return "ערב טוב";
+  return "לילה טוב";
+}
+
+/** The first word of a display name; an email's local part stays whole. */
+function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || name;
 }
 
 /** The class in the room now, or the next one today when it starts within an hour and a half. */
@@ -374,10 +468,10 @@ const parts: { key: Occupancy["cells"][number]["part"]; label: string }[] = [
 const dayLetters = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 
 /** The week's places against capacity, and where it is full: days across, parts of the day down. */
-function OccupancyCard() {
+function OccupancyCard({ wide }: { wide: boolean }) {
   const occupancy = useOccupancy(true);
   if (occupancy.isError) return null;
-  if (!occupancy.data) return <Skeleton height={188} />;
+  if (!occupancy.data) return <Skeleton height={188} className={wide ? styles.span : undefined} />;
   const data = occupancy.data;
   const share = data.capacity > 0 ? Math.round((data.places / data.capacity) * 100) : 0;
   const previous =
@@ -387,7 +481,7 @@ function OccupancyCard() {
   const days = [...new Set(data.cells.map((cell) => cell.day))].sort();
   const cell = (day: string, part: string) => data.cells.find((item) => item.day === day && item.part === part);
   return (
-    <Card as="section" className={styles.kpi} aria-labelledby="occupancy-title">
+    <Card as="section" className={cx(styles.kpi, wide && styles.span)} aria-labelledby="occupancy-title">
       <h2 id="occupancy-title" className="tp-eyebrow">
         תפוסה השבוע
       </h2>
@@ -441,15 +535,24 @@ function OccupancyCard() {
   );
 }
 
-/** Up to three "waiting for you" cards, each with its next step. */
-function Suggestions({ timeZone }: { timeZone: string }) {
-  const suggestions = useSuggestions(true);
-  if (!suggestions.data || suggestions.data.length === 0) return null;
+/** Up to three "waiting for you" cards, each with its next step. The bell and the greeting's link focus its heading. */
+function Suggestions({
+  suggestions,
+  timeZone,
+  heading,
+}: {
+  suggestions: Suggestion[];
+  timeZone: string;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
+  if (suggestions.length === 0) return null;
   return (
     <section className={styles.section} aria-labelledby="suggestions-title">
-      <h2 id="suggestions-title">מחכה לך</h2>
+      <h2 id="suggestions-title" ref={heading} tabIndex={-1} className={styles.attentionTitle}>
+        מחכה לך
+      </h2>
       <ul className={styles.insights}>
-        {suggestions.data.map((suggestion) => (
+        {suggestions.map((suggestion) => (
           <SuggestionCard
             key={suggestion.kind + (suggestion.sessionId ?? "")}
             suggestion={suggestion}
