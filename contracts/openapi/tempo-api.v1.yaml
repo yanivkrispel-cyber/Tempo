@@ -23,6 +23,10 @@ info:
     Member import, tags and staff notes (docs/34_Member_Import_Notes_and_Tags_LLD.md) add a checked import of
     people from a file the console reads, the studio's tags, and staff notes on a person.
 
+    Studio marketing (docs/37_Studio_Marketing_LLD.md, stage A) adds the studio's public page settings, the public
+    studio, its sessions and open join under `/api/v1/public/studios/{slug}`, links with source codes and the
+    report of where sign-ups came from.
+
     **Planned operations.** An operation marked `x-tempo-planned: true` is agreed but not deployed yet; the
     backend PR that adds its endpoint removes the mark (a conformance test checks both directions). Apps may
     build against it on sample data and switch to the API when the mark is gone.
@@ -64,6 +68,8 @@ tags:
     description: Liveness, no authentication.
   - name: Public
     description: A studio's public face by its slug, no authentication (docs/35 W-6, docs/37).
+  - name: Marketing
+    description: The public page settings, links with source codes and the source report (docs/37).
   - name: Account
     description: The signed-in person, before any studio is chosen.
   - name: Joining
@@ -130,6 +136,103 @@ paths:
               schema: { $ref: "#/components/schemas/Health" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { $ref: "#/components/responses/Problem" }
+
+  /api/v1/public/studios/{slug}:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+    get:
+      tags: [Public]
+      operationId: getPublicStudio
+      x-tempo-planned: true
+      summary: A studio's public page, when the studio turned it on (anyone)
+      description: >-
+        docs/37 section 4.2 (MK2). 404 `studio.not_found` for an unknown, suspended or removed studio, or one whose
+        public page is off (M-7). No person's data. `Cache-Control: public, max-age=300`.
+      security: []
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicStudio" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/sessions:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+    get:
+      tags: [Public]
+      operationId: listPublicSessions
+      x-tempo-planned: true
+      summary: A public studio's sessions for up to 14 days, with occupancy buckets (anyone)
+      description: >-
+        MK2. `from` and `to` are local dates (`yyyy-mm-dd`, the studio's time zone); `to` at most 13 days after
+        `from`, default today and the next 6 days. 400 `range.invalid` otherwise. Availability is a bucket (M-10),
+        never a count of people. `Cache-Control: public, max-age=60`.
+      security: []
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicSessionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+      - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Public]
+      operationId: getPublicSession
+      x-tempo-planned: true
+      summary: One session of a public studio (anyone)
+      description: MK2. 404 `session.not_found` for a session of another studio or more than 60 days away.
+      security: []
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicSession" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/public/studios/{slug}/join:
+    parameters:
+      - $ref: "#/components/parameters/StudioSlug"
+    post:
+      tags: [Public]
+      operationId: joinPublicStudio
+      x-tempo-planned: true
+      summary: Join a public studio as a client, without a code (a signed-in customer)
+      description: >-
+        docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on
+        and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records
+        the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person
+        and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts
+        against the join attempts (429 with `Retry-After`).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicJoinRequest" }
+      responses:
+        "200":
+          description: The membership (new or existing).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicJoinResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/public/studios/{slug}/manifest.webmanifest:
     parameters:
@@ -417,6 +520,104 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/public-page:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Marketing]
+      operationId: getPublicPage
+      summary: "The studio's public page settings (`organization.view`)"
+      description: >-
+        docs/37 section 4.4 (MK1). Defaults until the first save: off, open join on, no intro product, no weekly
+        suggestion, version `0`. The page's address is `<members app>/s/<slug>/`.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Marketing]
+      operationId: updatePublicPage
+      summary: "Turn the public page and open join on or off, pick the intro product and the weekly suggestion (`organization.settings.manage`)"
+      description: >-
+        400 `enabled.required`, `openJoin.required`, `introProductId.invalid` (not an active product of this
+        studio) or `suggestWeeklyAt.invalid` (`sun 09:00` style, studio time); 409 `concurrency.conflict`. Audit
+        `public_page.updated` with field names only.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicPageInput" }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationId}/marketing/links:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Marketing]
+      operationId: createMarketingLink
+      x-tempo-planned: true
+      summary: "A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)"
+      description: >-
+        docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else
+        `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no
+        session. Audit `marketing.link.created` (channel, template).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarketingLinkInput" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketingLink" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationId}/reports/sources:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Marketing]
+      operationId: getSourceReport
+      x-tempo-planned: true
+      summary: "Where sign-ups came from: new members, bookings and attended bookings per channel and per link (`reports.view`)"
+      description: docs/37 section 6 (MK4, "מאיפה הגיעו ההרשמות"). A live query, the last 7 or 30 days.
+      parameters:
+        - { name: days, in: query, required: false, schema: { type: integer, enum: [7, 30], default: 7 } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SourceReport" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/organizations/{organizationId}/brand:
     parameters:
@@ -5293,6 +5494,7 @@ components:
         photoUrl: { type: [string, "null"], format: uri }
         photoSmallUrl: { type: [string, "null"], format: uri }
         visible: { type: boolean, description: Shown to members. }
+        publicProfile: { type: boolean, description: "Shown to strangers (docs/37 M-14); the instructor's own consent, default off." }
         nextSessions:
           type: [array, "null"]
           description: The next five classes; only on `getInstructor`.
@@ -5314,12 +5516,178 @@ components:
         instagramHandle: { type: [string, "null"], description: "A handle, @handle or an instagram.com link." }
         playlistUrl: { type: [string, "null"], description: "An https link to Spotify, Apple Music or YouTube Music." }
         visible: { type: boolean, default: true }
+        publicProfile:
+          type: [boolean, "null"]
+          description: >-
+            Show my name, photo, headline and handle to strangers on the public page and stories (docs/37 M-14).
+            Only the instructor sets their own; null or absent keeps it (403 when a manager sends it for someone else).
 
     MemberNoteRequest:
       type: object
       properties:
         note: { type: [string, "null"], maxLength: 200, description: Null or empty clears it. }
         applyToWeekly: { type: boolean, description: "Also the weekly class's note and its future sessions." }
+
+    PublicPage:
+      type: object
+      required: [enabled, openJoin, introProductId, suggestWeeklyAt, version]
+      properties:
+        enabled: { type: boolean, description: Strangers see the page (M-7). }
+        openJoin: { type: boolean, description: "Anyone signed in may join from the page, no code (M-9)." }
+        introProductId: { type: [string, "null"], format: uuid, description: "Granted once to a newcomer, to pay at the studio (M-8)." }
+        suggestWeeklyAt: { type: [string, "null"], pattern: "^(sun|mon|tue|wed|thu|fri|sat) ([01][0-9]|2[0-3]):[0-5][0-9]$", description: "Studio time; null means off (M-13)." }
+        version: { type: string }
+
+    PublicPageInput:
+      type: object
+      required: [enabled, openJoin]
+      properties:
+        enabled: { type: boolean }
+        openJoin: { type: boolean }
+        introProductId: { type: [string, "null"], format: uuid }
+        suggestWeeklyAt: { type: [string, "null"] }
+
+    PublicStudio:
+      type: object
+      required: [slug, name, appName, accentId, logoUrl, coverUrl, timeZone, introOffer, openJoin]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        appName: { type: string }
+        accentId: { $ref: "#/components/schemas/AccentId" }
+        logoUrl: { type: [string, "null"], format: uri, description: "Presigned, valid one hour." }
+        coverUrl: { type: [string, "null"], format: uri, description: "Presigned, valid one hour." }
+        timeZone: { type: string }
+        introOffer:
+          type: [object, "null"]
+          required: [name, priceAgorot]
+          properties:
+            name: { type: string }
+            priceAgorot: { type: [integer, "null"] }
+        openJoin: { type: boolean }
+
+    PublicSessionAvailability:
+      type: string
+      enum: [open, few, full, cancelled]
+      description: "M-10: `few` is 3 or fewer places left (then `spotsLeft`); `full` may still have a waitlist."
+
+    PublicSession:
+      type: object
+      required: [id, startsAt, minutes, classType, roomName, coverUrl, instructor, availability, spotsLeft, waitlistOpen]
+      properties:
+        id: { type: string, format: uuid }
+        startsAt: { type: string, format: date-time }
+        minutes: { type: integer }
+        classType:
+          type: object
+          required: [name, category, color]
+          properties:
+            name: { type: string }
+            category: { type: string }
+            color: { type: string }
+        roomName: { type: [string, "null"] }
+        coverUrl: { type: [string, "null"], format: uri }
+        instructor:
+          type: [object, "null"]
+          description: Only when the instructor turned on their public profile (M-14).
+          required: [displayName, photoUrl, headline, instagramHandle]
+          properties:
+            displayName: { type: string }
+            photoUrl: { type: [string, "null"], format: uri }
+            headline: { type: [string, "null"] }
+            instagramHandle: { type: [string, "null"] }
+        availability: { $ref: "#/components/schemas/PublicSessionAvailability" }
+        spotsLeft: { type: [integer, "null"], description: "Only when `few`." }
+        waitlistOpen: { type: boolean }
+
+    PublicSessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PublicSession" }
+
+    PublicJoinRequest:
+      type: object
+      properties:
+        src: { type: [string, "null"], pattern: "^[a-z0-9]{6,10}$", description: The first-touch source code the app kept (section 6). }
+
+    PublicJoinResponse:
+      type: object
+      required: [organizationId, membershipId, created, introPass]
+      properties:
+        organizationId: { type: string, format: uuid }
+        membershipId: { type: string, format: uuid }
+        created: { type: boolean, description: False when the caller was already a member. }
+        introPass:
+          type: [object, "null"]
+          required: [passId, productName, toPayAtStudio]
+          properties:
+            passId: { type: string, format: uuid }
+            productName: { type: string }
+            toPayAtStudio: { type: boolean }
+
+    MarketingChannel:
+      type: string
+      enum: [story, whatsapp, bio, poster, member_card, referral, other]
+
+    MarketingLinkInput:
+      type: object
+      required: [channel]
+      properties:
+        channel: { $ref: "#/components/schemas/MarketingChannel" }
+        template: { type: [string, "null"], pattern: "^[a-z_]{1,32}$", examples: [week, today, spot_opened, change] }
+        sessionId: { type: [string, "null"], format: uuid }
+
+    MarketingLink:
+      type: object
+      required: [id, code, channel, template, sessionId, url, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, pattern: "^[a-z0-9]{6,10}$" }
+        channel: { $ref: "#/components/schemas/MarketingChannel" }
+        template: { type: [string, "null"] }
+        sessionId: { type: [string, "null"], format: uuid }
+        url: { type: string, format: uri }
+        createdAt: { type: string, format: date-time }
+
+    SourceCounts:
+      type: object
+      required: [members, bookings, attended]
+      properties:
+        members: { type: integer, description: New memberships whose first touch is this source. }
+        bookings: { type: integer, description: Bookings whose last touch is this source. }
+        attended: { type: integer, description: "Of those bookings, how many were attended." }
+
+    SourceReport:
+      type: object
+      required: [days, byChannel, byLink]
+      properties:
+        days: { type: integer }
+        byChannel:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/SourceCounts"
+              - type: object
+                required: [channel]
+                properties:
+                  channel: { $ref: "#/components/schemas/MarketingChannel" }
+        byLink:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/SourceCounts"
+              - type: object
+                required: [linkId, code, channel, template, sessionId, createdAt]
+                properties:
+                  linkId: { type: string, format: uuid }
+                  code: { type: string }
+                  channel: { $ref: "#/components/schemas/MarketingChannel" }
+                  template: { type: [string, "null"] }
+                  sessionId: { type: [string, "null"], format: uuid }
+                  createdAt: { type: string, format: date-time }
 
     StudioManifest:
       type: object

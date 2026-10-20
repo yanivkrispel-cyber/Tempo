@@ -19,6 +19,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/studios/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A studio's public page, when the studio turned it on (anyone)
+         * @description docs/37 section 4.2 (MK2). 404 `studio.not_found` for an unknown, suspended or removed studio, or one whose public page is off (M-7). No person's data. `Cache-Control: public, max-age=300`.
+         */
+        get: operations["getPublicStudio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A public studio's sessions for up to 14 days, with occupancy buckets (anyone)
+         * @description MK2. `from` and `to` are local dates (`yyyy-mm-dd`, the studio's time zone); `to` at most 13 days after `from`, default today and the next 6 days. 400 `range.invalid` otherwise. Availability is a bucket (M-10), never a count of people. `Cache-Control: public, max-age=60`.
+         */
+        get: operations["listPublicSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * One session of a public studio (anyone)
+         * @description MK2. 404 `session.not_found` for a session of another studio or more than 60 days away.
+         */
+        get: operations["getPublicSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/studios/{slug}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join a public studio as a client, without a code (a signed-in customer)
+         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`).
+         */
+        post: operations["joinPublicStudio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/studios/{slug}/manifest.webmanifest": {
         parameters: {
             query?: never;
@@ -225,6 +318,76 @@ export interface paths {
         head?: never;
         /** Change studio settings (owner, admin) */
         patch: operations["updateOrganization"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/public-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The studio's public page settings (`organization.view`)
+         * @description docs/37 section 4.4 (MK1). Defaults until the first save: off, open join on, no intro product, no weekly suggestion, version `0`. The page's address is `<members app>/s/<slug>/`.
+         */
+        get: operations["getPublicPage"];
+        /**
+         * Turn the public page and open join on or off, pick the intro product and the weekly suggestion (`organization.settings.manage`)
+         * @description 400 `enabled.required`, `openJoin.required`, `introProductId.invalid` (not an active product of this studio) or `suggestWeeklyAt.invalid` (`sun 09:00` style, studio time); 409 `concurrency.conflict`. Audit `public_page.updated` with field names only.
+         */
+        put: operations["updatePublicPage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/marketing/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
+         * @description docs/37 section 6 (MK4). `url` is `<members app>/s/<slug>/c/<sessionId>?src=<code>` with a session, else `<members app>/s/<slug>/?src=<code>`. 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         */
+        post: operations["createMarketingLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/reports/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where sign-ups came from: new members, bookings and attended bookings per channel and per link (`reports.view`)
+         * @description docs/37 section 6 (MK4, "מאיפה הגיעו ההרשמות"). A live query, the last 7 or 30 days.
+         */
+        get: operations["getSourceReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/brand": {
@@ -3942,6 +4105,8 @@ export interface components {
             photoSmallUrl?: string | null;
             /** @description Shown to members. */
             visible: boolean;
+            /** @description Shown to strangers (docs/37 M-14); the instructor's own consent, default off. */
+            publicProfile?: boolean;
             /** @description The next five classes; only on `getInstructor`. */
             nextSessions?: components["schemas"]["Session"][] | null;
         };
@@ -3957,12 +4122,162 @@ export interface components {
             playlistUrl?: string | null;
             /** @default true */
             visible: boolean;
+            /** @description Show my name, photo, headline and handle to strangers on the public page and stories (docs/37 M-14). Only the instructor sets their own; null or absent keeps it (403 when a manager sends it for someone else). */
+            publicProfile?: boolean | null;
         };
         MemberNoteRequest: {
             /** @description Null or empty clears it. */
             note?: string | null;
             /** @description Also the weekly class's note and its future sessions. */
             applyToWeekly?: boolean;
+        };
+        PublicPage: {
+            /** @description Strangers see the page (M-7). */
+            enabled: boolean;
+            /** @description Anyone signed in may join from the page, no code (M-9). */
+            openJoin: boolean;
+            /**
+             * Format: uuid
+             * @description Granted once to a newcomer, to pay at the studio (M-8).
+             */
+            introProductId: string | null;
+            /** @description Studio time; null means off (M-13). */
+            suggestWeeklyAt: string | null;
+            version: string;
+        };
+        PublicPageInput: {
+            enabled: boolean;
+            openJoin: boolean;
+            /** Format: uuid */
+            introProductId?: string | null;
+            suggestWeeklyAt?: string | null;
+        };
+        PublicStudio: {
+            slug: string;
+            name: string;
+            appName: string;
+            accentId: components["schemas"]["AccentId"];
+            /**
+             * Format: uri
+             * @description Presigned, valid one hour.
+             */
+            logoUrl: string | null;
+            /**
+             * Format: uri
+             * @description Presigned, valid one hour.
+             */
+            coverUrl: string | null;
+            timeZone: string;
+            introOffer: {
+                name: string;
+                priceAgorot: number | null;
+            } | null;
+            openJoin: boolean;
+        };
+        /**
+         * @description M-10: `few` is 3 or fewer places left (then `spotsLeft`); `full` may still have a waitlist.
+         * @enum {string}
+         */
+        PublicSessionAvailability: "open" | "few" | "full" | "cancelled";
+        PublicSession: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            startsAt: string;
+            minutes: number;
+            classType: {
+                name: string;
+                category: string;
+                color: string;
+            };
+            roomName: string | null;
+            /** Format: uri */
+            coverUrl: string | null;
+            /** @description Only when the instructor turned on their public profile (M-14). */
+            instructor: {
+                displayName: string;
+                /** Format: uri */
+                photoUrl: string | null;
+                headline: string | null;
+                instagramHandle: string | null;
+            } | null;
+            availability: components["schemas"]["PublicSessionAvailability"];
+            /** @description Only when `few`. */
+            spotsLeft: number | null;
+            waitlistOpen: boolean;
+        };
+        PublicSessionList: {
+            items: components["schemas"]["PublicSession"][];
+        };
+        PublicJoinRequest: {
+            /** @description The first-touch source code the app kept (section 6). */
+            src?: string | null;
+        };
+        PublicJoinResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            membershipId: string;
+            /** @description False when the caller was already a member. */
+            created: boolean;
+            introPass: {
+                /** Format: uuid */
+                passId: string;
+                productName: string;
+                toPayAtStudio: boolean;
+            } | null;
+        };
+        /** @enum {string} */
+        MarketingChannel: "story" | "whatsapp" | "bio" | "poster" | "member_card" | "referral" | "other";
+        MarketingLinkInput: {
+            channel: components["schemas"]["MarketingChannel"];
+            /**
+             * @example week
+             * @example today
+             * @example spot_opened
+             * @example change
+             */
+            template?: string | null;
+            /** Format: uuid */
+            sessionId?: string | null;
+        };
+        MarketingLink: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            channel: components["schemas"]["MarketingChannel"];
+            template: string | null;
+            /** Format: uuid */
+            sessionId: string | null;
+            /** Format: uri */
+            url: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SourceCounts: {
+            /** @description New memberships whose first touch is this source. */
+            members: number;
+            /** @description Bookings whose last touch is this source. */
+            bookings: number;
+            /** @description Of those bookings, how many were attended. */
+            attended: number;
+        };
+        SourceReport: {
+            days: number;
+            byChannel: (components["schemas"]["SourceCounts"] & {
+                channel: components["schemas"]["MarketingChannel"];
+            })[];
+            byLink: (components["schemas"]["SourceCounts"] & {
+                /** Format: uuid */
+                linkId: string;
+                code: string;
+                channel: components["schemas"]["MarketingChannel"];
+                template: string | null;
+                /** Format: uuid */
+                sessionId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            })[];
         };
         /** @description A W3C web app manifest for one studio, so its member names are the standard's own (snake_case): `id`, `name`, `short_name` (the brand's app name), `lang` `he`, `dir` `rtl`, `start_url`, `scope`, `display` `standalone`, `orientation`, `background_color`, `theme_color` (the accent) and `icons` (`src`, `sizes`, `type` `image/png`, `purpose` `any` or `maskable`). */
         StudioManifest: {
@@ -5154,6 +5469,117 @@ export interface operations {
             500: components["responses"]["Problem"];
         };
     };
+    getPublicStudio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicStudio"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPublicSessions: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicSessionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicSession"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    joinPublicStudio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The studio's slug, as in its public links. */
+                slug: components["parameters"]["StudioSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublicJoinRequest"];
+            };
+        };
+        responses: {
+            /** @description The membership (new or existing). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicJoinResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     getStudioManifest: {
         parameters: {
             query?: never;
@@ -5536,6 +5962,125 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getPublicPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePublicPage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The `version` you last read. A stale value returns 409 `concurrency.conflict`. */
+                "If-Match"?: components["parameters"]["IfMatch"];
+            };
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicPageInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createMarketingLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarketingLinkInput"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketingLink"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSourceReport: {
+        parameters: {
+            query?: {
+                days?: 7 | 30;
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getBrand: {

@@ -11,6 +11,7 @@ using Tempo.Platform.Modules.Notifications.Application;
 using Tempo.Platform.Modules.Notifications.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
 using Tempo.Platform.Modules.Billing;
+using Tempo.Platform.Modules.Marketing;
 using Tempo.Platform.Modules.Media;
 using Tempo.Platform.Modules.People.Application;
 using Tempo.Platform.Modules.People.Infrastructure;
@@ -45,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IOrganizationService, OrganizationService>();
         services.AddSingleton<IBrandService, BrandService>();
         services.AddSingleton<IPublicStudioDirectory, PublicStudioDirectory>();
+        services.AddSingleton<IPublicPageService, PublicPageService>();
         services.AddSingleton<IMemberService, MemberService>();
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();
