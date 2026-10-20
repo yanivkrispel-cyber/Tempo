@@ -11,6 +11,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { brandedLoginEnabled } from "../../auth/config";
 import { SignInButtons } from "../../auth/SignInButtons";
 import { Banner, Button, ButtonLink, Dialog } from "../../shared/design-system";
+import { OpenInBrowserCard } from "../member/OpenInBrowserCard";
 import { chooseStudio } from "../member/studioChoice";
 import {
   joinStudio,
@@ -167,7 +168,7 @@ export function ReserveSheet({
         join.reset();
         onClose();
       }}
-      title={title}
+      title={done && taking ? "המבצע שלכם" : title}
       description={offer ? offerText(offer) : undefined}
     >
       <div className={styles.sheetBody}>{body}</div>
@@ -203,6 +204,7 @@ function OfferDone({ response, sessionId }: { response: PublicJoinResponse; sess
       <ButtonLink to={`/classes/${sessionId}`} size="lg" block>
         לפרטי השיעור
       </ButtonLink>
+      <OpenInBrowserCard />
     </>
   );
 }

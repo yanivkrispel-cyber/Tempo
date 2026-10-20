@@ -107,6 +107,7 @@ function renderStudioApp(
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   window.localStorage.clear();
   document.documentElement.removeAttribute("data-accent");
 });
@@ -575,6 +576,24 @@ describe("an offer's public page (/s/<slug>/o/<id>, SL-4)", () => {
     const call = stub.requests.findIndex((request) => request.url.endsWith("/join"));
     expect(stub.bodies[call]).toEqual({ src: "story7k2", productId: offerId, sessionId: vinyasa.id });
     expect(window.localStorage.getItem("tempo.client-web.studio")).toBe(organizationId);
+  });
+
+  it("makes the account before the join, for someone back from the sign-in (O4)", async () => {
+    const { sheet, stub } = await takeOffer(() => json(joinResponse()));
+    await within(sheet).findByRole("link", { name: "לפרטי השיעור" });
+    const urls = stub.requests.map((request) => request.url);
+    const session = urls.findIndex((url) => url.endsWith("/api/v1/session"));
+    expect(session).toBeGreaterThanOrEqual(0);
+    expect(session).toBeLessThan(urls.findIndex((url) => url.endsWith("/join")));
+  });
+
+  it("names the sheet for what was done, and points Instagram's browser to the real one (SL-7)", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.0.0 Mobile Safari/537.36 Instagram 390.0.0.43.81 Android",
+    );
+    await takeOffer(() => json(joinResponse()));
+    const done = await screen.findByRole("dialog", { name: "המבצע שלכם" });
+    expect(within(done).getByRole("link", { name: "פתיחה בדפדפן" })).toBeInTheDocument();
   });
 
   it("says when the class is on the waitlist", async () => {
