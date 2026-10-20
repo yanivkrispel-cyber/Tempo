@@ -213,6 +213,31 @@ describe("the console's publishing (MO3)", () => {
     );
   });
 
+  it("shows a studio's and a class's name as literal text, never as markup", async () => {
+    const hostile = '<script>alert(1)</script> "מרווח"';
+    const studioName = `סטודיו ${hostile}`;
+    const classes = [session({ classType: { id: id(1), name: hostile, category: "pilates", color: "rose" } })];
+    const member = membershipAs("owner", { permissions: owner });
+    renderPublish(owner, "owner", undefined, {
+      "POST /api/v1/session": {
+        ...sampleMe,
+        // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag -- test code: the `<script>` text is the hostile fixture this test proves is shown as text.
+        memberships: [{ ...member, organization: { ...member.organization, displayName: studioName } }],
+      },
+      [`GET ${base}/sessions`]: { items: classes },
+    });
+    const group = await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    expect(within(group).getByRole("checkbox", { name: `יום רביעי 12:00 · ${hostile}` })).toBeInTheDocument();
+    expect(document.body.textContent).toContain(hostile);
+    expect(document.body.textContent).toContain(studioName);
+    expect(document.body.querySelector("script")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "טקסט לוואטסאפ" }));
+    const text = (await screen.findByRole("textbox", { name: "הטקסט לוואטסאפ" })) as HTMLTextAreaElement;
+    expect(text.value).toContain(hostile);
+    expect(document.body.querySelector("script")).toBeNull();
+  });
+
   it("is not in the menu without a publishing permission", async () => {
     renderPublish(membershipAs("staff").permissions, "staff");
     expect(await screen.findByRole("heading", { name: "אין לך גישה לפרסום" })).toBeInTheDocument();
