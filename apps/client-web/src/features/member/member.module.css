@@ -562,3 +562,58 @@
   font-weight: 600;
   font-size: 14px;
 }
+
+/* "שמרנו לך מקום" (board ח). */
+.booked {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bookedSummary {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.bookedNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bookedNotes li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bookedNoteIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+.bookedNoteIcon :global(.tp-icon) {
+  width: 18px;
+  height: 18px;
+}
+.bookedActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.installOffer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-sunken);
+}
+.installLater {
+  align-self: center;
+}

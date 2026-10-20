@@ -32,7 +32,10 @@ public sealed class ArchitectureTests
         // as redirects to the studio's own pictures. No other person data.
         "/api/v1/public/studios/{slug}/links/{code}",
         "/api/v1/public/studios/{slug}/cover",
-        "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}/cover"
+        "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}/cover",
+        // The prices and offers of SL-4 and SL-5 (SK2): products the owner listed, their prices shown only, no person.
+        "/api/v1/public/studios/{slug}/products",
+        "/api/v1/public/studios/{slug}/products/{productId:guid}"
     ];
 
     [Fact]

@@ -47,7 +47,8 @@ public static class MarketingEndpoints
                 SentGuid(request.IntroProductId, "introProductId"),
                 SentText(request.SuggestWeeklyAt, "suggestWeeklyAt"),
                 SentText(request.InstagramHandle, "instagramHandle"),
-                SentGuid(request.ReferralRewardProductId, "referralRewardProductId")),
+                SentGuid(request.ReferralRewardProductId, "referralRewardProductId"),
+                request.ListedProducts?.Select(p => new ListedProduct(p.ProductId, p.NewcomersOnly, p.PublicUntil, p.Blurb)).ToList()),
             OrganizationEndpoints.ParseVersion(ifMatch),
             httpContext.RequestAborted);
         return Results.Ok(ToResponse(updated));
@@ -115,5 +116,6 @@ public static class MarketingEndpoints
     }
 
     private static PublicPageResponse ToResponse(PublicPageView p) =>
-        new(p.Enabled, p.OpenJoin, p.IntroProductId, p.SuggestWeeklyAt, p.Version.ToString(CultureInfo.InvariantCulture), p.InstagramHandle, p.ReferralRewardProductId);
+        new(p.Enabled, p.OpenJoin, p.IntroProductId, p.SuggestWeeklyAt, p.Version.ToString(CultureInfo.InvariantCulture), p.InstagramHandle, p.ReferralRewardProductId,
+            [.. p.Listed.Select(l => new ListedProductBody(l.ProductId, l.NewcomersOnly, l.PublicUntil, l.Blurb))]);
 }

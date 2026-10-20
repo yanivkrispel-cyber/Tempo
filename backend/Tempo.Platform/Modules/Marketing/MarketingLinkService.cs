@@ -50,12 +50,18 @@ public interface IMarketingLinkService
 public sealed partial class MarketingLinkService(IDataSourceProvider dataSources) : IMarketingLinkService
 {
     public static readonly IReadOnlyList<string> Channels = ["story", "whatsapp", "bio", "poster", "member_card", "referral", "other"];
+
+    /// <summary>
+    /// The channels a studio's staff may use. `member_card` and `referral` are a member's own links (me/share-link): a
+    /// referral link made by staff would earn its maker the bring-a-friend reward for every newcomer it brings (K5).
+    /// </summary>
+    public static readonly IReadOnlyList<string> StudioChannels = ["story", "whatsapp", "bio", "poster", "other"];
     private const string Alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
     private const int CodeLength = 8;
 
     public async Task<MarketingLinkView> CreateAsync(TenantContext tenant, NewMarketingLink link, CancellationToken cancellationToken)
     {
-        var channel = link.Channel is not null && Channels.Contains(link.Channel)
+        var channel = link.Channel is not null && StudioChannels.Contains(link.Channel)
             ? link.Channel
             : throw new DomainRuleViolationException(ViolationKind.Validation, "channel.invalid", "Choose where the link goes.", "channel");
         var template = string.IsNullOrWhiteSpace(link.Template) ? null : link.Template.Trim();

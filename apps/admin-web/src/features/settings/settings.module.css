@@ -44,6 +44,7 @@
 .brandForm {
   grid-area: form;
   min-width: 0;
+  container-type: inline-size;
 }
 @media (min-width: 900px) {
   .brand {
@@ -243,4 +244,170 @@
   align-items: center;
   gap: 8px;
   pointer-events: none;
+}
+
+/* The public page (MO2): the day and time of the weekly suggestion side by side. */
+.weekly {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 8rem);
+  gap: 8px;
+}
+.pageLink {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.pageLink svg {
+  width: 140px;
+  height: 140px;
+}
+/* Beside the QR only when the form's own column has room for the link, whatever the preview beside it takes. */
+@container (min-width: 520px) {
+  .pageLink {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+}
+
+/* The public page drawn small: the members app's colours, fixed whatever the console's theme. */
+.sitePhone,
+.siteBrowser {
+  position: relative;
+  width: min(100%, 280px);
+  background: #23211f;
+  box-shadow: var(--shadow-float);
+  transition: filter 160ms ease;
+}
+.sitePhone {
+  padding: 9px;
+  border-radius: 34px;
+}
+.siteBrowser {
+  width: 100%;
+  padding: 26px 6px 6px;
+  border-radius: 14px;
+}
+.siteBrowser .siteColumn {
+  width: 52%;
+}
+@media (min-width: 900px) {
+  .brandWide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+  }
+}
+.sitePhone[data-off],
+.siteBrowser[data-off] {
+  filter: grayscale(1) opacity(0.45);
+}
+.siteChrome {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 12px;
+  display: flex;
+  gap: 5px;
+}
+.siteChrome i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.3);
+}
+.sitePage {
+  display: grid;
+  justify-items: center;
+  min-height: 380px;
+  padding: 14px 12px;
+  border-radius: 26px;
+  background: #f4f2ef;
+  color: #2b2724;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.siteBrowser .sitePage {
+  min-height: 280px;
+  border-radius: 8px;
+}
+.siteColumn {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  width: 100%;
+}
+.siteBrand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.siteLogo {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: #fff;
+  color: #fff;
+  font-size: 9px;
+  object-fit: contain;
+}
+.siteHero {
+  display: grid;
+  gap: 2px;
+  padding: 44px 12px 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #9c9083 0%, #6e645b 55%, #362f2a 100%);
+  color: #fff;
+}
+.siteHero small {
+  opacity: 0.85;
+}
+.siteHero strong {
+  font-size: 17px;
+  font-weight: 500;
+}
+.siteOffer {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  border-radius: 13px;
+  background: #fbfaf8;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+.siteOffer small {
+  color: #6f6760;
+}
+.siteRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 13px;
+  background: #fbfaf8;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+.siteTime {
+  flex: none;
+  width: 30px;
+  height: 26px;
+  border-radius: 8px;
+  background: #ebe7e2;
+}
+.siteLines {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+}
+.siteBar {
+  height: 6px;
+  border-radius: 3px;
+  background: #d8d1c9;
+}
+.siteJoin {
+  padding: 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
 }
