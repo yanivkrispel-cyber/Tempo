@@ -79,7 +79,7 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
             try
             {
                 await using var insert = unitOfWork.Command(
-                    "INSERT INTO marketing.links (organization_id, id, code, channel, session_id, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING created_at",
+                    "INSERT INTO marketing.links (organization_id, id, code, channel, session_id, target_kind, target_id, created_by, created_at) VALUES ($1, $2, $3, $4, $5, CASE WHEN $5::uuid IS NULL THEN 'schedule' ELSE 'session' END, $5, $6, now()) RETURNING created_at",
                     tenant.OrganizationId, linkId, code, channel, session, tenant.MembershipId);
                 insert.Parameters[4].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Uuid;
                 DateTimeOffset createdAt;

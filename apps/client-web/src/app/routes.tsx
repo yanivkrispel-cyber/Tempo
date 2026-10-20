@@ -12,6 +12,8 @@ import { HealthDeclarationScreen } from "../features/member/HealthDeclarationScr
 import { HomeScreen } from "../features/member/HomeScreen";
 import { InboxScreen } from "../features/member/InboxScreen";
 import { MemberLayout } from "../features/member/MemberLayout";
+import { PublicClassPage } from "../features/public/PublicClassPage";
+import { PublicWeekPage } from "../features/public/PublicStudioPage";
 import { ProfileScreen } from "../features/member/ProfileScreen";
 import { NotificationsScreen } from "../features/member/NotificationsScreen";
 import { NotFoundPage } from "./NotFoundPage";
@@ -43,6 +45,10 @@ export const routes: RouteObject[] = [
       },
     ],
   },
+  // A studio's public pages under `/s/<slug>/` (docs/37 section 4.1): open to anyone; a member is sent on to the
+  // member app's own screens. `/` is the public page for a visitor, from <RequireAuth>.
+  { path: "/c/:sessionId", element: <PublicClassPage /> },
+  { path: "/week/:date", element: <PublicWeekPage /> },
   { path: "/login", element: <LoginPage /> },
   // Cognito's exact callback URL (infrastructure/config/<env>.ts, cognitoCallbackUrls.clientWeb).
   { path: "/auth/callback", element: <CallbackPage /> },

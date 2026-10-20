@@ -16,13 +16,21 @@ public sealed record PublicPageView(
     string? InstagramHandle = null,
     Guid? ReferralRewardProductId = null);
 
+/// <summary>
+/// A PUT of the public page. `enabled` and `openJoin` are required; every other field is kept when it isn't sent
+/// (null here) and cleared when it is sent as null (a <see cref="Sent{T}"/> holding null), so a form that doesn't know a
+/// field never erases it (#396 review).
+/// </summary>
 public sealed record PublicPageChanges(
     bool? Enabled,
     bool? OpenJoin,
-    Guid? IntroProductId,
-    string? SuggestWeeklyAt,
-    string? InstagramHandle = null,
-    Guid? ReferralRewardProductId = null);
+    Sent<Guid?>? IntroProductId = null,
+    Sent<string?>? SuggestWeeklyAt = null,
+    Sent<string?>? InstagramHandle = null,
+    Sent<Guid?>? ReferralRewardProductId = null);
+
+/// <summary>A field the request did send, null included.</summary>
+public readonly record struct Sent<T>(T Value);
 
 /// <summary>
 /// The studio's public page (docs/37 sections 4.4 and 5, M-7, M-8, M-9, M-13): whether strangers see it, whether they
@@ -55,13 +63,8 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
 
         var enabled = changes.Enabled ?? throw Required("enabled");
         var openJoin = changes.OpenJoin ?? throw Required("openJoin");
-        var weekly = string.IsNullOrWhiteSpace(changes.SuggestWeeklyAt) ? null : changes.SuggestWeeklyAt.Trim().ToLowerInvariant();
-        if (weekly is not null && !WeeklyPattern().IsMatch(weekly))
-        {
-            throw new DomainRuleViolationException(ViolationKind.Validation, "suggestWeeklyAt.invalid", "Use a day and a time, like \"sun 09:00\".", "suggestWeeklyAt");
-        }
-
-        var handle = Handle(changes.InstagramHandle);
+        var weekly = changes.SuggestWeeklyAt is { } sentWeekly ? Weekly(sentWeekly.Value) : null;
+        var handle = changes.InstagramHandle is { } sentHandle ? Handle(sentHandle.Value) : null;
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
         var before = await ReadAsync(unitOfWork, tenant.OrganizationId, lockRow: true, cancellationToken) ?? Defaults;
         if (expectedVersion is { } expected && expected != before.Version)
@@ -69,10 +72,27 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
             throw new DomainRuleViolationException(ViolationKind.Conflict, "concurrency.conflict", "Someone changed this in the meantime. Reload and try again.");
         }
 
-        await ActiveProductAsync(unitOfWork, tenant.OrganizationId, changes.IntroProductId, "introProductId", cancellationToken);
-        await ActiveProductAsync(unitOfWork, tenant.OrganizationId, changes.ReferralRewardProductId, "referralRewardProductId", cancellationToken);
+        // A product is checked only when it is sent: a kept one stays as it was.
+        var intro = changes.IntroProductId is { } sentIntro ? sentIntro.Value : before.IntroProductId;
+        var reward = changes.ReferralRewardProductId is { } sentReward ? sentReward.Value : before.ReferralRewardProductId;
+        if (changes.IntroProductId is not null)
+        {
+            await ActiveProductAsync(unitOfWork, tenant.OrganizationId, intro, "introProductId", cancellationToken);
+        }
 
-        var after = new PublicPageView(enabled, openJoin, changes.IntroProductId, weekly, before.Version + 1, handle, changes.ReferralRewardProductId);
+        if (changes.ReferralRewardProductId is not null)
+        {
+            await ActiveProductAsync(unitOfWork, tenant.OrganizationId, reward, "referralRewardProductId", cancellationToken);
+        }
+
+        var after = new PublicPageView(
+            enabled,
+            openJoin,
+            intro,
+            changes.SuggestWeeklyAt is null ? before.SuggestWeeklyAt : weekly,
+            before.Version + 1,
+            changes.InstagramHandle is null ? before.InstagramHandle : handle,
+            reward);
         var fields = new[]
         {
             (after.Enabled != before.Enabled, "enabled"),
@@ -98,7 +118,7 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
                 referral_reward_product_id = EXCLUDED.referral_reward_product_id, version = organizations.public_pages.version + 1,
                 updated_at = now(), updated_by = EXCLUDED.updated_by
             """,
-            tenant.OrganizationId, enabled, openJoin, changes.IntroProductId, weekly, tenant.MembershipId, handle, changes.ReferralRewardProductId))
+            tenant.OrganizationId, after.Enabled, after.OpenJoin, after.IntroProductId, after.SuggestWeeklyAt, tenant.MembershipId, after.InstagramHandle, after.ReferralRewardProductId))
         {
             await upsert.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -143,6 +163,14 @@ public sealed partial class PublicPageService(IDataSourceProvider dataSources) :
         return HandlePattern().IsMatch(handle)
             ? handle
             : throw new DomainRuleViolationException(ViolationKind.Validation, "instagramHandle.invalid", "Use the studio's Instagram handle.", "instagramHandle");
+    }
+
+    private static string? Weekly(string? value)
+    {
+        var weekly = string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToLowerInvariant();
+        return weekly is null || WeeklyPattern().IsMatch(weekly)
+            ? weekly
+            : throw new DomainRuleViolationException(ViolationKind.Validation, "suggestWeeklyAt.invalid", "Use a day and a time, like \"sun 09:00\".", "suggestWeeklyAt");
     }
 
     private static async Task ActiveProductAsync(UnitOfWork unitOfWork, Guid organizationId, Guid? productId, string field, CancellationToken cancellationToken)

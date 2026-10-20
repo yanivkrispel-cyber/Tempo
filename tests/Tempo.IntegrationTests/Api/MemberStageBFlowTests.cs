@@ -116,6 +116,101 @@ public sealed class MemberStageBFlowTests(PostgresFixture postgres) : IClassFixt
         milestones.GetProperty("hoursOnTheMat").GetDouble().Should().BeApproximately(10 * 50 / 60.0, 0.1);
     }
 
+    [Fact]
+    public async Task TwoAttendanceMarksAtOnce_ForAReferredFriend_RewardTheReferrerOnce_AndBothSucceed()
+    {
+        // #397 review: the reward was check-then-INSERT, so two marks of the same friend's first classes in parallel
+        // made one of them fail on the reward's key and roll the attendance back.
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var slug = $"studio-{Guid.NewGuid():N}"[..20];
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var created = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו נשימה", slug }, HttpStatusCode.Created);
+        var studioId = created.GetProperty("id").GetGuid();
+        var studioPath = $"/api/v1/organizations/{studioId}";
+        await JoinAsync(client, studioPath, "noga", "client");
+        var card = await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "כרטיסיית 20", entries = 20, validDays = 60 }, HttpStatusCode.Created);
+        var reward = await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "שיעור מתנה", entries = 1, validDays = 30 }, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new
+        {
+            enabled = true,
+            openJoin = true,
+            introProductId = card.GetProperty("id").GetGuid(),
+            referralRewardProductId = reward.GetProperty("id").GetGuid()
+        });
+        var type = await SendAsync(client, HttpMethod.Post, $"{studioPath}/class-types", Customer("owner"), new { name = "פילאטיס", category = "pilates", color = "rose", defaultMinutes = 50 }, HttpStatusCode.Created);
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var start = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, israel).DateTime.AddMinutes(20);
+        var referral = await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("noga"), new { channel = "referral" });
+
+        // Several friends, so a race that is lost only sometimes still shows.
+        for (var friend = 0; friend < 4; friend++)
+        {
+            var who = $"friend{friend}";
+            await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer(who));
+            await SendAsync(client, HttpMethod.Post, $"/api/v1/public/studios/{slug}/join", Customer(who), new { src = referral.GetProperty("code").GetString() });
+            var bookings = new List<Guid>();
+            for (var i = 0; i < 2; i++)
+            {
+                var session = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+                {
+                    classTypeId = type.GetProperty("id").GetGuid(),
+                    localDate = start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    localStart = start.AddMinutes((friend * 2) + i).ToString("HH:mm", CultureInfo.InvariantCulture),
+                    capacity = 10
+                }, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+                bookings.Add((await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions/{session}/bookings", Customer(who), new { }, HttpStatusCode.Created)).GetProperty("id").GetGuid());
+            }
+
+            var marks = await Task.WhenAll(bookings.Select(booking =>
+                RawAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{booking}/attendance", Customer("owner"), new { state = "attended" })));
+            marks.Select(m => m.StatusCode).Should().AllBeEquivalentTo(HttpStatusCode.OK, $"both marks for {who} succeed");
+        }
+
+        (await db.AsMasterAsync("SELECT count(*) FROM marketing.referral_rewards WHERE organization_id = $1", studioId)).Should().Be(4L, "one reward per friend");
+        (await db.AsMasterAsync("SELECT count(*) FROM scheduling.passes WHERE organization_id = $1 AND product_id = $2", studioId, reward.GetProperty("id").GetGuid()))
+            .Should().Be(4L, "no pass without its reward row");
+        (await db.AsMasterAsync("SELECT count(*) FROM scheduling.bookings WHERE organization_id = $1 AND status = 'attended'", studioId)).Should().Be(8L);
+
+        // The same race without the pass row that serializes the HTTP path: two transactions mark one more friend's
+        // two bookings, both before either looks at the reward. Both commit, and the referrer is rewarded once.
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("late"));
+        await SendAsync(client, HttpMethod.Post, $"/api/v1/public/studios/{slug}/join", Customer("late"), new { src = referral.GetProperty("code").GetString() });
+        var late = new List<Guid>();
+        for (var i = 0; i < 2; i++)
+        {
+            var session = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions", Customer("owner"), new
+            {
+                classTypeId = type.GetProperty("id").GetGuid(),
+                localDate = start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                localStart = start.AddMinutes(20 + i).ToString("HH:mm", CultureInfo.InvariantCulture),
+                capacity = 10
+            }, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+            late.Add((await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions/{session}/bookings", Customer("late"), new { }, HttpStatusCode.Created)).GetProperty("id").GetGuid());
+        }
+
+        var owner = (Guid)(await db.AsMasterAsync("SELECT user_account_id FROM organizations.memberships WHERE organization_id = $1 AND role = 'owner'", studioId))!;
+        var sources = factory.Services.GetRequiredService<IDataSourceProvider>();
+        using var bothMarked = new Barrier(2);
+        async Task MarkAsync(Guid booking)
+        {
+            await using var unitOfWork = await UnitOfWork.BeginAsync(sources, DatabaseRole.Application, owner, studioId, CancellationToken.None);
+            await using (var mark = unitOfWork.Command("UPDATE scheduling.bookings SET status = 'attended', updated_at = now() WHERE organization_id = $1 AND id = $2", studioId, booking))
+            {
+                await mark.ExecuteNonQueryAsync();
+            }
+
+            await Task.Run(() => bothMarked.SignalAndWait(TimeSpan.FromSeconds(30)));
+            await Tempo.Platform.Modules.Marketing.AttendanceEffects.OnAttendedAsync(unitOfWork, studioId, booking, owner, "test", CancellationToken.None);
+            await unitOfWork.CommitAsync(CancellationToken.None);
+        }
+
+        await Task.WhenAll(late.Select(booking => Task.Run(() => MarkAsync(booking))));
+        (await db.AsMasterAsync("SELECT count(*) FROM marketing.referral_rewards WHERE organization_id = $1", studioId)).Should().Be(5L, "one reward for the fifth friend too");
+        (await db.AsMasterAsync("SELECT count(*) FROM scheduling.passes WHERE organization_id = $1 AND product_id = $2", studioId, reward.GetProperty("id").GetGuid())).Should().Be(5L);
+    }
+
     private async Task<Guid> JoinAsync(HttpClient client, string studioPath, string subject, string role)
     {
         var invitation = await SendAsync(client, HttpMethod.Post, $"{studioPath}/invitations", Customer("owner"), new { email = $"{subject}@example.com", role }, HttpStatusCode.Created);

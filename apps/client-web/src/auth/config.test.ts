@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readAppConfig } from "./config";
+import { brandedLoginEnabled, readAppConfig } from "./config";
 
 describe("readAppConfig", () => {
   it("builds the callback and logout URLs from the app origin", () => {
@@ -21,5 +21,13 @@ describe("readAppConfig", () => {
 
   it("has no auth when the Cognito variables are missing", () => {
     expect(readAppConfig({} as ImportMetaEnv, "http://localhost:5174").auth).toBeNull();
+  });
+});
+
+describe("brandedLoginEnabled", () => {
+  it("is on only for the exact value true", () => {
+    expect(brandedLoginEnabled({ VITE_BRANDED_LOGIN: "true" } as ImportMetaEnv)).toBe(true);
+    expect(brandedLoginEnabled({ VITE_BRANDED_LOGIN: "1" } as ImportMetaEnv)).toBe(false);
+    expect(brandedLoginEnabled({} as ImportMetaEnv)).toBe(false);
   });
 });

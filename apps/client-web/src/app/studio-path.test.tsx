@@ -114,10 +114,11 @@ describe("a studio's own app (/s/<slug>/)", () => {
     expect(within(nav).getByRole("link", { name: "הזמנות" })).toHaveAttribute("href", "/s/neshima/bookings");
   });
 
-  it("shows a studio the member has not joined as not joined, and Tempo's look for a studio the API does not know", async () => {
+  it("says a studio the API does not know is not found, in Tempo's look", async () => {
     dressStudioHead("https://api.test", "gal-yam");
     renderAt("/", { slug: "gal-yam" });
-    expect(await screen.findByText("עוד לא הצטרפת לסטודיו")).toBeInTheDocument();
+    // A member who has not joined sees the studio's public page (docs/37 section 4.1); this studio has none.
+    expect(await screen.findByRole("heading", { name: "הסטודיו לא נמצא" })).toBeInTheDocument();
     await waitFor(() => expect(link("manifest")!.getAttribute("href")).toBe("/manifest.webmanifest"));
     expect(document.title).toBe("Tempo");
     expect(link("apple-touch-icon")!.getAttribute("href")).toBe("/apple-touch-icon.png");
