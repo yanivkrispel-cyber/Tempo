@@ -62,7 +62,7 @@ describe("the day in the studio (D15, the coach's screen)", () => {
   it("opens the studio for anyone who sees the timetable", async () => {
     const { router } = renderAt("/", () => []);
     await waitFor(() => expect(router.state.location.pathname).toBe("/o/neshima/today"));
-    expect(await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "צהריים טובים, דנה" })).toBeInTheDocument();
   });
 
   it("opens the door scan from the installed app's shortcut, and closing it drops the shortcut", async () => {
@@ -136,7 +136,7 @@ describe("the day in the studio (D15, the coach's screen)", () => {
     const router = createMemoryRouter(routes, { initialEntries: ["/o/neshima/today"] });
     render(<App router={router} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} />);
 
-    const heading = await screen.findByRole("heading", { level: 1, name: "היום בסטודיו" });
+    const heading = await screen.findByRole("heading", { level: 1, name: "צהריים טובים, דנה" });
     const line = heading.nextElementSibling;
     expect(line?.tagName).toBe("P");
     expect(line).toHaveAttribute("aria-hidden", "true");

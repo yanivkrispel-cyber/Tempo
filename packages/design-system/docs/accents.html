@@ -1,0 +1,137 @@
+<!doctype html>
+<html dir="rtl" lang="he" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tempo design system — the eight accents</title>
+    <link rel="stylesheet" href="../css/tokens.css" />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <style>
+      /* specimen-only chrome: a grid of accent panels, no colours of its own */
+      body {
+        padding: var(--space-6) 16px;
+        background: var(--canvas);
+      }
+      .ac-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+        gap: var(--space-6);
+        align-items: start;
+      }
+      .ac-panel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+      .ac-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        align-items: center;
+      }
+      .ac-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .ac-signin {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        border-radius: var(--radius-lg);
+        background: var(--surface-sunken);
+      }
+      .ac-pass {
+        padding: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="tp-display">שמונה צבעי מותג</h1>
+    <p class="tp-caption">
+      WL2 (docs/35 section 3): סטודיו בוחר אחד מהשמונה. רק טוקני המותג מתחלפים; המשטחים, הדיו, צבעי הסטטוס והפוקוס
+      נשארים של Tempo. data-accent על &lt;html&gt;.
+    </p>
+
+    <p class="tp-caption"><a href="#light">בהיר</a> · <a href="#dark">כהה</a></p>
+    <div class="ac-grid" data-grid></div>
+
+    <template id="panel">
+      <section class="tp-card ac-panel">
+        <div class="ac-head">
+          <h3 class="tp-card__title" data-label></h3>
+          <code class="tp-caption" data-id dir="ltr"></code>
+        </div>
+        <div class="ac-row">
+          <button class="tp-btn tp-btn--primary" type="button">הזמנת מקום</button>
+          <button class="tp-btn tp-btn--secondary" type="button">לפרטים</button>
+        </div>
+        <div class="ac-row">
+          <span class="tp-chip tp-chip--brand">פתוח להרשמה</span>
+          <span class="tp-chip tp-chip--count">3</span>
+          <a href="#">כל השיעורים</a>
+        </div>
+        <div class="ac-row">
+          <label class="tp-toggle"
+            ><input type="checkbox" checked /><span class="tp-toggle__track"></span
+            ><span class="tp-toggle__label">תזכורת לפני שיעור</span></label
+          >
+        </div>
+        <div class="tp-seg" role="group" aria-label="תצוגה">
+          <button class="tp-seg__opt" type="button" aria-pressed="true">שבוע</button>
+          <button class="tp-seg__opt" type="button" aria-pressed="false">חודש</button>
+        </div>
+        <form class="ac-signin" onsubmit="return false;">
+          <strong>כניסה לסטודיו</strong>
+          <label class="tp-field"
+            ><span class="tp-field__label">אימייל</span
+            ><input class="tp-input" dir="ltr" type="email" placeholder="name@example.com" autocomplete="off"
+          /></label>
+          <button class="tp-btn tp-btn--primary" type="submit">שליחת קוד</button>
+        </form>
+        <div class="tp-passcard ac-pass" aria-label="כרטיסייה">
+          <h3>כרטיסיית 10 כניסות</h3>
+          <div class="tp-passcard__pips" aria-hidden="true">
+            <span class="tp-passcard__pip"></span><span class="tp-passcard__pip"></span
+            ><span class="tp-passcard__pip tp-passcard__pip--used"></span>
+          </div>
+        </div>
+      </section>
+    </template>
+
+    <script type="module">
+      const accents = [
+        ["sage", "מרווה"],
+        ["olive", "זית"],
+        ["ocean", "אוקיינוס"],
+        ["plum", "שזיף"],
+        ["rose", "ורד"],
+        ["terracotta", "טרקוטה"],
+        ["sand", "חול"],
+        ["graphite", "גרפיט"],
+      ];
+      // The whole page takes the theme (#light or #dark): derived tokens resolve on <html>, so a dark region inside a
+      // light page would not show the dark surfaces.
+      const render = () => {
+        const theme = location.hash === "#dark" ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        const grid = document.querySelector("[data-grid]");
+        const template = document.getElementById("panel");
+        grid.replaceChildren();
+        for (const [id, label] of accents) {
+          const panel = template.content.firstElementChild.cloneNode(true);
+          panel.dataset.accent = id;
+          panel.id = `${theme}-${id}`;
+          panel.setAttribute("aria-label", `${label}, ${theme === "dark" ? "כהה" : "בהיר"}`);
+          panel.querySelector("[data-label]").textContent = label;
+          panel.querySelector("[data-id]").textContent = id;
+          grid.append(panel);
+        }
+      };
+      render();
+      addEventListener("hashchange", render);
+    </script>
+  </body>
+</html>
