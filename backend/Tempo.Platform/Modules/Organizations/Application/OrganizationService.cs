@@ -35,6 +35,9 @@ public interface IOrganizationService
 
     Task<OrganizationView> GetAsync(TenantContext tenant, CancellationToken cancellationToken);
 
+    /// <summary>The studio's slug, for links into its own members app (docs/35 W-4).</summary>
+    Task<string?> SlugAsync(TenantContext tenant, CancellationToken cancellationToken);
+
     Task<OrganizationView> UpdateAsync(TenantContext tenant, OrganizationChanges changes, long? expectedVersion, CancellationToken cancellationToken);
 }
 
@@ -125,6 +128,13 @@ public sealed partial class OrganizationService(IDataSourceProvider dataSources)
         await AuditWriter.WriteAsync(unitOfWork, new AuditEvent(organizationId, "user", caller.UserAccountId, "membership.created", "membership", membershipId, correlationId, new { role = "owner" }), cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return created;
+    }
+
+    public async Task<string?> SlugAsync(TenantContext tenant, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        await using var command = unitOfWork.Command("SELECT slug FROM organizations.organizations WHERE id = $1", tenant.OrganizationId);
+        return await command.ExecuteScalarAsync(cancellationToken) as string;
     }
 
     public async Task<OrganizationView> GetAsync(TenantContext tenant, CancellationToken cancellationToken)

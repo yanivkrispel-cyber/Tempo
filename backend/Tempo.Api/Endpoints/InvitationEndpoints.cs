@@ -23,10 +23,16 @@ public sealed class AppLinks(IConfiguration configuration)
     /// The token sits in the fragment, which browsers never send to a server,
     /// so it stays out of every access log (docs/26 section 5.3).
     /// </summary>
-    public string Invitation(MembershipRole role, string token) =>
-        $"{(role == MembershipRole.Client ? ClientApp : AdminApp)}/invite#{token}";
+    /// <remarks>
+    /// With the studio's slug, a client's link opens the studio's own app, `/s/<slug>/invite#` (docs/35 W-4); the plain
+    /// `/invite#` keeps working for links already sent.
+    /// </remarks>
+    public string Invitation(MembershipRole role, string token, string? slug = null) =>
+        role == MembershipRole.Client ? $"{ClientApp}{Studio(slug)}/invite#{token}" : $"{AdminApp}/invite#{token}";
 
-    public string Join(string code) => $"{ClientApp}/join#{code}";
+    public string Join(string code, string? slug = null) => $"{ClientApp}{Studio(slug)}/join#{code}";
+
+    private static string Studio(string? slug) => string.IsNullOrEmpty(slug) ? string.Empty : $"/s/{Uri.EscapeDataString(slug)}";
 }
 
 /// <summary>
@@ -114,13 +120,14 @@ public static class InvitationEndpoints
         return Results.Ok(new InvitationPageResponse([.. page.Items.Select(ToResponse)], page.NextBefore));
     }
 
-    private static async Task<IResult> CreateAsync(HttpContext httpContext, CreateInvitationRequest request, IInvitationService invitations, AppLinks links)
+    private static async Task<IResult> CreateAsync(HttpContext httpContext, CreateInvitationRequest request, IInvitationService invitations, IOrganizationService organizations, AppLinks links)
     {
         var role = OrganizationEndpoints.ParseEnum<MembershipRole>(request.Role, "role")
             ?? throw new DomainRuleViolationException(ViolationKind.Validation, "role.invalid", "Choose admin, staff or client.", "role");
 
         var created = await invitations.CreateAsync(TenantRouteFilter.Current(httpContext), request.Email ?? string.Empty, role, httpContext.RequestAborted);
         var i = created.Invitation;
+        var slug = i.Role == MembershipRole.Client ? await organizations.SlugAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted) : null;
         return Results.Created(
             $"/api/v1/organizations/{TenantRouteFilter.Current(httpContext).OrganizationId}/invitations/{i.Id}",
             new CreatedInvitationResponse(
@@ -131,7 +138,7 @@ public static class InvitationEndpoints
                 i.ExpiresAt,
                 i.CreatedAt,
                 new InvitedByResponse(i.InvitedByMembershipId, i.InvitedByDisplayName),
-                links.Invitation(i.Role, created.Token)));
+                links.Invitation(i.Role, created.Token, slug)));
     }
 
     private static async Task<IResult> RevokeAsync(HttpContext httpContext, Guid invitationId, IInvitationService invitations)
@@ -140,10 +147,11 @@ public static class InvitationEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> RotateJoinLinkAsync(HttpContext httpContext, IJoinLinkService joinLinks, AppLinks links, TimeProvider clock)
+    private static async Task<IResult> RotateJoinLinkAsync(HttpContext httpContext, IJoinLinkService joinLinks, IOrganizationService organizations, AppLinks links, TimeProvider clock)
     {
-        var code = await joinLinks.RotateAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted);
-        return Results.Ok(new JoinLinkResponse(links.Join(code), clock.GetUtcNow()));
+        var tenant = TenantRouteFilter.Current(httpContext);
+        var code = await joinLinks.RotateAsync(tenant, httpContext.RequestAborted);
+        return Results.Ok(new JoinLinkResponse(links.Join(code, await organizations.SlugAsync(tenant, httpContext.RequestAborted)), clock.GetUtcNow()));
     }
 
     private static async Task<IResult> DisableJoinLinkAsync(HttpContext httpContext, IJoinLinkService joinLinks)
