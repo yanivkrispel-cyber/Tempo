@@ -165,7 +165,8 @@ public static class ScheduleEndpoints
                 request.Minutes,
                 request.InstructorMembershipId,
                 request.RoomId,
-                request.Capacity),
+                request.Capacity,
+                request.Event is { } e ? new NewSessionEvent(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null),
             httpContext.RequestAborted);
         return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/sessions/{created.Id}", ToResponse(created));
     }
@@ -220,7 +221,8 @@ public static class ScheduleEndpoints
             s.PassPreview is { } p ? new PassSummaryResponse(p.Id, p.Name, p.Kind, p.EndsOn, p.EntriesLeft) : null,
             s.Version.ToString(CultureInfo.InvariantCulture),
             s.FrozenUntil,
-            s.MemberNote);
+            s.MemberNote,
+            s.Event is { } e ? new SessionEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null);
 
     private static TimeOnly ParseTime(string value, string field) =>
         TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)

@@ -102,5 +102,6 @@ public static class BookingEndpoints
             b.CreatedAt,
             b.Version.ToString(CultureInfo.InvariantCulture),
             b.CancelledFrom,
-            b.Spot is { } spot ? new SpotRefResponse(spot.Id, spot.Label) : null);
+            b.Spot is { } spot ? new SpotRefResponse(spot.Id, spot.Label) : null,
+            b.ToPayAtStudio);
 }

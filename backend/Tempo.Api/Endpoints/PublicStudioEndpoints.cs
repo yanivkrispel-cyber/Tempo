@@ -91,7 +91,8 @@ public static class PublicStudioEndpoints
             s.Instructor is { } i ? new PublicInstructorResponse(i.DisplayName, MediaLinks.UrlFor(studioId, i.PhotoMediaId, small: true), i.Headline, i.InstagramHandle) : null,
             s.Availability,
             s.SpotsLeft,
-            s.WaitlistOpen);
+            s.WaitlistOpen,
+            s.Event is { } e ? new PublicEventResponse(e.Title, e.Description, e.PriceAgorot, e.PassRequired) : null);
 
     private static DateOnly? Date(string? value, string field)
     {

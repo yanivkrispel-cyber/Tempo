@@ -3926,6 +3926,8 @@ export interface components {
             /** @description The instructor's note to the class (docs/33 section 7), e.g. what to bring. */
             memberNote?: string | null;
             version: string;
+            /** @description Set on a one-off session that is an event or a workshop (docs/37 section 8.4). */
+            event?: components["schemas"]["SessionEvent"] | null;
         };
         SessionList: {
             items: components["schemas"]["Session"][];
@@ -3942,6 +3944,14 @@ export interface components {
             /** Format: uuid */
             roomId?: string;
             capacity: number;
+            /** @description Makes the one-off session an event or a workshop (docs/37 section 8.4): 400 `event.title.invalid` (1 to 60 characters), `event.description.invalid` (up to 600), `event.priceAgorot.invalid` (0 or more). `passRequired` defaults to true; false books without a pass, to pay at the studio. */
+            event?: {
+                title?: string;
+                description?: string | null;
+                priceAgorot?: number | null;
+                /** @default true */
+                passRequired: boolean;
+            } | null;
         };
         UpdateSessionRequest: {
             /** Format: uuid */
@@ -3988,6 +3998,8 @@ export interface components {
             version: string;
             /** @description The spot this place holds in a room with spot selection (docs/33 section 3); null otherwise. */
             spot?: components["schemas"]["SpotRef"] | null;
+            /** @description A place at an event without a pass (docs/37 8.4): paid at the studio, shown on the roster. */
+            toPayAtStudio?: boolean;
         };
         CreateBookingRequest: {
             /**
@@ -4293,6 +4305,13 @@ export interface components {
             /** @description Only when `few`. */
             spotsLeft: number | null;
             waitlistOpen: boolean;
+            /** @description An event shows in its own layout (docs/37 section 8.4). */
+            event: {
+                title: string;
+                description: string | null;
+                priceAgorot: number | null;
+                passRequired: boolean;
+            } | null;
         };
         PublicSessionList: {
             items: components["schemas"]["PublicSession"][];
