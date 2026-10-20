@@ -584,7 +584,7 @@ function Heading({ title, lead, ltrLead = false }: { title: string; lead: string
   );
 }
 
-function EmailField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function EmailField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <Field label="אימייל">
       <Input
@@ -605,7 +605,7 @@ function EmailField({ value, onChange }: { value: string; onChange: (value: stri
  * Six digits shown as six boxes. One real input sits over the boxes, so the phone still offers the code from the SMS
  * or mail bar, a paste fills all six, and anything but digits is dropped.
  */
-function CodeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function CodeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <Field label="קוד בן שש ספרות">
       <div className={styles.codeBoxes} dir="ltr">
@@ -673,7 +673,7 @@ function NoticeBanner({ notice, onHostedUi }: { notice: Notice | null; onHostedU
   );
 }
 
-function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+export function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" className={styles.link} onClick={onClick}>
       {children}
@@ -682,7 +682,7 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
 }
 
 /** "Send again" opens after 60 seconds (docs/36 section 4). */
-function ResendButton({ onResend, disabled }: { onResend: () => void; disabled: boolean }) {
+export function ResendButton({ onResend, disabled }: { onResend: () => void; disabled: boolean }) {
   const [left, setLeft] = useState(RESEND_SECONDS);
   useEffect(() => {
     if (left <= 0) return;

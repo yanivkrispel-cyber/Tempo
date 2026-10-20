@@ -244,7 +244,7 @@ export interface paths {
         put?: never;
         /**
          * Join a public studio as a client, without a code (a signed-in customer)
-         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`). **SK3 (planned fields):** with `productId` (a listed product) and/or `sessionId`, one transaction joins, grants that product once, marked to pay at the studio, and books; on any error nothing is granted or booked. 404 `product.not_found` or `session.not_found`; 409 `offer.ended`, `offer.not_newcomer` (the caller holds or held this newcomers-only product here), `session.full`, `session.not_bookable`. The booking's source is this link (last touch); the membership's stays the first one.
+         * @description docs/37 section 4.3 (MK3, M-9). Needs a verified email (403 `account.email_not_verified`), the public page on and open join on (else 403 `join.closed`). Creates the `active` client membership and its person, records the first-touch source from `src` (an unknown code is ignored), and grants the intro product once per person and studio, marked `toPayAtStudio` (M-8). Idempotent: joining again returns the same membership. Counts against the join attempts (429 with `Retry-After`). **SK3:** with `productId` (a listed product) and/or `sessionId`, one transaction joins, grants that product once, marked to pay at the studio, and books; on any error nothing is granted or booked. 404 `product.not_found` or `session.not_found`; 409 `offer.ended`, `offer.not_newcomer` (the caller holds or held this newcomers-only product here), `session.full`, `session.not_bookable` (cancelled, started or not open yet). A full class with an open waitlist answers 200 with the booking `waitlisted`. The only partial answer is `next: health_declaration` (see the response). The booking's source is this link (last touch); the membership's stays the first one.
          */
         post: operations["joinPublicStudio"];
         delete?: never;
@@ -544,7 +544,7 @@ export interface paths {
         put?: never;
         /**
          * A new link with its own source code, for one share (`marketing.publish`, or `marketing.publish.own` for one's own session)
-         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. Audit `marketing.link.created` (channel, template).
+         * @description docs/37 section 6 (MK4), SL-1 (SK4). `url` follows the target: `/s/<slug>/c/<sessionId>`, `/s/<slug>/`, `/s/<slug>/o/<productId>` or `/s/<slug>/prices` on the members app, each with `?src=<code>`. Without `target`, a `sessionId` means a session target and none means the schedule (one release). 403 when an instructor names another instructor's session or no session. 400 `channel.invalid` for `member_card` and `referral`, which are a member's own links (`me/share-link`). Audit `marketing.link.created` (channel, template).
          */
         post: operations["createMarketingLink"];
         delete?: never;
@@ -4380,8 +4380,8 @@ export interface components {
              * @description One pass of it per friend's first attended class (M-17); null means no reward.
              */
             referralRewardProductId: string | null;
-            /** @description SL-4, SL-5 (SK2): the products shown on the prices page, in this order. Until SK2 the API leaves it out. */
-            listedProducts?: components["schemas"]["ListedProduct"][];
+            /** @description SL-4, SL-5: the products shown on the prices page, in this order. */
+            listedProducts: components["schemas"]["ListedProduct"][];
         };
         ListedProduct: {
             /**
@@ -4475,9 +4475,9 @@ export interface components {
                 priceAgorot: number | null;
                 passRequired: boolean;
             } | null;
-            /** @description SL-3 (SK2): the session has started or ended. Until SK2 the API leaves it out. */
+            /** @description SL-3: the session has started or ended. Always sent (optional in the schema so older fixtures stay valid). */
             past?: boolean;
-            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise. Only on the single-session read. */
+            /** @description SL-3 (SK2): when the session is full, cancelled or past, up to three upcoming sessions with room within 14 days, the same class type first. Empty otherwise, and always empty in the list. */
             alternatives?: components["schemas"]["PublicSessionSummary"][];
         };
         PublicSessionSummary: {
@@ -4562,7 +4562,12 @@ export interface components {
                 productName: string;
                 toPayAtStudio: boolean;
             } | null;
-            /** @description SK3: the booking made with `sessionId`. Until SK3 the API leaves it out. */
+            /**
+             * @description SK3: `health_declaration` when `sessionId` couldn't be booked only because the studio asks for a signed health declaration first. The membership and the pass are kept; the app shows the declaration, then books.
+             * @enum {string|null}
+             */
+            next?: "health_declaration" | null;
+            /** @description SK3: the booking made with `sessionId`; null without one, or when `next` is set. */
             booking?: {
                 /** Format: uuid */
                 bookingId: string;
@@ -4644,7 +4649,7 @@ export interface components {
             byChannel: components["schemas"]["ChannelSource"][];
             /** @description Links with sign-ups or bookings in the window, and links made in it; at most 200. */
             byLink: components["schemas"]["LinkSource"][];
-            /** @description SK4: the same counts per target kind (SL-1). Until SK4 the API leaves it out. */
+            /** @description The same counts per target kind (SL-1). Always sent; optional in the schema so older fixtures stay valid. */
             byTarget?: {
                 /** @enum {string} */
                 kind: "session" | "schedule" | "offer" | "prices";

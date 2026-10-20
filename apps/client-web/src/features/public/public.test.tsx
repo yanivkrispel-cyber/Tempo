@@ -10,6 +10,7 @@ import { routes } from "../../app/routes";
 import { apiStub, json, problem, sampleMe } from "../../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../../test/auth";
 import { createStudio, organizationId, sessionIds, testNow } from "../../test/studio";
+import { dateLine, roomChip, shortWhen } from "./publicText";
 import { captureSource, currentSource, SOURCE_KEY } from "./source";
 
 const api = "/api/v1/public/studios/neshima";
@@ -133,6 +134,20 @@ describe("the source of a shared link (docs/37 section 6)", () => {
   });
 });
 
+describe("what a class's public page says (boards א and ז)", () => {
+  it("names the day and both ends of the class", () => {
+    expect(dateLine(prenatal, "Asia/Jerusalem", "2026-10-13")).toBe("היום 13.10, בין 19:00 ל-20:00");
+    expect(dateLine(prenatalLater, "Asia/Jerusalem", "2026-10-13")).toBe("שלישי 20.10, בין 19:00 ל-20:00");
+    expect(shortWhen(vinyasa, "Asia/Jerusalem", "2026-10-13")).toBe("מחר 07:00");
+  });
+
+  it("says how much room an alternative has", () => {
+    expect(roomChip(prenatal)).toEqual({ label: "נשארו 2", tone: "warning" });
+    expect(roomChip({ ...prenatal, spotsLeft: 1 }).label).toBe("מקום אחרון");
+    expect(roomChip(vinyasa)).toEqual({ label: "יש מקום", tone: "brand" });
+  });
+});
+
 describe("a studio's public page (/s/<slug>/)", () => {
   it("shows a visitor the studio, its offer and the week by day, without the classes already over", async () => {
     renderStudioApp("/");
@@ -197,9 +212,15 @@ describe("a class's public page (/s/<slug>/c/<id>, SL-2, SL-3)", () => {
     const flowStorage = memoryStorage();
     renderStudioApp(`/c/${prenatal.id}`, { auth: signedOutAuth({ redirect, flowStorage, basePath: "/s/neshima" }) });
     expect(await screen.findByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
-    expect(screen.getByText("היום 19:00 · 60 דק׳")).toBeInTheDocument();
+    expect(screen.getByText("היום 13.10, בין 19:00 ל-20:00")).toBeInTheDocument();
     expect(screen.getByText("נשארו 2 מקומות")).toBeInTheDocument();
+    expect(screen.getByText("נועה")).toBeInTheDocument();
     expect(screen.getByText("מורה ליוגה")).toBeInTheDocument();
+    expect(screen.getByText("החדר הקטן")).toBeInTheDocument();
+    expect(screen.getByText("שיעור ניסיון · ₪45")).toBeInTheDocument();
+    expect(screen.getByText("משלמים בסטודיו, בלי כרטיס אשראי עכשיו")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "כל המערכת" })).toHaveAttribute("href", "/s/neshima");
+    expect(screen.getByText("Tempo")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "@noa.yoga" })).toHaveAttribute(
       "href",
       "https://www.instagram.com/noa.yoga/",
@@ -266,10 +287,30 @@ describe("a class's public page (/s/<slug>/c/<id>, SL-2, SL-3)", () => {
     expect(await screen.findByRole("dialog", { name: /הרשמה לשיעור/ })).toBeInTheDocument();
   });
 
-  it("offers the waitlist of a full class", async () => {
+  it("says a full class filled up, offers classes with room, and its waitlist", async () => {
     renderStudioApp(`/c/${yin.id}`);
-    expect(await screen.findByText("מלא · יש רשימת המתנה")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "הצטרפות לרשימת ההמתנה" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "יין יוגה ונשימה, היום 20:15" })).toBeInTheDocument();
+    expect(screen.getByText("השיעור התמלא")).toBeInTheDocument();
+    expect(screen.getByText("הקישור עדיין עובד. אלה השיעורים הקרובים עם מקום:")).toBeInTheDocument();
+    const instead = await screen.findByRole("region", { name: "שיעורים עם מקום" });
+    const first = (await within(instead).findAllByRole("link"))[0]!;
+    expect(first).toHaveAttribute("href", `/s/neshima/c/${prenatal.id}`);
+    expect(first).toHaveTextContent("19:00");
+    expect(first).toHaveTextContent("היום 13.10 · נועה");
+    expect(within(first).getByText("נשארו 2")).toBeInTheDocument();
+    expect(within(instead).getAllByText("יש מקום")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "שריינו לי מקום" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "רשימת המתנה להיום 20:15" }));
+    expect(screen.getByRole("dialog", { name: "רשימת המתנה להיום 20:15" })).toBeInTheDocument();
+  });
+
+  it("offers no waitlist when a full class has none", async () => {
+    const closed = { ...yin, waitlistOpen: false };
+    renderStudioApp(`/c/${yin.id}`, { routes: { [`GET ${api}/sessions/${yin.id}`]: closed } });
+    expect(await screen.findByText("השיעור התמלא")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "שיעורים עם מקום" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /רשימת המתנה/ })).not.toBeInTheDocument();
   });
 
   it.each([
@@ -304,5 +345,94 @@ describe("a class's public page (/s/<slug>/c/<id>, SL-2, SL-3)", () => {
       />,
     );
     expect(await screen.findByRole("heading", { name: "הדף לא נמצא" })).toBeInTheDocument();
+  });
+});
+
+describe("signing up inside the sheet (board ב, branded_login)", () => {
+  const password = "Correct-Horse-9";
+
+  /** Cognito's JSON API by `X-Amz-Target`; `SignUp` can answer that the email is taken. */
+  function cognitoStub({ taken = false } = {}) {
+    const calls: { target: string; body: Record<string, unknown> }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+        const target = String(new Headers(init?.headers).get("X-Amz-Target")).split(".").pop()!;
+        calls.push({ target, body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+        const headers = { "Content-Type": "application/x-amz-json-1.1" };
+        if (target === "SignUp" && taken)
+          return new Response(JSON.stringify({ __type: "UsernameExistsException" }), { status: 400, headers });
+        const body =
+          target === "SignUp" || target === "ConfirmSignUp"
+            ? { Session: `${target}-session` }
+            : { AuthenticationResult: { AccessToken: "access", RefreshToken: "refresh", ExpiresIn: 3600 } };
+        return new Response(JSON.stringify(body), { headers });
+      }),
+    );
+    return calls;
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("signs a newcomer up with the code, saves the name, joins and opens the booking, all on the class page", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    const cognito = cognitoStub();
+    let joined = false;
+    const { router, stub } = renderStudioApp(`/c/${prenatal.id}`, {
+      routes: {
+        "POST /api/v1/session": () => json(joined ? sampleMe : notMember),
+        "PATCH /api/v1/me": () => json(notMember),
+        [`POST ${api}/join`]: () => {
+          joined = true;
+          return json({
+            organizationId,
+            membershipId: sampleMe.memberships[0]!.membershipId,
+            created: true,
+            introPass: null,
+          });
+        },
+      },
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "שריינו לי מקום" }));
+    const sheet = screen.getByRole("dialog", { name: "שריינו לי מקום" });
+    expect(within(sheet).queryByRole("button", { name: "הרשמה" })).not.toBeInTheDocument();
+    await userEvent.type(within(sheet).getByLabelText("שם מלא"), "נגה כהן");
+    await userEvent.type(within(sheet).getByLabelText("אימייל"), "noga@example.com");
+    await userEvent.type(within(sheet).getByLabelText("סיסמה"), password);
+    await userEvent.click(within(sheet).getByRole("button", { name: "שלחו קוד ושריינו" }));
+
+    expect(await within(sheet).findByText(/שלחנו אליו קוד בן שש ספרות/)).toBeInTheDocument();
+    await userEvent.type(within(sheet).getByLabelText("קוד בן שש ספרות"), "123456");
+    await userEvent.click(within(sheet).getByRole("button", { name: "אישור ושריון" }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/neshima/classes/${prenatal.id}`));
+    expect(cognito.map((call) => call.target)).toEqual(["SignUp", "ConfirmSignUp", "InitiateAuth"]);
+    expect(cognito[1]!.body).toMatchObject({ ConfirmationCode: "123456", Session: "SignUp-session" });
+    const order = stub.requests.map((request) => `${request.method} ${new URL(request.url).pathname}`);
+    const named = order.indexOf("PATCH /api/v1/me");
+    expect(stub.bodies[named]).toEqual({ displayName: "נגה כהן" });
+    expect(named).toBeLessThan(order.indexOf(`POST ${api}/join`));
+    expect(await screen.findByRole("dialog", { name: /הרשמה לשיעור/ })).toBeInTheDocument();
+  });
+
+  it("reads a taken email like a new one, and keeps the usual sign-in one tap away", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    cognitoStub({ taken: true });
+    const { router } = renderStudioApp(`/c/${prenatal.id}?reserve=1`);
+    const sheet = await screen.findByRole("dialog", { name: "שריינו לי מקום" });
+    await userEvent.type(within(sheet).getByLabelText("שם מלא"), "נגה כהן");
+    await userEvent.type(within(sheet).getByLabelText("אימייל"), "noga@example.com");
+    await userEvent.type(within(sheet).getByLabelText("סיסמה"), password);
+    await userEvent.click(within(sheet).getByRole("button", { name: "שלחו קוד ושריינו" }));
+    expect(await within(sheet).findByText(/אם האימייל פנוי, שלחנו אליו קוד/)).toBeInTheDocument();
+
+    await userEvent.click(within(sheet).getByRole("button", { name: "שינוי הפרטים" }));
+    await userEvent.click(within(sheet).getByRole("button", { name: "כבר מתאמנים כאן? כניסה" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/s/neshima/login"));
+    expect(new URLSearchParams(router.state.location.search).get("returnTo")).toBe(`/c/${prenatal.id}?reserve=1`);
   });
 });

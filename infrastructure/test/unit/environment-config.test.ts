@@ -27,6 +27,7 @@ function baseConfig(overrides: Partial<TempoEnvironmentConfig> = {}): TempoEnvir
     featureFlags: { enableCustomDomain: false, enableFrontendHosting: false, enableWaf: false },
     corsAllowedOrigins: ["http://localhost:5173"],
     passkeyRelyingPartyId: "localhost",
+    publicThrottle: { reads: { rateLimit: 5, burstLimit: 6 }, join: { rateLimit: 1, burstLimit: 2 } },
     cognitoCallbackUrls: {
       adminWeb: ["http://localhost:5173/auth/callback"],
       clientWeb: ["http://localhost:5174/auth/callback"],
@@ -218,3 +219,18 @@ describe("the passkey's relying party is named, not derived (#386 review)", () =
   });
 });
 
+describe("the public routes' throttle (board #404, S-A)", () => {
+  it("keeps both public bursts together below the API's reserved concurrency", () => {
+    const tooWide = baseConfig({ publicThrottle: { reads: { rateLimit: 10, burstLimit: 8 }, join: { rateLimit: 2, burstLimit: 2 } } });
+    expect(() => validateEnvironmentConfig(tooWide)).toThrow(/publicThrottle/);
+  });
+
+  it("never lets a rate exceed its burst", () => {
+    const odd = baseConfig({ publicThrottle: { reads: { rateLimit: 5, burstLimit: 4 }, join: { rateLimit: 1, burstLimit: 1 } } });
+    expect(() => validateEnvironmentConfig(odd)).toThrow(/publicThrottle/);
+  });
+
+  it("holds for development", () => {
+    expect(() => validateEnvironmentConfig(development)).not.toThrow();
+  });
+});

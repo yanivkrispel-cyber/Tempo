@@ -569,11 +569,13 @@ function SuggestionCard({ suggestion, timeZone }: { suggestion: Suggestion; time
   const names = suggestion.people.slice(0, 3);
   const more = suggestion.count - names.length;
   const text = suggestionText(suggestion, timeZone);
-  const to = suggestion.sessionId
-    ? `/o/${studio.slug}/schedule/sessions/${suggestion.sessionId}`
-    : suggestion.count === 1 && names[0]
-      ? `/o/${studio.slug}/people/${names[0].id}`
-      : `/o/${studio.slug}/people`;
+  const to = text.publish
+    ? `/o/${studio.slug}/publish?${new URLSearchParams(text.publish).toString()}`
+    : suggestion.sessionId
+      ? `/o/${studio.slug}/schedule/sessions/${suggestion.sessionId}`
+      : suggestion.count === 1 && names[0]
+        ? `/o/${studio.slug}/people/${names[0].id}`
+        : `/o/${studio.slug}/people`;
   return (
     <li className="tp-insight">
       <div className={styles.insightHead}>
@@ -606,7 +608,16 @@ function SuggestionCard({ suggestion, timeZone }: { suggestion: Suggestion; time
 function suggestionText(
   suggestion: Suggestion,
   timeZone: string,
-): { icon: IconName; tile: string; ink: string; title: string; body: string | null; action: string } {
+): {
+  icon: IconName;
+  tile: string;
+  ink: string;
+  title: string;
+  body: string | null;
+  action: string;
+  /** The story it opens on the publish page, for the `story_*` cards. */
+  publish?: Record<string, string>;
+} {
   const one = suggestion.count === 1;
   switch (suggestion.kind) {
     case "passes_ending":
@@ -637,6 +648,40 @@ function suggestionText(
           ? `יש זמן פנוי באותו יום ב־${clockTime(suggestion.slot.startsAt, timeZone)}${suggestion.slot.roomName ? `, ${suggestion.slot.roomName}` : ""}. שיעור נוסף יכניס אותם.`
           : null,
         action: "לשיעור",
+      };
+    case "story_weekly":
+      return {
+        icon: "share",
+        tile: "var(--brand-soft)",
+        ink: "var(--brand-ink)",
+        title: "הסטורי של השבוע מוכן",
+        body: one ? "שיעור אחד השבוע, עם התפוסה שלו." : `${suggestion.count} שיעורים השבוע, עם התפוסה של כל אחד.`,
+        action: "לסטורי",
+        publish: { template: "week" },
+      };
+    case "story_spot_opened":
+      return {
+        icon: "share",
+        tile: "var(--success-soft)",
+        ink: "var(--success-ink)",
+        title: suggestion.startsAt
+          ? `התפנה מקום ב-${clockTime(suggestion.startsAt, timeZone)}, לפרסם?`
+          : "התפנה מקום, לפרסם?",
+        body: `${suggestion.className ?? "השיעור"}: ${one ? "מקום אחד פנוי" : `${suggestion.count} מקומות פנויים`} ורשימת ההמתנה כבר סגורה.`,
+        action: "לסטורי",
+        publish: suggestion.sessionId
+          ? { template: "spot_opened", session: suggestion.sessionId }
+          : { template: "spot_opened" },
+      };
+    case "story_schedule_changed":
+      return {
+        icon: "share",
+        tile: "var(--warning-soft)",
+        ink: "var(--warning-ink)",
+        title: "המערכת השתנתה, לעדכן את העוקבות?",
+        body: one ? "שיעור אחד בשבוע הקרוב השתנה." : `${suggestion.count} שיעורים בשבוע הקרוב השתנו.`,
+        action: "לסטורי",
+        publish: { template: "change" },
       };
   }
 }

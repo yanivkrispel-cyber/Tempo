@@ -59,6 +59,41 @@ describe("API Gateway is an HTTP API, never a REST API (ADR-0004)", () => {
   });
 });
 
+describe("The public routes have their own, lower throttle (board #404, S-A)", () => {
+  const template = stackTemplate("Api");
+  const stage = () => Object.values(template.findResources("AWS::ApiGatewayV2::Stage"))[0].Properties;
+
+  it("routes public reads and the public join on their own route keys, to the same function, without an authorizer", () => {
+    for (const key of ["GET /api/v1/public/{proxy+}", "POST /api/v1/public/studios/{slug}/join"]) {
+      template.hasResourceProperties("AWS::ApiGatewayV2::Route", { RouteKey: key, AuthorizationType: "NONE" });
+    }
+  });
+
+  it("throttles them below the stage default of 50 and 100, from the environment config", () => {
+    expect(stage().DefaultRouteSettings).toMatchObject({ ThrottlingRateLimit: 50, ThrottlingBurstLimit: 100 });
+    expect(stage().RouteSettings).toEqual({
+      "GET /api/v1/public/{proxy+}": { ThrottlingRateLimit: 10, ThrottlingBurstLimit: 12 },
+      "POST /api/v1/public/studios/{slug}/join": { ThrottlingRateLimit: 2, ThrottlingBurstLimit: 4 }
+    });
+  });
+
+  it("deploys the stage after the routes its settings name", () => {
+    const [stageId] = Object.keys(template.findResources("AWS::ApiGatewayV2::Stage"));
+    const dependsOn = [template.toJSON().Resources[stageId].DependsOn ?? []].flat() as string[];
+    const routes = template.findResources("AWS::ApiGatewayV2::Route");
+    const throttled = Object.entries(routes)
+      .filter(([, r]) => (r.Properties.RouteKey as string).includes("/public/"))
+      .map(([id]) => id);
+    expect(throttled).toHaveLength(2);
+    expect(dependsOn).toEqual(expect.arrayContaining(throttled));
+  });
+
+  it("adds no resource that bills by itself: no WAF, no usage plan (N-4)", () => {
+    template.resourceCountIs("AWS::WAFv2::WebACL", 0);
+    template.resourceCountIs("AWS::ApiGateway::UsagePlan", 0);
+  });
+});
+
 describe("The API validates Cognito access tokens itself (ADR-0004 amendment)", () => {
   const template = stackTemplate("Api");
 

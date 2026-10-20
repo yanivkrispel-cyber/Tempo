@@ -8,18 +8,31 @@ using Tempo.Platform.Modules.Audit;
 
 namespace Tempo.Platform.Modules.Marketing;
 
-public sealed record NewMarketingLink(string? Channel, string? Template, Guid? SessionId);
+/// <summary>A new studio link: where it leads (SL-1) is `TargetKind` and `TargetId`; a bare `SessionId` still means a session.</summary>
+public sealed record NewMarketingLink(string? Channel, string? Template, Guid? SessionId, string? TargetKind = null, Guid? TargetId = null);
 
 /// <summary>A link with its source code; <paramref name="Slug"/> lets the API write the members-app URL.</summary>
-public sealed record MarketingLinkView(Guid Id, string Code, string Channel, string? Template, Guid? SessionId, string Slug, DateTimeOffset CreatedAt);
+public sealed record MarketingLinkView(
+    Guid Id,
+    string Code,
+    string Channel,
+    string? Template,
+    Guid? SessionId,
+    string Slug,
+    DateTimeOffset CreatedAt,
+    string TargetKind = "schedule",
+    Guid? TargetId = null,
+    bool? ShowName = null);
 
 public sealed record SourceCountsView(int Members, int Bookings, int Attended);
 
 public sealed record ChannelSourceView(string Channel, SourceCountsView Counts);
 
-public sealed record LinkSourceView(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, SourceCountsView Counts);
+public sealed record LinkSourceView(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, SourceCountsView Counts, string TargetKind = "schedule", Guid? TargetId = null);
 
-public sealed record SourceReportView(int Days, IReadOnlyList<ChannelSourceView> ByChannel, IReadOnlyList<LinkSourceView> ByLink);
+public sealed record TargetSourceView(string Kind, SourceCountsView Counts);
+
+public sealed record SourceReportView(int Days, IReadOnlyList<ChannelSourceView> ByChannel, IReadOnlyList<LinkSourceView> ByLink, IReadOnlyList<TargetSourceView>? ByTarget = null);
 
 /// <summary>
 /// Links that count (docs/37 section 6, MK4): every share gets its own code, and the report "מאיפה הגיעו ההרשמות"
@@ -37,12 +50,18 @@ public interface IMarketingLinkService
 public sealed partial class MarketingLinkService(IDataSourceProvider dataSources) : IMarketingLinkService
 {
     public static readonly IReadOnlyList<string> Channels = ["story", "whatsapp", "bio", "poster", "member_card", "referral", "other"];
+
+    /// <summary>
+    /// The channels a studio's staff may use. `member_card` and `referral` are a member's own links (me/share-link): a
+    /// referral link made by staff would earn its maker the bring-a-friend reward for every newcomer it brings (K5).
+    /// </summary>
+    public static readonly IReadOnlyList<string> StudioChannels = ["story", "whatsapp", "bio", "poster", "other"];
     private const string Alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
     private const int CodeLength = 8;
 
     public async Task<MarketingLinkView> CreateAsync(TenantContext tenant, NewMarketingLink link, CancellationToken cancellationToken)
     {
-        var channel = link.Channel is not null && Channels.Contains(link.Channel)
+        var channel = link.Channel is not null && StudioChannels.Contains(link.Channel)
             ? link.Channel
             : throw new DomainRuleViolationException(ViolationKind.Validation, "channel.invalid", "Choose where the link goes.", "channel");
         var template = string.IsNullOrWhiteSpace(link.Template) ? null : link.Template.Trim();
@@ -51,14 +70,28 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
             throw new DomainRuleViolationException(ViolationKind.Validation, "template.invalid", "Unknown template.", "template");
         }
 
+        var (kind, targetId) = Target(link);
+        var sessionTarget = kind == "session" ? targetId : null;
         var everyClass = tenant.Has(Permissions.MarketingPublish);
-        if (!everyClass && (!tenant.Has(Permissions.MarketingPublishOwn) || link.SessionId is null))
+        if (!everyClass && (!tenant.Has(Permissions.MarketingPublishOwn) || sessionTarget is null))
         {
             throw Denied();
         }
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
-        if (link.SessionId is { } sessionId)
+        if (kind == "offer")
+        {
+            // An offer link leads to a product this studio lists (SL-4); RLS keeps another studio's out.
+            await using var offer = unitOfWork.Command(
+                "SELECT 1 FROM scheduling.pass_products WHERE organization_id = $1 AND id = $2 AND public_listed AND status = 'active'",
+                tenant.OrganizationId, targetId);
+            if (await offer.ExecuteScalarAsync(cancellationToken) is null)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Validation, "target.invalid", "Choose an offer the studio lists.", "target");
+            }
+        }
+
+        if (sessionTarget is { } sessionId)
         {
             await using var session = unitOfWork.Command(
                 "SELECT instructor_membership_id FROM scheduling.sessions WHERE organization_id = $1 AND id = $2",
@@ -95,10 +128,12 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
                 await using var insert = unitOfWork.Command(
                     """
                     INSERT INTO marketing.links (organization_id, id, code, channel, template, session_id, target_kind, target_id, created_by, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $6::uuid IS NULL THEN 'schedule' ELSE 'session' END, $6, $7, now())
+                    VALUES ($1, $2, $3, $4, $5, $6, $8, $9, $7, now())
                     RETURNING created_at
                     """,
-                    tenant.OrganizationId, id, code, channel, template, link.SessionId, tenant.MembershipId);
+                    tenant.OrganizationId, id, code, channel, template, sessionTarget, tenant.MembershipId, kind, targetId);
+                insert.Parameters[5].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Uuid;
+                insert.Parameters[8].NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Uuid;
                 await using var inserted = await insert.ExecuteReaderAsync(cancellationToken);
                 await inserted.ReadAsync(cancellationToken);
                 createdAt = inserted.GetFieldValue<DateTimeOffset>(0);
@@ -115,10 +150,33 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
         // The channel and template only (docs/37 section 5); the code is not secret but says nothing either.
         await AuditWriter.WriteAsync(
             unitOfWork,
-            new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, "marketing.link.created", "marketing_link", id, tenant.CorrelationId, new { channel, template }),
+            new AuditEvent(tenant.OrganizationId, "user", tenant.UserAccountId, "marketing.link.created", "marketing_link", id, tenant.CorrelationId, new { channel, template, target = kind }),
             cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return new MarketingLinkView(id, code, channel, template, link.SessionId, slug, createdAt);
+        return new MarketingLinkView(id, code, channel, template, sessionTarget, slug, createdAt, kind, targetId);
+    }
+
+    public static readonly IReadOnlyList<string> TargetKinds = ["session", "schedule", "offer", "prices"];
+
+    /// <summary>
+    /// SL-1: a session or an offer names its id, the week and the prices name none. Without a target a session id still
+    /// means the session, and nothing means the week (one release).
+    /// </summary>
+    private static (string Kind, Guid? Id) Target(NewMarketingLink link)
+    {
+        if (link.TargetKind is null)
+        {
+            return link.SessionId is { } session ? ("session", session) : ("schedule", null);
+        }
+
+        var invalid = new DomainRuleViolationException(ViolationKind.Validation, "target.invalid", "Choose where the link leads.", "target");
+        if (!TargetKinds.Contains(link.TargetKind))
+        {
+            throw invalid;
+        }
+
+        var needsId = link.TargetKind is "session" or "offer";
+        return needsId == link.TargetId.HasValue ? (link.TargetKind, link.TargetId) : throw invalid;
     }
 
     public async Task<SourceReportView> ReportAsync(TenantContext tenant, int days, CancellationToken cancellationToken)
@@ -145,7 +203,7 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
                 GROUP BY 1
             )
             SELECT l.id, l.code, l.channel, l.template, l.session_id, l.created_at,
-                   coalesce(m.n, 0), coalesce(b.n, 0), coalesce(b.attended, 0)
+                   coalesce(m.n, 0), coalesce(b.n, 0), coalesce(b.attended, 0), l.target_kind, l.target_id
             FROM marketing.links l
             LEFT JOIN members m ON m.link = l.id
             LEFT JOIN booked b ON b.link = l.id
@@ -168,7 +226,9 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
                     template,
                     session,
                     reader.GetFieldValue<DateTimeOffset>(5),
-                    new SourceCountsView((int)reader.GetInt64(6), (int)reader.GetInt64(7), (int)reader.GetInt64(8))));
+                    new SourceCountsView((int)reader.GetInt64(6), (int)reader.GetInt64(7), (int)reader.GetInt64(8)),
+                    reader.GetString(9),
+                    reader.IsDBNull(10) ? null : reader.GetGuid(10)));
             }
         }
 
@@ -178,7 +238,13 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
             .OrderByDescending(c => c.Counts.Members + c.Counts.Bookings)
             .ThenBy(c => c.Channel, StringComparer.Ordinal)
             .ToList();
-        return new SourceReportView(days, channels, links);
+        var targets = links
+            .GroupBy(l => l.TargetKind)
+            .Select(g => new TargetSourceView(g.Key, new SourceCountsView(g.Sum(l => l.Counts.Members), g.Sum(l => l.Counts.Bookings), g.Sum(l => l.Counts.Attended))))
+            .OrderByDescending(t => t.Counts.Members + t.Counts.Bookings)
+            .ThenBy(t => t.Kind, StringComparer.Ordinal)
+            .ToList();
+        return new SourceReportView(days, channels, links, targets);
     }
 
     internal static string NewCode()
