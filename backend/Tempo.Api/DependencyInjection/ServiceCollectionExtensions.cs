@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPublicStudioReads, PublicStudioReads>();
         services.AddSingleton<IPublicJoinService, PublicJoinService>();
         services.AddSingleton<IMarketingLinkService, MarketingLinkService>();
+        services.AddSingleton<IMemberMarketingService, MemberMarketingService>();
         services.AddSingleton<IMemberService, MemberService>();
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();

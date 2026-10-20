@@ -523,7 +523,6 @@ paths:
     post:
       tags: [Marketing]
       operationId: getMyShareLink
-      x-tempo-planned: true
       summary: "The caller's own link for a member card or for bringing a friend (`schedule.view`)"
       description: >-
         docs/37 section 8.5 (MK8). One link per member and channel, made on first use and then reused; `url` points at
@@ -551,7 +550,6 @@ paths:
     get:
       tags: [Marketing]
       operationId: getMyMilestones
-      x-tempo-planned: true
       summary: "The caller's attended-class milestones in this studio, computed live (`schedule.view`)"
       description: >-
         docs/37 section 8.2 (MK8, M-16): the thresholds reached (10, 25, 50, 100, 200), the next one, hours on the

@@ -21,6 +21,8 @@ public static class MarketingEndpoints
         tenant.MapPut("/public-page", UpdateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("updatePublicPage").Produces<PublicPageResponse>();
         // Instructors hold publish.own; the service checks the class is theirs unless the caller holds publish (M-4).
         tenant.MapPost("/marketing/links", CreateLinkAsync).RequirePermission(Permissions.MarketingPublishOwn).WithName("createMarketingLink").Produces<MarketingLinkResponse>(StatusCodes.Status201Created);
+        tenant.MapPost("/me/share-link", ShareLinkAsync).RequirePermission(Permissions.ScheduleView).WithName("getMyShareLink").Produces<MarketingLinkResponse>();
+        tenant.MapGet("/me/milestones", MilestonesAsync).RequirePermission(Permissions.ScheduleView).WithName("getMyMilestones").Produces<MyMilestonesResponse>();
         tenant.MapGet("/reports/sources", ReportAsync).RequirePermission(Permissions.ReportsView).WithName("getSourceReport").Produces<SourceReportResponse>();
 
         return endpoints;
@@ -47,11 +49,26 @@ public static class MarketingEndpoints
     {
         var tenant = TenantRouteFilter.Current(httpContext);
         var link = await links.CreateAsync(tenant, new NewMarketingLink(request.Channel, request.Template, request.SessionId), httpContext.RequestAborted);
+        return Results.Created($"/api/v1/organizations/{tenant.OrganizationId}/marketing/links/{link.Id}", LinkResponse(link, apps));
+    }
+
+    /// <summary>The members-app address of a link: the class page when it names one, else the studio's page.</summary>
+    private static MarketingLinkResponse LinkResponse(MarketingLinkView link, AppLinks apps)
+    {
         var path = link.SessionId is { } session ? $"/s/{Uri.EscapeDataString(link.Slug)}/c/{session}" : $"/s/{Uri.EscapeDataString(link.Slug)}/";
-        var url = new Uri($"{apps.ClientApp}{path}?src={link.Code}");
-        return Results.Created(
-            $"/api/v1/organizations/{tenant.OrganizationId}/marketing/links/{link.Id}",
-            new MarketingLinkResponse(link.Id, link.Code, link.Channel, link.Template, link.SessionId, url, link.CreatedAt));
+        return new MarketingLinkResponse(link.Id, link.Code, link.Channel, link.Template, link.SessionId, new Uri($"{apps.ClientApp}{path}?src={link.Code}"), link.CreatedAt);
+    }
+
+    private static async Task<IResult> ShareLinkAsync(HttpContext httpContext, ShareLinkRequest request, IMemberMarketingService members, AppLinks apps)
+    {
+        var link = await members.ShareLinkAsync(TenantRouteFilter.Current(httpContext), request.Channel, request.SessionId, httpContext.RequestAborted);
+        return Results.Ok(LinkResponse(link, apps));
+    }
+
+    private static async Task<IResult> MilestonesAsync(HttpContext httpContext, IMemberMarketingService members)
+    {
+        var m = await members.MilestonesAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted);
+        return Results.Ok(new MyMilestonesResponse(m.Attended, m.Reached, m.Next, m.HoursOnTheMat, m.LongestWeekStreak, m.UsualTime, m.TopInstructor));
     }
 
     private static async Task<IResult> ReportAsync(HttpContext httpContext, int? days, IMarketingLinkService links)

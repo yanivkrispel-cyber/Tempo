@@ -72,3 +72,16 @@ public sealed record SourceReportResponse(int Days, IReadOnlyList<ChannelSourceR
 public sealed record ChannelSourceResponse(string Channel, int Members, int Bookings, int Attended);
 
 public sealed record LinkSourceResponse(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, int Members, int Bookings, int Attended);
+
+/// <summary>`ShareLinkInput`: a member's own link for a card or a referral.</summary>
+public sealed record ShareLinkRequest(string? Channel, Guid? SessionId);
+
+/// <summary>`MyMilestones` (docs/37 section 8.2).</summary>
+public sealed record MyMilestonesResponse(
+    int Attended,
+    IReadOnlyList<int> Reached,
+    int? Next,
+    double HoursOnTheMat,
+    int LongestWeekStreak,
+    string? UsualTime,
+    string? TopInstructor);

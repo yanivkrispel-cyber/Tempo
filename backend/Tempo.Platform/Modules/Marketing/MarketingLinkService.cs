@@ -181,7 +181,7 @@ public sealed partial class MarketingLinkService(IDataSourceProvider dataSources
         return new SourceReportView(days, channels, links);
     }
 
-    private static string NewCode()
+    internal static string NewCode()
     {
         Span<char> code = stackalloc char[CodeLength];
         for (var i = 0; i < CodeLength; i++)
