@@ -122,6 +122,23 @@ describe("the roster", () => {
     expect(waiting[0]).toHaveTextContent("מאיה לוי");
   });
 
+  it("marks the places to be paid at the studio (MO6)", async () => {
+    renderAt(
+      {
+        [`GET ${base}/sessions/${sessionId}/roster`]: rosterOf([
+          entry(1, "שירה כהן", { passName: null, toPayAtStudio: true }),
+          entry(2, "נגה רוזן", { toPayAtStudio: false }),
+        ]),
+      },
+      "2026-10-14T09:00:00Z",
+    );
+    const roster = await screen.findByRole("region", { name: "משתתפים" });
+    const booked = await within(roster).findAllByRole("listitem");
+    expect(booked[0]).toHaveTextContent("לתשלום בסטודיו");
+    // A place held by a pass was paid already.
+    expect(booked[1]).not.toHaveTextContent("לתשלום בסטודיו");
+  });
+
   it("marks attendance from half an hour before the class", async () => {
     let state = "booked";
     const api = renderAt(
