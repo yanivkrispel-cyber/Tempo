@@ -209,6 +209,8 @@ function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowPro
           </span>
         </span>
         {entry.passName && <Chip tone="neutral">{entry.passName}</Chip>}
+        {/* An event place booked without a pass (MO6): the desk collects it on arrival. */}
+        {entry.toPayAtStudio && <Chip tone="warning">לתשלום בסטודיו</Chip>}
         {/* A mark only where the front desk has to act: missing, expired, waiting for a medical approval. */}
         {entry.healthStatus != null && entry.healthStatus !== "signed" && (
           <HealthStatusChip status={entry.healthStatus} compact />
