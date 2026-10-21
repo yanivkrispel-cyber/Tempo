@@ -11,6 +11,7 @@ namespace Tempo.Api.Middleware;
 /// </summary>
 public sealed partial class ColdStartMiddleware(RequestDelegate next, ILogger<ColdStartMiddleware> logger)
 {
+    private const string AfterRouting = "tempo.coldstart.after-routing";
     private const string BeforeAuthentication = "tempo.coldstart.before-auth";
     private const string AfterAuthorization = "tempo.coldstart.after-authz";
 
@@ -32,6 +33,11 @@ public sealed partial class ColdStartMiddleware(RequestDelegate next, ILogger<Co
         {
             var end = DateTimeOffset.UtcNow;
             timeline.Record("request.first", start, end);
+            if (context.Items[AfterRouting] is DateTimeOffset routed)
+            {
+                timeline.Record("request.routing", start, routed);
+            }
+
             if (context.Items[BeforeAuthentication] is DateTimeOffset beforeAuth)
             {
                 timeline.Record("request.pipeline", start, beforeAuth);
@@ -43,7 +49,8 @@ public sealed partial class ColdStartMiddleware(RequestDelegate next, ILogger<Co
             }
 
             var phases = timeline.Finish();
-            if (logger.IsEnabled(LogLevel.Information))
+            // Two first requests at once (local Kestrel): the second finds nothing left to report.
+            if (phases.Count > 0 && logger.IsEnabled(LogLevel.Information))
             {
                 // "name=ms" pairs in order; a name can repeat (two connections opened in the first request).
                 var timings = string.Join(' ', phases.Select(p => string.Create(CultureInfo.InvariantCulture, $"{p.Name}={p.Milliseconds:0}")));
@@ -56,6 +63,8 @@ public sealed partial class ColdStartMiddleware(RequestDelegate next, ILogger<Co
 
     [LoggerMessage(Level = LogLevel.Information, Message = "cold start {Path} {Phases}")]
     private static partial void LogColdStart(ILogger logger, string? path, string phases);
+
+    public static Task MarkAfterRouting(HttpContext context, RequestDelegate next) => Mark(context, next, AfterRouting);
 
     public static Task MarkBeforeAuthentication(HttpContext context, RequestDelegate next) => Mark(context, next, BeforeAuthentication);
 
