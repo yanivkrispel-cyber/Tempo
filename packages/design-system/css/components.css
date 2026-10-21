@@ -1433,6 +1433,11 @@ button.tp-setting {
   margin: 0;
   flex: none;
 }
+/* A studio's own logo in place of its initial (WL5): the image fills the tile, on a plain surface. */
+img.tp-rail__logo {
+  object-fit: cover;
+  background: var(--surface);
+}
 .tp-nav {
   display: flex;
   flex-direction: column;

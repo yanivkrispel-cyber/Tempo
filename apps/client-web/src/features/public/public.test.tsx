@@ -671,8 +671,17 @@ describe("a studio's prices (/s/<slug>/prices, SL-5)", () => {
   it("is linked from the studio page header, beside the week", async () => {
     renderStudioApp("/", { routes: offerRoutes });
     const nav = await screen.findByRole("navigation", { name: "עמודי הסטודיו" });
-    expect(within(nav).getByRole("link", { name: "מחירים" })).toHaveAttribute("href", "/s/neshima/prices");
+    expect(await within(nav).findByRole("link", { name: "מחירים" })).toHaveAttribute("href", "/s/neshima/prices");
     expect(within(nav).getByRole("link", { name: "מערכת" })).toHaveAttribute("href", "/s/neshima");
+  });
+
+  it("leaves 'מחירים' out of the header while the studio lists no products (P-3)", async () => {
+    const { stub } = renderStudioApp("/", { routes: { ...offerRoutes, [`GET ${api}/products`]: { items: [] } } });
+    const nav = await screen.findByRole("navigation", { name: "עמודי הסטודיו" });
+    await waitFor(() => expect(stub.requests.some((request) => request.url.endsWith("/products"))).toBe(true));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(within(nav).getByRole("link", { name: "מערכת" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "מחירים" })).not.toBeInTheDocument();
   });
 });
 
@@ -711,9 +720,10 @@ describe("text a studio typed is shown as text, never as markup", () => {
 });
 
 describe("a member's invite (SL-8, board ה)", () => {
-  const link = (inviterFirstName: string | null) => ({
-    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName },
+  const link = (inviterFirstName: string | null, reward: { productName: string } | null = null) => ({
+    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName, reward },
   });
+  const rewardLine = () => screen.queryByText(/^כשתגיעי לשיעור הראשון/);
   const url = `/c/${prenatal.id}?src=abc123xy`;
 
   it("names the friend who sent the link, above the class", async () => {
@@ -721,6 +731,29 @@ describe("a member's invite (SL-8, board ה)", () => {
     expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
     expect(screen.getByText("נגה", { selector: "bdi" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+    expect(rewardLine()).not.toBeInTheDocument();
+  });
+
+  it("says under her name what she gets when the friend comes to her first class (R-1, M-17)", async () => {
+    renderStudioApp(url, { routes: link("נגה", { productName: "שיעור מתנה" }) });
+    expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
+    const line = await screen.findByText(/^כשתגיעי לשיעור הראשון/);
+    expect(line).toHaveTextContent(/^כשתגיעי לשיעור הראשון, נגה מקבלת שיעור מתנה$/);
+    expect(within(line).getByText("שיעור מתנה", { selector: "bdi" })).toBeInTheDocument();
+  });
+
+  it("says the reward without naming her while her name is hidden", async () => {
+    renderStudioApp(url, { routes: link(null, { productName: "שיעור מתנה" }) });
+    const line = await screen.findByText(/^כשתגיעי לשיעור הראשון/);
+    expect(line).toHaveTextContent(/^כשתגיעי לשיעור הראשון, מי שהזמינה אותך מקבלת שיעור מתנה$/);
+    expect(screen.queryByText("מזמינה אותך")).not.toBeInTheDocument();
+  });
+
+  it("renders a hostile product name as text", async () => {
+    const hostile = "<img src=y onerror=alert(1)>";
+    renderStudioApp(url, { routes: link("נגה", { productName: hostile }) });
+    expect(await screen.findByText(hostile, { selector: "bdi" })).toBeInTheDocument();
+    expect(document.querySelector("img[src='y']")).toBeNull();
   });
 
   it("names her on the schedule too", async () => {

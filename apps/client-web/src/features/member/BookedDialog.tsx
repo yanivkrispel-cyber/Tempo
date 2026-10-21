@@ -1,7 +1,7 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMe } from "../../account/account";
 import { studioBasename } from "../../app/studioPath";
-import { Button, Dialog, Icon, shortDate, Toggle, useToast, type IconName } from "../../shared/design-system";
+import { Button, Dialog, Icon, shortDate, Toggle, type IconName } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
 import { useShareLink } from "./experience";
@@ -39,9 +39,15 @@ export function BookedDialog({
   onClose: () => void;
 }) {
   const me = useMe();
-  const toast = useToast();
   const shareLink = useShareLink(studio.id);
   const mintLink = shareLink.mutate;
+  // Copied (no share sheet, a computer): said on the button for a moment; a toast would cover the dialog on a phone.
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
   // Her own link is made when the dialog opens and again when the toggle changes, not on the tap: a phone's share
   // sheet opens only from the tap itself, and waiting on the API first would use that up. Opening sends no `showName`,
   // so it keeps her stored choice (SL-8); only the switch changes it.
@@ -74,7 +80,7 @@ export function BookedDialog({
       return;
     }
     await navigator.clipboard?.writeText(`${text}\n${url}`).catch(() => undefined);
-    toast.show({ message: "הקישור הועתק" });
+    setCopied(true);
   }
 
   return (
@@ -121,8 +127,8 @@ export function BookedDialog({
             >
               הוספה ליומן
             </Button>
-            <Button variant="secondary" icon="share" onClick={() => void share()}>
-              שליחה לחברה
+            <Button variant="secondary" icon={copied ? "check" : "share"} onClick={() => void share()}>
+              <span aria-live="polite">{copied ? "הקישור הועתק" : "שליחה לחברה"}</span>
             </Button>
           </div>
           <Toggle

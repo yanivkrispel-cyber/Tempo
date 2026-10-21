@@ -2,10 +2,11 @@ import type { AuthClient } from "@tempo/api-client/auth";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { Me } from "../account/account";
 import { apiStub, json, sampleMe } from "../test/api";
 import { memoryStorage, signedInAuth, signedOutAuth } from "../test/auth";
+import { screenWidth } from "../test/screens";
 import { createStudio, testNow } from "../test/studio";
 import { App } from "./App";
 import { routes } from "./routes";
@@ -33,11 +34,21 @@ const manifest = (slug: string, body: Record<string, unknown>) => ({
   [`GET /api/v1/public/studios/${slug}/manifest.webmanifest`]: json(body),
 });
 
+const brand = (slug: string, body: Record<string, unknown>) => ({
+  [`GET /api/v1/public/studios/${slug}/brand`]: json(body),
+});
+
 const studioRoutes = () => ({
   ...createStudio().routes,
   "POST /api/v1/session": twoStudios,
   ...manifest("neshima", { name: "סטודיו נשימה", short_name: "נשימה", theme_color: "#4A7088" }),
   ...manifest("gal", { name: "סטודיו גל", short_name: "גל", theme_color: "#7a607c" }),
+  ...brand("neshima", {
+    slug: "neshima",
+    appName: "נשימה",
+    accentId: "ocean",
+    logoUrl: "https://cdn.test/neshima.webp",
+  }),
 });
 
 function renderAt(url: string, { slug = null as string | null, auth = undefined as AuthClient | undefined } = {}) {
@@ -63,6 +74,7 @@ const accent = () => document.documentElement.getAttribute("data-accent");
 const link = (rel: string) => document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   document.documentElement.removeAttribute("data-accent");
   document.head.innerHTML = "";
   document.title = "";
@@ -137,6 +149,37 @@ describe("a studio's own app (/s/<slug>/)", () => {
     expect(JSON.parse(flowStorage.getItem("tempo.client-web.signin")!)).toMatchObject({
       returnTo: "/s/neshima/bookings",
     });
+  });
+
+  it("signs a visitor in on a screen that wears the studio's name, logo and accent (WL5)", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    renderAt("/login?returnTo=%2Fbookings", { slug: "neshima", auth: signedOutAuth({ basePath: "/s/neshima" }) });
+    expect(await screen.findByText("נשימה", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByLabelText("אימייל")).toBeInTheDocument();
+    const stage = screen.getByRole("main");
+    expect(stage).toHaveAttribute("data-accent", "ocean");
+    expect(stage.querySelector("img")).toHaveAttribute("src", "https://cdn.test/neshima.webp");
+  });
+
+  it("keeps Tempo's sign-in look for a studio whose brand cannot be read", async () => {
+    vi.stubEnv("VITE_BRANDED_LOGIN", "true");
+    renderAt("/login", { slug: "gal", auth: signedOutAuth({ basePath: "/s/gal" }) });
+    expect(await screen.findByText("Tempo", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByRole("main")).not.toHaveAttribute("data-accent");
+  });
+
+  it("puts the studio's logo beside its name at the head of the side nav", async () => {
+    const restore = screenWidth(1280);
+    onTestFinished(restore);
+    renderAt("/", { slug: "neshima" });
+    await screen.findByText("סטודיו נשימה · יום שלישי, 13.10");
+    const logo = await waitFor(() => {
+      const img = document.querySelector<HTMLImageElement>(".tp-sidenav__head img");
+      expect(img).not.toBeNull();
+      return img!;
+    });
+    expect(logo).toHaveAttribute("src", "https://cdn.test/neshima.webp");
+    expect(logo).toHaveAttribute("alt", "");
   });
 
   it("loads the studio's app after the sign-in callback, which runs outside it", async () => {

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 using Npgsql;
+using Tempo.Platform.BuildingBlocks.Diagnostics;
 
 namespace Tempo.Platform.BuildingBlocks.Persistence;
 
@@ -89,6 +90,7 @@ public sealed class ConfiguredDataSourceProvider(Func<string, string?> setting) 
 
     private static async Task<string> ReadSecureParameterAsync(string name)
     {
+        using var timed = ColdStart.Current.Measure("ssm.get-parameter");
         using var ssm = new AmazonSimpleSystemsManagementClient();
         var response = await ssm.GetParameterAsync(new GetParameterRequest { Name = name, WithDecryption = true });
         return response.Parameter.Value;
