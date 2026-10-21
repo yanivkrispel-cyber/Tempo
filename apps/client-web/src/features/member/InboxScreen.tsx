@@ -85,6 +85,19 @@ const kinds: Record<string, { title: string; body: string; icon: IconName; tone:
     icon: "credit-card",
     tone: "warning",
   },
+  // Celebrations (docs/37 section 8.2): her milestone opens its card; a friend's first class names the reward.
+  "member.milestone": {
+    title: "הגעת לאבן דרך",
+    body: "הכרטיס שלך מוכן, אם בא לך לשתף.",
+    icon: "star",
+    tone: "brand",
+  },
+  "member.referral_rewarded": {
+    title: "חברה שהזמנת הגיעה לשיעור הראשון",
+    body: "תודה שהבאת אותה. קיבלת כרטיסייה מהסטודיו, והיא כבר אצלך בפרופיל.",
+    icon: "gift",
+    tone: "success",
+  },
   // A message to the whole studio (docs/30 step 7): its subject comes as `title` and its text as `text`.
   "studio.announcement": {
     title: "הודעה מהסטודיו",
@@ -137,6 +150,14 @@ function StudioInbox({ studio }: { studio: Studio }) {
   );
 }
 
+/** Where an item opens: its class, her milestone card (the count is the item's text), or her passes for a reward. */
+function linkFor(item: InboxItem): string | null {
+  if (item.data.sessionId) return `/classes/${item.data.sessionId}`;
+  if (item.kind === "member.milestone" && /^\d+$/.test(item.text ?? "")) return `/milestone/${item.text}`;
+  if (item.kind === "member.referral_rewarded") return "/profile";
+  return null;
+}
+
 function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
   const { timeZone, today } = useStudioClock(studio.id);
   const markRead = useMarkRead(studio.id);
@@ -144,17 +165,18 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
   // The item holds ids only; the class's name and time come from the session, cached across the screens.
   const session = useSession(studio.id, sessionId ?? "", sessionId !== undefined);
   const kind = kinds[item.kind]!;
+  const to = linkFor(item);
   const unread = !item.readAt;
   // "New" stays for this visit, even after the item is marked read below.
   const [arrivedUnread] = useState(unread);
   const { mutate: markItemRead } = markRead;
   const seen = useRef(false);
   useEffect(() => {
-    // An item with nowhere to open is read once it is shown; one with a class is read when opened.
-    if (sessionId || !unread || seen.current) return;
+    // An item with nowhere to open is read once it is shown; one that opens a screen is read when opened.
+    if (to || !unread || seen.current) return;
     seen.current = true;
     markItemRead(item.id);
-  }, [sessionId, unread, item.id, markItemRead]);
+  }, [to, unread, item.id, markItemRead]);
   const when = session.data
     ? metaLine([
         session.data.classType.name,
@@ -179,14 +201,14 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
         ) : item.kind === "studio.announcement" || item.body ? (
           <span dir="auto" className={styles.noticeText}>
             {/* A card that is itself a link cannot hold another one. */}
-            <RichText text={(item.kind === "studio.announcement" ? item.text : item.body) ?? ""} links={!sessionId} />
+            <RichText text={(item.kind === "studio.announcement" ? item.text : item.body) ?? ""} links={!to} />
           </span>
         ) : (
           <span className="tp-caption">{kind.body}</span>
         )}
         <span className="tp-caption">{momentText(item.createdAt, timeZone, today)}</span>
       </span>
-      {(sessionId ? unread : arrivedUnread) && <Chip tone="brand">חדש</Chip>}
+      {(to ? unread : arrivedUnread) && <Chip tone="brand">חדש</Chip>}
     </>
   );
 
@@ -196,8 +218,8 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
 
   return (
     <li>
-      {sessionId ? (
-        <Card small to={`/classes/${sessionId}`} className={styles.notice} onClick={read}>
+      {to ? (
+        <Card small to={to} className={styles.notice} onClick={read}>
           {content}
         </Card>
       ) : (

@@ -12,6 +12,7 @@ import { HealthDeclarationScreen } from "../features/member/HealthDeclarationScr
 import { HomeScreen } from "../features/member/HomeScreen";
 import { InboxScreen } from "../features/member/InboxScreen";
 import { MemberLayout } from "../features/member/MemberLayout";
+import { MilestoneScreen } from "../features/member/MilestoneScreen";
 import { PublicClassPage } from "../features/public/PublicClassPage";
 import { PublicOfferPage } from "../features/public/PublicOfferPage";
 import { PublicPricesPage } from "../features/public/PublicPricesPage";
@@ -38,6 +39,7 @@ export const routes: RouteObject[] = [
               { path: "/classes/:sessionId", element: <ClassScreen /> },
               { path: "/bookings", element: <BookingsScreen /> },
               { path: "/inbox", element: <InboxScreen /> },
+              { path: "/milestone/:count", element: <MilestoneScreen /> },
               { path: "/profile", element: <ProfileScreen /> },
               { path: "/profile/notifications", element: <NotificationsScreen /> },
               { path: "/profile/health", element: <HealthDeclarationScreen /> },
