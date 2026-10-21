@@ -9,6 +9,7 @@ import { addDays, type IsoDate } from "../../shared/utilities/dates";
 import { useNow } from "../member/clock";
 import { LoadError } from "../member/StudioGate";
 import { clockTime, defaultTimeZone, studioToday } from "../member/studioTime";
+import { InviteHeader } from "./InviteHeader";
 import { PublicFrame, PublicSkeleton, StudioNotFound } from "./PublicFrame";
 import {
   isMemberOf,
@@ -125,6 +126,7 @@ function ClassView({ studio, session, now }: { studio: PublicStudio; session: Pu
         </div>
 
         <div className={`tp-glass ${styles.sheet}`}>
+          <InviteHeader slug={studio.slug} />
           {state === "open" ? (
             <Open
               studio={studio}

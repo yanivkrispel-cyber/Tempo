@@ -420,7 +420,7 @@ public sealed class PersonLifecycleService(IDataSourceProvider dataSources, Time
         await BuddyService.ForgetAsync(unitOfWork, org, personId, cancellationToken);
         // The avatar goes (docs/33 section 6.3); its objects are deleted once the erase commits.
         var avatarKeys = await MediaService.ForgetAvatarAsync(unitOfWork, org, personId, cancellationToken);
-        await ExecuteAsync(unitOfWork, "UPDATE people.people SET avatar_media_id = NULL, checkin_secret = NULL, checkin_secret_ciphertext = NULL, checkin_secret_key_version = NULL WHERE organization_id = $1 AND id = $2", cancellationToken, org, personId);
+        await ExecuteAsync(unitOfWork, "UPDATE people.people SET avatar_media_id = NULL, checkin_secret_ciphertext = NULL, checkin_secret_key_version = NULL WHERE organization_id = $1 AND id = $2", cancellationToken, org, personId);
         // Every health declaration goes, current and replaced (docs/31 section 11); the audit keeps the count only.
         int healthDeclarations;
         await using (var deleteHealth = unitOfWork.Command("DELETE FROM people.health_declarations WHERE organization_id = $1 AND person_id = $2", org, personId))

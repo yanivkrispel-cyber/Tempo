@@ -28,6 +28,8 @@ public sealed class ArchitectureTests
         "/api/v1/public/studios/{slug}/sessions",
         "/api/v1/public/studios/{slug}/sessions/{sessionId:guid}",
         "/api/v1/public/studios/{slug}/icons/{size}",
+        // The studio's name, accent and logo for its own app (K-WL5, docs/35 W-4); the manifest already shows the first two.
+        "/api/v1/public/studios/{slug}/brand",
         // Share links by intent (SK4): where a link leads and an inviter's first name under SL-8; preview pictures
         // as redirects to the studio's own pictures. No other person data.
         "/api/v1/public/studios/{slug}/links/{code}",

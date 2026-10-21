@@ -42,6 +42,7 @@ public static class PublicStudioEndpoints
         studio.MapGet("/sessions/{sessionId:guid}", SessionAsync).AllowAnonymous().WithName("getPublicSession");
         studio.MapGet("/manifest.webmanifest", ManifestAsync).AllowAnonymous().WithName("getStudioManifest");
         studio.MapGet("/icons/{size}", IconAsync).AllowAnonymous().WithName("getStudioIcon");
+        studio.MapGet("/brand", BrandAsync).AllowAnonymous().WithName("getPublicBrand");
         studio.MapGet("/links/{code}", LinkAsync).AllowAnonymous().WithName("getPublicLink");
         studio.MapGet("/cover", StudioCoverAsync).AllowAnonymous().WithName("getPublicStudioCover");
         studio.MapGet("/sessions/{sessionId:guid}/cover", SessionCoverAsync).AllowAnonymous().WithName("getPublicSessionCover");
@@ -157,6 +158,17 @@ public static class PublicStudioEndpoints
     {
         httpContext.Response.Headers.CacheControl = "public, max-age=300";
         return Results.Redirect(picture?.ToString() ?? $"/api/v1/public/studios/{Uri.EscapeDataString(studio.Slug)}/icons/512?v={studio.Brand.Version}");
+    }
+
+    /// <summary>
+    /// docs/35 W-4, W-10: what the studio's own app and its sign-in wear, for any active studio, public page on or off.
+    /// The manifest already says the name and the accent; the logo is the only addition.
+    /// </summary>
+    private static IResult BrandAsync(HttpContext httpContext)
+    {
+        var studio = PublicStudioRouteFilter.Current(httpContext);
+        httpContext.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Ok(new PublicBrandResponse(studio.Slug, studio.Brand.AppName, studio.Brand.AccentId, MediaLinks.UrlFor(studio.Id, studio.Brand.LogoMediaId, small: true)));
     }
 
     private static DateOnly? Date(string? value, string field)

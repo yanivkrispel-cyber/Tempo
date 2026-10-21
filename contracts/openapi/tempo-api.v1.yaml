@@ -207,7 +207,6 @@ paths:
     get:
       tags: [Public]
       operationId: getPublicBrand
-      x-tempo-planned: true
       summary: An active studio's name, accent and logo, public page on or off (anyone)
       description: >-
         docs/35 W-4 and W-10 (board #404, [O]'s REQUEST for WL5 part B): what the studio's own app and its branded

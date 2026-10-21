@@ -10,6 +10,7 @@ import { useNow } from "../member/clock";
 import { relativeDay } from "../member/format";
 import { ListSkeleton, LoadError } from "../member/StudioGate";
 import { defaultTimeZone, hasStarted, studioDate, studioToday } from "../member/studioTime";
+import { InviteHeader } from "./InviteHeader";
 import { PublicFrame, PublicSkeleton, StudioNotFound } from "./PublicFrame";
 import {
   isMemberOf,
@@ -82,6 +83,7 @@ function StudioView({ studio, week }: { studio: PublicStudio; week?: IsoDate }) 
 
   return (
     <PublicFrame studio={studio}>
+      <InviteHeader slug={studio.slug} />
       <section className={`tp-hero ${styles.studioHero}`} aria-labelledby="public-studio-title">
         {studio.coverUrl && <img className="tp-hero__photo" src={studio.coverUrl} alt="" />}
         <div className="tp-hero__body">

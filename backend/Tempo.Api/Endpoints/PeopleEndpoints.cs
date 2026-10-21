@@ -76,6 +76,7 @@ public static class PeopleEndpoints
         InvitePersonRequest request,
         IPeopleService people,
         IInvitationService invitations,
+        IOrganizationService organizations,
         AppLinks links)
     {
         var tenant = TenantRouteFilter.Current(httpContext);
@@ -92,7 +93,7 @@ public static class PeopleEndpoints
                 i.ExpiresAt,
                 i.CreatedAt,
                 new InvitedByResponse(i.InvitedByMembershipId, i.InvitedByDisplayName),
-                links.Invitation(i.Role, created.Token)));
+                links.Invitation(i.Role, created.Token, await organizations.SlugAsync(tenant, httpContext.RequestAborted))));
     }
 
     private static async Task<IResult> AddContactAsync(HttpContext httpContext, Guid personId, CreateContactPointRequest request, IPeopleService people)

@@ -18,5 +18,9 @@ export function pagesHeadersFile(config: TempoEnvironmentConfig, apiUrl: string)
     "X-Frame-Options: SAMEORIGIN",
     "Referrer-Policy: strict-origin-when-cross-origin"
   ];
-  return ["/*", ...headers.map((header) => `  ${header}`), ""].join("\n");
+  // Vite puts a content hash in every file name under /assets, so a browser may keep them for a year without asking
+  // again. Pages' default (max-age=0, must-revalidate) cost one round trip per file on every open (perf audit,
+  // 2026-10-20). index.html, sw.js, the manifest and the icons keep the default.
+  const immutableAssets = ["/assets/*", "  Cache-Control: public, max-age=31536000, immutable"];
+  return ["/*", ...headers.map((header) => `  ${header}`), ...immutableAssets, ""].join("\n");
 }

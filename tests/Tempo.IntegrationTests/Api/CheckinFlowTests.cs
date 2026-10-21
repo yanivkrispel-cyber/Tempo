@@ -170,7 +170,7 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
     }
 
     [Fact]
-    public async Task TheSecret_IsStoredEncrypted_AnOldPlainOneStillWorksAndMoves_AndEraseClearsIt()
+    public async Task TheSecret_IsStoredEncrypted_ThePlainColumnIsGone_AndEraseClearsIt()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);
         using var factory = Factory(db);
@@ -195,21 +195,18 @@ public sealed class CheckinFlowTests(PostgresFixture postgres) : IClassFixture<P
 
         // 1. A new secret is stored as AES-GCM ciphertext (format byte 1) with its key version; no plain bytes.
         var code = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/checkin-code", Customer("noga"))).GetProperty("code").GetString()!;
-        (await db.AsMasterAsync("SELECT checkin_secret IS NULL FROM people.people WHERE id = $1", noga)).Should().Be(true);
+        (await db.AsMasterAsync("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'people' AND table_name = 'people' AND column_name = 'checkin_secret'"))
+            .Should().Be(0L, "the plain column is gone (#374, migration 0033)");
         (await db.AsMasterAsync("SELECT get_byte(checkin_secret_ciphertext, 0) FROM people.people WHERE id = $1", noga)).Should().Be(1);
         (await db.AsMasterAsync("SELECT checkin_secret_key_version FROM people.people WHERE id = $1", noga)).Should().Be(1);
         (await SendAsync(client, HttpMethod.Post, $"{studioPath}/checkins", Customer("owner"), new { code })).GetProperty("person").GetProperty("id").GetGuid().Should().Be(noga);
 
-        // 2. A secret written before H-4 (plain bytes) still gives valid codes, and moves to ciphertext on first use.
-        var legacy = Enumerable.Range(100, 32).Select(i => (byte)i).ToArray();
-        await db.AsMasterAsync("UPDATE people.people SET checkin_secret = $2 WHERE id = $1", maya, legacy);
-        var expected = $"TCI1.{maya:N}.{BookingService.Hotp(legacy, DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30):D6}";
+        // 2. Another person's code is their own: Maya's first code is new ciphertext too, and the door reads it.
         var mayaCode = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/checkin-code", Customer("maya"))).GetProperty("code").GetString()!;
-        mayaCode[..^6].Should().Be(expected[..^6]);
-        (await db.AsMasterAsync("SELECT checkin_secret IS NULL AND checkin_secret_ciphertext IS NOT NULL FROM people.people WHERE id = $1", maya)).Should().Be(true);
+        (await db.AsMasterAsync("SELECT checkin_secret_ciphertext IS NOT NULL FROM people.people WHERE id = $1", maya)).Should().Be(true);
         (await SendAsync(client, HttpMethod.Post, $"{studioPath}/checkins", Customer("owner"), new { code = mayaCode })).GetProperty("person").GetProperty("id").GetGuid().Should().Be(maya);
 
-        // 3. Erasing the person clears the ciphertext and its key version too.
+        // 3. Erasing the person clears the ciphertext and its key version.
         await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{noga}/erase", Customer("owner", freshSignIn: true), new { reason = "בקשת מחיקה" });
         (await db.AsMasterAsync("SELECT checkin_secret_ciphertext IS NULL AND checkin_secret_key_version IS NULL FROM people.people WHERE id = $1", noga)).Should().Be(true);
     }

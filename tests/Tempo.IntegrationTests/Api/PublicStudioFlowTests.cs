@@ -98,6 +98,14 @@ public sealed class PublicStudioFlowTests(PostgresFixture postgres) : IClassFixt
         var own = await client.GetByteArrayAsync($"{publicPath}/icons/512-maskable?v=2");
         own.Should().Equal(await store.ReadAsync(MediaKeys.Icon(studioId, icon.GetProperty("id").GetGuid(), "512-maskable"), int.MaxValue, CancellationToken.None));
 
+        // The brand for the studio's own app and sign-in (K-WL5): any active studio, its public page off, no person.
+        var brand = await client.GetAsync($"{publicPath}/brand");
+        brand.Headers.CacheControl!.Public.Should().BeTrue();
+        var brandJson = await brand.Content.ReadFromJsonAsync<JsonElement>();
+        brandJson.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("slug", "appName", "accentId", "logoUrl");
+        brandJson.GetProperty("appName").GetString().Should().Be("נשימה");
+        brandJson.GetProperty("accentId").GetString().Should().Be("ocean");
+
         // 3. An unknown slug and a suspended studio are both 404 studio.not_found.
         var unknown = await client.GetAsync("/api/v1/public/studios/no-such-studio/manifest.webmanifest");
         unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -105,6 +113,7 @@ public sealed class PublicStudioFlowTests(PostgresFixture postgres) : IClassFixt
         await db.AsMasterAsync("UPDATE organizations.organizations SET status = 'suspended' WHERE id = $1", studioId);
         (await client.GetAsync($"{publicPath}/icons/192?v=2")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync($"{publicPath}/manifest.webmanifest")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync($"{publicPath}/brand")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     private async Task<(string StudioPath, Guid StudioId, string Slug)> StudioAsync(HttpClient client, string displayName)

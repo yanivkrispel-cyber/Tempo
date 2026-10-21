@@ -104,6 +104,35 @@ public sealed class InvitationEndpointTests : IDisposable
         response.Headers.RetryAfter!.Delta.Should().Be(TimeSpan.FromSeconds(91));
     }
 
+    [Theory]
+    [InlineData("client", "http://localhost:5174/s/neshima/invite#tok")]
+    [InlineData("staff", "http://localhost:5173/invite#tok")]
+    public async Task Create_SendsAClientToTheStudiosOwnApp(string role, string link)
+    {
+        // docs/35 W-4 (#404, K-WL5): a client's invitation opens the studio's own app at /s/<slug>/.
+        var parsed = Enum.Parse<MembershipRole>(role, ignoreCase: true);
+        api.Organizations.SlugAsync(Arg.Any<TenantContext>(), Arg.Any<CancellationToken>()).Returns("neshima");
+        api.Invitations.CreateAsync(Arg.Any<TenantContext>(), "a@example.com", parsed, Arg.Any<CancellationToken>())
+            .Returns(new CreatedInvitation(
+                new InvitationView(Guid.CreateVersion7(), "a@example.com", parsed, InvitationStatus.Pending, DateTimeOffset.UtcNow.AddDays(7), DateTimeOffset.UtcNow, MembershipId, "Owner"),
+                "tok"));
+
+        var response = await SendAsync(HttpMethod.Post, $"/api/v1/organizations/{StudioId}/invitations", new CreateInvitationRequest("a@example.com", role));
+
+        (await response.Content.ReadFromJsonAsync<CreatedInvitationResponse>())!.Link.Should().Be(link);
+    }
+
+    [Fact]
+    public async Task RotateJoinLink_OpensTheStudiosOwnApp()
+    {
+        api.Organizations.SlugAsync(Arg.Any<TenantContext>(), Arg.Any<CancellationToken>()).Returns("neshima");
+        api.JoinLinks.RotateAsync(Arg.Any<TenantContext>(), Arg.Any<CancellationToken>()).Returns("new-code");
+
+        var response = await SendAsync(HttpMethod.Put, $"/api/v1/organizations/{StudioId}/join-link", body: null);
+
+        (await response.Content.ReadFromJsonAsync<JoinLinkResponse>())!.Link.Should().Be("http://localhost:5174/s/neshima/join#new-code");
+    }
+
     [Fact]
     public async Task RotateJoinLink_ReturnsTheClientAppLink()
     {

@@ -70,6 +70,16 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet test Tempo.sln --configuration Release --no-build --logger "trx" --results-directory TestResults
 
+      - name: Publish the Lambda packages as deploy-development.yml does
+        if: steps.changes.outputs.relevant == 'true'
+        # The deploy publishes for linux-arm64 with ReadyToRun (perf audit 2026-10-20); a csproj change that breaks
+        # that publish should fail here, not on main.
+        run: |
+          for project in Tempo.Api Tempo.Worker; do
+            dotnet publish "backend/$project/$project.csproj" --configuration Release --runtime linux-arm64 --self-contained false
+            test -f "backend/$project/bin/Release/net10.0/linux-arm64/publish/$project.runtimeconfig.json"
+          done
+
       - name: Check for vulnerable NuGet packages
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet list Tempo.sln package --vulnerable --include-transitive

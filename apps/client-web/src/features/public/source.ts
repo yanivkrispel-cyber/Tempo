@@ -6,6 +6,7 @@ export const SOURCE_KEY = "tempo.client-web.src";
 
 /** The API's own pattern (SourceLinks.CodePattern); anything else is not a code and is not kept. */
 const codePattern = /^[a-z0-9]{6,10}$/;
+export const isSourceCode = (code: string) => codePattern.test(code);
 const keepFor = 30 * 24 * 60 * 60_000;
 
 function storage(): Storage | null {
