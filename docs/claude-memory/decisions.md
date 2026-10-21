@@ -113,3 +113,11 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   transaction; a full or past class offers alternatives; a member's invite shows their first name only while they
   allow it; in-app browsers get code and password only; link previews through a Cloudflare Pages worker; the home
   screen offer only after booking. docs/37 section 12.
+- **D26 board #445 defaults (2026-10-21, silence keeps them):** B-1 stage B screens as docs/37 with the
+  `celebrations` label "חגיגות: אבני דרך וחברות שהבאת", a milestone only to the member and staff. R-1 the public link
+  lookup carries `reward: { productName }` only on a member's `referral` link while the studio's reward product is
+  active, and the invite page says the member gets it when the friend's first class is attended (M-17 gives the
+  friend nothing). An inviter's name the studio made from her email is never shown. P-1 the cold start is measured
+  before any fix, and fixes are free (no provisioned concurrency, SnapStart or WAF). P-2 read throttling stays at 10
+  rps, burst 12, until Kris answers. P-3 "מחירים" shows only when the studio lists a product. E-1 no Latin test
+  marker at the start of a name people see.

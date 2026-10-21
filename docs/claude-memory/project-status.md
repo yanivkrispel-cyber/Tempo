@@ -1,7 +1,8 @@
 # Project status
 
-Updated 2026-10-18, night (board #347, DAY-PLAN-8: installable apps, #345 hardening, the premium flows on dev, white
-label plan). Earlier: boards #232, #253 and #321 (2026-10-17).
+Updated 2026-10-21, evening (board #445, DAY-PLAN-11), with what boards #380 (2026-10-19 night) and #404 (2026-10-20)
+landed: white label, the branded sign-in, studio marketing stages A and B, share links by intent and the public
+surface's protections. Earlier: #347 (2026-10-18), #232, #253 and #321 (2026-10-17).
 
 ## In one paragraph
 
@@ -161,9 +162,34 @@ search), progress weeks, the design system v1.0 and both apps. All of it is on `
 | The today page as one compact table; the mockup comparison (O6), the larger gaps in #378 | #367; #377 |
 | White label plan, W-1 to W-12 with defaults, build steps WL1 to WL6 | K6 #362 (`docs/35`) |
 
-- Migrations on dev go up to **0031**; **0032** is the next free number.
+- Migrations on dev went up to **0031** on that board (the current number is in the next section).
 - Running the .NET tests on this machine: Smart App Control also blocked Debug DLLs on 2026-10-18; run them in the
   `mcr.microsoft.com/dotnet/sdk:10.0` container (local-dev-quirks.md).
+
+## White label, branded sign-in, studio marketing and share links (2026-10-19 to 2026-10-21, boards #380, #404, #445)
+
+Specs: `docs/35` (white label, D21), `docs/36` and ADR-0028 (branded sign-in, D22), `docs/37` (marketing, D23; share
+links D25 and the public surface's protections D24 in its section 12). Epic #432 tracks marketing.
+
+| Piece | PR |
+|---|---|
+| White label: the brand row, pictures and icon sizes (WL1, migration 0032), the eight accents (WL2), brand settings with a home-screen preview (WL3), a studio's public manifest and icons (WL4), a studio's own app at `/s/<slug>/` and the switcher (WL5), client links into that app and `GET /public/studios/{slug}/brand` (K-WL5) | #384, #382, #405, #387, #402, #406, #427 |
+| Branded sign-in over Cognito `USER_AUTH` (password and passkey; the email code waits for SES, #304), behind `branded_login`, on for the dev members app since #440; the passkey relying party is named in config | #385, #386, #399, #400, #401, #428, #440 |
+| Marketing stage A: schema and settings (MK1), the public studio page with sessions as buckets (MK2), open join, the intro pass and sources (MK3), links with source codes and the source report (MK4), story suggestions (MK5); the console's public page settings, story generator, suggestion cards and source report (MO2 to MO4) | #389 to #395, #408, #412, #414, #416 |
+| Marketing stage B backend: schema and the `celebrations` group (MK7, migration 0035), a member's share links, milestones and the bring-a-friend reward (MK8a), events without a pass and the event-week reminder (MK8b); one reward under concurrent marks | #396, #397, #398, #407 |
+| Share links by intent (SL-1 to SL-10): schema (migration 0036), public products, the offer read and alternatives, the offer join in one transaction, link targets, the public link lookup, the invite's first name and preview covers, the live check; the class page, the sheet sign-up, offer and prices pages, the target picker, in-app browsers, a member's invite, link previews through `_worker.js` | #413, #424, #425, #426, #433, #418, #420, #437, #436, #434, #438, #439 |
+| The public surface's protections (S-A to S-D): route throttling below the API's concurrency, per-address and per-account counters (migration 0037), staff links can't use members' channels, `private, no-store` by default, the same 404 for unknown and suspended studios, app-side security tests | #417, #419, #421, #422, #423, #435 |
+| #374: the plain check-in secret column dropped (migration 0033); the spot-opened story keyed on the cancel time (migration 0038) | #415, #429 |
+| Performance: hashed build files cached for a year on Pages; ReadyToRun (it did not move the cold start) | #410, #411 |
+| Board #445: the bring-a-friend reward on a member's referral link (R-1) and no inviter name made from an email; the O4 and O1 runs on dev | #450, #444, #446 |
+
+- **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
+- The cold start: Init 1.3 to 1.8 s, then 4 to 7 s inside the first invocation (#404). Board #445 K2 measures it
+  with a first-request timeline (log line `cold start`, X-Ray subsegments) before any fix; free fixes only (P-1, N-4).
+- Pages Functions on `/s/*` count against Cloudflare's free 100,000 requests a day (the link previews, SL-9): a
+  tripwire row in ADR-0021.
+- R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור
+  הראשון, <name> מקבלת <product>" rather than promising the friend anything (#445, agreed by [O]).
 
 ## Apps
 
@@ -197,6 +223,9 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | The real logo | The icons use K1's redraw of LOGO1.png as a temporary logo (Kris, 2026-10-18) |
 | `docs/35` W-1 to W-12 (white label) | Defaults apply unless Kris changes them; then WL1 to WL6 |
 | `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
+| Instagram story and WhatsApp preview test on a real phone (#404, #445) | Then O5 and K6 clean the O4 seed and [K]'s Hebrew offer in tempo-smoke-studio |
+| P-2: tighter read throttling on dev (rate 5, burst 6) | Rates stay at reads 10/12 and join 2/4 until Kris answers (#445) |
+| #304 email domain and sender | Unlocks the email code and the passwordless sheet (docs/36) |
 
 ## Who works on what
 

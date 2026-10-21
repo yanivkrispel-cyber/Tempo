@@ -447,6 +447,13 @@ A member's own link (`member_card`, `referral`) carries `show_name` (default on,
 update is limited to their own link, #426). `GET /public/studios/{slug}/links/{code}` answers the target and, only for
 such a link with the switch on, their **first name**: the first word of the name the studio holds for them. Never a
 surname, a photo, tenure or attendance. The lookup is under the slug because a code is unique within one studio only.
+A name the studio made from her email (she never typed one; it equals the local part of one of her email addresses,
+ignoring case) is never shown, even if she later types that same word as her name (#450).
+
+On a member's `referral` link the lookup also carries `reward: { productName }` while the studio has an active
+bring-a-friend product (R-1, M-17), under the same conditions as the grant. The reward goes to the member, so the page
+says "כשתגיעי לשיעור הראשון, <name> מקבלת <product>" (or "מי שהזמינה אותך" with her name off) and promises the
+friend nothing (#445).
 
 ### 12.6 Inside Instagram, Facebook or TikTok (SL-7)
 
