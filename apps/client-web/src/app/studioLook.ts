@@ -22,6 +22,22 @@ export function useStudioManifest(slug: string | null | undefined) {
   });
 }
 
+/**
+ * What a studio's own app and its branded sign-in wear (docs/35 W-4, W-10): the app name, the accent and the logo,
+ * read whether its public page is on or off. Cached as long as the API lets it be (`max-age=300`); the logo URL is
+ * presigned and short-lived, so it is read again after that.
+ */
+export function useStudioBrand(slug: string | null | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ["studio-brand", slug],
+    queryFn: () => unwrap(api.GET("/api/v1/public/studios/{slug}/brand", { params: { path: { slug: slug ?? "" } } })),
+    enabled: Boolean(slug),
+    staleTime: 5 * 60_000,
+    retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500),
+  });
+}
+
 /** Puts the studio's accent on `<html>` once its manifest is read; sage when it names none or cannot be read. */
 export function useStudioAccent(slug: string | null | undefined): void {
   const { data, isPending } = useStudioManifest(slug);
