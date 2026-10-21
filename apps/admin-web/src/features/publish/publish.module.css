@@ -164,3 +164,25 @@
 .targets > :global(.tp-field) {
   margin-top: 12px;
 }
+
+/* The A4 poster (MO7): the preview beside the words on a computer, above them on a phone. */
+.poster {
+  display: grid;
+  gap: 20px;
+  margin-top: 28px;
+  align-items: start;
+}
+.posterPreview {
+  width: min(100%, 240px);
+  height: auto;
+  aspect-ratio: 2480 / 3508;
+  justify-self: center;
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-float);
+}
+@media (min-width: 760px) {
+  .poster {
+    grid-template-columns: 240px 1fr;
+  }
+}

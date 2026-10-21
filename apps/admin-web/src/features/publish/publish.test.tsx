@@ -238,6 +238,28 @@ describe("the console's publishing (MO3)", () => {
     expect(document.body.querySelector("script")).toBeNull();
   });
 
+  it("makes the A4 poster with a QR to the week, on a poster link of its own (MO7, docs/37 section 8.6)", async () => {
+    const api = renderPublish(owner);
+    const poster = await screen.findByRole("region", { name: "פוסטר להדפסה" });
+    expect(within(poster).getByRole("img", { name: /^פוסטר: סרקי והירשמי לשיעור/ })).toBeInTheDocument();
+    await userEvent.click(within(poster).getByRole("button", { name: "הורדת הפוסטר" }));
+    await waitFor(() =>
+      expect(linkBodies(api)).toEqual([{ channel: "poster", template: "poster", target: targetOf("schedule") }]),
+    );
+    expect(await screen.findByText("הפוסטר ירד, מוכן להדפסה ב-A4")).toBeInTheDocument();
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    // The same link again: a second download reuses it.
+    await userEvent.click(within(poster).getByRole("button", { name: "הורדת הפוסטר" }));
+    await waitFor(() => expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(2));
+    expect(linkBodies(api)).toHaveLength(1);
+  });
+
+  it("leaves the studio's poster to the owners: an instructor has none", async () => {
+    renderPublish(instructor, "staff");
+    await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    expect(screen.queryByRole("region", { name: "פוסטר להדפסה" })).not.toBeInTheDocument();
+  });
+
   it("is not in the menu without a publishing permission", async () => {
     renderPublish(membershipAs("staff").permissions, "staff");
     expect(await screen.findByRole("heading", { name: "אין לך גישה לפרסום" })).toBeInTheDocument();
