@@ -1,0 +1,22 @@
+// The source report by target, and Chromium's installability errors on the branded studio's path.
+import { readFileSync } from "node:fs";
+import { chromium } from "@playwright/test";
+import { call, smokeToken, APP } from "./o4-lib.mjs";
+const st = JSON.parse(readFileSync(process.env.O4_STATE, "utf8"));
+const smoke = smokeToken();
+const r = (await call(smoke, "GET", `/api/v1/organizations/${st.orgId}/reports/sources?days=7`)).json;
+console.log("byTarget", JSON.stringify(r.byTarget));
+for (const [k, id] of Object.entries(st.linkIds))
+  console.log("link", k, JSON.stringify(r.byLink.find((l) => l.linkId === id)));
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 360, height: 780 }, isMobile: true });
+const page = await ctx.newPage();
+await page.goto(`${APP}/s/test-studio-1/`, { waitUntil: "networkidle" });
+await page.waitForTimeout(2500);
+const cdp = await ctx.newCDPSession(page);
+await cdp.send("Page.enable");
+const res = await cdp.send("Page.getInstallabilityErrors");
+console.log("installabilityErrors", JSON.stringify(res.installabilityErrors));
+const man = await cdp.send("Page.getAppManifest");
+console.log("manifest url ok:", Boolean(man.url), "errors:", JSON.stringify(man.errors?.map((e) => e.message)));
+await b.close();
