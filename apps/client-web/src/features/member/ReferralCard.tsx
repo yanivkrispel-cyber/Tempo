@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Banner, Button, Card, Toggle, useToast } from "../../shared/design-system";
 import { useReferralLink, useReferralReward } from "./experience";
 import styles from "./member.module.css";
@@ -18,12 +18,14 @@ export function ReferralCard({
   studioName: string;
 }) {
   const toast = useToast();
-  const [showName, setShowName] = useState(true);
   const referral = useReferralLink(organizationId);
   const mint = referral.mutate;
-  // Made when the card shows and again when the toggle changes, so a tap opens the share sheet at once (BookedDialog).
-  useEffect(() => mint(showName), [mint, showName]);
+  // Made when the card shows, so a tap opens the share sheet at once (BookedDialog). Without `showName`: opening her
+  // profile keeps her choice (SL-8); only the switch changes it.
+  useEffect(() => mint(undefined), [mint]);
   const link = referral.data;
+  // Her stored choice (null is the default, on); while a change is on its way, the one she just made.
+  const showName = link ? (link.showName ?? true) : (referral.variables ?? true);
   const reward = useReferralReward(slug, link?.code).data;
 
   async function share() {
@@ -59,7 +61,7 @@ export function ReferralCard({
           <Banner tone="danger" icon="info">
             לא הצלחנו להכין את הקישור שלך.
           </Banner>
-          <Button variant="ghost" size="sm" onClick={() => mint(showName)}>
+          <Button variant="ghost" size="sm" onClick={() => mint(referral.variables)}>
             נסו שוב
           </Button>
         </div>
@@ -73,7 +75,12 @@ export function ReferralCard({
           </Button>
         </div>
       )}
-      <Toggle checked={showName} onChange={(event) => setShowName(event.target.checked)} label="להציג את השם שלי" />
+      <Toggle
+        checked={showName}
+        disabled={referral.isPending}
+        onChange={(event) => mint(event.target.checked)}
+        label="להציג את השם שלי"
+      />
     </Card>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useMe } from "../../account/account";
 import { studioBasename } from "../../app/studioPath";
 import { Button, Dialog, Icon, shortDate, Toggle, useToast, type IconName } from "../../shared/design-system";
@@ -42,14 +42,15 @@ export function BookedDialog({
   const toast = useToast();
   const shareLink = useShareLink(studio.id);
   const mintLink = shareLink.mutate;
-  // SL-8: the invite names her by first name unless she turns it off; on by default.
-  const [showName, setShowName] = useState(true);
   // Her own link is made when the dialog opens and again when the toggle changes, not on the tap: a phone's share
-  // sheet opens only from the tap itself, and waiting on the API first would use that up.
+  // sheet opens only from the tap itself, and waiting on the API first would use that up. Opening sends no `showName`,
+  // so it keeps her stored choice (SL-8); only the switch changes it.
   const bookingId = booking?.id;
   useEffect(() => {
-    if (bookingId) mintLink({ sessionId: session.id, showName });
-  }, [bookingId, session.id, showName, mintLink]);
+    if (bookingId) mintLink({ sessionId: session.id });
+  }, [bookingId, session.id, mintLink]);
+  // SL-8: the invite names her by first name unless she turns it off; null is the default, on.
+  const showName = shareLink.data ? (shareLink.data.showName ?? true) : (shareLink.variables?.showName ?? true);
   const first = me.data?.displayName?.trim().split(/\s+/)[0];
   const time = clockTime(session.startsAt, timeZone);
   const day =
@@ -124,7 +125,12 @@ export function BookedDialog({
               שליחה לחברה
             </Button>
           </div>
-          <Toggle checked={showName} onChange={(event) => setShowName(event.target.checked)} label="להציג את השם שלי" />
+          <Toggle
+            checked={showName}
+            disabled={shareLink.isPending}
+            onChange={(event) => mintLink({ sessionId: session.id, showName: event.target.checked })}
+            label="להציג את השם שלי"
+          />
           <InstallOffer appName={studio.name} />
           <OpenInBrowserCard />
           <Button variant="ghost" block onClick={onClose}>

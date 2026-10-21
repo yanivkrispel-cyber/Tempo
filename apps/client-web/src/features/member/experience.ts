@@ -100,11 +100,14 @@ export function useBuddies(organizationId: string) {
   });
 }
 
-/** The member's own link for a class card (SL-8); `showName` decides whether the invite names her. */
+/**
+ * The member's own link for a class card (SL-8). `showName` changes whether the invite names her; left out, the API
+ * keeps her stored choice and answers it, so opening a screen never changes it.
+ */
 export function useShareLink(organizationId: string) {
   const api = useApi();
   return useMutation({
-    mutationFn: (body: { sessionId: string; showName: boolean }) =>
+    mutationFn: (body: { sessionId: string; showName?: boolean }) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/me/share-link", {
           params: { path: { organizationId } },
@@ -118,11 +121,12 @@ export function useShareLink(organizationId: string) {
 export function useReferralLink(organizationId: string) {
   const api = useApi();
   return useMutation({
-    mutationFn: (showName: boolean) =>
+    // Left out, `showName` keeps her stored choice (SL-8), as for the class card.
+    mutationFn: (showName: boolean | undefined) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/me/share-link", {
           params: { path: { organizationId } },
-          body: { channel: "referral", showName },
+          body: showName === undefined ? { channel: "referral" } : { channel: "referral", showName },
         }),
       ),
   });

@@ -327,14 +327,21 @@ describe("a class and cancelling", () => {
     expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toHaveFocus();
   });
 
-  it("shares the class with her first name on, and sends showName false when she turns it off (SL-8)", async () => {
-    const { api, studio } = renderAt(`/classes/${sessionIds.prenatal}`);
+  /** The API's card link: `showName` left out keeps the stored choice and answers it (SL-8). */
+  function withCardLink(studio: ReturnType<typeof createStudio>, stored: boolean) {
     studio.routes[`POST /api/v1/organizations/${organizationId}/me/share-link`] = async (request: Request) => {
-      const body = (await request.clone().json()) as { showName: boolean };
+      const body = (await request.clone().json()) as { showName?: boolean };
+      if (body.showName !== undefined) stored = body.showName;
       return Response.json({
-        url: `https://members.test/s/studio/c/${sessionIds.prenatal}?src=${body.showName ? "named001" : "plain001"}`,
+        showName: stored,
+        url: `https://members.test/s/studio/c/${sessionIds.prenatal}?src=${stored ? "named001" : "plain001"}`,
       });
     };
+  }
+
+  it("shares the class with her first name on, and sends showName false when she turns it off (SL-8)", async () => {
+    const { api, studio } = renderAt(`/classes/${sessionIds.prenatal}`);
+    withCardLink(studio, true);
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
     await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
     const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
@@ -348,7 +355,8 @@ describe("a class and cancelling", () => {
       );
     // The link is made when the dialog opens, so the tap goes straight to the share sheet.
     await waitFor(() => expect(shares()).toHaveLength(1));
-    expect(shares()[0]).toEqual({ channel: "member_card", sessionId: sessionIds.prenatal, showName: true });
+    // Opening sends no choice, so it never changes hers.
+    expect(shares()[0]).toEqual({ channel: "member_card", sessionId: sessionIds.prenatal });
     await waitFor(() => expect(within(done).getByRole("button", { name: "שליחה לחברה" })).toBeEnabled());
     await act(async () => within(done).getByRole("button", { name: "שליחה לחברה" }).click());
     expect(share).toHaveBeenLastCalledWith(expect.objectContaining({ url: expect.stringContaining("src=named001") }));
@@ -362,6 +370,21 @@ describe("a class and cancelling", () => {
       expect(share).toHaveBeenLastCalledWith(expect.objectContaining({ url: expect.stringContaining("src=plain001") }));
     });
     vi.unstubAllGlobals();
+  });
+
+  it("keeps her name off when she turned it off before: opening the dialog does not turn it on (SL-8)", async () => {
+    const { api, studio } = renderAt(`/classes/${sessionIds.prenatal}`);
+    withCardLink(studio, false);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    const toggle = within(done).getByRole("switch", { name: "להציג את השם שלי" });
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(toggle).toBeEnabled();
+    const sent = api.requests.flatMap((request, index) =>
+      request.method === "POST" && request.url.endsWith("/me/share-link") ? [api.bodies[index]] : [],
+    );
+    expect(sent).toEqual([{ channel: "member_card", sessionId: sessionIds.prenatal }]);
   });
 
   it("opens the share sheet in the tap itself, with the plain class address while her link is on its way", async () => {
@@ -821,17 +844,24 @@ describe("passes", () => {
 describe("bring a friend (MO5)", () => {
   const shareRoute = `POST /api/v1/organizations/${organizationId}/me/share-link`;
   const lookupRoute = (code: string) => `GET /api/v1/public/studios/neshima/links/${code}`;
-  function withReferral(studio: ReturnType<typeof createStudio>, reward: string | null) {
+  /** Her referral link as the API keeps it: `showName` left out keeps the stored choice and answers it (SL-8). */
+  function withReferral(studio: ReturnType<typeof createStudio>, reward: string | null, stored = true) {
     studio.routes[shareRoute] = async (request: Request) => {
       const body = (await request.clone().json()) as { showName?: boolean };
-      const code = body.showName === false ? "plain002" : "named002";
+      if (body.showName !== undefined) stored = body.showName;
+      const code = stored ? "named002" : "plain002";
       studio.routes[lookupRoute(code)] = () =>
         Response.json({
           target: { kind: "studio" },
-          inviterFirstName: body.showName === false ? null : "נגה",
+          inviterFirstName: stored ? "נגה" : null,
           reward: reward ? { productName: reward } : null,
         });
-      return Response.json({ code, channel: "referral", url: `https://members.test/s/neshima/?src=${code}` });
+      return Response.json({
+        code,
+        channel: "referral",
+        showName: stored,
+        url: `https://members.test/s/neshima/?src=${code}`,
+      });
     };
   }
   const referrals = (api: ReturnType<typeof apiStub>) =>
@@ -847,7 +877,7 @@ describe("bring a friend (MO5)", () => {
     expect(await within(card).findByText(/^כשחברה שהזמנת מגיעה/)).toHaveTextContent(
       /^כשחברה שהזמנת מגיעה לשיעור הראשון שלה, את מקבלת שיעור מתנה\.$/,
     );
-    expect(referrals(api)[0]).toEqual({ channel: "referral", showName: true });
+    expect(referrals(api)[0]).toEqual({ channel: "referral" });
 
     const share = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { ...navigator, share });
@@ -877,6 +907,17 @@ describe("bring a friend (MO5)", () => {
     });
     expect(await screen.findByText("הקישור הועתק")).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+
+  it("keeps her name off when she turned it off before: opening her profile does not turn it on (SL-8)", async () => {
+    const { api, studio } = renderAt("/profile");
+    withReferral(studio, null, false);
+    const card = await screen.findByRole("region", { name: "הביאי חברה" });
+    const toggle = within(card).getByRole("switch", { name: "להציג את השם שלי" });
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(toggle).toBeEnabled();
+    expect(referrals(api)).toEqual([{ channel: "referral" }]);
+    expect(referrals(api).some((body) => (body as { showName?: boolean }).showName === true)).toBe(false);
   });
 
   it("offers a retry when the link cannot be made", async () => {
