@@ -28,6 +28,7 @@ import { useInstructorProfiles } from "../console/experience";
 import { usePassProducts } from "../passes/queries";
 import { useSessions, useStudioTimeZone } from "../schedule/queries";
 import { publicPageKey } from "../settings/PublicPageCard";
+import { drawPoster, POSTER_HEADLINE, POSTER_HEIGHT, POSTER_WIDTH, type PosterInput } from "./drawPoster";
 import { drawStory, loadStoryFonts, STORY_HEIGHT, STORY_WIDTH } from "./drawStory";
 import styles from "./publish.module.css";
 import {
@@ -570,7 +571,91 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
           )}
         </div>
       </div>
+
+      {!ownOnly && (
+        <Poster
+          studioName={studio.displayName}
+          slug={studio.slug}
+          accent={accent}
+          offerLine={offers[0] ? offerHeadline(offers[0]) : null}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * The A4 poster (docs/37 section 8.6, MO7): the owner's alone, like the offer story. Its link is made on the first
+ * download, not on opening the page, so a visit leaves no unused link behind; later downloads reuse it.
+ */
+function Poster({ slug, ...input }: Omit<PosterInput, "url"> & { slug: string }) {
+  const api = useApi();
+  const { organizationId } = useStudio();
+  const toast = useToast();
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [link, setLink] = useState<MarketingLink | null>(null);
+  const [fontsReady, setFontsReady] = useState(false);
+  const fileName = `${slug}-poster.png`;
+
+  useEffect(() => {
+    let current = true;
+    void loadStoryFonts().then(() => current && setFontsReady(true));
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const draw = (url: string | null) => {
+    const ctx = canvas.current?.getContext("2d");
+    if (ctx) drawPoster(ctx, { ...input, url });
+  };
+  // Drawn again once the faces arrive, and with the code once the link exists.
+  useEffect(() => draw(link?.url ?? null), [link, fontsReady, input.studioName, input.accent, input.offerLine]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = useMutation({
+    mutationFn: async () =>
+      link ??
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/marketing/links", {
+          params: { path: { organizationId } },
+          body: { channel: "poster", template: "poster", target: { kind: "schedule", id: null } },
+        }),
+      ),
+    onSuccess: async (made) => {
+      setLink(made);
+      draw(made.url);
+      await download(canvas.current, fileName);
+      toast.show({ tone: "success", icon: "check", message: "הפוסטר ירד, מוכן להדפסה ב-A4" });
+    },
+  });
+
+  return (
+    <section className={`tp-card ${styles.poster}`} aria-label="פוסטר להדפסה">
+      <canvas
+        ref={canvas}
+        width={POSTER_WIDTH}
+        height={POSTER_HEIGHT}
+        className={styles.posterPreview}
+        role="img"
+        aria-label={`פוסטר: ${POSTER_HEADLINE}${input.offerLine ? `. ${input.offerLine}` : ""}`}
+      />
+      <div className="tp-stack">
+        <h2>פוסטר להדפסה</h2>
+        <p className="tp-muted">
+          פוסטר A4 לקיר ולדלפק, עם קוד QR לשיעורים של השבוע. ההרשמות דרכו נספרות תחת &quot;פוסטר&quot;.
+        </p>
+        {save.isError && (
+          <Banner tone="danger" icon="info">
+            {errorMessage(save.error, "לא הצלחנו ליצור לינק. נסו שוב.")}
+          </Banner>
+        )}
+        <div className={styles.actions}>
+          <Button icon="arrow-down" loading={save.isPending} onClick={() => save.mutate()}>
+            הורדת הפוסטר
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 }
 

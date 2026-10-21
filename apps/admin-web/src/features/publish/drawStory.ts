@@ -21,8 +21,8 @@ export const STORY_HEIGHT = 1920;
 const STICKER_ROOM = 320;
 const SIDE = 72;
 
-const DISPLAY = '"Frank Ruhl Libre", "David Libre", Georgia, serif';
-const UI = '"IBM Plex Sans Hebrew", "Heebo", "Segoe UI", system-ui, sans-serif';
+export const DISPLAY = '"Frank Ruhl Libre", "David Libre", Georgia, serif';
+export const UI = '"IBM Plex Sans Hebrew", "Heebo", "Segoe UI", system-ui, sans-serif';
 /** The condensed face for times (docs/37 section 7.2). */
 const CONDENSED = '"Karantina", "IBM Plex Sans Hebrew", sans-serif';
 const INK = "#2b2420";
@@ -465,7 +465,7 @@ export function fit(ctx: Pick<CanvasRenderingContext2D, "measureText">, value: s
 }
 
 /** Splits a headline into lines by words. */
-function wrap(ctx: CanvasRenderingContext2D, value: string, font: string, max: number): string[] {
+export function wrap(ctx: CanvasRenderingContext2D, value: string, font: string, max: number): string[] {
   ctx.save();
   ctx.font = font;
   const lines: string[] = [];
@@ -533,7 +533,14 @@ function strike(ctx: CanvasRenderingContext2D, from: number, to: number, y: numb
   ctx.restore();
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+export function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, radius);
 }
