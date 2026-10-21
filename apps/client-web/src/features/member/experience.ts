@@ -100,6 +100,20 @@ export function useBuddies(organizationId: string) {
   });
 }
 
+/** The member's own link for a class card (SL-8); `showName` decides whether the invite names her. */
+export function useShareLink(organizationId: string) {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (body: { sessionId: string; showName: boolean }) =>
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/me/share-link", {
+          params: { path: { organizationId } },
+          body: { channel: "member_card", ...body },
+        }),
+      ),
+  });
+}
+
 export function useBuddyCode(organizationId: string) {
   const api = useApi();
   return useMutation({

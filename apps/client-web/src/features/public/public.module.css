@@ -431,3 +431,11 @@
 .priceRow strong {
   white-space: nowrap;
 }
+
+/* "<first name> מזמינה אותך" (SL-8): the first line of the sheet, at its start like the content below it. */
+.invite {
+  margin: 0;
+  text-align: start;
+  font-weight: 600;
+  color: var(--brand-ink);
+}
