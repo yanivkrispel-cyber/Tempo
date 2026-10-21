@@ -382,6 +382,21 @@ describe("a class and cancelling", () => {
     vi.unstubAllGlobals();
   });
 
+  it("says the link was copied on the share button itself, not in a toast over the dialog", async () => {
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share: undefined, clipboard: { writeText } });
+    await userEvent.click(within(done).getByRole("button", { name: "שליחה לחברה" }));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(await within(done).findByRole("button", { name: "הקישור הועתק" })).toBeInTheDocument();
+    // Said once, on the button: a toast would sit over the dialog's buttons on a 360 px phone.
+    expect(screen.getAllByText("הקישור הועתק")).toHaveLength(1);
+    vi.unstubAllGlobals();
+  });
+
   it("says when a class does not exist", async () => {
     renderAt("/classes/0199e5a1-0000-7000-8000-000000000399");
     expect(await screen.findByText("השיעור לא נמצא")).toBeInTheDocument();
