@@ -818,6 +818,83 @@ describe("passes", () => {
   });
 });
 
+describe("bring a friend (MO5)", () => {
+  const shareRoute = `POST /api/v1/organizations/${organizationId}/me/share-link`;
+  const lookupRoute = (code: string) => `GET /api/v1/public/studios/neshima/links/${code}`;
+  function withReferral(studio: ReturnType<typeof createStudio>, reward: string | null) {
+    studio.routes[shareRoute] = async (request: Request) => {
+      const body = (await request.clone().json()) as { showName?: boolean };
+      const code = body.showName === false ? "plain002" : "named002";
+      studio.routes[lookupRoute(code)] = () =>
+        Response.json({
+          target: { kind: "studio" },
+          inviterFirstName: body.showName === false ? null : "נגה",
+          reward: reward ? { productName: reward } : null,
+        });
+      return Response.json({ code, channel: "referral", url: `https://members.test/s/neshima/?src=${code}` });
+    };
+  }
+  const referrals = (api: ReturnType<typeof apiStub>) =>
+    api.requests.flatMap((request, index) =>
+      request.method === "POST" && request.url.endsWith("/me/share-link") ? [api.bodies[index]] : [],
+    );
+
+  it("sends her referral link and says what she gets when the friend comes", async () => {
+    const { api, studio } = renderAt("/profile");
+    withReferral(studio, "שיעור מתנה");
+    const card = await screen.findByRole("region", { name: "הביאי חברה" });
+    // The product is in its own <bdi>, so the sentence is matched on its paragraph.
+    expect(await within(card).findByText(/^כשחברה שהזמנת מגיעה/)).toHaveTextContent(
+      /^כשחברה שהזמנת מגיעה לשיעור הראשון שלה, את מקבלת שיעור מתנה\.$/,
+    );
+    expect(referrals(api)[0]).toEqual({ channel: "referral", showName: true });
+
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share });
+    await act(async () => within(card).getByRole("button", { name: "שליחה לחברה" }).click());
+    expect(share).toHaveBeenLastCalledWith({
+      text: "בואי איתי לסטודיו נשימה",
+      url: "https://members.test/s/neshima/?src=named002",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("copies the link, and makes it again without her name when she turns it off", async () => {
+    const { api, studio } = renderAt("/profile");
+    withReferral(studio, null);
+    const card = await screen.findByRole("region", { name: "הביאי חברה" });
+    expect(await within(card).findByText("שלחי לחברה את הקישור שלך לסטודיו.")).toBeInTheDocument();
+    expect(within(card).queryByText(/את מקבלת/)).not.toBeInTheDocument();
+
+    await userEvent.click(within(card).getByRole("switch", { name: "להציג את השם שלי" }));
+    await waitFor(() => expect(referrals(api)).toHaveLength(2));
+    expect(referrals(api)[1]).toEqual({ channel: "referral", showName: false });
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share: undefined, clipboard: { writeText } });
+    await waitFor(async () => {
+      within(card).getByRole("button", { name: "העתקת הקישור" }).click();
+      expect(writeText).toHaveBeenLastCalledWith("https://members.test/s/neshima/?src=plain002");
+    });
+    expect(await screen.findByText("הקישור הועתק")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("offers a retry when the link cannot be made", async () => {
+    const { studio } = renderAt("/profile");
+    let fail = true;
+    const make = () =>
+      fail
+        ? problem(400, "http.400")
+        : Response.json({ code: "named003", url: "https://members.test/s/neshima/?src=named003" });
+    studio.routes[shareRoute] = () => make();
+    const card = await screen.findByRole("region", { name: "הביאי חברה" });
+    expect(await within(card).findByText("לא הצלחנו להכין את הקישור שלך.")).toBeInTheDocument();
+    fail = false;
+    await userEvent.click(within(card).getByRole("button", { name: "נסו שוב" }));
+    expect(await within(card).findByRole("button", { name: "שליחה לחברה" })).toBeEnabled();
+  });
+});
+
 describe("profile", () => {
   it("shows the member, the plan and the settings", async () => {
     renderAt("/profile");
