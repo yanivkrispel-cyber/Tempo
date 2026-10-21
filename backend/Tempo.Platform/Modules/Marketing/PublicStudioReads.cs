@@ -14,8 +14,11 @@ public sealed record PublicStudioView(
     bool HasIntroOffer,
     bool OpenJoin);
 
-/// <summary>Where a public link leads (SL-1), and the inviter's first name for a member's own link while she shows it (SL-8).</summary>
-public sealed record PublicLinkView(string TargetKind, Guid? TargetId, string? InviterFirstName);
+/// <summary>
+/// Where a public link leads (SL-1), the inviter's first name for a member's own link while she shows it (SL-8), and the
+/// studio's bring-a-friend reward on a member's referral link (R-1, M-17).
+/// </summary>
+public sealed record PublicLinkView(string TargetKind, Guid? TargetId, string? InviterFirstName, string? RewardProductName = null);
 
 /// <summary>The instructor as strangers may see them: only with their own consent (M-14).</summary>
 public sealed record PublicInstructorView(string DisplayName, Guid? PhotoMediaId, string? Headline, string? InstagramHandle);
@@ -347,14 +350,25 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
         }
 
         // The inviter's first name only: the first word of the name the studio holds for her, never a surname, and only
-        // on a member's own link while "להציג את השם שלי" is on (SL-8).
+        // on a member's own link while "להציג את השם שלי" is on (SL-8). A name the studio made from her email (she never
+        // typed one) is the start of her address, not a name, so it is never shown (#445, [O]'s O1 request).
+        // The reward (R-1) only where the friend's first attended class would grant it (AttendanceEffects): a member's
+        // referral link, the referrer still an active member, and an active product the studio picked. Its name only.
         await using var read = unitOfWork.Command(
             """
             SELECT l.target_kind, l.target_id,
                    CASE WHEN l.channel IN ('member_card', 'referral') AND l.show_name
-                        THEN nullif(split_part(btrim(p.display_name), ' ', 1), '') END
+                         AND NOT EXISTS (
+                             SELECT 1 FROM people.contact_points c
+                             WHERE c.organization_id = p.organization_id AND c.person_id = p.id AND c.type = 'email'
+                               AND lower(split_part(c.value, '@', 1)) = lower(btrim(p.display_name)))
+                        THEN nullif(split_part(btrim(p.display_name), ' ', 1), '') END,
+                   CASE WHEN l.channel = 'referral' AND m.id IS NOT NULL THEN pr.name END
             FROM marketing.links l
             LEFT JOIN people.people p ON p.organization_id = l.organization_id AND p.membership_id = l.created_by AND p.status = 'active'
+            LEFT JOIN organizations.memberships m ON m.organization_id = l.organization_id AND m.id = l.created_by AND m.status = 'active'
+            LEFT JOIN organizations.public_pages pp ON pp.organization_id = l.organization_id
+            LEFT JOIN scheduling.pass_products pr ON pr.organization_id = pp.organization_id AND pr.id = pp.referral_reward_product_id AND pr.status = 'active'
             WHERE l.organization_id = $1 AND l.code = $2
             """,
             studio.Id, code);
@@ -366,7 +380,8 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
 
         Guid? target = reader.IsDBNull(1) ? null : reader.GetGuid(1);
         string? inviter = reader.IsDBNull(2) ? null : reader.GetString(2);
-        return new PublicLinkView(reader.GetString(0), target, inviter);
+        string? reward = reader.IsDBNull(3) ? null : reader.GetString(3);
+        return new PublicLinkView(reader.GetString(0), target, inviter, reward);
     }
 
     private static async Task<(bool Enabled, string TimeZone)> PageAsync(UnitOfWork unitOfWork, PublicStudio studio, CancellationToken cancellationToken)
