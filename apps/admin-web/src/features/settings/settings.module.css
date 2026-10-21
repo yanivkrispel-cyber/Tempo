@@ -440,6 +440,12 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.nameHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
 .listedActions {
   display: flex;
   align-items: center;

@@ -172,6 +172,23 @@ describe("the products on the public page (SL-4, SL-5)", () => {
     expect(putBody(api)["listedProducts"]).toEqual([listedTrial]);
   });
 
+  it("suggests a Hebrew-first name for a product whose name starts with Latin text and a number", async () => {
+    const latin = product("0199e5a1-0000-7000-8000-0000000c0004", "TRX 5 שיעורים", 30000);
+    renderSettings({
+      [`GET ${base}/pass-products`]: { items: [trial, latin] },
+      [`GET ${base}/public-page`]: page({
+        enabled: true,
+        listedProducts: [listedTrial, { ...listedTen, productId: latin.id }],
+      }),
+    });
+    const region = await card();
+    const rows = await within(region).findAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    // "TRX 5 שיעורים" reads "5 שיעורים TRX" on a right-to-left page; the Hebrew one needs no hint.
+    expect(within(rows[1]!).getByText("שם שמתחיל בעברית ייקרא נכון מימין לשמאל")).toBeInTheDocument();
+    expect(within(rows[0]!).queryByText("שם שמתחיל בעברית ייקרא נכון מימין לשמאל")).not.toBeInTheDocument();
+  });
+
   it("reorders and removes products, and sends the new order", async () => {
     const api = renderListed([listedTrial, listedTen]);
     const region = await card();
