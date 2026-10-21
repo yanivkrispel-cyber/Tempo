@@ -1,4 +1,5 @@
 using Npgsql;
+using Tempo.Platform.BuildingBlocks.Diagnostics;
 
 namespace Tempo.Platform.BuildingBlocks.Persistence;
 
@@ -48,7 +49,13 @@ public sealed class UnitOfWork : IAsyncDisposable
     private static async Task<UnitOfWork?> StartAsync(
         NpgsqlDataSource dataSource, Guid? userAccountId, Guid? organizationId, bool retryIfBroken, CancellationToken cancellationToken)
     {
-        var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        NpgsqlConnection connection;
+        using (ColdStart.Current.Measure("npgsql.open"))
+        {
+            // On a new environment: DNS, TLS and Neon waking its compute (P-1).
+            connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        }
+
         try
         {
             var transaction = await connection.BeginTransactionAsync(cancellationToken);
