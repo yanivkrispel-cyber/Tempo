@@ -9,6 +9,11 @@ using Tempo.Api.Middleware;
 using Amazon.SQS;
 using Tempo.Api.Notifications;
 using Tempo.Platform.Modules.Notifications.Application;
+using Tempo.Platform.BuildingBlocks.Diagnostics;
+
+// P-1 (board #445): the cold start's steps, from the process start to the end of the first request.
+var mainStarted = DateTimeOffset.UtcNow;
+ColdStart.Current.Record("init.runtime", ColdStart.ProcessStart(), mainStarted);
 
 // Covers startup only. The host builds its own logger below and leaves this
 // one alone, because a reloadable bootstrap logger can be frozen once per
@@ -43,6 +48,8 @@ try
     builder.Services.AddCognitoAuthentication(builder.Configuration);
 
     var app = builder.Build();
+    var hostBuilt = DateTimeOffset.UtcNow;
+    ColdStart.Current.Record("init.host-build", mainStarted, hostBuilt);
 
     // Deployed, the work queue's URL is set and requests reach the worker at once; locally and in tests nothing
     // is sent (docs/30 section 8).
@@ -52,14 +59,17 @@ try
         NotificationSignal.Send = signal.SendAsync;
     }
 
+    app.UseMiddleware<ColdStartMiddleware>();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<NoStoreByDefaultMiddleware>();
     app.UseMediaLinks();
     app.UseExceptionHandler();
     // Without an explicit logger, request events go to the static startup logger.
     app.UseSerilogRequestLogging(options => options.Logger = app.Services.GetRequiredService<Serilog.ILogger>());
+    app.Use(ColdStartMiddleware.MarkBeforeAuthentication);
     app.UseAuthentication();
     app.UseAuthorization();
+    app.Use(ColdStartMiddleware.MarkAfterAuthorization);
 
     // The contract is public (contracts/openapi in a public repo); ArchitectureTests lists every anonymous route.
     app.MapOpenApi().AllowAnonymous();
@@ -94,6 +104,7 @@ try
     app.MapInvitationEndpoints();
     app.MapPlatformEndpoints();
     app.MapEndpointModules();
+    ColdStart.Current.Record("init.pipeline", hostBuilt, DateTimeOffset.UtcNow);
 
     await app.RunAsync();
 }
