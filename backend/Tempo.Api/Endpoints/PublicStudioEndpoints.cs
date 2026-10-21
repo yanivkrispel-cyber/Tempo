@@ -123,12 +123,15 @@ public static class PublicStudioEndpoints
     private static PublicProductResponse ProductResponse(PublicProductView p) =>
         new(p.Id, p.Name, p.Kind, p.PriceAgorot, p.Entries, p.PricePerClassAgorot, p.ValidDays, p.NewcomersOnly, p.PublicUntil, p.Blurb);
 
-    /// <summary>SL-1, SL-8: where a link leads and, for a member's own link she shows, her first name.</summary>
+    /// <summary>SL-1, SL-8, R-1: where a link leads, her first name on a member's own link she shows, the reward on a referral.</summary>
     private static async Task<IResult> LinkAsync(HttpContext httpContext, string code, IPublicStudioReads reads)
     {
         var link = await reads.GetLinkAsync(PublicStudioRouteFilter.Current(httpContext), code, httpContext.RequestAborted);
         httpContext.Response.Headers.CacheControl = "public, max-age=60";
-        return Results.Ok(new PublicLinkTargetResponse(new MarketingTargetBody(link.TargetKind, link.TargetId), link.InviterFirstName));
+        return Results.Ok(new PublicLinkTargetResponse(
+            new MarketingTargetBody(link.TargetKind, link.TargetId),
+            link.InviterFirstName,
+            link.RewardProductName is { } product ? new PublicLinkRewardResponse(product) : null));
     }
 
     /// <summary>SL-9: the studio's cover for a link preview, else its icon; the picture's URL lives an hour.</summary>

@@ -276,7 +276,10 @@ paths:
       description: >-
         SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404
         `link.not_found` for an unknown code. `inviterFirstName` only for a member's own link (`member_card`,
-        `referral`) while its `showName` is on, and nothing else about the member. `public, max-age=60`.
+        `referral`) while its `showName` is on, and never a name the studio made from the member's email; nothing
+        else about the member. `reward` (R-1) only on a member's `referral` link while the studio has an active
+        bring-a-friend product (M-17): its name, granted to the member when the friend's first class is attended.
+        `public, max-age=60`.
       security: []
       responses:
         "200":
@@ -5916,10 +5919,21 @@ components:
 
     PublicLinkTarget:
       type: object
-      required: [target, inviterFirstName]
+      required: [target, inviterFirstName, reward]
       properties:
         target: { $ref: "#/components/schemas/MarketingTarget" }
         inviterFirstName: { type: [string, "null"], description: "SL-8: a member's invite with `showName` on; never a surname." }
+        reward:
+          description: "R-1: the studio's bring-a-friend reward on a member's referral link, else null."
+          oneOf:
+            - $ref: "#/components/schemas/PublicLinkReward"
+            - type: "null"
+
+    PublicLinkReward:
+      type: object
+      required: [productName]
+      properties:
+        productName: { type: string, description: "The pass the member gets when the friend's first class is attended (M-17)." }
 
     PublicBrand:
       type: object

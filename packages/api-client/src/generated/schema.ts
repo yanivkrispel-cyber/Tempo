@@ -172,7 +172,7 @@ export interface paths {
         };
         /**
          * Where one of a public studio's links leads, and the inviter's first name for a member's invite (anyone)
-         * @description SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404 `link.not_found` for an unknown code. `inviterFirstName` only for a member's own link (`member_card`, `referral`) while its `showName` is on, and nothing else about the member. `public, max-age=60`.
+         * @description SL-1, SL-8, SK4. Under the studio's slug because a code is unique within one studio only. 404 `link.not_found` for an unknown code. `inviterFirstName` only for a member's own link (`member_card`, `referral`) while its `showName` is on, and never a name the studio made from the member's email; nothing else about the member. `reward` (R-1) only on a member's `referral` link while the studio has an active bring-a-friend product (M-17): its name, granted to the member when the friend's first class is attended. `public, max-age=60`.
          */
         get: operations["getPublicLink"];
         put?: never;
@@ -4520,6 +4520,12 @@ export interface components {
             target: components["schemas"]["MarketingTarget"];
             /** @description SL-8: a member's invite with `showName` on; never a surname. */
             inviterFirstName: string | null;
+            /** @description R-1: the studio's bring-a-friend reward on a member's referral link, else null. */
+            reward: components["schemas"]["PublicLinkReward"] | null;
+        };
+        PublicLinkReward: {
+            /** @description The pass the member gets when the friend's first class is attended (M-17). */
+            productName: string;
         };
         PublicBrand: {
             slug: string;

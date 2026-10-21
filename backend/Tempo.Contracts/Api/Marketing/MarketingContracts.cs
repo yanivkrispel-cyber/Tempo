@@ -106,8 +106,11 @@ public sealed record CreateMarketingLinkRequest(string? Channel, string? Templat
 /// <summary>`MarketingTarget` (SL-1): `session`, `schedule`, `offer` or `prices`, with the session's or product's id.</summary>
 public sealed record MarketingTargetBody(string Kind, Guid? Id);
 
-/// <summary>`PublicLinkTarget` (SL-1, SL-8).</summary>
-public sealed record PublicLinkTargetResponse(MarketingTargetBody Target, string? InviterFirstName);
+/// <summary>`PublicLinkTarget` (SL-1, SL-8, R-1).</summary>
+public sealed record PublicLinkTargetResponse(MarketingTargetBody Target, string? InviterFirstName, PublicLinkRewardResponse? Reward);
+
+/// <summary>`PublicLinkReward` (R-1): the pass the studio gives the member when her friend's first class is attended.</summary>
+public sealed record PublicLinkRewardResponse(string ProductName);
 
 /// <summary>`MarketingLink`: `Url` is the members-app address with `?src=`.</summary>
 public sealed record MarketingLinkResponse(Guid Id, string Code, string Channel, string? Template, Guid? SessionId, Uri Url, DateTimeOffset CreatedAt, MarketingTargetBody Target, bool? ShowName);

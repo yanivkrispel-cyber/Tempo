@@ -82,9 +82,10 @@ public sealed class LinkTargetsFlowTests(PostgresFixture postgres) : IClassFixtu
 
         // 2. The public lookup says where a code leads, and nothing else; an unknown code is 404.
         var looked = await SendAsync(client, HttpMethod.Get, $"{publicPath}/links/{toOffer.GetProperty("code").GetString()}", null);
-        looked.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("target", "inviterFirstName");
+        looked.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("target", "inviterFirstName", "reward");
         looked.GetProperty("target").GetProperty("id").GetGuid().Should().Be(offer);
         looked.GetProperty("inviterFirstName").ValueKind.Should().Be(JsonValueKind.Null, "a studio link has no inviter");
+        looked.GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null, "a studio link earns no one a reward");
         (await client.GetAsync($"{publicPath}/links/zzzzzzz9")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync($"{publicPath}/links/NOT-A-CODE")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
@@ -124,6 +125,63 @@ public sealed class LinkTargetsFlowTests(PostgresFixture postgres) : IClassFixtu
         var classCover = await noRedirects.GetAsync($"{publicPath}/sessions/{session}/cover");
         classCover.StatusCode.Should().Be(HttpStatusCode.Redirect);
         (await noRedirects.GetAsync($"{publicPath}/sessions/{foreignSession}/cover")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AReferralShowsTheStudiosReward_AndANameMadeFromAnEmailIsNeverShown()
+    {
+        PublicRateLimitFilter.Reset();
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, slug, _) = await StudioAsync(client, "owner");
+        var publicPath = $"/api/v1/public/studios/{slug}";
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true });
+        var type = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/class-types", Customer("owner"), new { name = "פילאטיס", category = "pilates", color = "rose", defaultMinutes = 50 }, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+        var session = await SessionAsync(client, studioPath, type, 2, "18:00", 8);
+        var gift = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "שיעור מתנה", entries = 1, validDays = 30 }, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+
+        // Noga's name is her own; Maya never typed one, so the studio holds the start of her email ("maya").
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("noga"));
+        var noga = (await SendAsync(client, HttpMethod.Post, $"{publicPath}/join", Customer("noga"), new { })).GetProperty("membershipId").GetGuid();
+        await db.AsMasterAsync("UPDATE people.people SET display_name = 'נגה כהן' WHERE membership_id = $1", noga);
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("maya"));
+        await SendAsync(client, HttpMethod.Post, $"{publicPath}/join", Customer("maya"), new { });
+        var referral = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("noga"), new { channel = "referral" })).GetProperty("code").GetString();
+        var card = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("noga"), new { channel = "member_card", sessionId = session })).GetProperty("code").GetString();
+        var mayaCard = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("maya"), new { channel = "member_card", sessionId = session })).GetProperty("code").GetString();
+        var staff = (await SendAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("owner"), new { channel = "story" }, HttpStatusCode.Created)).GetProperty("code").GetString();
+        async Task<JsonElement> Look(string? code) => await SendAsync(client, HttpMethod.Get, $"{publicPath}/links/{code}", null);
+
+        // 1. No reward chosen: no reward line on any link.
+        (await Look(referral)).GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null, "the studio picked no reward (M-17)");
+
+        // 2. The studio picks one: only the member's referral link shows it, by product name only.
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true, referralRewardProductId = gift });
+        var withReward = await Look(referral);
+        withReward.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("target", "inviterFirstName", "reward");
+        withReward.GetProperty("reward").EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(["productName"], "nothing about the member (S-B)");
+        withReward.GetProperty("reward").GetProperty("productName").GetString().Should().Be("שיעור מתנה");
+        withReward.GetProperty("inviterFirstName").GetString().Should().Be("נגה");
+        (await Look(card)).GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null, "a class card earns no reward; only a referral does");
+        (await Look(staff)).GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null, "a staff link earns no one a reward (K5-1)");
+
+        // 3. Her name off: the reward stays (it says nothing about her), the name goes.
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("noga"), new { channel = "referral", showName = false });
+        var nameOff = await Look(referral);
+        nameOff.GetProperty("inviterFirstName").ValueKind.Should().Be(JsonValueKind.Null);
+        nameOff.GetProperty("reward").GetProperty("productName").GetString().Should().Be("שיעור מתנה");
+
+        // 4. A reward product taken off sale is no promise any more.
+        await db.AsMasterAsync("UPDATE scheduling.pass_products SET status = 'archived' WHERE id = $1", gift);
+        (await Look(referral)).GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null, "an archived product is never granted");
+
+        // 5. A name the studio made from her email is not a first name: strangers never see the start of an address.
+        (await Look(mayaCard)).GetProperty("inviterFirstName").ValueKind.Should().Be(JsonValueKind.Null, "'maya' is her email's local part");
+        await db.AsMasterAsync("UPDATE people.people SET display_name = 'Maya' WHERE display_name = 'maya'");
+        (await Look(mayaCard)).GetProperty("inviterFirstName").ValueKind.Should().Be(JsonValueKind.Null, "the comparison ignores case");
+        await db.AsMasterAsync("UPDATE people.people SET display_name = 'מאיה לוי' WHERE display_name = 'Maya'");
+        (await Look(mayaCard)).GetProperty("inviterFirstName").GetString().Should().Be("מאיה", "a name she typed");
     }
 
     private async Task ProblemAsync(HttpClient client, string path, object body, HttpStatusCode status, string code)
