@@ -30,13 +30,14 @@ import { useSessions, useStudioTimeZone } from "../schedule/queries";
 import { publicPageKey } from "../settings/PublicPageCard";
 import { drawPoster, POSTER_HEADLINE, POSTER_HEIGHT, POSTER_WIDTH, type PosterInput } from "./drawPoster";
 import { HighlightCovers } from "./HighlightCovers";
-import { drawStory, loadStoryFonts, STORY_HEIGHT, STORY_WIDTH } from "./drawStory";
+import { drawStory, loadStoryFonts, STORY_HEIGHT, STORY_WIDTH, type StoryInstructor } from "./drawStory";
 import styles from "./publish.module.css";
 import {
   candidates,
   defaultTarget,
   maxSlots,
   offerHeadline,
+  quoteFrom,
   templates,
   toSlot,
   whatsappText,
@@ -56,6 +57,7 @@ const emptyText: Record<TemplateId, string> = {
   spot_opened: "אין בימים הקרובים שיעור עם מקום פנוי.",
   change: "אין ביטולים בשבוע הקרוב.",
   offer: "אין הצעה למצטרפים חדשים בעמוד הציבורי. אפשר להוסיף אחת בהגדרות, בעמוד ציבורי.",
+  instructor: "אין שיעורים בשבוע הקרוב.",
 };
 
 /**
@@ -137,6 +139,36 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
     );
   }, [instructors.data, showInstructors]);
 
+  // The instructor story shows only someone who agreed to a public profile (M-14); an instructor shows only themself.
+  const storyInstructors = useMemo(
+    () =>
+      [...(instructors.data?.values() ?? [])].filter(
+        (item) => item.publicProfile && (!ownOnly || item.membershipId === studio.membership.membershipId),
+      ),
+    [instructors.data, ownOnly, studio.membership.membershipId],
+  );
+  const [instructorId, setInstructorId] = useState("");
+  const person = storyInstructors.find((item) => item.membershipId === instructorId) ?? storyInstructors[0] ?? null;
+  const storyInstructor = useMemo<StoryInstructor | null>(
+    () =>
+      person && {
+        name: person.displayName,
+        headline: person.headline?.trim() || null,
+        quote: quoteFrom(person.bio),
+        instagram: person.instagramHandle?.trim().replace(/^@/, "") || null,
+      },
+    [person],
+  );
+  const personSessions = useMemo(
+    () =>
+      new Set(
+        (sessions.data ?? [])
+          .filter((session) => person && session.instructor?.membershipId === person.membershipId)
+          .map((session) => session.id),
+      ),
+    [sessions.data, person],
+  );
+
   const weekStart = thisWeek ? (week === "this" ? thisWeek : addDays(thisWeek, 7)) : null;
   const all = useMemo(() => {
     if (!timeZone || !sessions.data) return [];
@@ -154,9 +186,11 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
     const range =
       template === "week"
         ? all.filter((slot) => slot.date >= weekStart && slot.date <= addDays(weekStart, 6))
-        : all.filter((slot) => slot.date <= addDays(today, 7));
+        : all.filter(
+            (slot) => slot.date <= addDays(today, 7) && (template !== "instructor" || personSessions.has(slot.id)),
+          );
     return candidates(template, range, { today, time: clockTime(now, timeZone) });
-  }, [all, template, today, timeZone, weekStart, now]);
+  }, [all, template, today, timeZone, weekStart, now, personSessions]);
   // A class from the link that is no longer offered (it filled up again) falls back to the default choice.
   const kept = chosen[choiceKey];
   const picked = kept && (template !== "spot_opened" || offered.some((slot) => kept.includes(slot.id))) ? kept : shown;
@@ -196,6 +230,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
     id: targetKind === "session" ? (slots[0]?.id ?? null) : targetKind === "offer" ? (offer?.productId ?? null) : null,
   };
 
+  const slotsKey = JSON.stringify(slots);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [fontsReady, setFontsReady] = useState(false);
   useEffect(() => {
@@ -218,9 +253,23 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
       offer,
       note: template === "week" ? note.trim() : "",
       photo: template === "week" || template === "today" ? (photo?.image ?? null) : null,
+      instructor: template === "instructor" ? storyInstructor : null,
     });
     // `slots` is derived on every render; its ids and labels are what change the picture.
-  }, [template, studio.displayName, accent, JSON.stringify(slots), offer, today, weekStart, note, photo, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    template,
+    studio.displayName,
+    accent,
+    slotsKey,
+    offer,
+    today,
+    weekStart,
+    note,
+    photo,
+    storyInstructor,
+    fontsReady,
+  ]);
 
   const linkKey = `${template}:${target.kind}:${target.id ?? ""}`;
   const createLink = (channel: "story" | "whatsapp") =>
@@ -274,7 +323,15 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
   const writeWhatsapp = useMutation({
     mutationFn: () => createLink("whatsapp"),
     onSuccess: async (link) => {
-      const text = whatsappText(template, studio.displayName, slots, link.url, today!, offer);
+      const text = whatsappText(
+        template,
+        studio.displayName,
+        slots,
+        link.url,
+        today!,
+        offer,
+        template === "instructor" ? (storyInstructor?.name ?? null) : null,
+      );
       setWhatsapp({
         key: `${linkKey}:${JSON.stringify(slots.map((slot) => slot.id))}:${offer?.productId ?? ""}`,
         text,
@@ -325,7 +382,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
             height={STORY_HEIGHT}
             className={styles.story}
             role="img"
-            aria-label={storyDescription(template, slots, offer)}
+            aria-label={storyDescription(template, slots, offer, storyInstructor?.name ?? null)}
           />
           <figcaption className="tp-caption tp-muted">האזור הריק למטה שמור למדבקת הלינק של אינסטגרם.</figcaption>
         </figure>
@@ -334,6 +391,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
           <div role="group" aria-label="תבנית" className={styles.templates}>
             {templates
               .filter((item) => !ownOnly || item.id !== "offer")
+              .filter((item) => item.id !== "instructor" || storyInstructors.length > 0)
               .map((item) => (
                 <button
                   key={item.id}
@@ -366,6 +424,18 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                     { value: "next", label: "שבוע הבא" },
                   ]}
                 />
+              )}
+
+              {template === "instructor" && storyInstructors.length > 1 && (
+                <Field label="המדריכה">
+                  <Select value={person?.membershipId ?? ""} onChange={(event) => setInstructorId(event.target.value)}>
+                    {storyInstructors.map((item) => (
+                      <option key={item.membershipId} value={item.membershipId}>
+                        {item.displayName}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
               )}
 
               {template === "offer" ? (
@@ -425,7 +495,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
                 </fieldset>
               )}
 
-              {template !== "offer" && (
+              {template !== "offer" && template !== "instructor" && (
                 <div className="tp-stack" style={{ gap: 8 }}>
                   <Checkbox
                     label="להציג מדריכים"
@@ -686,9 +756,18 @@ function slotTitle(slot: StorySlot): string {
 }
 
 /** What the picture says, for a screen reader. */
-function storyDescription(template: TemplateId, slots: readonly StorySlot[], offer: OfferInfo | null): string {
+function storyDescription(
+  template: TemplateId,
+  slots: readonly StorySlot[],
+  offer: OfferInfo | null,
+  instructorName: string | null,
+): string {
   const name = templates.find((item) => item.id === template)!.name;
   if (template === "offer") return offer ? `סטורי: ${name}. ${offerHeadline(offer)}` : `סטורי: ${name}`;
+  if (template === "instructor" && instructorName) {
+    const title = `סטורי: ${name}. ${instructorName}`;
+    return slots.length === 0 ? title : `${title}. ${slots.map(slotTitle).join(", ")}`;
+  }
   return slots.length === 0 ? `סטורי: ${name}` : `סטורי: ${name}. ${slots.map(slotTitle).join(", ")}`;
 }
 

@@ -35,6 +35,8 @@ export interface StoryInput {
   slots: readonly StorySlot[];
   /** The offer story's product. */
   offer?: OfferInfo | null;
+  /** The instructor story's person: only one who agreed to a public profile (M-14). */
+  instructor?: StoryInstructor | null;
   /** The studio's today, for "היום" and "מחר". */
   today: IsoDate;
   /** The week template's first day. */
@@ -43,6 +45,15 @@ export interface StoryInput {
   note: string;
   /** A picture the owner picked from the device; drawn as a cover behind the week and today templates. */
   photo: CanvasImageSource | null;
+}
+
+export interface StoryInstructor {
+  name: string;
+  headline: string | null;
+  /** The bio's first sentence. */
+  quote: string | null;
+  /** The handle without @. */
+  instagram: string | null;
 }
 
 const KARANTINA = "https://fonts.googleapis.com/css2?family=Karantina:wght@700&display=swap";
@@ -92,6 +103,9 @@ export function drawStory(ctx: CanvasRenderingContext2D, input: StoryInput): voi
       break;
     case "offer":
       drawOffer(ctx, input);
+      break;
+    case "instructor":
+      drawInstructor(ctx, input);
       break;
   }
   ctx.restore();
@@ -370,6 +384,56 @@ function drawOffer(ctx: CanvasRenderingContext2D, input: StoryInput) {
   text(ctx, "נרשמים בלינק, משלמים בסטודיו.", right, STORY_HEIGHT - STICKER_ROOM - 30, {
     font: `500 38px ${UI}`,
     alpha: 0.85,
+  });
+}
+
+// --- the instructor (docs/37 section 8.3) --------------------------------------------------------------------
+
+function drawInstructor(ctx: CanvasRenderingContext2D, input: StoryInput) {
+  ground(ctx, input);
+  const middle = STORY_WIDTH / 2;
+  const right = STORY_WIDTH - SIDE;
+  const width = STORY_WIDTH - 2 * SIDE;
+  const deep = mix(input.accent, "#000000", 0.18);
+  const light = mix(input.accent, "#ffffff", 0.82);
+  text(ctx, input.studioName, middle, 140, { font: `600 36px ${UI}`, align: "center", spacing: 10, alpha: 0.9 });
+  const person = input.instructor;
+  if (!person) return;
+
+  // Initials until the picture bucket answers with CORS (docs/37 section 7.3); a foreign photo would taint the canvas.
+  ctx.beginPath();
+  ctx.arc(middle, 400, 170, 0, Math.PI * 2);
+  ctx.fillStyle = light;
+  ctx.fill();
+  text(ctx, initialsOf(person.name), middle, 460, { font: `600 150px ${UI}`, align: "center", color: deep });
+
+  text(ctx, person.name, middle, 720, { font: `500 116px ${DISPLAY}`, align: "center", max: width });
+  if (person.headline) {
+    text(ctx, person.headline, middle, 800, { font: `500 44px ${UI}`, align: "center", color: light, max: width });
+  }
+  if (person.instagram) {
+    ctx.save();
+    ctx.direction = "ltr";
+    text(ctx, `@${person.instagram}`, middle, person.headline ? 860 : 800, {
+      font: `500 40px ${UI}`,
+      align: "center",
+      alpha: 0.85,
+    });
+    ctx.restore();
+  }
+  if (person.quote) {
+    const font = `400 56px ${DISPLAY}`;
+    wrap(ctx, `״${person.quote}״`, font, width - 80)
+      .slice(0, 3)
+      .forEach((line, index) => text(ctx, line, middle, 980 + index * 72, { font, align: "center", alpha: 0.95 }));
+  }
+
+  text(ctx, "השיעורים הקרובים", right, 1180, { font: `700 38px ${UI}`, spacing: 6, color: light });
+  input.slots.forEach((slot, index) => {
+    const y = 1260 + index * 70;
+    const when = `${slot.weekday} ${slot.time}`;
+    const used = text(ctx, when, right, y, { font: `700 44px ${UI}` });
+    text(ctx, slot.name, right - used - 28, y, { font: `400 44px ${UI}`, alpha: 0.9, max: width - used - 28 });
   });
 }
 

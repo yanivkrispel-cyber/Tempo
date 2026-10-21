@@ -6,7 +6,16 @@ import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, json, membershipAs, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
-import { candidates, defaultTarget, offerHeadline, storyLabel, toSlot, untilWords, whatsappText } from "./storyData";
+import {
+  candidates,
+  defaultTarget,
+  offerHeadline,
+  quoteFrom,
+  storyLabel,
+  toSlot,
+  untilWords,
+  whatsappText,
+} from "./storyData";
 
 // MO3 (docs/37 section 7, board #404): the console's "פרסום", four stories drawn on the device, each with its own
 // link for Instagram's link sticker, and the same story as WhatsApp text.
@@ -59,7 +68,14 @@ const sessions = [
 
 const instructors = {
   items: [
-    { membershipId: id(3), displayName: "נועה לוי", publicProfile: true },
+    {
+      membershipId: id(3),
+      displayName: "נועה לוי",
+      headline: "מורה לפילאטיס מכשירים",
+      bio: "מלמדת כבר עשר שנים. אוהבת את שיעורי הבוקר.",
+      instagramHandle: "noa.moves",
+      publicProfile: true,
+    },
     { membershipId: me, displayName: "דנה כהן", publicProfile: false },
   ],
 };
@@ -238,6 +254,31 @@ describe("the console's publishing (MO3)", () => {
     expect(document.body.querySelector("script")).toBeNull();
   });
 
+  it("makes an instructor's story from her public profile and her next classes (MO7, docs/37 section 8.3)", async () => {
+    const api = renderPublish(owner);
+    await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    await userEvent.click(screen.getByRole("button", { name: /^המדריכה/ }));
+    // Only Noa agreed to be shown publicly (M-14), so there is nobody else to pick.
+    expect(screen.queryByRole("combobox", { name: "המדריכה" })).not.toBeInTheDocument();
+    const classes = screen.getByRole("group", { name: /השיעורים בסטורי/ });
+    // Her class today; her cancelled one is not offered.
+    expect(within(classes).getAllByRole("checkbox")).toHaveLength(1);
+    expect(within(classes).getByRole("checkbox", { name: "יום רביעי 12:00 · רפורמר בוקר" })).toBeChecked();
+    expect(
+      screen.getByRole("img", { name: "סטורי: המדריכה. נועה לוי. יום רביעי 12:00 · רפורמר בוקר" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "הורדה והעתקת הלינק" }));
+    await waitFor(() =>
+      expect(linkBodies(api)).toEqual([{ channel: "story", template: "instructor", target: targetOf("schedule") }]),
+    );
+  });
+
+  it("does not offer an instructor's story of someone who has not agreed to a public profile", async () => {
+    renderPublish(instructor, "staff");
+    await screen.findByRole("group", { name: /השיעורים בסטורי/ });
+    expect(screen.queryByRole("button", { name: /^המדריכה/ })).not.toBeInTheDocument();
+  });
+
   it("makes the A4 poster with a QR to the week, on a poster link of its own (MO7, docs/37 section 8.6)", async () => {
     const api = renderPublish(owner);
     const poster = await screen.findByRole("region", { name: "פוסטר להדפסה" });
@@ -402,6 +443,28 @@ describe("what a story says", () => {
   });
 });
 
+describe("the words of the instructor's story", () => {
+  it("quotes the bio's first sentence, and nothing when there is none", () => {
+    expect(quoteFrom("מלמדת כבר עשר שנים. אוהבת את שיעורי הבוקר.")).toBe("מלמדת כבר עשר שנים.");
+    expect(quoteFrom("  בלי נקודה בסוף  ")).toBe("בלי נקודה בסוף");
+    expect(quoteFrom("")).toBeNull();
+    expect(quoteFrom(null)).toBeNull();
+    expect(quoteFrom("א".repeat(200))).toHaveLength(140);
+  });
+
+  it("writes her classes as lines with the link last", () => {
+    const slots = [toSlot(session() as never, "Asia/Jerusalem", { showLeft: false, publicInstructors: null })];
+    expect(whatsappText("instructor", "נשימה", slots, "https://neshima.test/s/x", "2026-10-14", null, "נועה לוי")).toBe(
+      [
+        "השיעורים הקרובים של נועה לוי בנשימה",
+        "רביעי 12:00 · רפורמר בוקר · מקומות אחרונים",
+        "",
+        "להרשמה: https://neshima.test/s/x",
+      ].join("\n"),
+    );
+  });
+});
+
 describe("the words of the offer story", () => {
   it("defaults each template to a place (SL-6)", () => {
     expect(defaultTarget).toEqual({
@@ -410,6 +473,7 @@ describe("the words of the offer story", () => {
       today: "session",
       spot_opened: "session",
       offer: "offer",
+      instructor: "schedule",
     });
   });
 
