@@ -114,6 +114,34 @@ export function useShareLink(organizationId: string) {
   });
 }
 
+/** Her own referral link to the studio (docs/37 section 8.5, "הביאי חברה"); one per member, reused by the API. */
+export function useReferralLink(organizationId: string) {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (showName: boolean) =>
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/me/share-link", {
+          params: { path: { organizationId } },
+          body: { channel: "referral", showName },
+        }),
+      ),
+  });
+}
+
+/** What her referral link earns her (M-17), as its public answer says: the product's name, or null. */
+export function useReferralReward(slug: string, code: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ["public-studio", slug, "link", code],
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/public/studios/{slug}/links/{code}", { params: { path: { slug, code: code! } } })),
+    enabled: Boolean(code),
+    staleTime: 5 * 60_000,
+    retry: false,
+    select: (link) => link.reward?.productName.trim() || null,
+  });
+}
+
 export function useBuddyCode(organizationId: string) {
   const api = useApi();
   return useMutation({
