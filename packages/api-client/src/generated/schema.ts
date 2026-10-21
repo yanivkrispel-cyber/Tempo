@@ -5142,10 +5142,10 @@ export interface components {
         };
         NotificationGroupPreference: {
             /**
-             * @description `bookings` are service notices about the member's own bookings (docs/30 section 5).
+             * @description `bookings` are service notices about the member's own bookings (docs/30 section 5). `celebrations` (docs/37 stage B): milestones and bring-a-friend rewards, on by default.
              * @enum {string}
              */
-            group: "bookings" | "reminders" | "studio";
+            group: "bookings" | "reminders" | "studio" | "celebrations";
             channels: components["schemas"]["NotificationChannels"];
         };
         /** @description The member's own switch per reminder; a reminder the studio switched off never fires. */

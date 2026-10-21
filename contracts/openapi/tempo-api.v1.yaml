@@ -6644,8 +6644,8 @@ components:
       properties:
         group:
           type: string
-          enum: [bookings, reminders, studio]
-          description: "`bookings` are service notices about the member's own bookings (docs/30 section 5)."
+          enum: [bookings, reminders, studio, celebrations]
+          description: "`bookings` are service notices about the member's own bookings (docs/30 section 5). `celebrations` (docs/37 stage B): milestones and bring-a-friend rewards, on by default."
         channels: { $ref: "#/components/schemas/NotificationChannels" }
 
     ReminderSwitches:
