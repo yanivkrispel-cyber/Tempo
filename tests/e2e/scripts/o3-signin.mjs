@@ -35,7 +35,9 @@ async function newPage() {
 }
 const noSideScroll = async (page, where) =>
   note(
-    (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0,
+    (await page.evaluate(
+      () => globalThis.document.documentElement.scrollWidth - globalThis.document.documentElement.clientWidth,
+    )) <= 0,
     `${where}: no sideways scroll`,
   );
 /** Everything the page keeps in local and session storage, apart from the session key authClient writes. */
