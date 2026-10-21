@@ -60,6 +60,7 @@ public sealed class NotificationFlowTests(PostgresFixture postgres) : IClassFixt
 
         // 1. Defaults: every group on inbox and push, no own quiet hours, the studio's 22:00 to 08:00.
         var mine = await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/notification-preferences", Customer("noga"));
+        mine.GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("group").GetString()).Should().Equal(Groups, "the contract's enum lists the same four (#445)");
         mine.GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("channels").GetProperty("push").GetBoolean()).Should().Equal(true, true, true, true);
         mine.GetProperty("quietHours").ValueKind.Should().Be(JsonValueKind.Null);
         mine.GetProperty("studioQuietHours").GetProperty("startsLocal").GetString().Should().Be("22:00");

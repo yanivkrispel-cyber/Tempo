@@ -14,6 +14,7 @@ const defaults = {
     { group: "bookings", channels: { inbox: true, push: true } },
     { group: "reminders", channels: { inbox: true, push: true } },
     { group: "studio", channels: { inbox: true, push: true } },
+    { group: "celebrations", channels: { inbox: true, push: true } },
   ],
   reminders: { classTomorrow: true, classSoon: true, passEnding: true, entriesLow: true },
   quietHours: null,
@@ -52,6 +53,7 @@ describe("notification preferences", () => {
       "נרשמת, עברת מרשימת ההמתנה, שיעור בוטל או השתנה",
     );
     expect(screen.getByRole("switch", { name: "הודעות מהסטודיו: התראה בטלפון" })).toBeChecked();
+    expect(screen.getByRole("switch", { name: "חגיגות: אבני דרך וחברות שהבאת: התראה בטלפון" })).toBeChecked();
     expect(screen.getByRole("switch", { name: "ערב לפני שיעור" })).toBeChecked();
     expect(screen.queryByRole("switch", { name: "כשנשארות מעט כניסות בכרטיסייה" })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /כמו בסטודיו/ })).toBeChecked();
@@ -80,6 +82,7 @@ describe("notification preferences", () => {
         { group: "bookings", channels: { inbox: true, push: true } },
         { group: "reminders", channels: { inbox: true, push: true } },
         { group: "studio", channels: { inbox: true, push: false } },
+        { group: "celebrations", channels: { inbox: true, push: true } },
       ],
       reminders: { classTomorrow: true, classSoon: false, passEnding: true, entriesLow: true },
       quietHours: { startsLocal: "22:00", endsLocal: "08:00" },
