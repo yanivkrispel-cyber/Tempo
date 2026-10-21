@@ -26,7 +26,9 @@ import {
   availabilityChip,
   closedChip,
   dateLine,
+  eventPayText,
   offerText,
+  priceText,
   publicState,
   roomChip,
   shortWhen,
@@ -189,9 +191,10 @@ function Open({
   return (
     <>
       <div className={styles.heading}>
-        {left && (
+        {(left || session.event) && (
           <div className={styles.chips}>
-            <Chip tone={left.tone}>{left.label}</Chip>
+            {session.event && <Chip tone="brand">אירוע</Chip>}
+            {left && <Chip tone={left.tone}>{left.label}</Chip>}
           </div>
         )}
         <h1 id="public-class-title" className={`tp-display ${styles.title}`}>
@@ -237,7 +240,20 @@ function Open({
         <p className={styles.description}>{session.event.description}</p>
       )}
 
-      {studio.introOffer && (
+      {session.event && (
+        <div className={`tp-paper ${styles.offerRow}`}>
+          <span className={styles.tile} aria-hidden="true">
+            <Icon name="credit-card" />
+          </span>
+          <div>
+            {session.event.priceAgorot !== null && <strong>{priceText(session.event.priceAgorot)}</strong>}
+            <span className="tp-caption tp-muted">{eventPayText(session.event)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* The intro offer is a pass: an event booked without one does not offer it. */}
+      {studio.introOffer && session.event?.passRequired !== false && (
         <div className={`tp-paper ${styles.offerRow}`}>
           <span className={styles.tile} aria-hidden="true">
             <Icon name="gift" />

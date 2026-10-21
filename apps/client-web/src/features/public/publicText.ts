@@ -9,6 +9,16 @@ export function offerText({ name, priceAgorot }: { name: string; priceAgorot: nu
   return priceAgorot === null ? name : `${name} · ${priceText(priceAgorot)}`;
 }
 
+/** How a place at an event is paid (docs/37 section 8.4): with a pass entry, or at the studio without one. */
+export function eventPayText(event: { passRequired: boolean }): string {
+  return event.passRequired ? "ההרשמה בכניסה מהכרטיסייה" : "משלמים בסטודיו, בלי כרטיסייה";
+}
+
+/** "אירוע · 120 ₪": an event's mark in a list, with its price when it has one. */
+export function eventMark(event: { priceAgorot: number | null }): string {
+  return event.priceAgorot === null ? "אירוע" : `אירוע · ${priceText(event.priceAgorot)}`;
+}
+
 /** "היום", "מחר", or the day's short name ("שלישי"), for a class near today. */
 export function dayWord(date: IsoDate, today: IsoDate): string {
   if (date === today) return "היום";

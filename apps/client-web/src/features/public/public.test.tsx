@@ -685,6 +685,44 @@ describe("a studio's prices (/s/<slug>/prices, SL-5)", () => {
   });
 });
 
+describe("an event or a workshop (MO6)", () => {
+  const workshop = publicSession(sessionIds.vinyasa, "2026-10-16T07:00:00Z", "ויניאסה יוגה", {
+    availability: "few",
+    spotsLeft: 4,
+    event: {
+      title: "סדנת נשימה ביום שישי",
+      description: "שעתיים של נשימה ותנועה.",
+      priceAgorot: 12000,
+      passRequired: false,
+    },
+  });
+
+  it("has its own layout: the event mark, the price, how it is paid and the places left", async () => {
+    renderStudioApp(`/c/${workshop.id}`, { routes: { [`GET ${api}/sessions/${workshop.id}`]: workshop } });
+    expect(await screen.findByRole("heading", { level: 1, name: "סדנת נשימה ביום שישי" })).toBeInTheDocument();
+    expect(screen.getByText("אירוע")).toBeInTheDocument();
+    expect(screen.getByText("נשארו 4 מקומות")).toBeInTheDocument();
+    expect(screen.getByText("120 ₪")).toBeInTheDocument();
+    expect(screen.getByText("משלמים בסטודיו, בלי כרטיסייה")).toBeInTheDocument();
+    // The studio's intro offer is about passes; an event without one does not offer it.
+    expect(screen.queryByText(/שיעור ניסיון/)).not.toBeInTheDocument();
+  });
+
+  it("says a pass is used when the event takes one, and leaves out a price it does not have", async () => {
+    const withPass = { ...workshop, event: { ...workshop.event!, priceAgorot: null, passRequired: true } };
+    renderStudioApp(`/c/${workshop.id}`, { routes: { [`GET ${api}/sessions/${workshop.id}`]: withPass } });
+    expect(await screen.findByText("ההרשמה בכניסה מהכרטיסייה")).toBeInTheDocument();
+    expect(screen.queryByText("120 ₪")).not.toBeInTheDocument();
+    expect(screen.getByText("שיעור ניסיון · 45 ₪")).toBeInTheDocument();
+  });
+
+  it("is marked in the week's list", async () => {
+    renderStudioApp("/", { routes: { [`GET ${api}/sessions`]: json({ items: [workshop] }) } });
+    const row = (await screen.findByText("סדנת נשימה ביום שישי")).closest("li")!;
+    expect(row).toHaveTextContent("אירוע · 120 ₪");
+  });
+});
+
 describe("text a studio typed is shown as text, never as markup", () => {
   const hostile = '<script>alert(1)</script> "x" & <b>bold</b>';
   const hostileStudio: Schemas["PublicStudio"] = { ...publicStudio, name: hostile, appName: hostile };
