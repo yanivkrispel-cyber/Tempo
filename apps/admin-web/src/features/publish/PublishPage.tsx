@@ -29,6 +29,7 @@ import { usePassProducts } from "../passes/queries";
 import { useSessions, useStudioTimeZone } from "../schedule/queries";
 import { publicPageKey } from "../settings/PublicPageCard";
 import { drawPoster, POSTER_HEADLINE, POSTER_HEIGHT, POSTER_WIDTH, type PosterInput } from "./drawPoster";
+import { HighlightCovers } from "./HighlightCovers";
 import { drawStory, loadStoryFonts, STORY_HEIGHT, STORY_WIDTH } from "./drawStory";
 import styles from "./publish.module.css";
 import {
@@ -580,6 +581,7 @@ function Publisher({ ownOnly }: { ownOnly: boolean }) {
           offerLine={offers[0] ? offerHeadline(offers[0]) : null}
         />
       )}
+      {!ownOnly && <HighlightCovers slug={studio.slug} accent={accent} />}
     </>
   );
 }

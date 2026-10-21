@@ -186,3 +186,58 @@
     grid-template-columns: 240px 1fr;
   }
 }
+
+/* The six highlight covers (MO7): three across on a phone, six across on a computer. */
+.covers {
+  margin-top: 20px;
+}
+.coverList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 900px) {
+  .coverList {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.cover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 8px;
+}
+.cover > button {
+  width: 100%;
+  max-width: 132px;
+  padding-inline: 8px;
+}
+.coverArt {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 132px;
+  aspect-ratio: 9 / 16;
+  border-radius: 14px;
+  box-shadow: var(--shadow-float);
+}
+.coverCircle {
+  display: grid;
+  place-items: center;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.coverCircle svg {
+  color: #ffffff;
+  width: 52%;
+  height: 52%;
+}
+.coverName {
+  font-weight: 600;
+}

@@ -254,10 +254,29 @@ describe("the console's publishing (MO3)", () => {
     expect(linkBodies(api)).toHaveLength(1);
   });
 
-  it("leaves the studio's poster to the owners: an instructor has none", async () => {
+  it("downloads the six highlight covers one by one, with no link of their own (MO7, docs/37 section 8.7)", async () => {
+    const api = renderPublish(owner);
+    const covers = await screen.findByRole("region", { name: "כיסויי היילייטס" });
+    const buttons = within(covers).getAllByRole("button", { name: /^הורדת הכיסוי: / });
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "הורדת הכיסוי: מערכת שעות",
+      "הורדת הכיסוי: מחירון",
+      "הורדת הכיסוי: עלינו",
+      "הורדת הכיסוי: הצוות",
+      "הורדת הכיסוי: איך מגיעים",
+      "הורדת הכיסוי: המלצות",
+    ]);
+    await userEvent.click(buttons[1]!);
+    expect(await screen.findByText("הכיסוי ירד: מחירון")).toBeInTheDocument();
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    expect(linkBodies(api)).toEqual([]);
+  });
+
+  it("leaves the studio's poster and covers to the owners: an instructor has neither", async () => {
     renderPublish(instructor, "staff");
     await screen.findByRole("group", { name: /השיעורים בסטורי/ });
     expect(screen.queryByRole("region", { name: "פוסטר להדפסה" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "כיסויי היילייטס" })).not.toBeInTheDocument();
   });
 
   it("is not in the menu without a publishing permission", async () => {
