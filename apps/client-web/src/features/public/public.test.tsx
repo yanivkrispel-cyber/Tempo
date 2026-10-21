@@ -711,9 +711,10 @@ describe("text a studio typed is shown as text, never as markup", () => {
 });
 
 describe("a member's invite (SL-8, board ה)", () => {
-  const link = (inviterFirstName: string | null) => ({
-    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName },
+  const link = (inviterFirstName: string | null, reward: { productName: string } | null = null) => ({
+    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName, reward },
   });
+  const rewardLine = () => screen.queryByText(/^כשתגיעי לשיעור הראשון/);
   const url = `/c/${prenatal.id}?src=abc123xy`;
 
   it("names the friend who sent the link, above the class", async () => {
@@ -721,6 +722,29 @@ describe("a member's invite (SL-8, board ה)", () => {
     expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
     expect(screen.getByText("נגה", { selector: "bdi" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+    expect(rewardLine()).not.toBeInTheDocument();
+  });
+
+  it("says under her name what she gets when the friend comes to her first class (R-1, M-17)", async () => {
+    renderStudioApp(url, { routes: link("נגה", { productName: "שיעור מתנה" }) });
+    expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
+    const line = await screen.findByText(/^כשתגיעי לשיעור הראשון/);
+    expect(line).toHaveTextContent(/^כשתגיעי לשיעור הראשון, נגה מקבלת שיעור מתנה$/);
+    expect(within(line).getByText("שיעור מתנה", { selector: "bdi" })).toBeInTheDocument();
+  });
+
+  it("says the reward without naming her while her name is hidden", async () => {
+    renderStudioApp(url, { routes: link(null, { productName: "שיעור מתנה" }) });
+    const line = await screen.findByText(/^כשתגיעי לשיעור הראשון/);
+    expect(line).toHaveTextContent(/^כשתגיעי לשיעור הראשון, מי שהזמינה אותך מקבלת שיעור מתנה$/);
+    expect(screen.queryByText("מזמינה אותך")).not.toBeInTheDocument();
+  });
+
+  it("renders a hostile product name as text", async () => {
+    const hostile = "<img src=y onerror=alert(1)>";
+    renderStudioApp(url, { routes: link("נגה", { productName: hostile }) });
+    expect(await screen.findByText(hostile, { selector: "bdi" })).toBeInTheDocument();
+    expect(document.querySelector("img[src='y']")).toBeNull();
   });
 
   it("names her on the schedule too", async () => {
