@@ -1,4 +1,5 @@
 // Seeds the smoke studio for the O4 run and writes ./o4-state.json (no secrets); `--cleanup` undoes it.
+// E-1: the e2e-o4 marker sits at the end of every visible name, so a Hebrew name still reads right-to-left.
 import { readFileSync, writeFileSync } from "node:fs";
 import { call, smokeToken, localAt, e2eUsers, deleteUser } from "./o4-lib.mjs";
 
@@ -34,7 +35,7 @@ const pageBefore = (await call(smoke, "GET", `${s}/public-page`)).json;
 const offer = (
   await call(smoke, "POST", `${s}/pass-products`, {
     kind: "punch_card",
-    name: "e2e-o4 3 שיעורי ניסיון",
+    name: "3 שיעורי ניסיון · e2e-o4",
     entries: 3,
     validDays: 35,
     priceAgorot: 9900,
@@ -43,7 +44,7 @@ const offer = (
 const intro = (
   await call(smoke, "POST", `${s}/pass-products`, {
     kind: "punch_card",
-    name: "e2e-o4 שיעור ניסיון",
+    name: "שיעור ניסיון · e2e-o4",
     entries: 12,
     validDays: 7,
     priceAgorot: 0,
@@ -88,14 +89,14 @@ const links = {
 // Fill the one-place class with a staff-made person, so it is full signed out.
 const person = (
   await call(smoke, "POST", `${s}/people`, {
-    displayName: "e2e-o4 מלא",
+    displayName: "מלא · e2e-o4",
     email: `e2e-o4-filler-${Date.now().toString(36)}@example.com`,
   })
 ).json;
 const card = (
   await call(smoke, "POST", `${s}/pass-products`, {
     kind: "punch_card",
-    name: "e2e-o4 filler",
+    name: "כרטיסייה למילוי · e2e-o4",
     entries: 3,
     validDays: 7,
     priceAgorot: 0,

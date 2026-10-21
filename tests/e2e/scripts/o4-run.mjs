@@ -230,7 +230,7 @@ try {
   } else if (run === "3") {
     await page.goto(st.urls.prices, { waitUntil: "networkidle" });
     await visible(page.getByRole("heading", { name: "מחירים" }), "prices: heading");
-    await visible(page.getByText(/e2e-o4 3 שיעורי ניסיון/), "prices: the listed offer");
+    await visible(page.getByText(/3 שיעורי ניסיון · e2e-o4/), "prices: the listed offer");
     await shot("page");
     await overflow("prices");
   } else if (run === "4") {
