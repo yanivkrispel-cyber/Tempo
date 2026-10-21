@@ -109,6 +109,7 @@ try
     app.MapPlatformEndpoints();
     app.MapEndpointModules();
     ColdStart.Current.Record("init.pipeline", hostBuilt, DateTimeOffset.UtcNow);
+    ColdStartWarmUp.Start(app);
 
     await app.RunAsync();
 }
