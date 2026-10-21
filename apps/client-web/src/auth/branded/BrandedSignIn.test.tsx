@@ -1,5 +1,5 @@
 import { CognitoSignInError, type CognitoSignInErrorCode, type CognitoTokens } from "@tempo/api-client/auth";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { memoryStorage } from "../../test/auth";
@@ -322,6 +322,15 @@ describe("BrandedSignIn: signing up", () => {
     expect(cognito.confirmSignUp).toHaveBeenCalledWith(email, "123456", "signup-session");
     expect(cognito.signInAfterConfirm).toHaveBeenCalledWith(email, "confirm-session");
     await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(tokens));
+  });
+
+  it("keeps the email in the code step's line reading left to right inside the Hebrew sentence", async () => {
+    const { user } = setup(fakeCognito(), { initialView: "signup" });
+    await signUp(user);
+    const lead = await screen.findByText(/אם האימייל פנוי, שלחנו אליו קוד/);
+    const isolated = within(lead).getByText(email);
+    expect(isolated.tagName).toBe("BDI");
+    expect(isolated).toHaveAttribute("dir", "ltr");
   });
 
   it("answers a taken email exactly like a new one", async () => {

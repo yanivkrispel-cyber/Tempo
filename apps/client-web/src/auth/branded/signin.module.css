@@ -180,3 +180,11 @@
     border-radius: 30px;
   }
 }
+
+/* An email inside a Hebrew sentence moves to the next line whole, so it never breaks at a hyphen into pieces the
+   right-to-left line then reorders. */
+.inlineEmail {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

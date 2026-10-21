@@ -56,6 +56,7 @@ A tripwire is the point at which Tempo starts paying for something. The "when" c
 | First paying studio | Pilot | Production on the Neon Launch plan, if it has not moved already (ADR-0022) | About $3–19 per month |
 | Cognito passes 10,000 MAU | About 65 studios | Essentials MAU | $0.015 per MAU |
 | CloudFront passes 1M requests per month, sustained | About 75 studios | Pro plan, or a second distribution | $15 per month, or $0 with a split |
+| Cloudflare Pages Functions pass 100,000 requests a day (every visit to a shared `/s/*` link runs `_worker.js`, SL-9; ADR-0027) | Many studios sharing daily | Workers Paid, or previews for crawlers only on a narrower route | $5 per month, or $0 |
 | WhatsApp or SMS requested by a studio | On request (council Q7) | Per message, passed through to that studio | Provider price |
 | A contract requires RPO under 24 hours | Large customer | Neon Launch restore window, or more frequent exports | Part of the Launch plan |
 

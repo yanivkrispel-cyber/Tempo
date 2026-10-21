@@ -500,6 +500,12 @@
   align-items: center;
   gap: 10px;
 }
+.referralActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .buddyCode {
   display: flex;
   flex-direction: column;

@@ -439,3 +439,12 @@
   font-weight: 600;
   color: var(--brand-ink);
 }
+.inviteBlock {
+  display: grid;
+  gap: 2px;
+}
+.inviteReward {
+  margin: 0;
+  text-align: start;
+  font-size: 14px;
+}

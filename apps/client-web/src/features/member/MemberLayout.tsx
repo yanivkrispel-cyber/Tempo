@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, useSearchParams } from "react-router";
-import { useStudioAccent } from "../../app/studioLook";
+import { useStudioAccent, useStudioBrand } from "../../app/studioLook";
 import { useStudioPath } from "../../app/studioPath";
 import { activeMemberships, useAccount } from "../../account/account";
 import { useMarkRead, useStudio } from "./studio";
@@ -31,6 +31,7 @@ export function MemberLayout() {
   // A studio's own app wears its accent from the first screen (StudioLook); the generic app takes the chosen one's.
   const path = useStudioPath();
   useStudioAccent(path ? null : studio?.slug);
+  const logoUrl = useStudioBrand(wide ? studio?.slug : null).data?.logoUrl;
 
   if (!wide) {
     return (
@@ -47,9 +48,13 @@ export function MemberLayout() {
         action={book}
         header={
           <div className="tp-sidenav__head">
-            <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
-              {(studio?.name ?? "Tempo").replace(/^סטודיו\s+/, "").charAt(0)}
-            </span>
+            {logoUrl ? (
+              <img className="tp-rail__logo tp-rail__logo--sm" src={logoUrl} alt="" />
+            ) : (
+              <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
+                {(studio?.name ?? "Tempo").replace(/^סטודיו\s+/, "").charAt(0)}
+              </span>
+            )}
             <strong>{studio?.name ?? "Tempo"}</strong>
           </div>
         }
