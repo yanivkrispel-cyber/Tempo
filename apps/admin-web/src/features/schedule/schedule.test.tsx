@@ -215,6 +215,51 @@ describe("the weekly timetable", () => {
     });
   });
 
+  it("creates an event or a workshop as a one-off class, with its price and without a pass (MO6)", async () => {
+    const api = renderAt("/o/neshima/schedule", {
+      [`GET ${base}/sessions`]: { items: [] },
+      [`POST ${base}/sessions`]: () => json(session(), 201),
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "שיעור חדש" }));
+    const dialog = screen.getByRole("dialog", { name: "שיעור חדש" });
+    // An event is one date: the switch shows only once the class is not weekly.
+    expect(within(dialog).queryByRole("checkbox", { name: "אירוע או סדנה" })).not.toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "שיעור קבוע בכל שבוע" }));
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "אירוע או סדנה" }));
+    await userEvent.type(within(dialog).getByRole("combobox", { name: /שעת התחלה/ }), "1000");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /מקומות/ }), "20");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /מחיר/ }), "12.5");
+    await userEvent.click(within(dialog).getByRole("button", { name: "יצירת השיעור" }));
+    expect(dialog).toHaveTextContent("תנו לאירוע שם, עד 60 תווים");
+    expect(dialog).toHaveTextContent("מחיר בשקלים שלמים, 0 ומעלה");
+
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /שם האירוע/ }), "סדנת נשימה ביום שישי");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: /על האירוע/ }), "שעתיים של נשימה ותנועה.");
+    const price = within(dialog).getByRole("textbox", { name: /מחיר/ });
+    await userEvent.clear(price);
+    await userEvent.type(price, "120");
+    const pass = within(dialog).getByRole("checkbox", { name: "ההרשמה מורידה כניסה מכרטיסייה" });
+    expect(pass).toBeChecked();
+    await userEvent.click(pass);
+    expect(dialog).toHaveTextContent("נרשמים בלי כרטיסייה, והתשלום בסטודיו ביום האירוע.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "יצירת השיעור" }));
+
+    expect(await screen.findByText("האירוע נוצר ונפתח להרשמה")).toBeInTheDocument();
+    expect(api.bodies[lastIndex(api, "POST", "/sessions")]).toEqual({
+      classTypeId: reformer.id,
+      localStart: "10:00",
+      minutes: 50,
+      capacity: 20,
+      localDate: "2026-10-14",
+      event: {
+        title: "סדנת נשימה ביום שישי",
+        description: "שעתיים של נשימה ותנועה.",
+        priceAgorot: 12000,
+        passRequired: false,
+      },
+    });
+  });
+
   it("lets staff see the timetable without the managers' actions", async () => {
     renderAt("/o/neshima/schedule", { [`GET ${base}/sessions`]: { items: [session()] } }, "staff");
     expect(await screen.findByRole("link", { name: /פילאטיס מכשירים/ })).toBeInTheDocument();
