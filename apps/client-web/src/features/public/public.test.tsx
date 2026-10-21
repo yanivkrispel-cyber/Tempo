@@ -671,8 +671,17 @@ describe("a studio's prices (/s/<slug>/prices, SL-5)", () => {
   it("is linked from the studio page header, beside the week", async () => {
     renderStudioApp("/", { routes: offerRoutes });
     const nav = await screen.findByRole("navigation", { name: "עמודי הסטודיו" });
-    expect(within(nav).getByRole("link", { name: "מחירים" })).toHaveAttribute("href", "/s/neshima/prices");
+    expect(await within(nav).findByRole("link", { name: "מחירים" })).toHaveAttribute("href", "/s/neshima/prices");
     expect(within(nav).getByRole("link", { name: "מערכת" })).toHaveAttribute("href", "/s/neshima");
+  });
+
+  it("leaves 'מחירים' out of the header while the studio lists no products (P-3)", async () => {
+    const { stub } = renderStudioApp("/", { routes: { ...offerRoutes, [`GET ${api}/products`]: { items: [] } } });
+    const nav = await screen.findByRole("navigation", { name: "עמודי הסטודיו" });
+    await waitFor(() => expect(stub.requests.some((request) => request.url.endsWith("/products"))).toBe(true));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(within(nav).getByRole("link", { name: "מערכת" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "מחירים" })).not.toBeInTheDocument();
   });
 });
 
