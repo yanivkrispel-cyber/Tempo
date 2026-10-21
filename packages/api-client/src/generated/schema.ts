@@ -4931,6 +4931,8 @@ export interface components {
             person: components["schemas"]["PersonRef"];
             status: components["schemas"]["BookingStatus"];
             waitlistPosition?: number | null;
+            /** @description A place at an event booked without a pass (docs/37 section 8.4), paid at the studio; the roster marks it. */
+            toPayAtStudio: boolean;
             /** @example כרטיסיית 10 */
             passName?: string | null;
             /** @description Entries left on the punch card this place holds, after it; null for a membership or when no pass is held (a waitlist place). */

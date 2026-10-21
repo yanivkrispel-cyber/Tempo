@@ -123,7 +123,7 @@ public static class ClassEndpoints
     }
 
     private static RosterEntryResponse ToResponse(RosterEntryView e) =>
-        new(e.BookingId, new PersonRefResponse(e.Person.Id, e.Person.DisplayName), e.Status, e.WaitlistPosition, e.PassName, e.EntriesLeft, e.BookedAt, e.HealthStatus);
+        new(e.BookingId, new PersonRefResponse(e.Person.Id, e.Person.DisplayName), e.Status, e.WaitlistPosition, e.PassName, e.EntriesLeft, e.BookedAt, e.HealthStatus, e.ToPayAtStudio);
 
     private static BookingPolicyResponse ToResponse(BookingPolicyView p) =>
         new(p.FreeCancelHours, p.WaitlistCutoffHours, p.BookingHorizonDays, p.WaitlistEnabled, p.Version.ToString(CultureInfo.InvariantCulture), p.RequireHealthDeclaration ?? false);

@@ -81,6 +81,11 @@ public sealed class EventFlowTests(PostgresFixture postgres) : IClassFixture<Pos
         var booking = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions/{sessionId}/bookings", Customer("noga"), new { }, HttpStatusCode.Created);
         booking.GetProperty("toPayAtStudio").GetBoolean().Should().BeTrue();
         booking.GetProperty("pass").ValueKind.Should().Be(JsonValueKind.Null);
+        // The console's roster marks her place "לתשלום בסטודיו" (MO6, #445); a place held by a pass is not marked.
+        var roster = await SendAsync(client, HttpMethod.Get, $"{studioPath}/sessions/{sessionId}/roster", Customer("owner"));
+        var place = roster.GetProperty("booked").EnumerateArray().Single();
+        place.GetProperty("toPayAtStudio").GetBoolean().Should().BeTrue();
+        place.GetProperty("passName").ValueKind.Should().Be(JsonValueKind.Null);
 
         // 3. The public page shows it as an event.
         var date = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
