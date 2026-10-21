@@ -19,6 +19,11 @@ function priceText(agorot: number | null | undefined): string {
   return ` · ₪${amount}`;
 }
 
+/** A name such as "TRX 5 שיעורים": Latin text then a number, which a right-to-left page shows as "5 שיעורים TRX". */
+export function startsLatinThenNumber(name: string): boolean {
+  return /^\s*[A-Za-z][^\s֐-׿]*\s+\d/.test(name);
+}
+
 /**
  * "מה מופיע בעמוד" (SL-4, SL-5): the products strangers see on the prices page, in the owner's order, each with a
  * short line, and an offer for newcomers with its last day. Only active products can be listed: the API rejects an
@@ -95,6 +100,12 @@ export function ListedProducts({
                     </span>
                   )}
                 </div>
+                {startsLatinThenNumber(product.name) && (
+                  <p className={`tp-field__help ${styles.nameHint}`}>
+                    <Icon name="info" />
+                    שם שמתחיל בעברית ייקרא נכון מימין לשמאל
+                  </p>
+                )}
                 <Field label="משפט קצר" help={`${(item.blurb ?? "").length} מתוך ${BLURB_LIMIT} תווים.`}>
                   <Input
                     value={item.blurb ?? ""}
