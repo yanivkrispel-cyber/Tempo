@@ -295,7 +295,9 @@ try {
     }
 
     const listing = (await call(null, "GET", `/api/v1/public/studios/${slug}/products`)).json;
-    check(listing?.items?.[0]?.id === offer.id && listing.items[0].pricePerClassAgorot === 3300, "the prices page lists the offer first, 33 ₪ a class");
+    // Listed after whatever the studio already lists (the owner's order), so look it up rather than expect it first.
+    const mine = (listing?.items ?? []).find((p) => p.id === offer.id);
+    check(mine?.pricePerClassAgorot === 3300, "the prices page lists the offer, 33 ₪ a class");
     const one = (await call(null, "GET", `/api/v1/public/studios/${slug}/products/${offer.id}`)).json;
     check(one?.ended === false && one.product?.newcomersOnly === true, "the offer page reads it, for newcomers");
 
@@ -316,7 +318,11 @@ try {
     members.push(filler);
     const fullPage = (await call(null, "GET", `/api/v1/public/studios/${slug}/sessions/${full.id}`)).json;
     check(
-      filled?.next === "health_declaration" || (fullPage?.availability === "full" && (fullPage.alternatives ?? []).some((a) => a.id === cls.id)),
+      // Up to three upcoming classes with room, same class type first (#424): a busy studio may offer others than ours.
+      filled?.next === "health_declaration" ||
+        (fullPage?.availability === "full" &&
+          (fullPage.alternatives ?? []).length > 0 &&
+          fullPage.alternatives.every((a) => a.id !== full.id && a.availability !== "full")),
       filled?.next ? "the full-class check needs a signed declaration here (skipped)" : "a full class's page offers other classes with room",
     );
 
