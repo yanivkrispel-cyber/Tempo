@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { ButtonLink, EmptyState, Skeleton } from "../../shared/design-system";
-import type { PublicStudio } from "./publicStudio";
+import { usePublicProducts, type PublicStudio } from "./publicStudio";
 import styles from "./public.module.css";
 
 /**
@@ -11,26 +11,35 @@ import styles from "./public.module.css";
 export function PublicFrame({ studio, children }: { studio: PublicStudio | null; children: ReactNode }) {
   return (
     <main className={`tp-page ${styles.page}`}>
-      {studio && (
-        <header className={styles.header}>
-          <Link to="/" className={styles.brand}>
-            {studio.logoUrl && <img src={studio.logoUrl} alt="" />}
-            <span>
-              <bdi>{studio.name}</bdi>
-            </span>
-          </Link>
-          <nav className={styles.nav} aria-label="עמודי הסטודיו">
-            <NavLink to="/" end className={styles.navLink}>
-              מערכת
-            </NavLink>
-            <NavLink to="/prices" className={styles.navLink}>
-              מחירים
-            </NavLink>
-          </nav>
-        </header>
-      )}
+      {studio && <StudioHeader studio={studio} />}
       {children}
     </main>
+  );
+}
+
+/** "מחירים" shows once the studio lists a product (P-3): an empty prices page is not worth a link. */
+function StudioHeader({ studio }: { studio: PublicStudio }) {
+  const products = usePublicProducts(studio.slug);
+  const hasPrices = (products.data?.length ?? 0) > 0;
+  return (
+    <header className={styles.header}>
+      <Link to="/" className={styles.brand}>
+        {studio.logoUrl && <img src={studio.logoUrl} alt="" />}
+        <span>
+          <bdi>{studio.name}</bdi>
+        </span>
+      </Link>
+      <nav className={styles.nav} aria-label="עמודי הסטודיו">
+        <NavLink to="/" end className={styles.navLink}>
+          מערכת
+        </NavLink>
+        {hasPrices && (
+          <NavLink to="/prices" className={styles.navLink}>
+            מחירים
+          </NavLink>
+        )}
+      </nav>
+    </header>
   );
 }
 
