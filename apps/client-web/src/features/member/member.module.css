@@ -654,3 +654,7 @@
   justify-content: center;
   gap: 8px;
 }
+/* The story card's button, a third action, takes the whole row. */
+.bookedActions > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}

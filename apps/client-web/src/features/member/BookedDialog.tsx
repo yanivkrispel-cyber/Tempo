@@ -6,6 +6,7 @@ import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
 import { useShareLink } from "./experience";
 import { shortDayName } from "./format";
+import { ImInShare } from "./ImInShare";
 import { InstallOffer } from "./InstallApp";
 import { passTakenText } from "./passText";
 import { OpenInBrowserCard } from "./OpenInBrowserCard";
@@ -69,12 +70,13 @@ export function BookedDialog({
   const pass = passTakenText(booking?.pass);
   if (pass) notes.push({ key: "pass", icon: "credit-card", text: pass });
 
+  // Her own link carries the invite; while it is on its way or when it cannot be made, the plain class address goes.
+  const url = shareLink.isSuccess
+    ? shareLink.data.url
+    : `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
+  const text = `בואי איתי ל${session.classType.name}, ${day} ב-${time}`;
+
   async function share() {
-    // Her own link carries the invite; while it is on its way or when it cannot be made, the plain class address goes.
-    const url = shareLink.isSuccess
-      ? shareLink.data.url
-      : `${window.location.origin}${studioBasename(studio.slug)}/c/${session.id}`;
-    const text = `בואי איתי ל${session.classType.name}, ${day} ב-${time}`;
     if (navigator.share) {
       await navigator.share({ text, url }).catch(() => undefined);
       return;
@@ -130,6 +132,15 @@ export function BookedDialog({
             <Button variant="secondary" icon={copied ? "check" : "share"} onClick={() => void share()}>
               <span aria-live="polite">{copied ? "הקישור הועתק" : "שליחה לחברה"}</span>
             </Button>
+            <ImInShare
+              studio={studio}
+              session={session}
+              spotLabel={booking.spot?.label ?? null}
+              timeZone={timeZone}
+              today={today}
+              url={url}
+              text={text}
+            />
           </div>
           <Toggle
             checked={showName}

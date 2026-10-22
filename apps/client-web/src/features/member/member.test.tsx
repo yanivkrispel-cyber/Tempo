@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
 import { apiStub, problem } from "../../test/api";
+import { recordingContext } from "../../test/canvas";
 import { signedInAuth } from "../../test/auth";
 import {
   bookingIdOf,
@@ -370,6 +371,70 @@ describe("a class and cancelling", () => {
       expect(share).toHaveBeenLastCalledWith(expect.objectContaining({ url: expect.stringContaining("src=plain001") }));
     });
     vi.unstubAllGlobals();
+  });
+
+  it("shares the אני בפנים picture with her own link, and never draws her name (M-5, C-1)", async () => {
+    const drawn: string[] = [];
+    const { ctx, texts } = recordingContext();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () => ctx as unknown as ReturnType<HTMLCanvasElement["getContext"]>,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (done: BlobCallback) {
+      drawn.push(...texts);
+      done(new Blob(["png"], { type: "image/png" }));
+    });
+    const { studio } = renderAt(`/classes/${sessionIds.prenatal}`);
+    withCardLink(studio, true);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    const share = vi.fn(async (_data: ShareData) => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share, canShare: () => true });
+    const button = await within(done).findByRole("button", { name: "שיתוף לסטורי" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await waitFor(async () => {
+      await act(async () => button.click());
+      expect(share).toHaveBeenLastCalledWith(expect.objectContaining({ url: expect.stringContaining("src=named001") }));
+    });
+    const sent = share.mock.lastCall![0];
+    expect(sent.files?.[0]?.type).toBe("image/png");
+    expect(drawn).toContain("אני בפנים");
+    expect(drawn).toContain("יוגה בהריון");
+    expect(drawn.some((text) => text.includes("נגה"))).toBe(false);
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("saves the picture where the browser cannot share a file, and says so on the button", async () => {
+    const { ctx } = recordingContext();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () => ctx as unknown as ReturnType<HTMLCanvasElement["getContext"]>,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((done: BlobCallback) =>
+      done(new Blob(["png"], { type: "image/png" })),
+    );
+    const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:card");
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    vi.stubGlobal("navigator", { ...navigator, canShare: undefined });
+    const button = await within(done).findByRole("button", { name: "שיתוף לסטורי" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    expect(await within(done).findByRole("button", { name: "התמונה נשמרה" })).toBeInTheDocument();
+    expect(createObjectURL).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("offers no picture where the browser cannot draw", async () => {
+    renderAt(`/classes/${sessionIds.prenatal}`);
+    await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
+    const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
+    await waitFor(() => expect(within(done).queryByRole("button", { name: "שיתוף לסטורי" })).toBeNull());
+    expect(within(done).getByRole("button", { name: "שליחה לחברה" })).toBeInTheDocument();
   });
 
   it("keeps her name off when she turned it off before: opening the dialog does not turn it on (SL-8)", async () => {

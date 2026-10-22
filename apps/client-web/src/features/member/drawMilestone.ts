@@ -7,8 +7,8 @@ export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
 const SIDE = 76;
 
-const DISPLAY = '"Frank Ruhl Libre", "David Libre", Georgia, serif';
-const UI = '"IBM Plex Sans Hebrew", "Heebo", "Segoe UI", system-ui, sans-serif';
+export const DISPLAY_FACE = '"Frank Ruhl Libre", "David Libre", Georgia, serif';
+export const UI_FACE = '"IBM Plex Sans Hebrew", "Heebo", "Segoe UI", system-ui, sans-serif';
 const CONDENSED = '"Karantina", "IBM Plex Sans Hebrew", sans-serif';
 const GROUND = "#2b2420";
 const ACCENT = "#d7aa9c";
@@ -40,7 +40,7 @@ export async function loadCardFonts(): Promise<void> {
   }
   const sample = "אבג 0123:";
   await Promise.all(
-    [`500 100px ${DISPLAY}`, `500 36px ${UI}`, `600 36px ${UI}`, `700 100px ${CONDENSED}`].map((font) =>
+    [`500 100px ${DISPLAY_FACE}`, `500 36px ${UI_FACE}`, `600 36px ${UI_FACE}`, `700 100px ${CONDENSED}`].map((font) =>
       document.fonts.load(font, sample).catch(() => []),
     ),
   );
@@ -62,7 +62,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): strin
 }
 
 /** Shrinks the font until the text fits `width` (a long studio or instructor name). */
-function fit(ctx: CanvasRenderingContext2D, text: string, weight: number, size: number, face: string, width: number) {
+export function fitText(ctx: CanvasRenderingContext2D, text: string, weight: number, size: number, face: string, width: number) {
   let px = size;
   ctx.font = `${weight} ${px}px ${face}`;
   while (px > 24 && ctx.measureText(text).width > width) {
@@ -82,7 +82,7 @@ export function drawMilestone(ctx: CanvasRenderingContext2D, input: MilestoneCar
   ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
 
   ctx.fillStyle = ACCENT;
-  fit(ctx, input.eyebrow, 600, 39, UI, inner);
+  fitText(ctx, input.eyebrow, 600, 39, UI_FACE, inner);
   ctx.fillText(input.eyebrow, right, 200);
 
   // The count is digits: drawn left to right, its right edge on the text's edge.
@@ -92,7 +92,7 @@ export function drawMilestone(ctx: CanvasRenderingContext2D, input: MilestoneCar
   ctx.direction = "rtl";
 
   ctx.fillStyle = "#fff";
-  ctx.font = `500 104px ${DISPLAY}`;
+  ctx.font = `500 104px ${DISPLAY_FACE}`;
   const lines = wrap(ctx, input.line, inner);
   lines.forEach((line, at) => ctx.fillText(line, right, 880 + at * 106));
 
@@ -105,10 +105,10 @@ export function drawMilestone(ctx: CanvasRenderingContext2D, input: MilestoneCar
     ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.fillRect(x - column, y, column, 4);
     ctx.fillStyle = "#fff";
-    fit(ctx, stat.value, 700, 97, CONDENSED, column);
+    fitText(ctx, stat.value, 700, 97, CONDENSED, column);
     ctx.fillText(stat.value, x, y + 106);
     ctx.globalAlpha = 0.8;
-    fit(ctx, stat.label, 500, 36, UI, column);
+    fitText(ctx, stat.label, 500, 36, UI_FACE, column);
     ctx.fillText(stat.label, x, y + 160);
     ctx.globalAlpha = 1;
   });
