@@ -187,3 +187,15 @@
   align-items: center;
   gap: var(--space-3);
 }
+
+.seated {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--sage);
+}

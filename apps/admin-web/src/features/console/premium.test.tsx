@@ -4,7 +4,7 @@ import { createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, json, roleSummary, sampleMe } from "../../test/api";
+import { apiStub, json, problem, roleSummary, sampleMe } from "../../test/api";
 import { signedInAuth } from "../../test/auth";
 import { permissionsFor } from "../../test/permissions";
 import { screenWidth } from "../../test/screens";
@@ -365,30 +365,60 @@ describe("OwnerLive, the class on a screen of its own (LV-1, #378 item 2)", () =
     );
   });
 
+  const waiting = (n: number, name: string) => ({
+    bookingId: id(70 + n),
+    person: { id: id(80 + n), displayName: name },
+    status: "waitlisted",
+    waitlistPosition: n,
+    toPayAtStudio: false,
+    bookedAt: "2026-10-13T18:00:00Z",
+  });
+  // A name sits in its own <bdi>, so match the element whose whole text this is.
+  const whole = (text: string) => (_: string, node: Element | null) =>
+    node?.textContent === text && ![...node.children].some((child) => child.textContent === text);
+  const line = {
+    [`GET ${base}/sessions/${id(10)}/roster`]: {
+      session: session(),
+      booked: [],
+      waitlisted: [waiting(1, "עדי לוין"), waiting(2, "תמר גל")],
+    },
+  };
+
   it("shows the first person waiting and the free spot", async () => {
-    const waiting = (n: number, name: string) => ({
-      bookingId: id(70 + n),
-      person: { id: id(80 + n), displayName: name },
-      status: "waitlisted",
-      waitlistPosition: n,
-      toPayAtStudio: false,
-      bookedAt: "2026-10-13T18:00:00Z",
-    });
-    renderAt(`/o/neshima/live/${id(10)}`, {
-      [`GET ${base}/sessions/${id(10)}/roster`]: {
-        session: session(),
-        booked: [],
-        waitlisted: [waiting(1, "עדי לוין"), waiting(2, "תמר גל")],
-      },
-    });
-    const line = await screen.findByRole("region", { name: "רשימת המתנה" });
+    renderAt(`/o/neshima/live/${id(10)}`, line);
+    const card = await screen.findByRole("region", { name: "רשימת המתנה" });
     expect(
-      await within(line).findByText((_, node) => node?.tagName === "STRONG" && node.textContent === "עדי לוין ממתין.ה"),
+      await within(card).findByText((_, node) => node?.tagName === "STRONG" && node.textContent === "עדי לוין ממתין.ה"),
     ).toBeInTheDocument();
-    expect(within(line).getByText("מכשיר 3 פנוי · עוד 1 בהמתנה")).toBeInTheDocument();
+    expect(within(card).getByText("מכשיר 3 פנוי · עוד 1 בהמתנה")).toBeInTheDocument();
     expect(screen.queryByText(/תמר גל/)).not.toBeInTheDocument();
   });
 
+  it("moves the person waiting into the free spot from the desk", async () => {
+    const { api } = renderAt(`/o/neshima/live/${id(10)}`, {
+      ...line,
+      [`POST ${base}/bookings/${id(71)}/promote`]: json({}),
+    });
+    const card = await screen.findByRole("region", { name: "רשימת המתנה" });
+    await userEvent.click(await within(card).findByRole("button", { name: "שיבוץ למכשיר 3" }));
+    expect(await screen.findByText(whole("עדי לוין שובצ.ה למכשיר 3"))).toBeInTheDocument();
+    expect(
+      api.bodies[api.requests.findIndex((request) => request.url.endsWith(`/bookings/${id(71)}/promote`))],
+    ).toEqual({ spotId: id(43) });
+    expect(screen.getByText("קיבל.ה הודעה בטלפון, והכניסה ירדה מהכרטיסייה.")).toBeInTheDocument();
+  });
+
+  it("keeps her waiting when she has no valid pass, and says why", async () => {
+    renderAt(`/o/neshima/live/${id(10)}`, {
+      ...line,
+      [`POST ${base}/bookings/${id(71)}/promote`]: problem(409, "booking.no_valid_pass"),
+    });
+    const card = await screen.findByRole("region", { name: "רשימת המתנה" });
+    await userEvent.click(await within(card).findByRole("button", { name: "שיבוץ למכשיר 3" }));
+    expect(
+      await screen.findByText(whole("לעדי לוין אין כרטיסייה או מנוי בתוקף לשיעור, ולכן נשאר.ה בהמתנה.")),
+    ).toBeInTheDocument();
+  });
   it("shows no waiting card when nobody waits", async () => {
     renderAt(`/o/neshima/live/${id(10)}`);
     expect(await screen.findByRole("region", { name: "מפת החדר" })).toBeInTheDocument();
