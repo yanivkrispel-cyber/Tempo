@@ -230,6 +230,9 @@ public sealed record CancelBookingRequest(bool? ReturnEntry);
 /// <summary>`MoveBookingRequest`: the class the booked place moves to (docs/29 section 16.1).</summary>
 public sealed record MoveBookingRequest(Guid? SessionId);
 
+/// <summary>OwnerLive's "שיבוץ למכשיר N" (LV-1): the free spot the waiting person takes, or null for her usual or the first free one.</summary>
+public sealed record PromoteBookingRequest(Guid? SpotId);
+
 public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt, string? HealthStatus = null, bool ToPayAtStudio = false);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>

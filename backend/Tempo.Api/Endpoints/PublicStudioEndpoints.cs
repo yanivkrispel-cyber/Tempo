@@ -165,13 +165,14 @@ public static class PublicStudioEndpoints
 
     /// <summary>
     /// docs/35 W-4, W-10: what the studio's own app and its sign-in wear, for any active studio, public page on or off.
-    /// The manifest already says the name and the accent; the logo is the only addition.
+    /// The manifest already says the name and the accent; the logo is added, and the Instagram handle for a member's card.
     /// </summary>
-    private static IResult BrandAsync(HttpContext httpContext)
+    private static async Task<IResult> BrandAsync(HttpContext httpContext, IPublicStudioReads reads)
     {
         var studio = PublicStudioRouteFilter.Current(httpContext);
+        var handle = await reads.GetInstagramHandleAsync(studio, httpContext.RequestAborted);
         httpContext.Response.Headers.CacheControl = "public, max-age=300";
-        return Results.Ok(new PublicBrandResponse(studio.Slug, studio.Brand.AppName, studio.Brand.AccentId, MediaLinks.UrlFor(studio.Id, studio.Brand.LogoMediaId, small: true)));
+        return Results.Ok(new PublicBrandResponse(studio.Slug, studio.Brand.AppName, studio.Brand.AccentId, MediaLinks.UrlFor(studio.Id, studio.Brand.LogoMediaId, small: true), handle));
     }
 
     private static DateOnly? Date(string? value, string field)

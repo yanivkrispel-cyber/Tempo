@@ -214,6 +214,10 @@ as long as `now < starts_at - waitlist_cutoff_hours`:
 3. Past the cutoff, waiting bookings stay as they are and are closed by the worker when the session starts
    (`expired`, an inbox item "השיעור התחיל, לא התפנה מקום").
 
+**The desk's promotion** (OwnerLive, LV-1, board #471): past the cutoff and while the class runs, staff with
+`bookings.manage` move a waiting person into a free place with `POST /bookings/{id}/promote` (optionally a spot).
+Same steps as above for one booking; with no valid pass it answers 409 and she keeps waiting.
+
 ### 6.4 Roster and attendance
 
 - `GET /sessions/{id}/roster`: booked and waitlisted people with name, pass name and booking time; for
