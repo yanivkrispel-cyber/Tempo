@@ -68,6 +68,8 @@ function Live({ session, timeZone }: { session: Session; timeZone: string }) {
   const instructor = session.instructor?.membershipId === studio.membership.membershipId;
   const cancelled = session.status === "cancelled";
   const spotRoom = session.room?.spotSelection === true;
+  // The room and its people are for the desk and the class's own instructor, as on the session page.
+  const staff = studio.can("bookings.manage") || instructor;
   // A room without spots has no map; its door scan is still here, in the same window as on the session page (D19).
   const canScan =
     (studio.can("attendance.mark") || instructor) && !cancelled && now >= starts - 30 * minute && now <= ends;
@@ -118,7 +120,11 @@ function Live({ session, timeZone }: { session: Session; timeZone: string }) {
         label="התקדמות השיעור"
         tone="sage"
       />
-      {spotRoom ? (
+      {!staff ? (
+        <Banner tone="info" icon="info">
+          את החדר והרשומים רואים צוות הדלפק והמדריך.ה של השיעור.
+        </Banner>
+      ) : spotRoom ? (
         <LiveRoom session={session} layout="page" />
       ) : (
         <>

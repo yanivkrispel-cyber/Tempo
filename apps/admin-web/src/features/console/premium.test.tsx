@@ -365,6 +365,14 @@ describe("OwnerLive, the class on a screen of its own (LV-1, #378 item 2)", () =
     );
   });
 
+  it("shows the room only to the desk and the class's instructor, as the session page does", async () => {
+    renderAt(`/o/neshima/live/${id(10)}`, {}, ["members.view", "schedule.view"]);
+    expect(await screen.findByRole("heading", { level: 1, name: "רפורמר בוקר" })).toBeInTheDocument();
+    expect(screen.getByText("את החדר והרשומים רואים צוות הדלפק והמדריך.ה של השיעור.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "מפת החדר" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "סריקת כרטיס כניסה" })).not.toBeInTheDocument();
+  });
+
   it("says a room without spots has no map, and still scans at the door", async () => {
     const plain = session({ room: { id: id(2), name: "סטודיו גדול", spotSelection: false } });
     renderAt(`/o/neshima/live/${id(10)}`, { [`GET ${base}/sessions/${id(10)}`]: plain });

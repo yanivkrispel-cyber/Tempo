@@ -53,6 +53,7 @@ const routes: { app: "admin-web" | "client-web"; name: string; url: () => string
   { app: "admin-web", name: "duplicates", url: () => console_("/duplicates") },
   { app: "admin-web", name: "schedule", url: () => console_("/schedule") },
   { app: "admin-web", name: "session", url: () => console_(`/schedule/sessions/${sessionId}`) },
+  { app: "admin-web", name: "live", url: () => console_(`/live/${sessionId}`) },
   { app: "admin-web", name: "weekly-classes", url: () => console_("/weekly-classes") },
   { app: "admin-web", name: "class-types", url: () => console_("/class-types") },
   { app: "admin-web", name: "rooms", url: () => console_("/rooms") },
