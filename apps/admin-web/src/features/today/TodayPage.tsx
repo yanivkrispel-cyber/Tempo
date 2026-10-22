@@ -346,7 +346,14 @@ function LiveCard({ session, timeZone, openedAt }: { session: Session; timeZone:
               <dd className="tp-num">{session.waitlistCount}</dd>
             </div>
           </dl>
-          <ButtonLink to={`/o/${studio.slug}/schedule/sessions/${session.id}`} icon={staff ? "qr" : undefined}>
+          <ButtonLink
+            to={
+              staff && session.room?.spotSelection
+                ? `/o/${studio.slug}/live/${session.id}`
+                : `/o/${studio.slug}/schedule/sessions/${session.id}`
+            }
+            icon={staff ? "qr" : undefined}
+          >
             {staff ? "מסך השיעור" : "לשיעור"}
           </ButtonLink>
         </div>

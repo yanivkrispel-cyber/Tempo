@@ -99,6 +99,18 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   `DATABASE_PLATFORM_CONNECTION_STRING`. Deployed: `DATABASE_HOST`, `DATABASE_NAME` and the two password parameter
   names, with the passwords read from SSM once per cold start.
 
+## Cold start (board #445, P-1)
+
+- `Tempo.Api` builds its minimal API endpoints with the Request Delegate Generator (`EnableRequestDelegateGenerator`):
+  no reflection or compiled expressions on the first request. A new endpoint pattern the generator can't handle
+  shows as a build warning (an error here); fix the endpoint rather than turning the generator off.
+- On Lambda, `ColdStartWarmUp` builds every endpoint in Init and starts the JWKS fetch and the app role's SSM read
+  there. It never opens a database connection (a canary `/health` cold start must not wake Neon).
+- `ColdStart.Current` (Tempo.Platform) times a new environment until its first request ends: one log line
+  `cold start <path> name=ms …` and X-Ray subsegments. `ColdStart.Current.Measure("name")` adds a phase; it costs
+  nothing after the first request. Measure with Logs Insights on `cold start` and a burst of parallel signed-in
+  requests right after a deploy.
+
 ## Tests
 
 - API tests use `tests/Tempo.UnitTests/Api/TestApi.cs`: both pools share one local signing key, and the account and

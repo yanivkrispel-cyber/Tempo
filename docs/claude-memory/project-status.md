@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-10-21, evening (board #445, DAY-PLAN-11), with what boards #380 (2026-10-19 night) and #404 (2026-10-20)
+Updated 2026-10-22, night (board #445, DAY-PLAN-11), with what boards #380 (2026-10-19 night) and #404 (2026-10-20)
 landed: white label, the branded sign-in, studio marketing stages A and B, share links by intent and the public
 surface's protections. Earlier: #347 (2026-10-18), #232, #253 and #321 (2026-10-17).
 
@@ -182,10 +182,18 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | #374: the plain check-in secret column dropped (migration 0033); the spot-opened story keyed on the cancel time (migration 0038) | #415, #429 |
 | Performance: hashed build files cached for a year on Pages; ReadyToRun (it did not move the cold start) | #410, #411 |
 | Board #445: the bring-a-friend reward on a member's referral link (R-1) and no inviter name made from an email; the O4 and O1 runs on dev | #450, #444, #446 |
+| Board #445 apps: the copied link on the share button, "מחירים" only with listed products (P-3), the Hebrew-first name hint, the studio's brand on its sign-in and side nav (WL5 part B), the sign-in run | #447, #448, #449, #451, #452 |
+| Board #445 stage B apps (B-1): the invite's reward line, "הביאי חברה" (opening never changes her name switch, SL-8), the `celebrations` switch, the milestone card and notices, events in the console and on the public page, the roster's "לתשלום בסטודיו" (`RosterEntry.toPayAtStudio`), the A4 poster with a QR | #453, #457, #455, #460, #461, #462, #465, #469, #463 |
+| Board #445 cold start (P-1): the first-request timeline (log line `cold start` and X-Ray subsegments), routing measured, then the Request Delegate Generator and an Init warm-up | #454, #464, #466 |
 
 - **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
-- The cold start: Init 1.3 to 1.8 s, then 4 to 7 s inside the first invocation (#404). Board #445 K2 measures it
-  with a first-request timeline (log line `cold start`, X-Ray subsegments) before any fix; free fixes only (P-1, N-4).
+- **The cold start went from about 8.4 s to 3.5 s** (from Israel, 11 parallel cold `GET /me` on dev, #445 tables 1
+  to 3). Building every minimal API endpoint on the first request took 2.9 to 3.9 s; the Request Delegate Generator
+  and building them in Init cut routing to 0.2 s. The JWKS fetch and the SSM read start in Init. Left: 1.3 s of
+  sandbox and package, 1.0 s Init, 1.0 s endpoint (the first Neon connection stays out of Init so `/health` never
+  wakes Neon). Further gains cost money (N-4).
+- MO7's highlight covers (#467) and instructor story (#468) wait for a merge of `main` and a new review (#467 went
+  CONFLICTING after #463's squash).
 - Pages Functions on `/s/*` count against Cloudflare's free 100,000 requests a day (the link previews, SL-9): a
   tripwire row in ADR-0021.
 - R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור

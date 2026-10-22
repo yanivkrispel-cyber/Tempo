@@ -183,10 +183,7 @@ describe("the owner's day (docs/33 section 9)", () => {
     const live = await screen.findByRole("region", { name: "רפורמר בוקר" });
     expect(within(live).getByText("מתחיל בעוד 10 דק׳")).toBeInTheDocument();
     expect(await within(live).findByText("הגיעו")).toBeInTheDocument();
-    expect(within(live).getByRole("link", { name: /מסך השיעור/ })).toHaveAttribute(
-      "href",
-      `/o/neshima/schedule/sessions/${id(10)}`,
-    );
+    expect(within(live).getByRole("link", { name: /מסך השיעור/ })).toHaveAttribute("href", `/o/neshima/live/${id(10)}`);
 
     const sales = await screen.findByRole("region", { name: "מכירות החודש" });
     // Whole shekels, as on the mockup: a month's total carries no agorot.
@@ -312,6 +309,78 @@ describe("the room during a class (docs/33 section 8)", () => {
     expect(api.bodies[api.requests.findIndex((request) => request.url.endsWith("/member-note"))]).toEqual({
       note: "הביאו גרביים",
     });
+  });
+});
+
+describe("OwnerLive, the class on a screen of its own (LV-1, #378 item 2)", () => {
+  it("opens from today's live class: the clock, who came in out of who booked, and the scan at hand", async () => {
+    const { router } = renderAt("/o/neshima/today");
+    await userEvent.click(await screen.findByRole("link", { name: "מסך השיעור" }));
+    expect(router.state.location.pathname).toBe(`/o/neshima/live/${id(10)}`);
+    expect(await screen.findByRole("heading", { level: 1, name: "רפורמר בוקר" })).toBeInTheDocument();
+    expect(screen.getByText("מתחיל בעוד 10 דק׳")).toBeInTheDocument();
+    expect(screen.getByText("12:00 · עם נועה לוי · חדר המכשירים")).toBeInTheDocument();
+    expect(screen.getByRole("timer", { name: "זמן מתחילת השיעור" })).toHaveTextContent("0:00");
+    expect(screen.getByText("מתוך 50 דקות")).toBeInTheDocument();
+    const attendance = await screen.findByRole("region", { name: "מתוך 2 הגיעו" });
+    expect(within(attendance).getByText("1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "סריקת כרטיס כניסה" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "לפרטי השיעור" })).toHaveAttribute(
+      "href",
+      `/o/neshima/schedule/sessions/${id(10)}`,
+    );
+  });
+
+  it("shows the room as a list too, by spot, and marks attendance from a row", async () => {
+    const { api } = renderAt(`/o/neshima/live/${id(10)}`, {
+      [`POST ${base}/bookings/${id(52)}/attendance`]: json({}),
+    });
+    const map = await screen.findByRole("region", { name: "מפת החדר" });
+    expect(within(map).getByRole("button", { name: "מכשיר 1, מאיה כהן, הגיע.ה" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "רשימה" }));
+    const list = screen.getByRole("region", { name: "רשימת המשתתפים" });
+    const rows = within(list).getAllByRole("button");
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "מאיה כהן, מכשיר 1, הגיע.ה",
+      "רוני אבן, מכשיר 2, עוד לא, אין הצהרת בריאות",
+    ]);
+    await userEvent.click(rows[1]!);
+    await userEvent.click(screen.getByRole("button", { name: "הגיע.ה" }));
+    await waitFor(() =>
+      expect(api.requests.some((request) => request.url.endsWith(`/bookings/${id(52)}/attendance`))).toBe(true),
+    );
+  });
+
+  it("runs the clock against the class length once it starts", async () => {
+    vi.setSystemTime(new Date("2026-10-14T09:12:40Z"));
+    renderAt(`/o/neshima/live/${id(10)}`);
+    expect(await screen.findByText("בשיעור עכשיו")).toBeInTheDocument();
+    expect(screen.getByRole("timer", { name: "זמן מתחילת השיעור" })).toHaveTextContent("12:40");
+    expect(screen.getByRole("progressbar", { name: "התקדמות השיעור" })).toBeInTheDocument();
+  });
+
+  it("is reached from the session page while the class is on", async () => {
+    renderAt("/o/neshima/schedule/sessions/" + id(10));
+    const room = await screen.findByRole("region", { name: "החדר" });
+    expect(await within(room).findByRole("link", { name: "מסך שיעור חי" })).toHaveAttribute(
+      "href",
+      `/o/neshima/live/${id(10)}`,
+    );
+  });
+
+  it("shows the room only to the desk and the class's instructor, as the session page does", async () => {
+    renderAt(`/o/neshima/live/${id(10)}`, {}, ["members.view", "schedule.view"]);
+    expect(await screen.findByRole("heading", { level: 1, name: "רפורמר בוקר" })).toBeInTheDocument();
+    expect(screen.getByText("את החדר והרשומים רואים צוות הדלפק והמדריך.ה של השיעור.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "מפת החדר" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "סריקת כרטיס כניסה" })).not.toBeInTheDocument();
+  });
+
+  it("says a room without spots has no map, and still scans at the door", async () => {
+    const plain = session({ room: { id: id(2), name: "סטודיו גדול", spotSelection: false } });
+    renderAt(`/o/neshima/live/${id(10)}`, { [`GET ${base}/sessions/${id(10)}`]: plain });
+    expect(await screen.findByText("לחדר הזה אין מפת מכשירים. את הרשומים רואים בפרטי השיעור.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "סריקת כרטיס כניסה" })).toBeInTheDocument();
   });
 });
 
