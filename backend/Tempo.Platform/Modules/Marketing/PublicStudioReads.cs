@@ -69,6 +69,9 @@ public interface IPublicStudioReads
 {
     Task<PublicStudioView> GetStudioAsync(PublicStudio studio, CancellationToken cancellationToken);
 
+    /// <summary>The handle for a member's card (M-15), only while the public page, where it is set, is on; else null.</summary>
+    Task<string?> GetInstagramHandleAsync(PublicStudio studio, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<PublicSessionView>> ListSessionsAsync(PublicStudio studio, DateOnly? firstDay, DateOnly? lastDay, CancellationToken cancellationToken);
 
     Task<PublicSessionView> GetSessionAsync(PublicStudio studio, Guid sessionId, CancellationToken cancellationToken);
@@ -131,6 +134,15 @@ public sealed class PublicStudioReads(IDataSourceProvider dataSources, TimeProvi
         string? introName = reader.IsDBNull(4) ? null : reader.GetString(4);
         int? introPrice = reader.IsDBNull(5) ? null : reader.GetInt32(5);
         return new PublicStudioView(studio, cover, reader.GetString(3), introName, introPrice, reader.GetBoolean(6), reader.GetBoolean(1));
+    }
+
+    public async Task<string?> GetInstagramHandleAsync(PublicStudio studio, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(studio, cancellationToken);
+        await using var read = unitOfWork.Command(
+            "SELECT instagram_handle FROM organizations.public_pages WHERE organization_id = $1 AND enabled",
+            studio.Id);
+        return await read.ExecuteScalarAsync(cancellationToken) as string;
     }
 
     public async Task<IReadOnlyList<PublicSessionView>> ListSessionsAsync(PublicStudio studio, DateOnly? firstDay, DateOnly? lastDay, CancellationToken cancellationToken)

@@ -102,9 +102,16 @@ public sealed class PublicStudioFlowTests(PostgresFixture postgres) : IClassFixt
         var brand = await client.GetAsync($"{publicPath}/brand");
         brand.Headers.CacheControl!.Public.Should().BeTrue();
         var brandJson = await brand.Content.ReadFromJsonAsync<JsonElement>();
-        brandJson.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("slug", "appName", "accentId", "logoUrl");
+        brandJson.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("slug", "appName", "accentId", "logoUrl", "instagramHandle");
         brandJson.GetProperty("appName").GetString().Should().Be("נשימה");
         brandJson.GetProperty("accentId").GetString().Should().Be("ocean");
+        brandJson.GetProperty("instagramHandle").ValueKind.Should().Be(JsonValueKind.Null);
+
+        // The handle for a member's card (M-15, board #471) shows only while the public page, where it is set, is on.
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = false, openJoin = false, instagramHandle = "@neshima.studio" });
+        (await client.GetFromJsonAsync<JsonElement>($"{publicPath}/brand")).GetProperty("instagramHandle").ValueKind.Should().Be(JsonValueKind.Null);
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = false });
+        (await client.GetFromJsonAsync<JsonElement>($"{publicPath}/brand")).GetProperty("instagramHandle").GetString().Should().Be("neshima.studio");
 
         // 3. An unknown slug and a suspended studio are both 404 studio.not_found.
         var unknown = await client.GetAsync("/api/v1/public/studios/no-such-studio/manifest.webmanifest");

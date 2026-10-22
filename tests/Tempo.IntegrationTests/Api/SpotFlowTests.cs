@@ -142,6 +142,77 @@ public sealed class SpotFlowTests(PostgresFixture postgres) : IClassFixture<Post
     }
 
     [Fact]
+    public async Task TheDesk_PromotesTheFirstWaiter_IntoAFreeSpot_PastTheCutoffAndDuringTheClass()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, roomId, sessionPath) = await StudioAsync(client, ["noga", "maya", "rina", "yoav"], capacity: 2);
+        var layout = await SendAsync(client, HttpMethod.Put, $"{studioPath}/rooms/{roomId}/layout", Customer("owner"), new
+        {
+            spotSelection = true,
+            rows = 1,
+            cols = 2,
+            spots = new object[] { new { label = "1", row = 0, col = 0 }, new { label = "2", row = 0, col = 1 } }
+        });
+        var spot = layout.GetProperty("spots").EnumerateArray().ToDictionary(s => s.GetProperty("label").GetString()!, s => s.GetProperty("id").GetGuid());
+        var sessionId = Guid.Parse(sessionPath[(sessionPath.LastIndexOf('/') + 1)..]);
+        await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("noga"), new { spotId = spot["1"] }, HttpStatusCode.Created);
+        var maya = await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("maya"), new { spotId = spot["2"] }, HttpStatusCode.Created);
+        var rina = (await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("rina"), null, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+        var yoav = (await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("yoav"), null, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+
+        // 1. An hour before the start (inside the 2 h cutoff) Maya cancels: nothing promotes Rina, spot 2 stays free.
+        await db.AsMasterAsync("UPDATE scheduling.sessions SET starts_at = now() + interval '1 hour', ends_at = now() + interval '110 minutes' WHERE id = $1", sessionId);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{maya.GetProperty("id").GetGuid()}/cancel", Customer("maya"));
+        var roster = await SendAsync(client, HttpMethod.Get, $"{sessionPath}/roster", Customer("dana"));
+        roster.GetProperty("waitlisted")[0].GetProperty("bookingId").GetGuid().Should().Be(rina, "the instructor sees who waits first");
+
+        // 2. The class is running. A member can't spend Rina's entry; a taken spot is refused.
+        await db.AsMasterAsync("UPDATE scheduling.sessions SET starts_at = now() - interval '10 minutes', ends_at = now() + interval '40 minutes' WHERE id = $1", sessionId);
+        (await RawAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{rina}/promote", Customer("rina"), new { spotId = spot["2"] })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{rina}/promote", Customer("owner"), new { spotId = spot["1"] })).Should().Be("booking.spot_unavailable");
+
+        // 3. The desk puts Rina on spot 2: booked, one entry taken, her inbox told, the audit says by whom.
+        var promoted = await SendAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{rina}/promote", Customer("owner"), new { spotId = spot["2"] });
+        promoted.GetProperty("status").GetString().Should().Be("booked");
+        promoted.GetProperty("spot").GetProperty("label").GetString().Should().Be("2");
+        (await SendAsync(client, HttpMethod.Get, $"{studioPath}/me/passes", Customer("rina"))).GetProperty("items")[0].GetProperty("entriesLeft").GetInt32().Should().Be(9);
+        (await db.AsMasterAsync("SELECT count(*) FROM notifications.inbox_items WHERE kind = 'booking.promoted'")).Should().Be(1L);
+        var map = await SendAsync(client, HttpMethod.Get, $"{sessionPath}/spots", Customer("owner"));
+        map.GetProperty("spots").EnumerateArray().Single(s => s.GetProperty("label").GetString() == "2").GetProperty("person").GetProperty("displayName").GetString().Should().Be("rina");
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE action = 'booking.promoted' AND target_id = $1 AND data->>'by' = 'staff'", rina)).Should().Be(1L);
+
+        // 4. The class is full again, a booked place isn't waiting, and after the end nothing moves.
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{yoav}/promote", Customer("owner"), new { })).Should().Be("session.full");
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{rina}/promote", Customer("owner"), new { })).Should().Be("booking.not_waitlisted");
+        await db.AsMasterAsync("UPDATE scheduling.sessions SET capacity = 3, starts_at = now() - interval '60 minutes', ends_at = now() - interval '10 minutes' WHERE id = $1", sessionId);
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{yoav}/promote", Customer("owner"), new { })).Should().Be("booking.closed");
+    }
+
+    [Fact]
+    public async Task TheDesk_PromotingAWaiterWithNoValidPass_LeavesHerWaiting()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, _, sessionPath) = await StudioAsync(client, ["noga", "rina"], capacity: 1);
+        var sessionId = Guid.Parse(sessionPath[(sessionPath.LastIndexOf('/') + 1)..]);
+        var noga = (await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("noga"), null, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+        var rina = (await SendAsync(client, HttpMethod.Post, $"{sessionPath}/bookings", Customer("rina"), null, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+        await db.AsMasterAsync("UPDATE scheduling.sessions SET starts_at = now() + interval '1 hour', ends_at = now() + interval '110 minutes' WHERE id = $1", sessionId);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{noga}/cancel", Customer("noga"));
+        await db.AsMasterAsync("UPDATE scheduling.passes SET status = 'voided' WHERE person_id = (SELECT person_id FROM scheduling.bookings WHERE id = $1)", rina);
+
+        (await ProblemCodeAsync(client, HttpMethod.Post, $"{studioPath}/bookings/{rina}/promote", Customer("owner"), new { })).Should().Be("booking.no_valid_pass");
+
+        var roster = await SendAsync(client, HttpMethod.Get, $"{sessionPath}/roster", Customer("owner"));
+        roster.GetProperty("waitlisted").EnumerateArray().Select(e => e.GetProperty("bookingId").GetGuid()).Should().Equal(rina);
+        roster.GetProperty("booked").GetArrayLength().Should().Be(0);
+        (await SendAsync(client, HttpMethod.Get, sessionPath, Customer("owner"))).GetProperty("bookedCount").GetInt32().Should().Be(0, "a refused promotion leaks no place");
+    }
+
+    [Fact]
     public async Task TenMembersRacingForOneSpot_OneGetsIt_TheRestKeepTheirPlaceAndEntry()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

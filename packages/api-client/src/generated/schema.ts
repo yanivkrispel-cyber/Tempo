@@ -101,7 +101,7 @@ export interface paths {
         };
         /**
          * An active studio's name, accent and logo, public page on or off (anyone)
-         * @description docs/35 W-4 and W-10 (board #404, [O]'s REQUEST for WL5 part B): what the studio's own app and its branded sign-in wear. The manifest already shows the name and the accent; the logo is the only new field. 404 `studio.not_found` with the same body for an unknown, suspended or removed slug (S-B). `public, max-age=300`.
+         * @description docs/35 W-4 and W-10 (board #404, [O]'s REQUEST for WL5 part B): what the studio's own app and its branded sign-in wear. The manifest already shows the name and the accent; the logo is the only new field, and the Instagram handle while the public page is on (board #471). 404 `studio.not_found` with the same body for an unknown, suspended or removed slug (S-B). `public, max-age=300`.
          */
         get: operations["getPublicBrand"];
         put?: never;
@@ -2228,6 +2228,37 @@ export interface paths {
          *     **new** booking. The member gets an inbox item of kind `booking.moved`.
          */
         post: operations["moveBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/bookings/{bookingId}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The desk moves a waiting person into a free place, past the waitlist cutoff too (`bookings.manage`)
+         * @description OwnerLive's "שיבוץ למכשיר N" (LV-1, board #471). Automatic promotion stops at the waitlist cutoff (docs/29
+         *     section 6.3), so a place that frees up later stays empty unless the desk fills it. This takes a `waitlisted`
+         *     booking of a `scheduled` class until the class ends, in one transaction: a place (409 `session.full`), the
+         *     person's pass (409 `booking.no_valid_pass`; she **stays waiting**, a desk call never cancels her), and in a
+         *     room with spots `spotId` when it is free (409 `booking.spot_unavailable`), else her usual or the first free
+         *     spot. She gets the inbox item `booking.promoted`, as from an automatic promotion; the audit records
+         *     `booking.promoted` with `by: staff`. 409 `booking.not_waitlisted` for any other status, `session.cancelled`,
+         *     and `booking.closed` once the class has ended. Without `bookings.manage` (a member, or a role without it):
+         *     403.
+         */
+        post: operations["promoteBooking"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4536,6 +4567,8 @@ export interface components {
              * @description The logo at 400 px (WebP); presigned, short-lived.
              */
             logoUrl: string | null;
+            /** @description The studio's handle without @, for the tag on a member's card (M-15, C-1; [O]'s REQUEST on board #471). Only while the studio's public page is on, since the handle is set there; null otherwise. */
+            instagramHandle: string | null;
         };
         PublicSessionList: {
             items: components["schemas"]["PublicSession"][];
@@ -4899,6 +4932,13 @@ export interface components {
              * @description The class the place moves to.
              */
             sessionId: string;
+        };
+        PromoteBookingRequest: {
+            /**
+             * Format: uuid
+             * @description The free spot she takes; null or left out picks her usual or the first free one.
+             */
+            spotId?: string | null;
         };
         SendSessionMessageRequest: {
             /**
@@ -9537,6 +9577,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MoveBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    promoteBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+                bookingId: components["parameters"]["BookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PromoteBookingRequest"];
             };
         };
         responses: {
