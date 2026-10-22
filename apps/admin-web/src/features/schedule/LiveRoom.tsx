@@ -3,9 +3,23 @@ import { unwrap } from "@tempo/api-client";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
-import { Banner, Button, Card, Dialog, Icon, Skeleton, initials, useToast } from "../../shared/design-system";
+import {
+  Avatar,
+  Banner,
+  Button,
+  ButtonLink,
+  Card,
+  Chip,
+  Dialog,
+  Icon,
+  Segmented,
+  Skeleton,
+  initials,
+  useToast,
+} from "../../shared/design-system";
 import { useCheckin, useMoveSpot, useSessionSpots, type Checkin, type SessionSpot } from "../console/experience";
 import { useStudio } from "../console/studio";
+import styles from "./live.module.css";
 import type { Session } from "./queries";
 
 const minute = 60_000;
@@ -22,7 +36,7 @@ const healthText: Record<string, string> = {
  * Tap a spot to mark attendance or move the person; "סריקת כניסה" opens the camera for the members' check-in QR.
  * For the desk (`bookings.manage`) and the class's own instructor, in a room with spot selection.
  */
-export function LiveRoom({ session }: { session: Session }) {
+export function LiveRoom({ session, layout = "card" }: { session: Session; layout?: "card" | "page" }) {
   const studio = useStudio();
   const [now] = useState(() => Date.now());
   const starts = new Date(session.startsAt).getTime();
@@ -32,6 +46,8 @@ export function LiveRoom({ session }: { session: Session }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [scanning, setScanning] = useState(false);
+  // OwnerLive on a phone shows one view at a time; from 1024 px the map and the list sit side by side (LV-1).
+  const [view, setView] = useState<"map" | "list">("map");
   const move = useMoveSpot(session.id);
   const toast = useToast();
   const instructor = session.instructor?.membershipId === studio.membership.membershipId;
@@ -77,6 +93,80 @@ export function LiveRoom({ session }: { session: Session }) {
     }
   };
 
+  const spotActions = selected && !moving && (
+    <SpotActions
+      spot={selected}
+      markable={markable}
+      movable={movable && map.spots.some((spot) => spot.state === "free")}
+      onMove={() => setMoving(true)}
+      onClose={() => setSelectedId(null)}
+    />
+  );
+  const movingBanner = moving && (
+    <Banner tone="info" icon="info">
+      בחרו מכשיר פנוי עבור <bdi>{selected?.person?.displayName}</bdi>.
+    </Banner>
+  );
+
+  if (layout === "page") {
+    return (
+      <>
+        <Card as="section" aria-labelledby="live-attendance" className={styles.attendance}>
+          <span className={styles.count}>
+            <strong className="tp-num">{arrived}</strong>
+            <span id="live-attendance">מתוך {held.length} הגיעו</span>
+          </span>
+          <Segmented
+            className={styles.toggle}
+            label="תצוגה"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "map", label: "מפה" },
+              { value: "list", label: "רשימה" },
+            ]}
+          />
+        </Card>
+        <div className={styles.views} data-view={view}>
+          <section className={styles.map} aria-label="מפת החדר">
+            <StaffRoomMap
+              map={map}
+              selectedId={selected?.id ?? null}
+              moving={moving}
+              onChoose={choose}
+              instructorName={session.instructor?.displayName}
+            />
+            <ul className={styles.legend} aria-label="מקרא">
+              <li>
+                <i className={styles.dotIn} aria-hidden="true" />
+                הגיע.ה
+              </li>
+              <li>
+                <i className={styles.dotNot} aria-hidden="true" />
+                עוד לא
+              </li>
+              <li>
+                <i className={styles.dotFlag} aria-hidden="true" />
+                חסרה הצהרת בריאות
+              </li>
+            </ul>
+          </section>
+          <StaffRoomList spots={held} selectedId={selected?.id ?? null} onChoose={choose} />
+        </div>
+        {movingBanner}
+        {spotActions}
+        {markable && (
+          <div className={styles.scanBar}>
+            <Button size="lg" block icon="qr" onClick={() => setScanning(true)}>
+              סריקת כרטיס כניסה
+            </Button>
+          </div>
+        )}
+        {scanning && <ScanDialog session={session} onClose={() => setScanning(false)} />}
+      </>
+    );
+  }
+
   return (
     <Card as="section" aria-labelledby="live-room" className="tp-stack">
       <div className="tp-row" style={{ justifyContent: "space-between" }}>
@@ -89,11 +179,18 @@ export function LiveRoom({ session }: { session: Session }) {
             {arrived} הגיעו מתוך {held.length} · {map.spots.filter((spot) => spot.state === "free").length} פנויים
           </span>
         </div>
-        {markable && (
-          <Button icon="qr" onClick={() => setScanning(true)}>
-            סריקת כניסה
-          </Button>
-        )}
+        <div className="tp-row" style={{ gap: 8 }}>
+          {live && (
+            <ButtonLink to={`/o/${studio.slug}/live/${session.id}`} variant="secondary" icon="window">
+              מסך שיעור חי
+            </ButtonLink>
+          )}
+          {markable && (
+            <Button icon="qr" onClick={() => setScanning(true)}>
+              סריקת כניסה
+            </Button>
+          )}
+        </div>
       </div>
 
       <StaffRoomMap
@@ -104,21 +201,8 @@ export function LiveRoom({ session }: { session: Session }) {
         instructorName={session.instructor?.displayName}
       />
 
-      {moving && (
-        <Banner tone="info" icon="info">
-          בחרו מכשיר פנוי עבור <bdi>{selected?.person?.displayName}</bdi>.
-        </Banner>
-      )}
-
-      {selected && !moving && (
-        <SpotActions
-          spot={selected}
-          markable={markable}
-          movable={movable && map.spots.some((spot) => spot.state === "free")}
-          onMove={() => setMoving(true)}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
+      {movingBanner}
+      {spotActions}
 
       {scanning && <ScanDialog session={session} onClose={() => setScanning(false)} />}
     </Card>
@@ -225,6 +309,64 @@ function StaffSpot({
       </button>
       {person && <span className="tp-spot__name">{person.displayName.split(" ")[0]}</span>}
     </div>
+  );
+}
+
+/** The same people as a list, by spot number: who came in, who not yet, and a missing health declaration. */
+function StaffRoomList({
+  spots,
+  selectedId,
+  onChoose,
+}: {
+  spots: SessionSpot[];
+  selectedId: string | null;
+  onChoose: (spot: SessionSpot) => void;
+}) {
+  const ordered = [...spots].sort((a, b) => a.label.localeCompare(b.label, "he", { numeric: true }));
+  return (
+    <section className={styles.list} aria-label="רשימת המשתתפים">
+      {ordered.length === 0 ? (
+        <p className="tp-caption">עוד אין רשומים לשיעור.</p>
+      ) : (
+        <ul>
+          {ordered.map((spot) => {
+            const name = spot.person?.displayName ?? "";
+            const flagged = spot.healthStatus != null && spot.healthStatus !== "signed";
+            const state =
+              spot.attendance === "attended" ? "הגיע.ה" : spot.attendance === "no_show" ? "לא הגיע.ה" : "עוד לא";
+            return (
+              <li key={spot.id}>
+                <button
+                  type="button"
+                  className={styles.row}
+                  aria-pressed={spot.id === selectedId}
+                  aria-label={[name, `מכשיר ${spot.label}`, state, flagged ? healthText[spot.healthStatus!] : null]
+                    .filter(Boolean)
+                    .join(", ")}
+                  onClick={() => onChoose(spot)}
+                >
+                  <Avatar name={name} src={spot.person?.avatarUrl ?? undefined} size="sm" />
+                  <span className={styles.who}>
+                    <bdi>{name}</bdi>
+                    <span className="tp-caption tp-num">
+                      מכשיר {spot.label}
+                      {flagged && ` · ${healthText[spot.healthStatus!]}`}
+                    </span>
+                  </span>
+                  <Chip
+                    tone={
+                      spot.attendance === "attended" ? "success" : spot.attendance === "no_show" ? "danger" : "neutral"
+                    }
+                  >
+                    {state}
+                  </Chip>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

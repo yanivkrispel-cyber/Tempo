@@ -20,6 +20,7 @@ import { ClassTypesPage } from "../features/schedule/ClassTypesPage";
 import { RoomsPage } from "../features/schedule/RoomsPage";
 import { SchedulePage } from "../features/schedule/SchedulePage";
 import { SessionPage } from "../features/schedule/SessionPage";
+import { OwnerLivePage } from "../features/schedule/OwnerLivePage";
 import { TemplatesPage } from "../features/schedule/TemplatesPage";
 import { SecurityPage } from "../features/security/SecurityPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
@@ -56,6 +57,7 @@ export const routes: RouteObject[] = [
               { path: "duplicates", element: <DuplicatesPage /> },
               { path: "schedule", element: <SchedulePage /> },
               { path: "schedule/sessions/:sessionId", element: <SessionPage /> },
+              { path: "live/:sessionId", element: <OwnerLivePage /> },
               { path: "weekly-classes", element: <TemplatesPage /> },
               { path: "class-types", element: <ClassTypesPage /> },
               { path: "rooms", element: <RoomsPage /> },
