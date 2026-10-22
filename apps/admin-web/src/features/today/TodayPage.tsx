@@ -36,13 +36,13 @@ import {
 import { useOpenCommandPalette } from "../console/CommandPalette";
 import { useStudio } from "../console/studio";
 import { priceLabel } from "../passes/queries";
-
-// The month's figures in whole shekels, as on OwnerDashboard.dc.html: agorot would only add noise to a total.
-const wholeShekels = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
 import { ScanDialog } from "../schedule/LiveRoom";
 import { NewClassDialog } from "../schedule/NewClassDialog";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "../schedule/queries";
 import styles from "./today.module.css";
+
+// The month's figures in whole shekels, as on OwnerDashboard.dc.html: agorot would only add noise to a total.
+const wholeShekels = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
 
 type Day = "today" | "tomorrow";
 
