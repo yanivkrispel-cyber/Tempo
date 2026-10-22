@@ -385,6 +385,14 @@ describe("a class and cancelling", () => {
     });
     const { studio } = renderAt(`/classes/${sessionIds.prenatal}`);
     withCardLink(studio, true);
+    studio.routes["GET /api/v1/public/studios/neshima/brand"] = () =>
+      Response.json({
+        slug: "neshima",
+        appName: "נשימה",
+        accentId: "sage",
+        logoUrl: null,
+        instagramHandle: "neshima.studio",
+      });
     await userEvent.click(await screen.findByRole("button", { name: "הרשמה לשיעור" }));
     await userEvent.click(screen.getByRole("button", { name: "אישור ההרשמה" }));
     const done = await screen.findByRole("dialog", { name: "שמרנו לך מקום, נגה" });
@@ -400,6 +408,7 @@ describe("a class and cancelling", () => {
     expect(sent.files?.[0]?.type).toBe("image/png");
     expect(drawn).toContain("אני בפנים");
     expect(drawn).toContain("יוגה בהריון");
+    expect(drawn).toContain("@neshima.studio");
     expect(drawn.some((text) => text.includes("נגה"))).toBe(false);
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
