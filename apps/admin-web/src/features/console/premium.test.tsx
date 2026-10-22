@@ -189,7 +189,8 @@ describe("the owner's day (docs/33 section 9)", () => {
     );
 
     const sales = await screen.findByRole("region", { name: "מכירות החודש" });
-    expect(within(sales).getByText(/12,400/)).toBeInTheDocument();
+    // Whole shekels, as on the mockup: a month's total carries no agorot.
+    expect(within(sales).getByText(/12,400/)).not.toHaveTextContent(".00");
     // The change says what it is compared with, in words, as in the mockup (O6).
     expect(within(sales).getByText(/יותר מספטמבר באותו זמן/)).toHaveTextContent("24% יותר מספטמבר באותו זמן");
     expect(within(sales).getByText(/צפי לסוף החודש/)).toBeInTheDocument();
@@ -201,6 +202,8 @@ describe("the owner's day (docs/33 section 9)", () => {
     // Last week's share itself: "8% more" of a percentage would be read two ways.
     expect(within(week).getByText(/בשבוע שעבר/)).toHaveTextContent("70% בשבוע שעבר");
     expect(within(week).getByRole("cell", { name: "10 מתוך 10, מלא עם ממתינים" })).toBeInTheDocument();
+    expect(within(week).getByText("מלא עם המתנה")).toBeInTheDocument();
+    expect(within(week).getByText("יש מקום")).toBeInTheDocument();
 
     const waiting = await screen.findByRole("region", { name: "מחכה לך" });
     expect(within(waiting).getByText("2 כרטיסיות מסתיימות השבוע")).toBeInTheDocument();
