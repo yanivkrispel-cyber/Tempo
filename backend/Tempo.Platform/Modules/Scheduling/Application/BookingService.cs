@@ -57,6 +57,12 @@ public interface IBookingService
     /// <summary>Moves a booked place to another class (docs/29 section 16.1); staff only. Returns the new booking.</summary>
     Task<BookingView> MoveAsync(TenantContext tenant, Guid bookingId, Guid sessionId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The desk moves a waiting person into a free place, past the waitlist cutoff and during the class (OwnerLive,
+    /// LV-1); staff only. Takes <paramref name="spotId"/> in a room with spots, else her usual or the first free spot.
+    /// </summary>
+    Task<BookingView> PromoteAsync(TenantContext tenant, Guid bookingId, Guid? spotId, CancellationToken cancellationToken);
+
     Task<MyBookingPage> ListMineAsync(TenantContext tenant, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
 
     Task<MyBookingPage> ListForPersonAsync(TenantContext tenant, Guid personId, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken);
@@ -372,6 +378,88 @@ public sealed partial class BookingService(IDataSourceProvider dataSources, Time
         var moved = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, movedId)).Single();
         await unitOfWork.CommitAsync(cancellationToken);
         return moved;
+    }
+
+    public async Task<BookingView> PromoteAsync(TenantContext tenant, Guid bookingId, Guid? spotId, CancellationToken cancellationToken)
+    {
+        if (!tenant.Has(Permissions.BookingsManage))
+        {
+            throw new DomainRuleViolationException(ViolationKind.Forbidden, "permission.denied", "Only the desk can move a waiting person into a place.");
+        }
+
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        Guid sessionId;
+        Guid personId;
+        string status;
+        await using (var read = unitOfWork.Command(
+            "SELECT session_id, person_id, status FROM scheduling.bookings WHERE organization_id = $1 AND id = $2",
+            tenant.OrganizationId, bookingId))
+        await using (var reader = await read.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw BookingNotFound();
+            }
+
+            sessionId = reader.GetGuid(0);
+            personId = reader.GetGuid(1);
+            status = reader.GetString(2);
+        }
+
+        // The class first, then the booking, in the order every other path locks them.
+        var session = await SessionAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken, forUpdate: true);
+        await using (var hold = unitOfWork.Command(
+            "SELECT status FROM scheduling.bookings WHERE organization_id = $1 AND id = $2 FOR UPDATE",
+            tenant.OrganizationId, bookingId))
+        {
+            status = await hold.ExecuteScalarAsync(cancellationToken) as string ?? status;
+        }
+
+        if (status != "waitlisted")
+        {
+            throw Conflict("booking.not_waitlisted", "Only a waiting person can be moved into a place.");
+        }
+
+        if (session.Status == "cancelled")
+        {
+            throw Conflict("session.cancelled", "This class was cancelled.");
+        }
+
+        var now = clock.GetUtcNow();
+        await using (var ends = unitOfWork.Command("SELECT ends_at FROM scheduling.sessions WHERE organization_id = $1 AND id = $2", tenant.OrganizationId, sessionId))
+        {
+            if (await ends.ExecuteScalarAsync(cancellationToken) is DateTime endsAt && endsAt <= now.UtcDateTime)
+            {
+                throw Conflict("booking.closed", "This class has ended.");
+            }
+        }
+
+        if (!await TakePlaceAsync(unitOfWork, tenant.OrganizationId, sessionId, cancellationToken))
+        {
+            throw Conflict("session.full", "This class is full.");
+        }
+
+        // A desk call never cancels her: with no valid pass the whole transaction rolls back and she keeps waiting.
+        var pass = session.PassRequired
+            ? await PickPassAsync(unitOfWork, tenant.OrganizationId, personId, session, lockRows: true, cancellationToken)
+                ?? throw await NoValidPassAsync(unitOfWork, tenant.OrganizationId, personId, session, "No punch card or membership is valid for this class.", cancellationToken)
+            : null;
+        var spot = await AssignSpotAsync(unitOfWork, tenant.OrganizationId, sessionId, personId, spotId, cancellationToken);
+        await SetStatusAsync(unitOfWork, tenant.OrganizationId, bookingId, "booked", null, cancellationToken);
+        if (spot is not null)
+        {
+            await using var place = unitOfWork.Command(
+                "UPDATE scheduling.bookings SET spot_id = $3 WHERE organization_id = $1 AND id = $2",
+                tenant.OrganizationId, bookingId, spot);
+            await place.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await HoldOrPayAtStudioAsync(unitOfWork, tenant.OrganizationId, pass, bookingId, cancellationToken);
+        await InboxAsync(unitOfWork, tenant.OrganizationId, personId, "booking.promoted", sessionId, bookingId, cancellationToken);
+        await AuditAsync(unitOfWork, tenant, "booking.promoted", bookingId, new { sessionId, passId = pass?.Id, spotId = spot, by = "staff" }, cancellationToken);
+        var promoted = (await BookingsAsync(unitOfWork, tenant.OrganizationId, "WHERE b.organization_id = $1 AND b.id = $2", cancellationToken, bookingId)).Single();
+        await unitOfWork.CommitAsync(cancellationToken);
+        return promoted;
     }
 
     public async Task<MyBookingPage> ListMineAsync(TenantContext tenant, bool upcoming, Guid? before, int limit, CancellationToken cancellationToken)

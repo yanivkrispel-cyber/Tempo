@@ -22,6 +22,7 @@ public static class BookingEndpoints
         tenant.MapPost("/sessions/{sessionId:guid}/bookings", BookAsync).RequirePermission(Permissions.ScheduleView).WithName("createBooking").Produces<BookingResponse>(StatusCodes.Status201Created);
         tenant.MapPost("/bookings/{bookingId:guid}/cancel", CancelAsync).RequirePermission(Permissions.ScheduleView).WithName("cancelBooking").WithMetadata(new AllowWhenSubscriptionRestrictedAttribute()).Produces<BookingResponse>();
         tenant.MapPost("/bookings/{bookingId:guid}/move", MoveAsync).RequirePermission(Permissions.BookingsManage).WithName("moveBooking").Produces<BookingResponse>();
+        tenant.MapPost("/bookings/{bookingId:guid}/promote", PromoteAsync).RequirePermission(Permissions.BookingsManage).WithName("promoteBooking").Produces<BookingResponse>();
         tenant.MapGet("/me/bookings/{bookingId:guid}/calendar.ics", CalendarAsync).RequirePermission(Permissions.ScheduleView).WithName("getBookingCalendar").Produces<string>(StatusCodes.Status200OK, "text/calendar");
         tenant.MapGet("/me/bookings", ListMineAsync).RequirePermission(Permissions.ScheduleView).WithName("listMyBookings").Produces<MyBookingPageResponse>();
         tenant.MapGet("/people/{personId:guid}/bookings", ListForPersonAsync).RequirePermission(Permissions.BookingsManage).WithName("listPersonBookings").Produces<MyBookingPageResponse>();
@@ -52,6 +53,13 @@ public static class BookingEndpoints
         var target = request.SessionId ?? throw new DomainRuleViolationException(ViolationKind.Validation, "sessionId.required", "Say which class to move to.", "sessionId");
         return Results.Ok(ToResponse(await bookings.MoveAsync(TenantRouteFilter.Current(httpContext), bookingId, target, httpContext.RequestAborted)));
     }
+
+    private static async Task<IResult> PromoteAsync(
+        HttpContext httpContext,
+        Guid bookingId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PromoteBookingRequest? request,
+        IBookingService bookings) =>
+        Results.Ok(ToResponse(await bookings.PromoteAsync(TenantRouteFilter.Current(httpContext), bookingId, request?.SpotId, httpContext.RequestAborted)));
 
     /// <summary>"Add to calendar" (docs/29 section 16.3): one .ics file for the caller's own booked place.</summary>
     private static async Task<IResult> CalendarAsync(HttpContext httpContext, Guid bookingId, IBookingCalendarService calendars)

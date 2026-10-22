@@ -139,4 +139,4 @@ public sealed record MyMilestonesResponse(
     string? TopInstructor);
 
 /// <summary>`PublicBrand` (docs/35 W-4, W-10): a studio's name, accent and logo for its own app and sign-in.</summary>
-public sealed record PublicBrandResponse(string Slug, string AppName, string AccentId, Uri? LogoUrl);
+public sealed record PublicBrandResponse(string Slug, string AppName, string AccentId, Uri? LogoUrl, string? InstagramHandle);
