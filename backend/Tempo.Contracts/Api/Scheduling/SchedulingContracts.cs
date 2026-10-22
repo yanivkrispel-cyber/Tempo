@@ -230,7 +230,7 @@ public sealed record CancelBookingRequest(bool? ReturnEntry);
 /// <summary>`MoveBookingRequest`: the class the booked place moves to (docs/29 section 16.1).</summary>
 public sealed record MoveBookingRequest(Guid? SessionId);
 
-public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt, string? HealthStatus = null);
+public sealed record RosterEntryResponse(Guid BookingId, PersonRefResponse Person, string Status, int? WaitlistPosition, string? PassName, int? EntriesLeft, DateTimeOffset BookedAt, string? HealthStatus = null, bool ToPayAtStudio = false);
 
 /// <summary>`Roster`: booked and waiting people of one session.</summary>
 public sealed record RosterResponse(SessionResponse Session, IReadOnlyList<RosterEntryResponse> Booked, IReadOnlyList<RosterEntryResponse> Waitlisted);

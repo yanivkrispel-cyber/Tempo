@@ -41,8 +41,6 @@ export function BookedDialog({
   const me = useMe();
   const shareLink = useShareLink(studio.id);
   const mintLink = shareLink.mutate;
-  // SL-8: the invite names her by first name unless she turns it off; on by default.
-  const [showName, setShowName] = useState(true);
   // Copied (no share sheet, a computer): said on the button for a moment; a toast would cover the dialog on a phone.
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -51,11 +49,14 @@ export function BookedDialog({
     return () => window.clearTimeout(timer);
   }, [copied]);
   // Her own link is made when the dialog opens and again when the toggle changes, not on the tap: a phone's share
-  // sheet opens only from the tap itself, and waiting on the API first would use that up.
+  // sheet opens only from the tap itself, and waiting on the API first would use that up. Opening sends no `showName`,
+  // so it keeps her stored choice (SL-8); only the switch changes it.
   const bookingId = booking?.id;
   useEffect(() => {
-    if (bookingId) mintLink({ sessionId: session.id, showName });
-  }, [bookingId, session.id, showName, mintLink]);
+    if (bookingId) mintLink({ sessionId: session.id });
+  }, [bookingId, session.id, mintLink]);
+  // SL-8: the invite names her by first name unless she turns it off; null is the default, on.
+  const showName = shareLink.data ? (shareLink.data.showName ?? true) : (shareLink.variables?.showName ?? true);
   const first = me.data?.displayName?.trim().split(/\s+/)[0];
   const time = clockTime(session.startsAt, timeZone);
   const day =
@@ -130,7 +131,12 @@ export function BookedDialog({
               <span aria-live="polite">{copied ? "הקישור הועתק" : "שליחה לחברה"}</span>
             </Button>
           </div>
-          <Toggle checked={showName} onChange={(event) => setShowName(event.target.checked)} label="להציג את השם שלי" />
+          <Toggle
+            checked={showName}
+            disabled={shareLink.isPending}
+            onChange={(event) => mintLink({ sessionId: session.id, showName: event.target.checked })}
+            label="להציג את השם שלי"
+          />
           <InstallOffer appName={studio.name} />
           <OpenInBrowserCard />
           <Button variant="ghost" block onClick={onClose}>

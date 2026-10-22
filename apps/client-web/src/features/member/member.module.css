@@ -500,6 +500,12 @@
   align-items: center;
   gap: 10px;
 }
+.referralActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .buddyCode {
   display: flex;
   flex-direction: column;
@@ -624,4 +630,27 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
+}
+
+/* The milestone card (docs/37 section 8.2): the 1080x1920 canvas shown at phone size. */
+.milestone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+.milestoneCard {
+  /* Short enough that the share buttons stay above the tab bar on a phone. */
+  width: min(100%, 360px, calc(60svh * 9 / 16));
+  height: auto;
+  aspect-ratio: 9 / 16;
+  border-radius: 20px;
+  box-shadow: var(--shadow-float);
+}
+.milestoneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }

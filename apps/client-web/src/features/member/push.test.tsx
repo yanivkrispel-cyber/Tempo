@@ -237,6 +237,9 @@ describe("the service worker", () => {
     });
     expect(shown?.options.body).toBe("כדי להמשיך להירשם לשיעורים, פנו לסטודיו לכרטיסייה חדשה.");
     expect(shown?.options.data.url).toBe("/inbox?studio=org-1&notification=item-2");
+    // Celebrations (docs/37 section 8.2) open the inbox, where the item links her card.
+    expect(notice({ kind: "member.milestone", data: {} })?.title).toBe("הגעת לאבן דרך");
+    expect(notice({ kind: "member.referral_rewarded", data: {} })?.options.body).toBe("קיבלת כרטיסייה מהסטודיו.");
     expect(notice({ kind: "something.new", data: {} })).toBeNull();
     expect(notice(null)).toBeNull();
   });

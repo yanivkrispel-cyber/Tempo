@@ -16,6 +16,7 @@ import { InstallAppRow } from "./InstallApp";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
 import { BuddiesCard } from "./BuddiesCard";
+import { ReferralCard } from "./ReferralCard";
 import { useMyProfile, useUploadPicture } from "./experience";
 import { goalText, useMyProgress } from "./progress";
 import styles from "./member.module.css";
@@ -95,6 +96,13 @@ export function ProfileScreen() {
 
       {studio && <PassesCard organizationId={studio.organization.id} />}
       {studio && <BuddiesCard organizationId={studio.organization.id} />}
+      {studio && (
+        <ReferralCard
+          organizationId={studio.organization.id}
+          slug={studio.organization.slug}
+          studioName={studio.organization.displayName}
+        />
+      )}
 
       <Card as="section" small className={styles.studio} aria-label="הסטודיו שלך">
         {studio ? (

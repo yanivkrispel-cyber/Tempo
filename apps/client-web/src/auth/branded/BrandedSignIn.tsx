@@ -443,7 +443,18 @@ export function BrandedSignIn({
               {view.name === "totp" ? (
                 <Heading title="קוד מאפליקציית האימות" lead="הקלידו את שש הספרות שמופיעות באפליקציה." />
               ) : (
-                <Heading title="בדקו את המייל" lead={`שלחנו קוד בן שש ספרות אל ${email}.`} />
+                <Heading
+                  title="בדקו את המייל"
+                  lead={
+                    <>
+                      שלחנו קוד בן שש ספרות אל{" "}
+                      <bdi dir="ltr" className={styles.inlineEmail}>
+                        {email}
+                      </bdi>
+                      .
+                    </>
+                  }
+                />
               )}
               <CodeField value={code} onChange={setCode} />
               <NoticeBanner notice={notice} onHostedUi={onHostedUi} />
@@ -499,7 +510,17 @@ export function BrandedSignIn({
           {view.name === "confirm" && (
             <>
               {view.sent ? (
-                <Heading title="אימות האימייל" lead={`אם האימייל פנוי, שלחנו אליו קוד בן שש ספרות (${email}).`} />
+                <Heading
+                  title="אימות האימייל"
+                  lead={
+                    <>
+                      אם האימייל פנוי, שלחנו אליו קוד בן שש ספרות:{" "}
+                      <bdi dir="ltr" className={styles.inlineEmail}>
+                        {email}
+                      </bdi>
+                    </>
+                  }
+                />
               ) : (
                 <Heading title="אימות האימייל" lead="החשבון עוד לא אומת. נשלח קוד בן שש ספרות למייל שלכם." />
               )}
@@ -542,7 +563,17 @@ export function BrandedSignIn({
 
           {view.name === "reset" && (
             <>
-              <Heading title="סיסמה חדשה" lead={`אם יש חשבון עם האימייל הזה, שלחנו אליו קוד (${email}).`} />
+              <Heading
+                title="סיסמה חדשה"
+                lead={
+                  <>
+                    אם יש חשבון עם האימייל הזה, שלחנו אליו קוד:{" "}
+                    <bdi dir="ltr" className={styles.inlineEmail}>
+                      {email}
+                    </bdi>
+                  </>
+                }
+              />
               <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
               <CodeField value={code} onChange={setCode} />
               <NewPasswordField value={newPassword} onChange={setNewPassword} error={passwordError} />
@@ -578,11 +609,11 @@ export function BrandedSignIn({
   );
 }
 
-function Heading({ title, lead, ltrLead = false }: { title: string; lead: string; ltrLead?: boolean }) {
+function Heading({ title, lead, ltrLead = false }: { title: string; lead: ReactNode; ltrLead?: boolean }) {
   return (
     <div className={styles.heading}>
       <h1 className={styles.title}>{title}</h1>
-      {/* An email reads left to right but stays on the page's right edge. */}
+      {/* An email reads left to right but stays on the page's right edge; one inside a sentence is its own <bdi>. */}
       <p className="tp-muted">{ltrLead ? <bdi dir="ltr">{lead}</bdi> : lead}</p>
     </div>
   );
