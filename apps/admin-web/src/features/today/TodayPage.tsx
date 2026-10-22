@@ -41,6 +41,9 @@ import { NewClassDialog } from "../schedule/NewClassDialog";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "../schedule/queries";
 import styles from "./today.module.css";
 
+// The month's figures in whole shekels, as on OwnerDashboard.dc.html: agorot would only add noise to a total.
+const wholeShekels = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
+
 type Day = "today" | "tomorrow";
 
 const minute = 60_000;
@@ -375,7 +378,7 @@ function SalesCard() {
         מכירות החודש
       </h2>
       <div className={styles.kpiFigure}>
-        <span className={`tp-display tp-num ${styles.kpiValue}`}>{priceLabel(data.soFarAgorot)}</span>
+        <span className={`tp-display tp-num ${styles.kpiValue}`}>{wholeShekels.format(data.soFarAgorot / 100)}</span>
         {change !== null && (
           <ChangeChip up={change >= 0}>
             <span className="tp-num">{Math.abs(change)}%</span> {change >= 0 ? "יותר" : "פחות"} מ
@@ -386,7 +389,7 @@ function SalesCard() {
       <Sparkline sales={data} />
       <span className="tp-caption">
         {data.passesSold} כרטיסיות ומנויים
-        {data.forecastAgorot != null && <> · צפי לסוף החודש {priceLabel(data.forecastAgorot)}</>}
+        {data.forecastAgorot != null && <> · צפי לסוף החודש {wholeShekels.format(data.forecastAgorot / 100)}</>}
         {data.unpricedCount > 0 && <> · {data.unpricedCount} בלי מחיר</>}
       </span>
     </Card>
@@ -538,6 +541,20 @@ function OccupancyCard({ wide }: { wide: boolean }) {
           </div>
         ))}
       </div>
+      <ul className={styles.heatLegend} aria-hidden="true">
+        <li>
+          <i className="tp-heat__cell tp-heat__cell--hot" />
+          מלא עם המתנה
+        </li>
+        <li>
+          <i className="tp-heat__cell tp-heat__cell--4" />
+          <span className="tp-num">מעל 85%</span>
+        </li>
+        <li>
+          <i className="tp-heat__cell tp-heat__cell--1" />
+          יש מקום
+        </li>
+      </ul>
     </Card>
   );
 }

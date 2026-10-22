@@ -294,6 +294,28 @@
 .heatDay {
   text-align: center;
 }
+/* The heat's three meanings, as in the mockup; the cells already say theirs to a screen reader. */
+.heatLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.heatLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.heatLegend i {
+  width: 10px;
+  height: 10px;
+  min-height: 0;
+  border-radius: 3px;
+}
 
 .insights {
   display: grid;
