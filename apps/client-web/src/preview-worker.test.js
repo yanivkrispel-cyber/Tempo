@@ -140,6 +140,25 @@ describe("handler", () => {
     expect(html).toContain(`/sessions/${SESSION}/cover`);
   });
 
+  it("still sends an image without a cover: the API's /cover falls back to the studio's icon (C-2)", async () => {
+    const { call } = setup({
+      "/api/v1/public/studios/demo": { ...studio, coverUrl: null },
+      [`/api/v1/public/studios/demo/sessions/${SESSION}`]: {
+        startsAt: "2026-11-02T17:00:00Z",
+        classType: { name: "Pilates" },
+        coverUrl: null,
+        event: null,
+      },
+    });
+    for (const path of ["/s/demo/", "/s/demo/prices", `/s/demo/c/${SESSION}`]) {
+      const html = await (await call(path)).text();
+      expect(html).toContain(`og:image" content="${API}/api/v1/public/studios/demo/cover"`);
+      expect(html).toContain(`twitter:image" content="${API}/api/v1/public/studios/demo/cover"`);
+      // The icon is square, so the small card; a real cover keeps the large one.
+      expect(html).toContain('twitter:card" content="summary"');
+    }
+  });
+
   it("describes an offer with its price", async () => {
     const { call } = setup({
       ...base,

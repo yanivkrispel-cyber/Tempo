@@ -46,7 +46,8 @@ export function escapeHtml(value) {
 
 /**
  * The preview page. Every interpolated value is HTML-escaped; studio text is data, never markup (S-C).
- * @param {{ title: string, description: string, image: string | null, url: string, siteName?: string }} data
+ * `largeImage` is true for a real cover; the icon fallback is square, so it gets the small Twitter card.
+ * @param {{ title: string, description: string, image: string | null, largeImage?: boolean, url: string, siteName?: string }} data
  */
 export function renderPreview(data) {
   const tags = [
@@ -54,7 +55,7 @@ export function renderPreview(data) {
     ["og:title", data.title],
     ["og:description", data.description],
     ["og:url", data.url],
-    ["twitter:card", data.image ? "summary_large_image" : "summary"],
+    ["twitter:card", data.image && data.largeImage !== false ? "summary_large_image" : "summary"],
     ["twitter:title", data.title],
     ["twitter:description", data.description],
   ];
@@ -127,7 +128,10 @@ async function buildPreview(route, url, apiBase, fetchFn) {
   let title = headline(studio.name);
   let description = `לוח השיעורים והרשמה ב${studio.name}`;
   let pageUrl = `${origin}/`;
-  let image = studio.coverUrl ? `${studioPath}/cover` : null;
+  // C-2: always an image. Without a cover the API's /cover redirects to the studio's 512 px icon (its logo, or its
+  // initials on its accent), so every preview has a picture at no cost of its own.
+  let image = `${studioPath}/cover`;
+  let largeImage = Boolean(studio.coverUrl);
 
   if (route.kind === "session") {
     const session = await getJson(fetchFn, `${studioPath}/sessions/${route.id}`);
@@ -136,7 +140,10 @@ async function buildPreview(route, url, apiBase, fetchFn) {
     const when = formatWhen(session.startsAt, studio.timeZone);
     description = [when, session.event?.description].filter(Boolean).join(" · ") || description;
     pageUrl = `${origin}/c/${route.id}`;
-    if (session.coverUrl) image = `${studioPath}/sessions/${route.id}/cover`;
+    if (session.coverUrl) {
+      image = `${studioPath}/sessions/${route.id}/cover`;
+      largeImage = true;
+    }
   } else if (route.kind === "offer") {
     const detail = await getJson(fetchFn, `${studioPath}/products/${route.id}`);
     const product = detail?.product;
@@ -151,7 +158,7 @@ async function buildPreview(route, url, apiBase, fetchFn) {
     description = `כרטיסיות ומנויים ב${studio.name}`;
     pageUrl = `${origin}/prices`;
   }
-  return { title, description, image, url: pageUrl, siteName: studio.appName || studio.name };
+  return { title, description, image, largeImage, url: pageUrl, siteName: studio.appName || studio.name };
 }
 
 /**
