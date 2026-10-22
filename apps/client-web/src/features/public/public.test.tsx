@@ -685,6 +685,44 @@ describe("a studio's prices (/s/<slug>/prices, SL-5)", () => {
   });
 });
 
+describe("an event or a workshop (MO6)", () => {
+  const workshop = publicSession(sessionIds.vinyasa, "2026-10-16T07:00:00Z", "ויניאסה יוגה", {
+    availability: "few",
+    spotsLeft: 4,
+    event: {
+      title: "סדנת נשימה ביום שישי",
+      description: "שעתיים של נשימה ותנועה.",
+      priceAgorot: 12000,
+      passRequired: false,
+    },
+  });
+
+  it("has its own layout: the event mark, the price, how it is paid and the places left", async () => {
+    renderStudioApp(`/c/${workshop.id}`, { routes: { [`GET ${api}/sessions/${workshop.id}`]: workshop } });
+    expect(await screen.findByRole("heading", { level: 1, name: "סדנת נשימה ביום שישי" })).toBeInTheDocument();
+    expect(screen.getByText("אירוע")).toBeInTheDocument();
+    expect(screen.getByText("נשארו 4 מקומות")).toBeInTheDocument();
+    expect(screen.getByText("120 ₪")).toBeInTheDocument();
+    expect(screen.getByText("משלמים בסטודיו, בלי כרטיסייה")).toBeInTheDocument();
+    // The studio's intro offer is about passes; an event without one does not offer it.
+    expect(screen.queryByText(/שיעור ניסיון/)).not.toBeInTheDocument();
+  });
+
+  it("says a pass is used when the event takes one, and leaves out a price it does not have", async () => {
+    const withPass = { ...workshop, event: { ...workshop.event!, priceAgorot: null, passRequired: true } };
+    renderStudioApp(`/c/${workshop.id}`, { routes: { [`GET ${api}/sessions/${workshop.id}`]: withPass } });
+    expect(await screen.findByText("ההרשמה בכניסה מהכרטיסייה")).toBeInTheDocument();
+    expect(screen.queryByText("120 ₪")).not.toBeInTheDocument();
+    expect(screen.getByText("שיעור ניסיון · 45 ₪")).toBeInTheDocument();
+  });
+
+  it("is marked in the week's list", async () => {
+    renderStudioApp("/", { routes: { [`GET ${api}/sessions`]: json({ items: [workshop] }) } });
+    const row = (await screen.findByText("סדנת נשימה ביום שישי")).closest("li")!;
+    expect(row).toHaveTextContent("אירוע · 120 ₪");
+  });
+});
+
 describe("text a studio typed is shown as text, never as markup", () => {
   const hostile = '<script>alert(1)</script> "x" & <b>bold</b>';
   const hostileStudio: Schemas["PublicStudio"] = { ...publicStudio, name: hostile, appName: hostile };
@@ -720,9 +758,10 @@ describe("text a studio typed is shown as text, never as markup", () => {
 });
 
 describe("a member's invite (SL-8, board ה)", () => {
-  const link = (inviterFirstName: string | null) => ({
-    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName },
+  const link = (inviterFirstName: string | null, reward: { productName: string } | null = null) => ({
+    [`GET ${api}/links/abc123xy`]: { target: { kind: "session", id: prenatal.id }, inviterFirstName, reward },
   });
+  const rewardLine = () => screen.queryByText(/^כשתגיעי לשיעור הראשון/);
   const url = `/c/${prenatal.id}?src=abc123xy`;
 
   it("names the friend who sent the link, above the class", async () => {
@@ -730,6 +769,29 @@ describe("a member's invite (SL-8, board ה)", () => {
     expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
     expect(screen.getByText("נגה", { selector: "bdi" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "יוגה בהריון" })).toBeInTheDocument();
+    expect(rewardLine()).not.toBeInTheDocument();
+  });
+
+  it("says under her name what she gets when the friend comes to her first class (R-1, M-17)", async () => {
+    renderStudioApp(url, { routes: link("נגה", { productName: "שיעור מתנה" }) });
+    expect(await screen.findByText("מזמינה אותך")).toBeInTheDocument();
+    const line = await screen.findByText(/^כשתגיעי לשיעור הראשון/);
+    expect(line).toHaveTextContent(/^כשתגיעי לשיעור הראשון, נגה מקבלת שיעור מתנה$/);
+    expect(within(line).getByText("שיעור מתנה", { selector: "bdi" })).toBeInTheDocument();
+  });
+
+  it("says the reward without naming her while her name is hidden", async () => {
+    renderStudioApp(url, { routes: link(null, { productName: "שיעור מתנה" }) });
+    const line = await screen.findByText(/^כשתגיעי לשיעור הראשון/);
+    expect(line).toHaveTextContent(/^כשתגיעי לשיעור הראשון, מי שהזמינה אותך מקבלת שיעור מתנה$/);
+    expect(screen.queryByText("מזמינה אותך")).not.toBeInTheDocument();
+  });
+
+  it("renders a hostile product name as text", async () => {
+    const hostile = "<img src=y onerror=alert(1)>";
+    renderStudioApp(url, { routes: link("נגה", { productName: hostile }) });
+    expect(await screen.findByText(hostile, { selector: "bdi" })).toBeInTheDocument();
+    expect(document.querySelector("img[src='y']")).toBeNull();
   });
 
   it("names her on the schedule too", async () => {

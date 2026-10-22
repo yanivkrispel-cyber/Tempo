@@ -60,6 +60,10 @@ try
     }
 
     app.UseMiddleware<ColdStartMiddleware>();
+    // Where WebApplication would put it anyway (ahead of everything), but inside the timeline, so the first request's
+    // endpoint and matcher building shows as `request.routing` (P-1).
+    app.UseRouting();
+    app.Use(ColdStartMiddleware.MarkAfterRouting);
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<NoStoreByDefaultMiddleware>();
     app.UseMediaLinks();
@@ -105,6 +109,7 @@ try
     app.MapPlatformEndpoints();
     app.MapEndpointModules();
     ColdStart.Current.Record("init.pipeline", hostBuilt, DateTimeOffset.UtcNow);
+    ColdStartWarmUp.Start(app);
 
     await app.RunAsync();
 }

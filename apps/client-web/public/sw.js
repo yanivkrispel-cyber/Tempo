@@ -19,6 +19,8 @@ const titles = {
   "reminder.pass_ending": "המנוי או הכרטיסייה עומדים לפוג",
   "reminder.entries_low": "נשארו מעט כניסות בכרטיסייה",
   "studio.announcement": "הודעה חדשה מהסטודיו",
+  "member.milestone": "הגעת לאבן דרך",
+  "member.referral_rewarded": "חברה שהזמנת הגיעה לשיעור הראשון",
 };
 
 const passBodies = {
@@ -26,6 +28,8 @@ const passBodies = {
   "reminder.pass_ending": "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לחידוש.",
   "reminder.entries_low": "כדי להמשיך להירשם לשיעורים, פנו לסטודיו לכרטיסייה חדשה.",
   "studio.announcement": "הפרטים בתיבת ההודעות באפליקציה.",
+  "member.milestone": "הכרטיס שלך מוכן באפליקציה.",
+  "member.referral_rewarded": "קיבלת כרטיסייה מהסטודיו.",
 };
 
 const text = (value) => (typeof value === "string" && value.trim() ? value.trim() : null);

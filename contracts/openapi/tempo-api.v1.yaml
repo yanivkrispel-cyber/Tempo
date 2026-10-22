@@ -6384,12 +6384,15 @@ components:
 
     RosterEntry:
       type: object
-      required: [bookingId, person, status, bookedAt]
+      required: [bookingId, person, status, bookedAt, toPayAtStudio]
       properties:
         bookingId: { type: string, format: uuid }
         person: { $ref: "#/components/schemas/PersonRef" }
         status: { $ref: "#/components/schemas/BookingStatus" }
         waitlistPosition: { type: [integer, "null"] }
+        toPayAtStudio:
+          type: boolean
+          description: "A place at an event booked without a pass (docs/37 section 8.4), paid at the studio; the roster marks it."
         passName: { type: [string, "null"], examples: [כרטיסיית 10] }
         entriesLeft:
           type: [integer, "null"]
@@ -6658,8 +6661,8 @@ components:
       properties:
         group:
           type: string
-          enum: [bookings, reminders, studio]
-          description: "`bookings` are service notices about the member's own bookings (docs/30 section 5)."
+          enum: [bookings, reminders, studio, celebrations]
+          description: "`bookings` are service notices about the member's own bookings (docs/30 section 5). `celebrations` (docs/37 stage B): milestones and bring-a-friend rewards, on by default."
         channels: { $ref: "#/components/schemas/NotificationChannels" }
 
     ReminderSwitches:

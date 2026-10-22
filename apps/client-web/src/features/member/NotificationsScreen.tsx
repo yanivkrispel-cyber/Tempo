@@ -29,6 +29,10 @@ const groupText: Record<NotificationGroup, { label: string; hint: string }> = {
   bookings: { label: "ההרשמות שלי", hint: "נרשמת, עברת מרשימת ההמתנה, שיעור בוטל או השתנה" },
   reminders: { label: "תזכורות", hint: "לפני שיעור, ולפני שהכרטיסייה או המנוי נגמרים" },
   studio: { label: "הודעות מהסטודיו", hint: "הודעות לרשומים לשיעור ועדכונים מהסטודיו" },
+  celebrations: {
+    label: "חגיגות: אבני דרך וחברות שהבאת",
+    hint: "השיעור ה-10, ה-25, ה-50 ואילך, וכשחברה שהזמנת מגיעה לשיעור הראשון שלה",
+  },
 };
 
 const reminderText: Record<keyof ReminderSwitches, string> = {
@@ -47,7 +51,12 @@ interface Draft {
 }
 
 function draftOf(preferences: NotificationPreferences): Draft {
-  const push = { bookings: true, reminders: true, studio: true };
+  const push: Record<NotificationGroup, boolean> = {
+    bookings: true,
+    reminders: true,
+    studio: true,
+    celebrations: true,
+  };
   for (const group of preferences.groups) push[group.group] = group.channels.push;
   return { push, reminders: preferences.reminders, quietHours: preferences.quietHours ?? null };
 }
