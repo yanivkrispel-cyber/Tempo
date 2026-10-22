@@ -21,9 +21,35 @@ import { useCheckin, useMoveSpot, useSessionSpots, type Checkin, type SessionSpo
 import { useStudio } from "../console/studio";
 import styles from "./live.module.css";
 import type { Session } from "./queries";
+import { useRoster } from "./RosterSection";
 
 const minute = 60_000;
 const day = 24 * 60 * minute;
+
+/** OwnerLive's waiting card: the first person in line and the spot that is free for her, if any. */
+function WaitingNext({ session, free }: { session: Session; free: SessionSpot[] }) {
+  const roster = useRoster(session.id);
+  const [first, ...rest] = roster.data?.waitlisted ?? [];
+  if (!first) return null;
+  const name = first.person.displayName;
+  const hint = [
+    free[0] ? `מכשיר ${free[0].label} פנוי` : "אין מכשיר פנוי כרגע",
+    rest.length > 0 && `עוד ${rest.length} בהמתנה`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <Card as="section" aria-label="רשימת המתנה" className={styles.waiting}>
+      <Avatar name={name} size="md" />
+      <span className="tp-stack" style={{ gap: 2, minWidth: 0 }}>
+        <strong>
+          <bdi>{name}</bdi> ממתין.ה
+        </strong>
+        <span className="tp-caption tp-num">{hint}</span>
+      </span>
+    </Card>
+  );
+}
 
 const healthText: Record<string, string> = {
   missing: "אין הצהרת בריאות",
@@ -153,6 +179,9 @@ export function LiveRoom({ session, layout = "card" }: { session: Session; layou
           </section>
           <StaffRoomList spots={held} selectedId={selected?.id ?? null} onChoose={choose} />
         </div>
+        {scheduled && now <= ends && (
+          <WaitingNext session={session} free={map.spots.filter((spot) => spot.state === "free")} />
+        )}
         {movingBanner}
         {spotActions}
         {markable && (

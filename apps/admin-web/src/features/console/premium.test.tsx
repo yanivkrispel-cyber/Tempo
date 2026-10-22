@@ -365,6 +365,36 @@ describe("OwnerLive, the class on a screen of its own (LV-1, #378 item 2)", () =
     );
   });
 
+  it("shows the first person waiting and the free spot", async () => {
+    const waiting = (n: number, name: string) => ({
+      bookingId: id(70 + n),
+      person: { id: id(80 + n), displayName: name },
+      status: "waitlisted",
+      waitlistPosition: n,
+      toPayAtStudio: false,
+      bookedAt: "2026-10-13T18:00:00Z",
+    });
+    renderAt(`/o/neshima/live/${id(10)}`, {
+      [`GET ${base}/sessions/${id(10)}/roster`]: {
+        session: session(),
+        booked: [],
+        waitlisted: [waiting(1, "עדי לוין"), waiting(2, "תמר גל")],
+      },
+    });
+    const line = await screen.findByRole("region", { name: "רשימת המתנה" });
+    expect(
+      await within(line).findByText((_, node) => node?.tagName === "STRONG" && node.textContent === "עדי לוין ממתין.ה"),
+    ).toBeInTheDocument();
+    expect(within(line).getByText("מכשיר 3 פנוי · עוד 1 בהמתנה")).toBeInTheDocument();
+    expect(screen.queryByText(/תמר גל/)).not.toBeInTheDocument();
+  });
+
+  it("shows no waiting card when nobody waits", async () => {
+    renderAt(`/o/neshima/live/${id(10)}`);
+    expect(await screen.findByRole("region", { name: "מפת החדר" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "רשימת המתנה" })).not.toBeInTheDocument();
+  });
+
   it("shows the room only to the desk and the class's instructor, as the session page does", async () => {
     renderAt(`/o/neshima/live/${id(10)}`, {}, ["members.view", "schedule.view"]);
     expect(await screen.findByRole("heading", { level: 1, name: "רפורמר בוקר" })).toBeInTheDocument();
