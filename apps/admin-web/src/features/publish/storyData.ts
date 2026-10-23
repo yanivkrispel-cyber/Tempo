@@ -4,8 +4,11 @@ import { clockTime } from "../../shared/utilities/times";
 
 type Session = Schemas["Session"];
 
-/** The stage A templates (docs/37 section 7.2) and the offer story (SO3); the id is what the link records. */
-export type TemplateId = "week" | "today" | "spot_opened" | "change" | "offer";
+/**
+ * The stage A templates (docs/37 section 7.2), the offer story (SO3) and the instructor's story (section 8.3); the id
+ * is what the link records.
+ */
+export type TemplateId = "week" | "today" | "spot_opened" | "change" | "offer" | "instructor";
 
 /** Where a link leads (SL-1): one class, the studio's page, one listed offer, or the prices page. */
 export type TargetKind = Schemas["MarketingTarget"]["kind"];
@@ -17,6 +20,7 @@ export const defaultTarget: Record<TemplateId, TargetKind> = {
   today: "session",
   spot_opened: "session",
   offer: "offer",
+  instructor: "schedule",
 };
 
 /** A listed newcomers' offer as the offer story and its text say it. */
@@ -35,6 +39,7 @@ export const templates: readonly { id: TemplateId; name: string; caption: string
   { id: "spot_opened", name: "התפנה מקום", caption: "שיעור אחד שיש בו מקום פנוי" },
   { id: "change", name: "שינוי במערכת", caption: "ביטולים בשבוע הקרוב" },
   { id: "offer", name: "הצעה למצטרפים", caption: "ההצעה הציבורית של הסטודיו" },
+  { id: "instructor", name: "המדריכה", caption: "השם, משפט מהביו והשיעורים הקרובים" },
 ];
 
 const weekdays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"] as const;
@@ -171,11 +176,31 @@ export function candidates(template: TemplateId, slots: readonly StorySlot[], no
     case "offer":
       // The offer story is about a product, not a class.
       return { offered: [] as StorySlot[], shown: [] as string[] };
+    case "instructor": {
+      // The caller passes only her classes of the next seven days.
+      const open = upcoming.filter((slot) => !slot.cancelled);
+      return { offered: open, shown: open.slice(0, maxSlots.instructor).map((slot) => slot.id) };
+    }
   }
 }
 
+/** The instructor story's quote: the bio's first sentence, cut to what the picture holds. */
+export function quoteFrom(bio: string | null | undefined): string | null {
+  const text = bio?.trim();
+  if (!text) return null;
+  const first = /^.+?[.!?](?=\s|$)/su.exec(text)?.[0] ?? text;
+  return first.slice(0, 140);
+}
+
 /** How many classes fit each design. */
-export const maxSlots: Record<TemplateId, number> = { week: 9, today: 5, spot_opened: 1, change: 4, offer: 0 };
+export const maxSlots: Record<TemplateId, number> = {
+  week: 9,
+  today: 5,
+  spot_opened: 1,
+  change: 4,
+  offer: 0,
+  instructor: 5,
+};
 
 /** The same story as plain Hebrew text for WhatsApp (docs/37 section 7.3), with the link last. */
 export function whatsappText(
@@ -185,6 +210,7 @@ export function whatsappText(
   link: string,
   today: IsoDate,
   offer: OfferInfo | null = null,
+  instructorName: string | null = null,
 ): string {
   const line = (slot: StorySlot, withDay: boolean) =>
     [
@@ -222,6 +248,13 @@ export function whatsappText(
         .filter((part) => part !== null)
         .join("\n");
     }
+    case "instructor":
+      return [
+        instructorName ? `השיעורים הקרובים של ${instructorName} ב${studioName}` : `השיעורים הקרובים ב${studioName}`,
+        ...slots.map((slot) => line(slot, true)),
+        "",
+        `להרשמה: ${link}`,
+      ].join("\n");
     case "change":
       return [
         `עדכון במערכת של ${studioName}`,
