@@ -97,6 +97,12 @@ export default defineConfig({
       testDir: "./specs/sync8",
     },
     {
+      // SYNC 9, the screens of boards #445 and #471 (day board #481, O1): OwnerLive, the "I'm in" card, the member
+      // home's week and pace, and today's legend, with fresh users like sync8.
+      name: "sync9",
+      testDir: "./specs/sync9",
+    },
+    {
       // D15 (#317): every screen of both apps on phones, tablets and computers. Each test sizes its own contexts
       // (support/screens.ts). E2E_SCREENSHOTS=1 also keeps a full-page picture of each for review.
       name: "screens",
