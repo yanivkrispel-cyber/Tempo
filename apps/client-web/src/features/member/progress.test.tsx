@@ -46,6 +46,23 @@ describe("progress on the member home (docs/31 section 12)", () => {
     expect(stats).not.toHaveTextContent("שלושה שיעורים");
   });
 
+  it("names the months under the weeks' dots, only where a month has room for its name (Main)", async () => {
+    const starts = ["2026-07-27", "2026-08-03", "2026-08-10", "2026-08-17", "2026-08-24", "2026-08-31"];
+    const more = ["2026-09-07", "2026-09-14", "2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12"];
+    const weeks = [...starts, ...more].map((weekStart) => ({ weekStart, attended: 2, booked: 0 }));
+    renderAt("/", { progress: { weeks } });
+    const stats = await screen.findByRole("region", { name: "ההתקדמות שלך" });
+    const months = await within(stats).findByTestId("pace-months");
+    // July has one week, too narrow for its name; August from 3.8 to 31.8 has five weeks.
+    expect([...months.children].map((label) => [label.textContent, (label as HTMLElement).style.gridColumn])).toEqual([
+      ["", "span 1"],
+      ["אוגוסט", "span 5"],
+      ["ספטמבר", "span 4"],
+      ["אוקטובר", "span 2"],
+    ]);
+    expect(months).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("hides the ring while no goal is set, shows the visits and points to setting one (G-1)", async () => {
     renderAt("/", { progress: { visitsThisMonth: 4, monthlyGoal: null, streakWeeks: 0 } });
     const stats = await screen.findByRole("region", { name: "ההתקדמות שלך" });

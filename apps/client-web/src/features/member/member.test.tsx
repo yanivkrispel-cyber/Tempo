@@ -88,8 +88,11 @@ describe("member home", () => {
     expect(within(week).getAllByRole("button")).toHaveLength(7);
     expect(within(week).getByRole("button", { name: /13 באוקטובר, היום/ })).toHaveAttribute("aria-pressed", "true");
 
-    const classes = screen.getByRole("region", { name: "השיעורים של היום" });
+    const thisWeek = screen.getByRole("region", { name: "השבוע שלך" });
+    expect(within(thisWeek).getByRole("link", { name: "לכל המערכת" })).toHaveAttribute("href", "/book");
+    const classes = within(thisWeek).getByRole("region", { name: "השיעורים של היום" });
     await waitFor(() => expect(within(classes).getAllByRole("listitem")).toHaveLength(4));
+    expect(classes).toHaveTextContent("4 שיעורים");
     expect(within(classes).getByRole("link", { name: /פילאטיס מכשירים/ })).toHaveTextContent("נרשמת");
     expect(within(classes).getByRole("link", { name: /יין יוגה ונשימה/ })).toHaveTextContent("מלא");
 
