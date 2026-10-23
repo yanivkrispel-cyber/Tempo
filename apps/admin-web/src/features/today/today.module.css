@@ -63,6 +63,13 @@
   font-weight: 600;
   cursor: pointer;
 }
+/* A finger-sized target on a touch screen; the negative margin keeps the sentence's line height. */
+@media (pointer: coarse) {
+  .summaryLink {
+    padding-block: 9px;
+    margin-block: -9px;
+  }
+}
 .summaryLink:hover {
   text-decoration: underline;
 }
