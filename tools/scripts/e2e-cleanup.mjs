@@ -11,11 +11,13 @@
  *      call. A login that still owns a studio gets 409 and is reported; a Cognito user without an account (never
  *      called POST /session) is deleted with admin-delete-user.
  *   3. account rows of e2e logins whose Cognito user is already gone are listed only: DELETE /me needs a sign-in.
+ *      They are matched by Cognito subject, not address (lib/e2e-orphans.mjs, #312); the counts per run and any
+ *      row still holding a live place in a studio outside e2e are printed, each address only with --verbose.
  *   4. the Neon project's usage before and after.
  *
  * Usage (from a developer's machine; `--profile tempo` needs Cognito admin user calls, ssm:GetParameter and
  * cloudformation:DescribeStacks):
- *   node tools/scripts/e2e-cleanup.mjs [--profile tempo]                       # list only
+ *   node tools/scripts/e2e-cleanup.mjs [--profile tempo] [--verbose]           # list only
  *   TEMPO_OPERATOR_TOKEN=… node tools/scripts/e2e-cleanup.mjs --apply           # remove
  *
  * A Cognito user created in the last hour belongs to a run that may still be going, so it is left alone unless
@@ -31,6 +33,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { isE2eEmail, isE2eStudio } from "./lib/e2e-names.mjs";
+import { findOrphans, summarizeOrphans } from "./lib/e2e-orphans.mjs";
 
 const REGION = "eu-central-1";
 const API = "https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com";
@@ -42,6 +45,7 @@ const DATABASE = "neondb";
 const argv = process.argv.slice(2);
 const apply = argv.includes("--apply");
 const all = argv.includes("--all");
+const verbose = argv.includes("--verbose");
 const RECENT_MS = 60 * 60 * 1000;
 const profileIndex = argv.indexOf("--profile");
 const profile = profileIndex >= 0 ? argv[profileIndex + 1] : "tempo";
@@ -129,7 +133,8 @@ function e2eLogins() {
     });
     for (const user of page.Users ?? []) {
       const email = user.Attributes?.find((a) => a.Name === "email")?.Value;
-      if (isE2eEmail(email)) users.push({ username: user.Username, email, recent: new Date(user.UserCreateDate).getTime() > cutoff });
+      const sub = user.Attributes?.find((a) => a.Name === "sub")?.Value;
+      if (isE2eEmail(email)) users.push({ username: user.Username, sub, email, recent: new Date(user.UserCreateDate).getTime() > cutoff });
     }
     token = page.PaginationToken;
   } while (token);
@@ -145,21 +150,43 @@ const studios = (await sql("SELECT id, slug, display_name, status FROM organizat
 const found = e2eLogins();
 const logins = all ? found : found.filter((l) => !l.recent);
 const recent = found.length - logins.length;
-// Account rows whose Cognito user an earlier run already deleted (P2 F6). DELETE /me needs a sign-in, so these are
-// only listed; they own nothing once their studios are removed.
-const cognitoEmails = new Set(found.map((l) => l.email.toLowerCase()));
-const orphans = (await sql("SELECT email FROM identity.user_accounts WHERE email LIKE 'e2e-%' ORDER BY created_at"))
-  .map((row) => row.email)
-  .filter((email) => isE2eEmail(email) && !cognitoEmails.has(email.toLowerCase()));
+// Account rows whose Cognito user an earlier run already deleted (P2 F6, #312). DELETE /me needs a sign-in, so these
+// are only listed. Every e2e Cognito user counts as live here, the recent ones too.
+const liveSubjects = new Set(found.map((l) => l.sub).filter(Boolean));
+const accountRows = await sql(`
+  SELECT a.id, a.email,
+         coalesce(array_agg(x.subject) FILTER (WHERE x.subject IS NOT NULL), '{}') AS subjects,
+         (SELECT count(*) FROM organizations.memberships m
+           WHERE m.user_account_id = a.id AND m.status <> 'removed')::int AS live_memberships,
+         (SELECT count(*) FROM organizations.memberships m JOIN organizations.organizations o ON o.id = m.organization_id
+           WHERE m.user_account_id = a.id AND m.status <> 'removed' AND o.slug NOT LIKE 'e2e-%')::int AS non_e2e_memberships
+    FROM identity.user_accounts a LEFT JOIN identity.external_identities x ON x.user_account_id = a.id
+   WHERE a.email LIKE 'e2e-%'
+   GROUP BY a.id
+   ORDER BY a.created_at`);
+const orphans = findOrphans(
+  accountRows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    subjects: r.subjects,
+    liveMemberships: r.live_memberships,
+    nonE2eMemberships: r.non_e2e_memberships,
+  })),
+  liveSubjects,
+);
+const orphanSummary = summarizeOrphans(orphans);
 
 console.log(`\n${studios.length} e2e studio(s):`);
 for (const s of studios) console.log(`  ${s.slug}  ${s.status}  ${s.id}`);
 console.log(`\n${logins.length} e2e login(s):`);
 for (const l of logins) console.log(`  ${l.email}`);
 if (recent > 0) console.log(`  (${recent} more created in the last hour, maybe by a run still going: left alone without --all)`);
-console.log(`
-${orphans.length} e2e account row(s) with no Cognito user (listed only):`);
-for (const email of orphans) console.log(`  ${email}`);
+console.log(`\n${orphanSummary.total} e2e account row(s) with no Cognito user (listed only, #312):`);
+for (const [run, count] of orphanSummary.byRun) console.log(`  ${run}: ${count}`);
+console.log(`  ${orphanSummary.withLiveMemberships} still hold a live membership`);
+console.log(`  ${orphanSummary.outsideE2e.length} hold a live place in a studio that isn't an e2e studio`);
+for (const orphan of orphanSummary.outsideE2e) console.log(`    ${orphan.email}  ${orphan.id}`);
+if (verbose) for (const orphan of orphans) console.log(`  ${orphan.email}  ${orphan.id}`);
 
 let failures = 0;
 if (!apply) {
