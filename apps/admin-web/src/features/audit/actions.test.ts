@@ -38,6 +38,9 @@ describe("audit action labels", () => {
       "public_page.updated",
       "template.changed",
       "push_subscription.created",
+      "health.declaration.signed",
+      "marketing.link.created",
+      "person.note.added",
     ];
     for (const action of actions) expect(actionLabel(action), action).not.toBe(action);
     expect(actionLabel("booking.checked_in")).toBe("כניסה לשיעור");

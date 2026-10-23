@@ -86,6 +86,13 @@ const actionLabels: Record<string, string> = {
   "push_subscription.created": "הפעלת התראות בטלפון",
   "push_subscription.deleted": "כיבוי התראות בטלפון",
   "billing_account.updated": "עדכון פרטי החיוב",
+  // Written through a variable, so a grep for literals missed them; found by [K] with SELECT DISTINCT on dev.
+  "health.declaration.signed": "חתימה על הצהרת בריאות",
+  "health.declaration.viewed": "צפייה בהצהרת בריאות",
+  "health.medical_approval.recorded": "רישום אישור רפואי",
+  "marketing.link.created": "יצירת קישור שיתוף",
+  "person.note.added": "הוספת הערה לאדם",
+  "person.note.deleted": "מחיקת הערה",
 };
 
 export function actionLabel(action: string): string {
