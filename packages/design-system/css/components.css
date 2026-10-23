@@ -1270,6 +1270,10 @@ button.tp-setting {
   z-index: 1;
   border-bottom: 1px solid var(--line);
 }
+/* A short value (a duration, a scope, a source, a price) stays on one line; the name column takes the wrap. */
+.tp-table .tp-cell-nowrap {
+  white-space: nowrap;
+}
 .tp-table tbody td {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
