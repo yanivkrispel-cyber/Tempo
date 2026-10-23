@@ -1270,6 +1270,10 @@ button.tp-setting {
   z-index: 1;
   border-bottom: 1px solid var(--line);
 }
+/* A short value (a duration, a scope, a source, a price) stays on one line; the name column takes the wrap. */
+.tp-table .tp-cell-nowrap {
+  white-space: nowrap;
+}
 .tp-table tbody td {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
@@ -2495,6 +2499,8 @@ html:has(.tp-tabbar--fixed) {
   display: block;
   width: 100%;
   height: auto;
+  /* On a wide card the drawing stops growing, so its 11px labels stay near 16px instead of 35px. */
+  max-height: 240px;
   overflow: visible;
 }
 .tp-bars__grid {

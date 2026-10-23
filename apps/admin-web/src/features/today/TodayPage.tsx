@@ -747,10 +747,26 @@ function ActivityFeed({ timeZone, openedAt }: { timeZone: string; openedAt: numb
                 </Link>{" "}
                 {activityVerb[item.kind]}
                 {item.className && <bdi>{item.className}</bdi>}
-                {item.classStartsAt && <span className="tp-num"> {clockTime(item.classStartsAt, timeZone)}</span>}
-                {item.spotLabel && <> · מכשיר {item.spotLabel}</>}
+                {/* A no-break space keeps the time and the price with the word before them on a narrow screen. */}
+                {item.classStartsAt && (
+                  <span className="tp-num">
+                    {" "}
+                    {clockTime(item.classStartsAt, timeZone)}
+                  </span>
+                )}
+                {item.spotLabel && (
+                  <>
+                    {" · מכשיר "}
+                    {item.spotLabel}
+                  </>
+                )}
                 {item.productName && <bdi>{item.productName}</bdi>}
-                {item.priceAgorot != null && <> · {priceLabel(item.priceAgorot)}</>}
+                {item.priceAgorot != null && (
+                  <>
+                    {" · "}
+                    {item.priceAgorot === 0 ? "בחינם" : priceLabel(item.priceAgorot)}
+                  </>
+                )}
                 <time dateTime={item.at}>{ago(item.at, openedAt)}</time>
               </span>
             </li>

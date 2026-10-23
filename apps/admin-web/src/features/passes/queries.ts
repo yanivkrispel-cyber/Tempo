@@ -65,9 +65,12 @@ export function categoryScope(category: string | null | undefined): string {
 }
 
 const shekels = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 2 });
+const wholeShekels = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
 
+/** "600 ₪" or "49.90 ₪": agorot only when there are some, as the member app shows prices (publicText.priceText). */
 export function priceLabel(agorot: number | null | undefined): string {
-  return agorot == null ? "—" : shekels.format(agorot / 100);
+  if (agorot == null) return "—";
+  return (agorot % 100 === 0 ? wholeShekels : shekels).format(agorot / 100);
 }
 
 /** Shekels as typed ("450", "99.90") to agorot, or null. */

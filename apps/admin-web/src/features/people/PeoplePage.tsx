@@ -169,7 +169,7 @@ function PersonRow({ person }: { person: Person }) {
       <td data-label="מייל" data-empty={!person.primaryEmail || undefined}>
         {person.primaryEmail ? <bdi className="tp-ltr">{person.primaryEmail}</bdi> : "—"}
       </td>
-      <td data-label="מקור">{sourceLabel[person.source]}</td>
+      <td data-label="מקור" className="tp-cell-nowrap">{sourceLabel[person.source]}</td>
       <td data-label="תגיות" data-empty={!person.tags?.length || undefined}>
         <TagChips tags={person.tags} />
       </td>

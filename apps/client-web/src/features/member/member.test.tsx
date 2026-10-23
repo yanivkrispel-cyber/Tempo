@@ -796,6 +796,50 @@ describe("promotion and the inbox", () => {
     expect(within(item!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
   });
 
+  it("puts a day heading over each day's notices, and the card keeps only the time (board #481 sweep)", async () => {
+    renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a21",
+          kind: "studio.announcement",
+          data: {},
+          title: "א",
+          text: "א",
+          createdAt: "2026-10-13T08:40:00Z",
+          readAt: null,
+        },
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a22",
+          kind: "studio.announcement",
+          data: {},
+          title: "ב",
+          text: "ב",
+          createdAt: "2026-10-13T07:00:00Z",
+          readAt: null,
+        },
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a23",
+          kind: "studio.announcement",
+          data: {},
+          title: "ג",
+          text: "ג",
+          createdAt: "2026-10-12T07:00:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    expect(
+      within(list)
+        .getAllByRole("heading", { level: 2 })
+        .map((heading) => heading.textContent),
+    ).toEqual(["היום", "אתמול"]);
+    const [first, second] = within(list).getAllByRole("listitem");
+    expect(within(first!).getByRole("heading")).toHaveTextContent("היום");
+    expect(within(second!).queryByRole("heading")).not.toBeInTheDocument();
+    expect(first).toHaveTextContent("11:40");
+  });
+
   it("lists the notifications it knows, and opening one marks it read and shows the class", async () => {
     const { api, studio, router } = renderAt("/inbox", { inbox: promoted() });
     const list = await screen.findByRole("list", { name: "התראות" });
