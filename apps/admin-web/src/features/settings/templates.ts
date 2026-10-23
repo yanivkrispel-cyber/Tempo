@@ -23,6 +23,7 @@ const kindLabels: Record<string, string> = {
   "reminder.class_soon": "תזכורת זמן קצר לפני שיעור",
   "reminder.pass_ending": "המנוי או הכרטיסייה עומדים לפוג",
   "reminder.entries_low": "נשארו מעט כניסות בכרטיסייה",
+  "reminder.event_week": "תזכורת שבוע לפני אירוע",
   "member.milestone": "אבן דרך במספר השיעורים",
   "member.referral_rewarded": "פרס על חבר.ה שהגיע.ה בפעם הראשונה",
 };
