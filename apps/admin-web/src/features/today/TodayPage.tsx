@@ -756,7 +756,8 @@ function ActivityFeed({ timeZone, openedAt }: { timeZone: string; openedAt: numb
                 )}
                 {item.spotLabel && (
                   <>
-                    {" · "}מכשיר {item.spotLabel}
+                    {" · מכשיר "}
+                    {item.spotLabel}
                   </>
                 )}
                 {item.productName && <bdi>{item.productName}</bdi>}
