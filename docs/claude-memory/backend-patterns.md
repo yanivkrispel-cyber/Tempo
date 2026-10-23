@@ -110,6 +110,14 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   `cold start <path> name=ms …` and X-Ray subsegments. `ColdStart.Current.Measure("name")` adds a phase; it costs
   nothing after the first request. Measure with Logs Insights on `cold start` and a burst of parallel signed-in
   requests right after a deploy.
+- **Keep ReadyToRun; the package isn't the lever (board #471 P-4, 2026-10-22).** Turning R2R off (and the PDBs)
+  shrinks the zip from 18.7 to 11.6 MB but makes a cold `GET /me` about 1.0 s slower (3.35 s to 4.35 s, two bursts of
+  12): the JIT is back in `init.endpoints` and the first request. The PDBs alone are 0.3 MB. Trimming needs a
+  self-contained publish, so it doesn't apply on the managed `dotnet10` runtime. `libSkiaSharp.so` (4.6 MB zipped) is
+  needed by icons and pictures. The 1.3 s before our code is the sandbox, which only paid options move (N-4).
+- Measuring a package without a deploy: `aws lambda update-function-code` on `tempo-dev-api` with the variant's zip,
+  the burst, then the deployed zip back (download it with `get-function` first and compare `CodeSha256`). Announce
+  PROBE START and END on the board; no merge in between.
 
 ## Tests
 
