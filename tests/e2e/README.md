@@ -91,6 +91,17 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
    - axe runs on each new screen. The staff member deletes their own login (A-1). The owner's Cognito user is deleted
      at the end, and the studio stays for the operator's cleanup (A-4).
 
+8. **SYNC 9, the live class, the "I'm in" card and the member home** (`specs/sync9/`, project `sync9`, board #481):
+   run it alone (`pnpm e2e --project=sync9`). Like SYNC 8 it creates a fresh owner and two members
+   (`e2e-sync9-…@example.com`) and an `e2e-sync9` studio with three reformers and a one-place class in 15 minutes.
+   - Maya books reformer 1, and the booked sheet's "שיתוף לסטורי" saves the "I'm in" card (C-1).
+   - Noa waits; the owner closes waiting an hour before the class, so Maya's late cancel frees reformer 1 and moves
+     nobody. On OwnerLive (LV-1) the owner seats Noa with "שיבוץ למכשיר 1", her door code checks her in, and the map
+     and the list show her arrival, at 1280px and 360px.
+   - Noa's home shows the class under the week and the months under the weeks' dots; the owner's today shows the
+     occupancy legend and the month's sales in whole shekels (LV-2).
+   - The three Cognito users are deleted at the end; the studio stays for the operator's cleanup (A-4).
+
 **axe on every screen.** `support/axe.ts` audits each screen against WCAG 2.2 A and AA. A serious or critical
 violation fails the test; minor and moderate ones are attached to the report as annotations. The audit runs with the
 pointer moved off the page, so it checks the resting screen and not a hover state.
