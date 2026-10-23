@@ -33,7 +33,7 @@ const minute = 60_000;
 const hour = 60 * minute;
 const day = 24 * hour;
 
-function useRoster(sessionId: string) {
+export function useRoster(sessionId: string) {
   const api = useApi();
   const { organizationId } = useStudio();
   return useQuery({

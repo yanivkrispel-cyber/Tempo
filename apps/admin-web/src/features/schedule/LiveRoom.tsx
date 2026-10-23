@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap } from "@tempo/api-client";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useApi } from "../../api/ApiProvider";
-import { errorMessage } from "../../api/errors";
+import { errorMessage, hasCode } from "../../api/errors";
 import {
   Avatar,
   Banner,
@@ -17,13 +17,102 @@ import {
   initials,
   useToast,
 } from "../../shared/design-system";
-import { useCheckin, useMoveSpot, useSessionSpots, type Checkin, type SessionSpot } from "../console/experience";
+import {
+  useCheckin,
+  useMoveSpot,
+  usePromoteBooking,
+  useSessionSpots,
+  type Checkin,
+  type SessionSpot,
+} from "../console/experience";
 import { useStudio } from "../console/studio";
 import styles from "./live.module.css";
 import type { Session } from "./queries";
+import { useRoster } from "./RosterSection";
 
 const minute = 60_000;
 const day = 24 * 60 * minute;
+
+/** OwnerLive's waiting card: the first person in line, the spot that is free for her, and the desk's "שיבוץ". */
+function WaitingNext({ session, free }: { session: Session; free: SessionSpot[] }) {
+  const studio = useStudio();
+  const roster = useRoster(session.id);
+  const promote = usePromoteBooking();
+  const [done, setDone] = useState<{ name: string; spot: string | null } | null>(null);
+  const [first, ...rest] = roster.data?.waitlisted ?? [];
+  const spot = free[0];
+
+  const seat = () => {
+    if (!first) return;
+    const name = first.person.displayName;
+    promote.mutate(
+      { bookingId: first.bookingId, spotId: spot?.id ?? null },
+      { onSuccess: () => setDone({ name, spot: spot?.label ?? null }) },
+    );
+  };
+  const failure =
+    promote.isError &&
+    first &&
+    (hasCode(promote.error, "booking.no_valid_pass") ? (
+      <>
+        ל<bdi>{first.person.displayName}</bdi> אין כרטיסייה או מנוי בתוקף לשיעור, ולכן נשאר.ה בהמתנה.
+      </>
+    ) : hasCode(promote.error, "session.full") ? (
+      "השיעור מלא: אין מקום פנוי לשבץ."
+    ) : hasCode(promote.error, "booking.spot_unavailable") ? (
+      "המכשיר נתפס רגע לפני. המפה התעדכנה, נסו שוב."
+    ) : (
+      errorMessage(promote.error, "לא הצלחנו לשבץ. נסו שוב.")
+    ));
+
+  return (
+    <>
+      {done && (
+        <Card as="section" aria-live="polite" className={styles.waiting}>
+          <span className={styles.seated} aria-hidden="true">
+            <Icon name="check" />
+          </span>
+          <span className="tp-stack" style={{ gap: 2, minWidth: 0 }}>
+            <strong>
+              <bdi>{done.name}</bdi> {done.spot ? `שובצ.ה למכשיר ${done.spot}` : "שובצ.ה לשיעור"}
+            </strong>
+            <span className="tp-caption">קיבל.ה הודעה בטלפון, והכניסה ירדה מהכרטיסייה.</span>
+          </span>
+        </Card>
+      )}
+      {first && (
+        <Card as="section" aria-label="רשימת המתנה" className="tp-stack">
+          <div className={styles.waiting}>
+            <Avatar name={first.person.displayName} size="md" />
+            <span className="tp-stack" style={{ gap: 2, minWidth: 0, flex: 1 }}>
+              <strong>
+                <bdi>{first.person.displayName}</bdi> ממתין.ה
+              </strong>
+              <span className="tp-caption tp-num">
+                {[
+                  spot ? `מכשיר ${spot.label} פנוי` : "אין מכשיר פנוי כרגע",
+                  rest.length > 0 && `עוד ${rest.length} בהמתנה`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </span>
+            {studio.can("bookings.manage") && spot && (
+              <Button size="sm" onClick={seat} loading={promote.isPending}>
+                שיבוץ למכשיר {spot.label}
+              </Button>
+            )}
+          </div>
+          {failure && (
+            <Banner tone="danger" icon="info">
+              {failure}
+            </Banner>
+          )}
+        </Card>
+      )}
+    </>
+  );
+}
 
 const healthText: Record<string, string> = {
   missing: "אין הצהרת בריאות",
@@ -153,6 +242,9 @@ export function LiveRoom({ session, layout = "card" }: { session: Session; layou
           </section>
           <StaffRoomList spots={held} selectedId={selected?.id ?? null} onChoose={choose} />
         </div>
+        {scheduled && now <= ends && (
+          <WaitingNext session={session} free={map.spots.filter((spot) => spot.state === "free")} />
+        )}
         {movingBanner}
         {spotActions}
         {markable && (

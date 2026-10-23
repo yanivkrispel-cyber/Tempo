@@ -136,6 +136,23 @@ export function useMoveSpot(sessionId: string) {
   });
 }
 
+/** The desk moves a waiting person into a free place during the class (OwnerLive, LV-1): the roster and the map follow. */
+export function usePromoteBooking() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { organizationId } = useStudio();
+  return useMutation({
+    mutationFn: ({ bookingId, spotId }: { bookingId: string; spotId: string | null }) =>
+      unwrap(
+        api.POST("/api/v1/organizations/{organizationId}/bookings/{bookingId}/promote", {
+          params: { path: { organizationId, bookingId } },
+          body: { spotId },
+        }),
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["studio", organizationId, "schedule"] }),
+  });
+}
+
 /** A scanned check-in code; the server finds the booking of the class whose check-in is open. */
 export function useCheckin() {
   const api = useApi();
