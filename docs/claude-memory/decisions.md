@@ -135,3 +135,8 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   ones are listed, not fixed. Q-3 `e2e-cleanup.mjs` lists orphaned e2e account rows by Cognito subject, dry run by
   default; deleting them needs an operator token and Kris's word (#312). Q-4 nothing changes in the lockfile or the
   pnpm trust policy until Kris picks an option on #313.
+- **Kris's answers on board #481 (2026-10-23 evening, "go on with the recommendations"):** P-2 no: public read
+  throttling stays at reads 10 rps burst 12 and join 2/4 (the limit is per route for every visitor; per-IP limits need
+  WAF, outside N-4). #313 option 1: `trustPolicy: no-downgrade`, with `semver@6.3.1` and `undici-types@6.20.0`
+  excluded by exact version (#493); remove each when nothing pulls it in. #312 option 3: the orphaned e2e account rows
+  stay on dev, to be revisited before production. Sweep row 13: the brand book's sunken empty tile stays.

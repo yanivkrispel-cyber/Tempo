@@ -191,7 +191,8 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | Board #471: MO7's highlight covers and instructor story; the link preview always has a picture (C-2); the member's "I'm in" card with the studio's Instagram tag (C-1); the console's today legend and whole shekels (LV-2) | #467, #468, #472, #473, #478, #475 |
 | Board #471 OwnerLive (LV-1, #378 item 2): `/o/<slug>/live/<sessionId>` with the clock, arrived of booked, map or list, the door scan; the person waiting and "שיבוץ למכשיר N" on `POST /bookings/{id}/promote` (`bookings.manage`, past the cutoff until the class ends); `instagramHandle` on the public brand | #474, #477, #476 |
 | Board #481: the member home's week and pace follow Main (#378 items 3 and 4, #378 closed); SYNC 9 e2e with axe on OwnerLive, the "I'm in" card, the member home and today's legend; `e2e-cleanup.mjs` lists orphaned account rows by Cognito subject (#312) | #480, #483, #482 |
-| Board #481 premium sweep (O3, Q-1, 14 gaps): today's waiting link at 44 px on touch, whole prices without agorot, a Hebrew name for every audit action on dev and the event-week template, short table values on one line, reports' empty weeks as a sentence, the today feed's line breaks, the member inbox by day; the four big gaps are issues #485 to #488 | #484, #489, #490 |
+| Board #481 premium sweep (O3, Q-1, 14 gaps): today's waiting link at 44 px on touch, whole prices without agorot, a Hebrew name for every audit action on dev and the event-week template, short table values on one line, reports' empty weeks as a sentence, the today feed's line breaks, the member inbox by day; the four big gaps are issues #485 to #488 | #484, #489, #490, #491 |
+| Board #481 supply chain: pnpm `trustPolicy: no-downgrade` with two exact exclusions (#313; the last row of #115) | #493 |
 
 - **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
 - **The cold start went from about 8.4 s to 3.5 s** (from Israel, 11 parallel cold `GET /me` on dev, #445 tables 1
@@ -205,7 +206,7 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 - P-4 (board #471): the package is not the lever. R2R off is 38% smaller and about 1.0 s slower; trimming needs a
   self-contained publish (backend-patterns.md). Nothing merged.
 - Open from #481: the dev clean-up (K6 and O5) after Kris's Instagram and WhatsApp test; #445 and #471 close then.
-  Sweep row 13 (the empty-state tile's material on the member's bookings) waits for a design answer from Kris or Ofir.
+  Kris answered P-2, #313 and #312 on 2026-10-23 (decisions.md); sweep row 13 keeps the brand book's tile.
 - Pages Functions on `/s/*` count against Cloudflare's free 100,000 requests a day (the link previews, SL-9): a
   tripwire row in ADR-0021.
 - R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור
@@ -232,11 +233,10 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `docs/29` C-9 to C-13 | Defaults apply unless Kris objects |
 | #97 dev self sign-up and a Neon usage alarm | It gated the full load test (B5) |
 | #96, #123, #122 | Kris decides; nobody else touches them |
-| #313 (the last row of #115): pnpm `trustPolicy` | The frozen install fails on two old-line releases, lint-only `semver@6.3.1` and types-only `undici-types@6.20.0`; [K]'s note on #313 (2026-10-23) recommends `no-downgrade` with both excluded by exact version |
 | Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot; P-2 now also covers the health form's wording and its retention (docs/31) |
 | A production copy of the health data key | docs/31 section 15 |
 | Run `tools/scripts/e2e-cleanup.mjs --apply` with an operator token | Removes the e2e studios on dev (24 on 2026-10-23; P2 F4) |
-| Orphaned e2e account rows on dev (#312) | 136 on 2026-10-23, two or three more per e2e run; listed by Cognito subject (#482). Kris picks: an operator route, a one-off SQL, or leave them ([K]'s recommendation; they hold no login) |
+| Before production: the orphaned e2e account rows on dev | Kris, 2026-10-23 (#312, option 3): they stay on dev for now (about 150, two or three more per e2e run, no login); `e2e-cleanup.mjs` lists them (#482) |
 | The two **(reading)** report rules in docs/32 section 6 | A renewed pass is not "ending"; nobody is "at risk" in their first 30 days |
 | `TEMPO_STUDIO_REMOVAL_MIN_DAYS` and Neon's point-in-time history | 30 days by default outside dev; a removed studio stays in Neon's history until it ages out |
 | Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
@@ -244,7 +244,6 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `docs/35` W-1 to W-12 (white label) | Defaults apply unless Kris changes them; then WL1 to WL6 |
 | `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
 | Instagram story and WhatsApp preview test on a real phone (#404, #445) | Then O5 and K6 clean the O4 seed and [K]'s Hebrew offer in tempo-smoke-studio |
-| P-2: tighter read throttling on dev (rate 5, burst 6) | Rates stay at reads 10/12 and join 2/4 until Kris answers. [K]'s note on #481 (2026-10-23): the limit is per route for every visitor, the busiest second since 21.10 had 4 reads, and every 429 came from the S-A tests, so it recommends no |
 | #304 email domain and sender | Unlocks the email code and the passwordless sheet (docs/36) |
 
 ## Who works on what
