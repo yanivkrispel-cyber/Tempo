@@ -117,8 +117,8 @@ export function PassProductsPage() {
                     <Chip tone={product.kind === "membership" ? "brand" : "neutral"}>{kindLabels[product.kind]}</Chip>
                   </td>
                   <td data-label="מה כולל">{allowance(product.kind, product.entries, product.weeklyCap)}</td>
-                  <td data-label="תוקף">{daysLabel(product.validDays)}</td>
-                  <td data-label="שיעורים">{categoryScope(product.classCategory)}</td>
+                  <td data-label="תוקף" className="tp-cell-nowrap">{daysLabel(product.validDays)}</td>
+                  <td data-label="שיעורים" className="tp-cell-nowrap">{categoryScope(product.classCategory)}</td>
                   <td data-label="מחיר" className="tp-num">
                     {priceLabel(product.priceAgorot)}
                   </td>
