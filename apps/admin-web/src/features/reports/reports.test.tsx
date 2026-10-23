@@ -278,6 +278,10 @@ describe("the summary", () => {
       .closest(".tp-kpi");
     // Nothing held, so there is no rate to compare: the tile says why, not that there is no previous period.
     expect(fill).toHaveTextContent("לא התקיימו שיעורים בתקופה");
+    // Weeks of zeros are a sentence, not an empty 0-to-1 axis (board #481 sweep).
+    const chart = screen.getByRole("figure", { name: "ביקורים לפי שבוע" });
+    expect(chart).toHaveTextContent("עוד לא היו ביקורים בתקופה הזאת.");
+    expect(chart.querySelector("svg")).toBeNull();
   });
 
   it("asks for the last 8 full weeks on the studio's calendar", async () => {

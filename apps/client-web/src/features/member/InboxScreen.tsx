@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, Chip, EmptyState, Icon, IconButton, type ChipTone, type IconName } from "../../shared/design-system";
-import { relativeDay } from "./format";
+import { addDays, type IsoDate } from "../../shared/utilities/dates";
+import { dayName, relativeDay } from "./format";
 import styles from "./member.module.css";
 import { metaLine } from "./passText";
 import { RichText } from "./richText";
 import { useInbox, useMarkRead, useSession, useStudio, useStudioClock, type InboxItem, type Studio } from "./studio";
 import { ListSkeleton, LoadError, NoStudio } from "./StudioGate";
-import { clockTime, momentText } from "./studioTime";
+import { clockTime, studioDate } from "./studioTime";
 
 const title = "התראות";
 
@@ -111,6 +112,13 @@ export function knownNotices(items: readonly InboxItem[]): InboxItem[] {
   return items.filter((item) => item.kind in kinds);
 }
 
+/** The heading over a day's notices: "היום", "אתמול" or "יום שלישי 13.10". */
+function dayHeading(date: IsoDate, today: IsoDate): string {
+  if (date === today) return "היום";
+  if (date === addDays(today, -1)) return "אתמול";
+  return `${dayName(date)} ${date.slice(8, 10)}.${date.slice(5, 7)}`;
+}
+
 export function InboxScreen() {
   const studio = useStudio();
   return studio ? <StudioInbox studio={studio} /> : <NoStudio title={title} />;
@@ -118,6 +126,7 @@ export function InboxScreen() {
 
 function StudioInbox({ studio }: { studio: Studio }) {
   const inbox = useInbox(studio.id);
+  const { timeZone, today } = useStudioClock(studio.id);
   const navigate = useNavigate();
   const items = inbox.data ? knownNotices(inbox.data.items) : [];
 
@@ -141,9 +150,14 @@ function StudioInbox({ studio }: { studio: Studio }) {
         </EmptyState>
       ) : (
         <ul className={styles.list} aria-label="התראות">
-          {items.map((item) => (
-            <Notice key={item.id} studio={studio} item={item} />
-          ))}
+          {items.map((item, index) => {
+            // The list is newest first; the first notice of each day carries that day's heading.
+            const day = studioDate(item.createdAt, timeZone);
+            const startsDay = index === 0 || studioDate(items[index - 1]!.createdAt, timeZone) !== day;
+            return (
+              <Notice key={item.id} studio={studio} item={item} heading={startsDay ? dayHeading(day, today) : null} />
+            );
+          })}
         </ul>
       )}
     </main>
@@ -158,7 +172,7 @@ function linkFor(item: InboxItem): string | null {
   return null;
 }
 
-function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
+function Notice({ studio, item, heading }: { studio: Studio; item: InboxItem; heading: string | null }) {
   const { timeZone, today } = useStudioClock(studio.id);
   const markRead = useMarkRead(studio.id);
   const sessionId = item.data.sessionId;
@@ -206,7 +220,8 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
         ) : (
           <span className="tp-caption">{kind.body}</span>
         )}
-        <span className="tp-caption">{momentText(item.createdAt, timeZone, today)}</span>
+        {/* The day is the heading above; the card keeps the time. */}
+        <span className="tp-caption tp-num">{clockTime(item.createdAt, timeZone)}</span>
       </span>
       {(to ? unread : arrivedUnread) && <Chip tone="brand">חדש</Chip>}
     </>
@@ -217,7 +232,8 @@ function Notice({ studio, item }: { studio: Studio; item: InboxItem }) {
   };
 
   return (
-    <li>
+    <li className={heading ? styles.noticeDay : undefined}>
+      {heading && <h2 className={`tp-eyebrow ${styles.noticeDayTitle}`}>{heading}</h2>}
       {to ? (
         <Card small to={to} className={styles.notice} onClick={read}>
           {content}

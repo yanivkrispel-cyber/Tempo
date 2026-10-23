@@ -200,12 +200,18 @@ function Summary({ report }: { report: ReportSummary }) {
         <WeeklyBarChart
           title="ביקורים לפי שבוע"
           valueLabel="ביקורים"
-          weeks={report.weeks.map((week) => ({
-            key: week.weekStart,
-            label: shortDay(week.weekStart),
-            longLabel: `השבוע של ${shortDay(week.weekStart)}`,
-            value: week.attended,
-          }))}
+          emptyText="עוד לא היו ביקורים בתקופה הזאת."
+          // Weeks of zeros draw an empty 0-to-1 axis; a sentence says it better.
+          weeks={
+            report.weeks.every((week) => week.attended === 0)
+              ? []
+              : report.weeks.map((week) => ({
+                  key: week.weekStart,
+                  label: shortDay(week.weekStart),
+                  longLabel: `השבוע של ${shortDay(week.weekStart)}`,
+                  value: week.attended,
+                }))
+          }
         />
       </Card>
 

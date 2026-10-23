@@ -198,6 +198,18 @@
   padding-block: 8px;
 }
 
+/* The first notice of a day carries the day's heading above its card. */
+.noticeDay {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.noticeDayTitle {
+  margin: 0;
+}
+.list > .noticeDay:not(:first-child) {
+  margin-top: 10px;
+}
 .notice {
   display: flex;
   gap: 12px;

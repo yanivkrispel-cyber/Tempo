@@ -2499,6 +2499,8 @@ html:has(.tp-tabbar--fixed) {
   display: block;
   width: 100%;
   height: auto;
+  /* On a wide card the drawing stops growing, so its 11px labels stay near 16px instead of 35px. */
+  max-height: 240px;
   overflow: visible;
 }
 .tp-bars__grid {
