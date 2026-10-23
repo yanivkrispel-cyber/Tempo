@@ -1,7 +1,9 @@
 # Project status
 
-Updated 2026-10-23, morning (board #471, DAY-PLAN-12: OwnerLive, the "I'm in" card, the link preview's picture, the
-today legend, MO7 done), after board #445 (2026-10-21/22) and what boards #380 (2026-10-19 night) and #404 (2026-10-20)
+Updated 2026-10-23, night (board #481, DAY-PLAN-13: the member home's week and pace, SYNC 9 and axe on the new
+screens, the premium sweep and its small fixes, the orphan listing, decision notes for Kris), after board #471
+(2026-10-22/23: OwnerLive, the "I'm in" card, the link preview's picture, the today legend, MO7), board #445
+(2026-10-21/22) and what boards #380 (2026-10-19 night) and #404 (2026-10-20)
 landed: white label, the branded sign-in, studio marketing stages A and B, share links by intent and the public
 surface's protections. Earlier: #347 (2026-10-18), #232, #253 and #321 (2026-10-17).
 
@@ -188,6 +190,9 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | Board #445 cold start (P-1): the first-request timeline (log line `cold start` and X-Ray subsegments), routing measured, then the Request Delegate Generator and an Init warm-up | #454, #464, #466 |
 | Board #471: MO7's highlight covers and instructor story; the link preview always has a picture (C-2); the member's "I'm in" card with the studio's Instagram tag (C-1); the console's today legend and whole shekels (LV-2) | #467, #468, #472, #473, #478, #475 |
 | Board #471 OwnerLive (LV-1, #378 item 2): `/o/<slug>/live/<sessionId>` with the clock, arrived of booked, map or list, the door scan; the person waiting and "שיבוץ למכשיר N" on `POST /bookings/{id}/promote` (`bookings.manage`, past the cutoff until the class ends); `instagramHandle` on the public brand | #474, #477, #476 |
+| Board #481: the member home's week and pace follow Main (#378 items 3 and 4, #378 closed); SYNC 9 e2e with axe on OwnerLive, the "I'm in" card, the member home and today's legend; `e2e-cleanup.mjs` lists orphaned account rows by Cognito subject (#312) | #480, #483, #482 |
+| Board #481 premium sweep (O3, Q-1, 14 gaps): today's waiting link at 44 px on touch, whole prices without agorot, a Hebrew name for every audit action on dev and the event-week template, short table values on one line, reports' empty weeks as a sentence, the today feed's line breaks, the member inbox by day; the four big gaps are issues #485 to #488 | #484, #489, #490, #491 |
+| Board #481 supply chain: pnpm `trustPolicy: no-downgrade` with two exact exclusions (#313; the last row of #115) | #493 |
 
 - **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
 - **The cold start went from about 8.4 s to 3.5 s** (from Israel, 11 parallel cold `GET /me` on dev, #445 tables 1
@@ -196,11 +201,12 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
   sandbox and package, 1.0 s Init, 1.0 s endpoint (the first Neon connection stays out of Init so `/health` never
   wakes Neon). Further gains cost money (N-4).
 - Stage B of marketing (MO5 to MO7) is done; #432 has only stage C left (after a paying studio). Live on dev
-  `20cc2b6` (2026-10-23): `marketing-live-check --targets` 12/12, `--stage-b` 5/5, `premium-live-check` 21/21.
+  `71cd5b4` (2026-10-23 evening): `premium-live-check` 21/21, `marketing-live-check --targets` 12/12; `--stage-b`
+  5/5 on `20cc2b6` that morning.
 - P-4 (board #471): the package is not the lever. R2R off is 38% smaller and about 1.0 s slower; trimming needs a
   self-contained publish (backend-patterns.md). Nothing merged.
-- Open from #471: O5 (Kris looks at the member home with the demo studio), and the dev clean-up K6/O6 after Kris's
-  Instagram and WhatsApp test; #445 closes then.
+- Open from #481: the dev clean-up (K6 and O5) after Kris's Instagram and WhatsApp test; #445 and #471 close then.
+  Kris answered P-2, #313 and #312 on 2026-10-23 (decisions.md); sweep row 13 keeps the brand book's tile.
 - Pages Functions on `/s/*` count against Cloudflare's free 100,000 requests a day (the link previews, SL-9): a
   tripwire row in ADR-0021.
 - R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור
@@ -227,11 +233,10 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `docs/29` C-9 to C-13 | Defaults apply unless Kris objects |
 | #97 dev self sign-up and a Neon usage alarm | It gated the full load test (B5) |
 | #96, #123, #122 | Kris decides; nobody else touches them |
-| #115: pnpm `trustPolicy` | The frozen install fails on `semver@6.3.1` and `undici-types@6.20.0`; every other row of #115 is done |
 | Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot; P-2 now also covers the health form's wording and its retention (docs/31) |
 | A production copy of the health data key | docs/31 section 15 |
-| Run `tools/scripts/e2e-cleanup.mjs --apply` with an operator token | Removes the seven e2e studios on dev (six `e2e-p2-…`, one `e2e-sync6-…`; P2 F4) |
-| 14 orphaned e2e account rows on dev | Their Cognito users are gone (one more per sync6 run); an operator route or a one-off SQL |
+| Run `tools/scripts/e2e-cleanup.mjs --apply` with an operator token | Removes the e2e studios on dev (24 on 2026-10-23; P2 F4) |
+| Before production: the orphaned e2e account rows on dev | Kris, 2026-10-23 (#312, option 3): they stay on dev for now (about 150, two or three more per e2e run, no login); `e2e-cleanup.mjs` lists them (#482) |
 | The two **(reading)** report rules in docs/32 section 6 | A renewed pass is not "ending"; nobody is "at risk" in their first 30 days |
 | `TEMPO_STUDIO_REMOVAL_MIN_DAYS` and Neon's point-in-time history | 30 days by default outside dev; a removed studio stays in Neon's history until it ages out |
 | Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
@@ -239,7 +244,6 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `docs/35` W-1 to W-12 (white label) | Defaults apply unless Kris changes them; then WL1 to WL6 |
 | `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
 | Instagram story and WhatsApp preview test on a real phone (#404, #445) | Then O5 and K6 clean the O4 seed and [K]'s Hebrew offer in tempo-smoke-studio |
-| P-2: tighter read throttling on dev (rate 5, burst 6) | Rates stay at reads 10/12 and join 2/4 until Kris answers (#445) |
 | #304 email domain and sender | Unlocks the email code and the passwordless sheet (docs/36) |
 
 ## Who works on what

@@ -26,3 +26,10 @@ Each of these cost time once.
   sees. Run it on LF sources in the sdk:10.0 container: copy the tree to `/src` inside the container, strip `\r`
   from `*.cs`, `*.csproj`, `*.props` and `.editorconfig`, then `dotnet restore` and `dotnet format Tempo.sln
   --verify-no-changes --no-restore`. Restoring inside the copy also keeps the lock files untouched.
+- **Out of memory on a long-running machine** (Kris's, 2026-10-22 and 23): a session died at 21:50, and Claude Code
+  stops idle background shells under memory pressure (a timed board check was killed twice). The causes were an
+  ASUS screensaver that leaked about 6 GB (its process name ends in `.scr`, so `Get-Process -Name` without it finds
+  nothing), Docker's VM holding about 8 GB for containers nobody used, and about 11 GB of kernel pool after eight
+  days without a restart. Restart every few days, stop Docker when no container is needed (`docker desktop stop`),
+  and never close another Claude session to free memory without asking: an idle one may be a Remote Control
+  session in use.

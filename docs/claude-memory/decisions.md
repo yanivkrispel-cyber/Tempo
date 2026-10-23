@@ -125,8 +125,18 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   drawn on her phone with no member's name on it, not even her own, and shared or saved only by her tap; the studio's
   Instagram tag comes from `GET /public/studios/{slug}/brand` `instagramHandle`, which answers only while the public page
   is on. C-2 a link preview always has `og:image`: the studio's `/cover`, which falls back to its icon (the uploaded
-  one, else its initials drawn by the API and cached for a year at the brand's version), $0 and no Pages Functions
-  request. LV-1 OwnerLive is `/o/<slug>/live/<sessionId>` on the live room's data; "שיבוץ למכשיר N" is `POST
-  /bookings/{id}/promote` (`bookings.manage`, past the waitlist cutoff until the class ends; no valid pass leaves her
-  waiting). LV-2 today follows OwnerDashboard with real data only.
-
+  one, else its initials drawn by the API and cached for a year at the brand's version), $0 and no extra Pages
+  Functions request. LV-1 OwnerLive is `/o/<slug>/live/<sessionId>` on the live room's data; "שיבוץ למכשיר N" is
+  `POST /bookings/{id}/promote` (`bookings.manage`, past the waitlist cutoff until the class ends; no valid pass
+  leaves her waiting). LV-2 today follows OwnerDashboard with real data only.
+- **D28 board #481 defaults (2026-10-23, silence keeps them):** Q-1 the premium sweep fixes a gap on the board only
+  when it is in apps/ or packages/ and under about 100 lines; anything bigger becomes an issue with a screenshot
+  (#485 to #488). Q-2 axe runs in e2e on the new screens, and a serious or critical finding fails the test; moderate
+  ones are listed, not fixed. Q-3 `e2e-cleanup.mjs` lists orphaned e2e account rows by Cognito subject, dry run by
+  default; deleting them needs an operator token and Kris's word (#312). Q-4 nothing changes in the lockfile or the
+  pnpm trust policy until Kris picks an option on #313.
+- **Kris's answers on board #481 (2026-10-23 evening, "go on with the recommendations"):** P-2 no: public read
+  throttling stays at reads 10 rps burst 12 and join 2/4 (the limit is per route for every visitor; per-IP limits need
+  WAF, outside N-4). #313 option 1: `trustPolicy: no-downgrade`, with `semver@6.3.1` and `undici-types@6.20.0`
+  excluded by exact version (#493); remove each when nothing pulls it in. #312 option 3: the orphaned e2e account rows
+  stay on dev, to be revisited before production. Sweep row 13: the brand book's sunken empty tile stays.
