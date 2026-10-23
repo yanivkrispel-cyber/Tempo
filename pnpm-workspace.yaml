@@ -8,9 +8,7 @@ packages:
 allowBuilds:
   esbuild: false
 # Supply chain (#115, W-3): a version must be a day old before it installs (pnpm 11's default, written down), and
-# a dependency of a dependency may not come from a git URL or a tarball. `trustPolicy: no-downgrade` is left out:
-# with it the frozen install fails on semver@6.3.1 and undici-types@6.20.0 (trust downgrade), which needs a
-# person's look before anything is excluded.
+# a dependency of a dependency may not come from a git URL or a tarball.
 # One day, not Semgrep's suggested seven: with 10080 the frozen install rejects 9 lock entries published this
 # week (postcss 8.5.30 among them). Raise it when the lock has settled.
 # nosemgrep: package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
@@ -20,6 +18,15 @@ minimumReleaseAgeExclude:
   - aws-cdk-lib@2.262.2
   - aws-cdk@2.1134.0
   - constructs@10.8.0
+# No version may carry weaker trust evidence (npm provenance, a trusted publisher) than one of the same package
+# published before it (#313). Two maintenance releases of an old line are excluded by exact version; neither runs in
+# the Lambda or ships in an app. Remove each line when nothing in the lock pulls it in any more.
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Published 10.7.2023, after the signed 7.5.x. Lint only: @babel/core 7 <- eslint-plugin-react-hooks.
+  - semver@6.3.1
+  # Published 9.10.2024, after the signed 6.13.0 to 6.19.2. Types only: @types/node 22.
+  - undici-types@6.20.0
 # `pnpm audit --audit-level high` runs in CI (ADR-0025). Each ignored advisory
 # names the issue that removes it; nothing else goes here.
 auditConfig:
