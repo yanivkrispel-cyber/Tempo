@@ -188,6 +188,7 @@ function StudioHome({ studio }: { studio: Studio }) {
   const dayClasses = (sessions.data ?? []).filter(
     (session) => session.localDate === day && !hasStarted(session.endsAt, now),
   );
+  const showDay = sessions.isSuccess && dayClasses.length > 0 && day >= today;
   const bookedDays = new Set(
     (upcoming.data ?? []).filter((b) => b.status === "booked").map((b) => b.session.localDate),
   );
@@ -272,60 +273,73 @@ function StudioHome({ studio }: { studio: Studio }) {
       {/* After a booking, never on the first visit (board #347, P-3). */}
       {next && <InstallAppCard />}
 
-      <WeekStrip days={week} value={day} onChange={setDay} today={today} marked={bookedDays} />
-
-      <section aria-labelledby="day-classes" className={styles.section}>
+      {/* The week, then the chosen day under it, as on Main (#378 item 3). */}
+      <section aria-labelledby="this-week" className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2 id="day-classes" className={styles.sectionTitle}>
-            {dayTitle}
+          <h2 id="this-week" className={styles.sectionTitle}>
+            השבוע שלך
           </h2>
           <Link to="/book" className="tp-hit">
             לכל המערכת
           </Link>
         </div>
-        {sessions.isPending ? (
-          <ListSkeleton rows={2} />
-        ) : sessions.isError ? (
-          <LoadError error={sessions.error} onRetry={() => void sessions.refetch()} />
-        ) : dayClasses.length > 0 && day >= today ? (
-          <ul className={styles.list}>
-            {dayClasses.map((session) => {
-              const chip = badge(session, now);
-              const mine = myState(session, now) === "booked";
-              return (
-                <li key={session.id}>
-                  <Link to={`/classes/${session.id}`} className={`tp-cover-row${mine ? " tp-cover-row--mine" : ""}`}>
-                    {session.classType.coverSmallUrl ? (
-                      <img className="tp-cover" src={session.classType.coverSmallUrl} alt="" />
-                    ) : (
-                      <span className="tp-cover" aria-hidden="true" />
-                    )}
-                    <span className="tp-cover-row__body">
-                      <span className="tp-cover-row__title">
-                        <bdi>{session.classType.name}</bdi>
+        <WeekStrip days={week} value={day} onChange={setDay} today={today} marked={bookedDays} />
+
+        <section aria-labelledby="day-classes" className={styles.section}>
+          <div className={styles.dayHead}>
+            <h3 id="day-classes" className={styles.dayTitle}>
+              {dayTitle}
+            </h3>
+            {showDay && (
+              <span className="tp-caption">
+                {dayClasses.length === 1 ? "שיעור אחד" : `${dayClasses.length} שיעורים`}
+              </span>
+            )}
+          </div>
+          {sessions.isPending ? (
+            <ListSkeleton rows={2} />
+          ) : sessions.isError ? (
+            <LoadError error={sessions.error} onRetry={() => void sessions.refetch()} />
+          ) : showDay ? (
+            <ul className={styles.list}>
+              {dayClasses.map((session) => {
+                const chip = badge(session, now);
+                const mine = myState(session, now) === "booked";
+                return (
+                  <li key={session.id}>
+                    <Link to={`/classes/${session.id}`} className={`tp-cover-row${mine ? " tp-cover-row--mine" : ""}`}>
+                      {session.classType.coverSmallUrl ? (
+                        <img className="tp-cover" src={session.classType.coverSmallUrl} alt="" />
+                      ) : (
+                        <span className="tp-cover" aria-hidden="true" />
+                      )}
+                      <span className="tp-cover-row__body">
+                        <span className="tp-cover-row__title">
+                          <bdi>{session.classType.name}</bdi>
+                        </span>
+                        <span className="tp-cover-row__meta">
+                          {metaLine([
+                            session.instructor ? `עם ${session.instructor.displayName}` : null,
+                            `${minutesBetween(session.startsAt, session.endsAt)} דקות`,
+                          ])}
+                        </span>
                       </span>
-                      <span className="tp-cover-row__meta">
-                        {metaLine([
-                          session.instructor ? `עם ${session.instructor.displayName}` : null,
-                          `${minutesBetween(session.startsAt, session.endsAt)} דקות`,
-                        ])}
+                      <span className="tp-cover-row__end">
+                        <span className="tp-cover-row__time">{clockTime(session.startsAt, timeZone)}</span>
+                        <span className={chipClass[chip.tone]}>{chip.text}</span>
                       </span>
-                    </span>
-                    <span className="tp-cover-row__end">
-                      <span className="tp-cover-row__time">{clockTime(session.startsAt, timeZone)}</span>
-                      <span className={chipClass[chip.tone]}>{chip.text}</span>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState
-            icon="calendar"
-            title={day === today && dayOfWeek(day) !== 6 ? "אין עוד שיעורים היום" : emptyText}
-          />
-        )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <EmptyState
+              icon="calendar"
+              title={day === today && dayOfWeek(day) !== 6 ? "אין עוד שיעורים היום" : emptyText}
+            />
+          )}
+        </section>
       </section>
 
       {progress.data && <Pace progress={progress.data} />}
@@ -427,6 +441,20 @@ function NextClassHero({
   );
 }
 
+/** The weeks grouped by the month they start in, in order; a one-week month has no room for its name. */
+function monthRuns(weekStarts: string[]): { month: string; name: string; weeks: number }[] {
+  const runs: { month: string; name: string; weeks: number }[] = [];
+  for (const start of weekStarts) {
+    const month = start.slice(0, 7);
+    const last = runs.at(-1);
+    if (last?.month === month) last.weeks += 1;
+    else runs.push({ month, name: monthName.format(new Date(`${month}-15T12:00:00Z`)), weeks: 1 });
+  }
+  return runs;
+}
+
+const monthName = new Intl.DateTimeFormat("he-IL", { month: "long", timeZone: "UTC" });
+
 /** Visits this month, the streak, and twelve weeks of dots (docs/33 section 10); the goal is monthly. */
 function Pace({ progress }: { progress: MyProgress }) {
   const { visitsThisMonth: visits, monthlyGoal: goal, streakWeeks } = progress;
@@ -482,6 +510,15 @@ function Pace({ progress }: { progress: MyProgress }) {
                 return <span key={slot} className={cls} />;
               })}
             </div>
+          ))}
+        </div>
+      )}
+      {weeks.length > 0 && (
+        <div className={`tp-pace ${styles.paceMonths}`} data-testid="pace-months" aria-hidden="true">
+          {monthRuns(weeks.map((week) => week.weekStart)).map((run) => (
+            <span key={run.month} style={{ gridColumn: `span ${run.weeks}` }}>
+              {run.weeks > 1 ? run.name : ""}
+            </span>
           ))}
         </div>
       )}

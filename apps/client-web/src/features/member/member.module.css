@@ -363,10 +363,22 @@
   color: var(--ink-muted);
   padding-top: 4px;
 }
+.dayTitle {
+  font: inherit;
+  margin: 0;
+}
 .pace {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+.paceMonths {
+  margin-top: -8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-muted);
+  text-align: center;
+  white-space: nowrap;
 }
 .paceStats {
   display: flex;
