@@ -121,3 +121,12 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   before any fix, and fixes are free (no provisioned concurrency, SnapStart or WAF). P-2 read throttling stays at 10
   rps, burst 12, until Kris answers. P-3 "מחירים" shows only when the studio lists a product. E-1 no Latin test
   marker at the start of a name people see.
+- **D27 board #471 defaults (2026-10-22, silence keeps them):** C-1 the member's "I'm in" card as docs/37 section 8.1,
+  drawn on her phone with no member's name on it, not even her own, and shared or saved only by her tap; the studio's
+  Instagram tag comes from `GET /public/studios/{slug}/brand` `instagramHandle`, which answers only while the public page
+  is on. C-2 a link preview always has `og:image`: the studio's `/cover`, which falls back to its icon (the uploaded
+  one, else its initials drawn by the API and cached for a year at the brand's version), $0 and no Pages Functions
+  request. LV-1 OwnerLive is `/o/<slug>/live/<sessionId>` on the live room's data; "שיבוץ למכשיר N" is `POST
+  /bookings/{id}/promote` (`bookings.manage`, past the waitlist cutoff until the class ends; no valid pass leaves her
+  waiting). LV-2 today follows OwnerDashboard with real data only.
+

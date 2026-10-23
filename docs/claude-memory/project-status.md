@@ -1,6 +1,7 @@
 # Project status
 
-Updated 2026-10-22, night (board #445, DAY-PLAN-11), with what boards #380 (2026-10-19 night) and #404 (2026-10-20)
+Updated 2026-10-23, morning (board #471, DAY-PLAN-12: OwnerLive, the "I'm in" card, the link preview's picture, the
+today legend, MO7 done), after board #445 (2026-10-21/22) and what boards #380 (2026-10-19 night) and #404 (2026-10-20)
 landed: white label, the branded sign-in, studio marketing stages A and B, share links by intent and the public
 surface's protections. Earlier: #347 (2026-10-18), #232, #253 and #321 (2026-10-17).
 
@@ -185,6 +186,8 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | Board #445 apps: the copied link on the share button, "מחירים" only with listed products (P-3), the Hebrew-first name hint, the studio's brand on its sign-in and side nav (WL5 part B), the sign-in run | #447, #448, #449, #451, #452 |
 | Board #445 stage B apps (B-1): the invite's reward line, "הביאי חברה" (opening never changes her name switch, SL-8), the `celebrations` switch, the milestone card and notices, events in the console and on the public page, the roster's "לתשלום בסטודיו" (`RosterEntry.toPayAtStudio`), the A4 poster with a QR | #453, #457, #455, #460, #461, #462, #465, #469, #463 |
 | Board #445 cold start (P-1): the first-request timeline (log line `cold start` and X-Ray subsegments), routing measured, then the Request Delegate Generator and an Init warm-up | #454, #464, #466 |
+| Board #471: MO7's highlight covers and instructor story; the link preview always has a picture (C-2); the member's "I'm in" card with the studio's Instagram tag (C-1); the console's today legend and whole shekels (LV-2) | #467, #468, #472, #473, #478, #475 |
+| Board #471 OwnerLive (LV-1, #378 item 2): `/o/<slug>/live/<sessionId>` with the clock, arrived of booked, map or list, the door scan; the person waiting and "שיבוץ למכשיר N" on `POST /bookings/{id}/promote` (`bookings.manage`, past the cutoff until the class ends); `instagramHandle` on the public brand | #474, #477, #476 |
 
 - **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
 - **The cold start went from about 8.4 s to 3.5 s** (from Israel, 11 parallel cold `GET /me` on dev, #445 tables 1
@@ -192,8 +195,12 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
   and building them in Init cut routing to 0.2 s. The JWKS fetch and the SSM read start in Init. Left: 1.3 s of
   sandbox and package, 1.0 s Init, 1.0 s endpoint (the first Neon connection stays out of Init so `/health` never
   wakes Neon). Further gains cost money (N-4).
-- MO7's highlight covers (#467) and instructor story (#468) wait for a merge of `main` and a new review (#467 went
-  CONFLICTING after #463's squash).
+- Stage B of marketing (MO5 to MO7) is done; #432 has only stage C left (after a paying studio). Live on dev
+  `20cc2b6` (2026-10-23): `marketing-live-check --targets` 12/12, `--stage-b` 5/5, `premium-live-check` 21/21.
+- P-4 (board #471): the package is not the lever. R2R off is 38% smaller and about 1.0 s slower; trimming needs a
+  self-contained publish (backend-patterns.md). Nothing merged.
+- Open from #471: O5 (Kris looks at the member home with the demo studio), and the dev clean-up K6/O6 after Kris's
+  Instagram and WhatsApp test; #445 closes then.
 - Pages Functions on `/s/*` count against Cloudflare's free 100,000 requests a day (the link previews, SL-9): a
   tripwire row in ADR-0021.
 - R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור
