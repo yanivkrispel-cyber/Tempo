@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useStudioBrand } from "../../app/studioLook";
 import { ACCENTS, Button, DEFAULT_ACCENT } from "../../shared/design-system";
 import type { IsoDate } from "../../shared/utilities/dates";
 import { saveFile } from "../../shared/utilities/saveFile";
@@ -39,7 +40,10 @@ export function ImInShare({
 }) {
   // The public class names the instructor only when their profile is public (M-14), and says when few spots are left.
   const publicSession = usePublicSession(studio.slug, session.id);
-  const settled = !publicSession.isPending;
+  // The studio's Instagram tag, which the brand carries only while its public page is on (M-15).
+  const brand = useStudioBrand(studio.slug);
+  const settled = !publicSession.isPending && !brand.isPending;
+  const handle = brand.data?.instagramHandle ?? null;
   const instructor = publicSession.data?.instructor?.displayName ?? null;
   const spotsLeft = publicSession.data?.spotsLeft ?? null;
   const coverUrl = session.classType.coverUrl ?? null;
@@ -51,7 +55,7 @@ export function ImInShare({
       instructor,
       studioName: studio.name,
       footnote: spotsLeft && spotsLeft > 0 ? `נשארו ${spotsLeft} מקומות` : null,
-      handle: null,
+      handle,
       accent: appliedAccent(),
     }),
     [
@@ -64,6 +68,7 @@ export function ImInShare({
       instructor,
       studio.name,
       spotsLeft,
+      handle,
     ],
   );
   // The picture drawn for this card; a stale one counts as still being drawn.
