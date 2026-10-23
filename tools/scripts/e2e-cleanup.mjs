@@ -11,8 +11,9 @@
  *      call. A login that still owns a studio gets 409 and is reported; a Cognito user without an account (never
  *      called POST /session) is deleted with admin-delete-user.
  *   3. account rows of e2e logins whose Cognito user is already gone are listed only: DELETE /me needs a sign-in.
- *      They are matched by Cognito subject, not address (lib/e2e-orphans.mjs, #312); the counts per run and any
- *      row still holding a live place in a studio outside e2e are printed, each address only with --verbose.
+ *      They are matched by Cognito subject, not address (lib/e2e-orphans.mjs, #312). The counts per run are printed,
+ *      and so is each row still holding a live place in a studio outside e2e, with its address; every other address
+ *      only with --verbose.
  *   4. the Neon project's usage before and after.
  *
  * Usage (from a developer's machine; `--profile tempo` needs Cognito admin user calls, ssm:GetParameter and
