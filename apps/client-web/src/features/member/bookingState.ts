@@ -20,6 +20,16 @@ export function freeSpots(session: Session): number {
   return Math.max(session.capacity - session.bookedCount, 0);
 }
 
+/**
+ * The room map's caption: "5 פנויים מתוך 12". The room may have more devices than the class has places, and a desk
+ * booking takes a place without a device, so the free count is capped by the class's free places and the total by
+ * its capacity (#503).
+ */
+export function deviceCountText(session: Session, spots: readonly { state: string }[]): string {
+  const free = Math.min(spots.filter((spot) => spot.state === "free").length, freeSpots(session));
+  return `${free} פנויים מתוך ${Math.min(spots.length, session.capacity)}`;
+}
+
 /** "נשארו 3 מקומות", "נשאר מקום אחד", "מלא · 2 בהמתנה". */
 export function spotsText(session: Session): string {
   const free = freeSpots(session);

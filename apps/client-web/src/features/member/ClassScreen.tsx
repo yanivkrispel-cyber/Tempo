@@ -23,6 +23,7 @@ import { BookedDialog } from "./BookedDialog";
 import { BookingSheet, useBookingFlow } from "./BookingSheet";
 import {
   categoryName,
+  deviceCountText,
   freeCancelDeadline,
   freeSpots,
   myState,
@@ -263,7 +264,8 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
       )}
 
       {map &&
-        (state === "booked" || (state === "none" && (canBook || canWait))) &&
+        // A full class offers the waitlist, not a device (#503).
+        (state === "booked" || (state === "none" && canBook)) &&
         session.status === "scheduled" &&
         !started && (
           <section aria-labelledby="room-title" className={styles.section}>
@@ -271,9 +273,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
               <h2 id="room-title" className={styles.sectionTitle}>
                 {state === "booked" ? "המכשיר שלך" : "בחירת מכשיר"}
               </h2>
-              <span className="tp-caption">
-                {map.spots.filter((spot) => spot.state === "free").length} פנויים מתוך {map.spots.length}
-              </span>
+              <span className="tp-caption">{deviceCountText(session, map.spots)}</span>
             </div>
             <RoomMap
               map={map}
@@ -471,7 +471,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
         pending={flow.pendingId !== undefined}
         error={flow.error}
         spot={
-          chosenSpot && chosenSpot.state === "free"
+          canBook && chosenSpot && chosenSpot.state === "free"
             ? { label: chosenSpot.label, note: chosenSpot.id === map?.usualSpotId ? "המקום הקבוע שלך" : undefined }
             : null
         }
@@ -487,7 +487,7 @@ function StudioClass({ studio, sessionId }: { studio: Studio; sessionId: string 
               setBooked(booking);
               return true;
             },
-            chosenSpot?.state === "free" ? chosenSpot.id : null,
+            canBook && chosenSpot?.state === "free" ? chosenSpot.id : null,
           )
         }
         onClose={() => {
