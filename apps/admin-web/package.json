@@ -16,7 +16,7 @@
     "preview": "vite preview"
   },
   "bundleBudget": {
-    "firstScreenKiB": 160,
+    "firstScreenKiB": 155,
     "screens": [
       "src/features/today/TodayPage.tsx"
     ]
