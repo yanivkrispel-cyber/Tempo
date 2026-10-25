@@ -1,3 +1,4 @@
+/* global window */ // page.evaluate and addInitScript bodies run in the browser
 // Screen performance baseline: each key screen of both apps on a mid-range phone profile
 // (Pixel 7 viewport, Lighthouse "Slow 4G" network, CPU slowed 4x), first visit and repeat visit.
 // Usage: node perf/screens-perf.mjs [outFile]   (needs .auth/smoke-user.json from the sign-in project)
@@ -24,14 +25,25 @@ const screens = [
 ];
 
 // Lighthouse mobile defaults (Slow 4G, applied at the protocol level).
-const NETWORK = { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 };
+const NETWORK = {
+  offline: false,
+  latency: 150,
+  downloadThroughput: (1.6 * 1024 * 1024) / 8,
+  uploadThroughput: (750 * 1024) / 8,
+};
 const CPU_RATE = 4;
 
 const vitalsScript = () => {
   window.__perf = { lcp: 0, cls: 0, fcp: 0 };
-  new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__perf.lcp = e.startTime; }).observe({ type: "largest-contentful-paint", buffered: true });
-  new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__perf.cls += e.value; }).observe({ type: "layout-shift", buffered: true });
-  new PerformanceObserver((l) => { for (const e of l.getEntries()) if (e.name === "first-contentful-paint") window.__perf.fcp = e.startTime; }).observe({ type: "paint", buffered: true });
+  new PerformanceObserver((l) => {
+    for (const e of l.getEntries()) window.__perf.lcp = e.startTime;
+  }).observe({ type: "largest-contentful-paint", buffered: true });
+  new PerformanceObserver((l) => {
+    for (const e of l.getEntries()) if (!e.hadRecentInput) window.__perf.cls += e.value;
+  }).observe({ type: "layout-shift", buffered: true });
+  new PerformanceObserver((l) => {
+    for (const e of l.getEntries()) if (e.name === "first-contentful-paint") window.__perf.fcp = e.startTime;
+  }).observe({ type: "paint", buffered: true });
 };
 
 async function measure(page, url) {
@@ -42,7 +54,12 @@ async function measure(page, url) {
     const res = await req.response().catch(() => null);
     const timing = req.timing();
     if (req.url().includes("/api/v1/")) {
-      api.push({ path: new URL(req.url()).pathname.replace(/[0-9a-f-]{36}/g, ":id"), start: timing.startTime - t0, end: timing.startTime - t0 + timing.responseEnd, status: res?.status() });
+      api.push({
+        path: new URL(req.url()).pathname.replace(/[0-9a-f-]{36}/g, ":id"),
+        start: timing.startTime - t0,
+        end: timing.startTime - t0 + timing.responseEnd,
+        status: res?.status(),
+      });
     }
     if (req.resourceType() === "script" && res) {
       const sizes = await req.sizes().catch(() => null);
@@ -53,8 +70,14 @@ async function measure(page, url) {
   // ourselves: done once nothing has been in flight for 1.5 s after the first paint.
   let inflight = 0;
   let lastActivity = Date.now();
-  const onRequest = () => { inflight++; lastActivity = Date.now(); };
-  const onDone = () => { inflight = Math.max(0, inflight - 1); lastActivity = Date.now(); };
+  const onRequest = () => {
+    inflight++;
+    lastActivity = Date.now();
+  };
+  const onDone = () => {
+    inflight = Math.max(0, inflight - 1);
+    lastActivity = Date.now();
+  };
   page.on("request", onRequest);
   page.on("requestfinished", onDone);
   page.on("requestfailed", onDone);
@@ -66,7 +89,13 @@ async function measure(page, url) {
     if (painted && inflight === 0 && Date.now() - lastActivity > 1500) break;
     await page.waitForTimeout(200);
   }
-  for (const [event, fn] of [["request", onRequest], ["requestfinished", onDone], ["requestfailed", onDone], ["requestfinished", onFinished]]) page.off(event, fn);
+  for (const [event, fn] of [
+    ["request", onRequest],
+    ["requestfinished", onDone],
+    ["requestfailed", onDone],
+    ["requestfinished", onFinished],
+  ])
+    page.off(event, fn);
   const vitals = await page.evaluate(() => window.__perf);
   const nav = await page.evaluate(() => {
     const n = performance.getEntriesByType("navigation")[0];
@@ -80,7 +109,12 @@ const browser = await chromium.launch();
 const results = [];
 for (const [app, name, url] of screens) {
   for (let run = 0; run < RUNS; run++) {
-    const context = await browser.newContext({ ...devices["Pixel 7"], storageState: STATE, locale: "he-IL", timezoneId: "Asia/Jerusalem" });
+    const context = await browser.newContext({
+      ...devices["Pixel 7"],
+      storageState: STATE,
+      locale: "he-IL",
+      timezoneId: "Asia/Jerusalem",
+    });
     await context.addInitScript(vitalsScript);
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
@@ -91,7 +125,9 @@ for (const [app, name, url] of screens) {
     const repeat = await measure(page, url); // same context: HTTP cache warm, as on a second open
     results.push({ app, name, run, first, repeat });
     const f = (v) => String(Math.round(v)).padStart(6);
-    console.log(`${app.padEnd(8)}${name.padEnd(10)} run${run} first: fcp${f(first.fcp)} lcp${f(first.lcp)} apiDone${f(first.apiDone)} api#${first.apiCount} js${f(first.jsTransferBytes / 1024)}KB cls ${first.cls.toFixed(3)} | repeat: lcp${f(repeat.lcp)} apiDone${f(repeat.apiDone)}  ${first.finalUrl.replace(/^https:\/\/[^/]+/, "")}`);
+    console.log(
+      `${app.padEnd(8)}${name.padEnd(10)} run${run} first: fcp${f(first.fcp)} lcp${f(first.lcp)} apiDone${f(first.apiDone)} api#${first.apiCount} js${f(first.jsTransferBytes / 1024)}KB cls ${first.cls.toFixed(3)} | repeat: lcp${f(repeat.lcp)} apiDone${f(repeat.apiDone)}  ${first.finalUrl.replace(/^https:\/\/[^/]+/, "")}`,
+    );
     await context.close();
   }
 }
