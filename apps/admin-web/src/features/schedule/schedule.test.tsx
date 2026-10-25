@@ -158,6 +158,47 @@ describe("the weekly timetable", () => {
     );
   });
 
+  it("folds a day's cancelled classes under one line that opens on a tap (board #494, R-2)", async () => {
+    renderAt("/o/neshima/schedule", {
+      [`GET ${base}/sessions`]: {
+        items: [
+          session(),
+          session({ id: id(13), startsAt: "2026-10-14T05:00:00Z", status: "cancelled" }),
+          session({ id: id(14), startsAt: "2026-10-14T07:00:00Z", status: "cancelled" }),
+        ],
+      },
+    });
+    const wednesday = await screen.findByRole("region", { name: "יום רביעי 14.10.2026, היום" });
+    const fold = within(wednesday).getByText("2 שיעורים בוטלו");
+    const details = fold.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    const [held, ...cancelled] = within(wednesday).getAllByRole("link", { hidden: true });
+    expect(details).not.toContainElement(held!);
+    expect(cancelled).toHaveLength(2);
+    for (const tile of cancelled) expect(details).toContainElement(tile);
+    await userEvent.click(fold);
+    expect(details).toHaveAttribute("open");
+  });
+
+  it("shows one day as a list on a computer on request, and keeps the choice across weeks (#487)", async () => {
+    renderAt("/o/neshima/schedule", { [`GET ${base}/sessions`]: { items: [session()] } });
+    expect(await screen.findByRole("region", { name: "יום רביעי 14.10.2026, היום" })).toBeInTheDocument();
+    const views = screen.getByRole("group", { name: "תצוגה" });
+    expect(within(views).getByRole("button", { name: "שבוע" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(within(views).getByRole("button", { name: "יום" }));
+    const week = screen.getByRole("region", { name: "השיעורים לפי ימים" });
+    expect(within(week).getByRole("heading", { level: 2 })).toHaveTextContent("יום רביעי · 14.10.2026 · היום");
+    expect(within(week).getByRole("link", { name: /פילאטיס מכשירים/ })).toHaveTextContent("17:30 · דנה אלון");
+    expect(screen.queryByRole("region", { name: "יום רביעי 14.10.2026, היום" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "השבוע הבא" }));
+    expect(within(screen.getByRole("group", { name: "תצוגה" })).getByRole("button", { name: "יום" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("creates a weekly class from the day, time and room picked", async () => {
     const api = renderAt("/o/neshima/schedule", {
       [`GET ${base}/sessions`]: { items: [] },

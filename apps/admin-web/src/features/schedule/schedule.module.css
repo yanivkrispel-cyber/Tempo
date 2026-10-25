@@ -1,0 +1,67 @@
+/* The week's columns are about 110px at 1280px: a class's name wraps to two lines instead of being cut (#487). */
+.grid :global(.tp-event__title) {
+  flex-basis: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.grid :global(.tp-event__count) {
+  margin-inline-start: 0;
+}
+
+/* One day on a computer: the classes side by side, each card at a readable width. */
+@media (min-width: 900px) {
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    align-items: start;
+  }
+}
+
+/* The cancelled classes, folded under one line that opens on a tap (board #494, R-2). */
+.cancelled > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 8px 6px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+}
+.cancelled > summary::-webkit-details-marker {
+  display: none;
+}
+.cancelled > summary::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.cancelled[open] > summary::before {
+  transform: rotate(-135deg);
+}
+.cancelled > summary:hover {
+  background: var(--surface-hover);
+}
+.cancelled > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.folded {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
