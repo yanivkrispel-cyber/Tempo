@@ -102,6 +102,7 @@ function HomeFrame({
   bell,
   hello,
   avatar,
+  split = false,
   children,
 }: {
   today: IsoDate;
@@ -109,6 +110,8 @@ function HomeFrame({
   bell: ReactNode;
   hello: string;
   avatar: string | null | undefined;
+  /** Two columns on a computer: the children are a `styles.lead` and a `styles.aside` (#485). */
+  split?: boolean;
   children: ReactNode;
 }) {
   const me = useAccount();
@@ -116,7 +119,7 @@ function HomeFrame({
   const firstName = name.split(" ")[0];
   const switching = Boolean(useSwitchableStudios()) && studio;
   return (
-    <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.home}`}>
+    <main className={`tp-page tp-page--tabbar ${styles.screen}${split ? ` ${styles.split}` : ""}`}>
       <header className={styles.header}>
         <Link to="/profile" aria-label="הפרופיל שלי" className={styles.meLink}>
           <Avatar name={name} src={avatar ?? undefined} size="lg" />
@@ -211,6 +214,7 @@ function StudioHome({ studio }: { studio: Studio }) {
     />
   );
   const pass = (passes.data ?? []).find((p) => p.status === "active" && p.endsOn >= today);
+  const aside = Boolean(progress.data) || Boolean(pass);
 
   return (
     <HomeFrame
@@ -219,6 +223,7 @@ function StudioHome({ studio }: { studio: Studio }) {
       bell={bell}
       hello={greeting(timeZone, now)}
       avatar={profile.data?.avatarUrl}
+      split={aside}
     >
       <CheckinPass
         organizationId={studio.id}
@@ -226,124 +231,135 @@ function StudioHome({ studio }: { studio: Studio }) {
         open={params.get("open") === "checkin"}
         onClose={() => setParams({}, { replace: true })}
       />
-      {next ? (
-        <NextClassHero
-          organizationId={studio.id}
-          booking={next}
-          timeZone={timeZone}
-          today={today}
-          now={now}
-          instructorPhoto={
-            next.session.instructor ? instructors.data?.get(next.session.instructor.membershipId)?.photoSmallUrl : null
-          }
-        />
-      ) : upcoming.isError ? (
-        <section className="tp-hero" aria-labelledby="next-class" style={{ minHeight: 220 }}>
-          <div className="tp-hero__body">
-            <div className="tp-hero__text">
-              <h2 id="next-class" className="tp-hero__title">
-                השיעור הבא שלך
-              </h2>
+      <div className={styles.lead}>
+        {next ? (
+          <NextClassHero
+            organizationId={studio.id}
+            booking={next}
+            timeZone={timeZone}
+            today={today}
+            now={now}
+            instructorPhoto={
+              next.session.instructor
+                ? instructors.data?.get(next.session.instructor.membershipId)?.photoSmallUrl
+                : null
+            }
+          />
+        ) : upcoming.isError ? (
+          <section className="tp-hero" aria-labelledby="next-class" style={{ minHeight: 220 }}>
+            <div className="tp-hero__body">
+              <div className="tp-hero__text">
+                <h2 id="next-class" className="tp-hero__title">
+                  השיעור הבא שלך
+                </h2>
+              </div>
+              <LoadError error={upcoming.error} onRetry={() => void upcoming.refetch()}>
+                לא הצלחנו לטעון את ההזמנות שלך
+              </LoadError>
             </div>
-            <LoadError error={upcoming.error} onRetry={() => void upcoming.refetch()}>
-              לא הצלחנו לטעון את ההזמנות שלך
-            </LoadError>
+          </section>
+        ) : (
+          <section className="tp-hero" aria-labelledby="next-class" style={{ minHeight: 260 }}>
+            <div className="tp-hero__body">
+              <div className="tp-hero__text">
+                <span className="tp-eyebrow" style={{ color: "#ffffffe6" }}>
+                  {upcoming.isPending ? "רגע" : "השבוע עוד לפניך"}
+                </span>
+                <h2 id="next-class" className="tp-hero__title">
+                  {upcoming.isPending ? "השיעור הבא שלך" : "אין לך שיעור קרוב"}
+                </h2>
+              </div>
+              <div className={styles.heroActions}>
+                <ButtonLink to="/book" className="tp-btn--white">
+                  הרשמה לשיעור
+                </ButtonLink>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* After a booking, never on the first visit (board #347, P-3). */}
+        {next && <InstallAppCard />}
+
+        {/* The week, then the chosen day under it, as on Main (#378 item 3). */}
+        <section aria-labelledby="this-week" className={styles.section}>
+          <div className={styles.sectionHead}>
+            <h2 id="this-week" className={styles.sectionTitle}>
+              השבוע שלך
+            </h2>
+            <Link to="/book" className="tp-hit">
+              לכל המערכת
+            </Link>
           </div>
-        </section>
-      ) : (
-        <section className="tp-hero" aria-labelledby="next-class" style={{ minHeight: 260 }}>
-          <div className="tp-hero__body">
-            <div className="tp-hero__text">
-              <span className="tp-eyebrow" style={{ color: "#ffffffe6" }}>
-                {upcoming.isPending ? "רגע" : "השבוע עוד לפניך"}
-              </span>
-              <h2 id="next-class" className="tp-hero__title">
-                {upcoming.isPending ? "השיעור הבא שלך" : "אין לך שיעור קרוב"}
-              </h2>
+          <WeekStrip days={week} value={day} onChange={setDay} today={today} marked={bookedDays} />
+
+          <section aria-labelledby="day-classes" className={styles.section}>
+            <div className={styles.dayHead}>
+              <h3 id="day-classes" className={styles.dayTitle}>
+                {dayTitle}
+              </h3>
+              {showDay && (
+                <span className="tp-caption">
+                  {dayClasses.length === 1 ? "שיעור אחד" : `${dayClasses.length} שיעורים`}
+                </span>
+              )}
             </div>
-            <div className={styles.heroActions}>
-              <ButtonLink to="/book" className="tp-btn--white">
-                הרשמה לשיעור
-              </ButtonLink>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* After a booking, never on the first visit (board #347, P-3). */}
-      {next && <InstallAppCard />}
-
-      {/* The week, then the chosen day under it, as on Main (#378 item 3). */}
-      <section aria-labelledby="this-week" className={styles.section}>
-        <div className={styles.sectionHead}>
-          <h2 id="this-week" className={styles.sectionTitle}>
-            השבוע שלך
-          </h2>
-          <Link to="/book" className="tp-hit">
-            לכל המערכת
-          </Link>
-        </div>
-        <WeekStrip days={week} value={day} onChange={setDay} today={today} marked={bookedDays} />
-
-        <section aria-labelledby="day-classes" className={styles.section}>
-          <div className={styles.dayHead}>
-            <h3 id="day-classes" className={styles.dayTitle}>
-              {dayTitle}
-            </h3>
-            {showDay && (
-              <span className="tp-caption">
-                {dayClasses.length === 1 ? "שיעור אחד" : `${dayClasses.length} שיעורים`}
-              </span>
+            {sessions.isPending ? (
+              <ListSkeleton rows={2} />
+            ) : sessions.isError ? (
+              <LoadError error={sessions.error} onRetry={() => void sessions.refetch()} />
+            ) : showDay ? (
+              <ul className={styles.list}>
+                {dayClasses.map((session) => {
+                  const chip = badge(session, now);
+                  const mine = myState(session, now) === "booked";
+                  return (
+                    <li key={session.id}>
+                      <Link
+                        to={`/classes/${session.id}`}
+                        className={`tp-cover-row${mine ? " tp-cover-row--mine" : ""}`}
+                      >
+                        {session.classType.coverSmallUrl ? (
+                          <img className="tp-cover" src={session.classType.coverSmallUrl} alt="" />
+                        ) : (
+                          <span className="tp-cover" aria-hidden="true" />
+                        )}
+                        <span className="tp-cover-row__body">
+                          <span className="tp-cover-row__title">
+                            <bdi>{session.classType.name}</bdi>
+                          </span>
+                          <span className="tp-cover-row__meta">
+                            {metaLine([
+                              session.instructor ? `עם ${session.instructor.displayName}` : null,
+                              `${minutesBetween(session.startsAt, session.endsAt)} דקות`,
+                            ])}
+                          </span>
+                        </span>
+                        <span className="tp-cover-row__end">
+                          <span className="tp-cover-row__time">{clockTime(session.startsAt, timeZone)}</span>
+                          <span className={chipClass[chip.tone]}>{chip.text}</span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <EmptyState
+                icon="calendar"
+                title={day === today && dayOfWeek(day) !== 6 ? "אין עוד שיעורים היום" : emptyText}
+              />
             )}
-          </div>
-          {sessions.isPending ? (
-            <ListSkeleton rows={2} />
-          ) : sessions.isError ? (
-            <LoadError error={sessions.error} onRetry={() => void sessions.refetch()} />
-          ) : showDay ? (
-            <ul className={styles.list}>
-              {dayClasses.map((session) => {
-                const chip = badge(session, now);
-                const mine = myState(session, now) === "booked";
-                return (
-                  <li key={session.id}>
-                    <Link to={`/classes/${session.id}`} className={`tp-cover-row${mine ? " tp-cover-row--mine" : ""}`}>
-                      {session.classType.coverSmallUrl ? (
-                        <img className="tp-cover" src={session.classType.coverSmallUrl} alt="" />
-                      ) : (
-                        <span className="tp-cover" aria-hidden="true" />
-                      )}
-                      <span className="tp-cover-row__body">
-                        <span className="tp-cover-row__title">
-                          <bdi>{session.classType.name}</bdi>
-                        </span>
-                        <span className="tp-cover-row__meta">
-                          {metaLine([
-                            session.instructor ? `עם ${session.instructor.displayName}` : null,
-                            `${minutesBetween(session.startsAt, session.endsAt)} דקות`,
-                          ])}
-                        </span>
-                      </span>
-                      <span className="tp-cover-row__end">
-                        <span className="tp-cover-row__time">{clockTime(session.startsAt, timeZone)}</span>
-                        <span className={chipClass[chip.tone]}>{chip.text}</span>
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <EmptyState
-              icon="calendar"
-              title={day === today && dayOfWeek(day) !== 6 ? "אין עוד שיעורים היום" : emptyText}
-            />
-          )}
+          </section>
         </section>
-      </section>
+      </div>
 
-      {progress.data && <Pace progress={progress.data} />}
-      {pass && <PassCard pass={pass} studioName={studio.name} />}
+      {aside && (
+        <div className={styles.aside}>
+          {progress.data && <Pace progress={progress.data} />}
+          {pass && <PassCard pass={pass} studioName={studio.name} />}
+        </div>
+      )}
     </HomeFrame>
   );
 }

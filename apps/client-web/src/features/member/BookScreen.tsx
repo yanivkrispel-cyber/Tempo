@@ -122,7 +122,7 @@ function StudioBook({ studio }: { studio: Studio }) {
   }
 
   return (
-    <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
+    <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.narrow}`}>
       <header className={styles.heading}>
         <span className="tp-eyebrow">{studio.name}</span>
         <h1 className={styles.title}>{title}</h1>

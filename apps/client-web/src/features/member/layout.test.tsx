@@ -54,4 +54,18 @@ describe("the member app on every screen (D15)", () => {
       await screen.findByRole("heading", { level: 1, name: /^(בוקר טוב|צהריים טובים|ערב טוב), נגה$/ }),
     ).toBeInTheDocument();
   });
+
+  it("groups the home in a main column and a side one: the next class and the week, then the pace (#485)", async () => {
+    renderAt("/", 1280);
+    const pace = await screen.findByRole("region", { name: "ההתקדמות שלך" });
+    const week = screen.getByRole("region", { name: "השבוע שלך" });
+    const main = screen.getByRole("main");
+    expect(week.parentElement).not.toBe(main);
+    expect(pace.parentElement).not.toBe(main);
+    expect(pace.parentElement?.parentElement).toBe(main);
+    expect(week.parentElement?.parentElement).toBe(main);
+    expect(pace.parentElement).not.toBe(week.parentElement);
+    // On a phone the wrappers are `display: contents`, so the reading order stays hero, week, pace.
+    expect(week.compareDocumentPosition(pace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
