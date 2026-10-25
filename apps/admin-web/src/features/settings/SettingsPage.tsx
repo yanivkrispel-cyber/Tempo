@@ -58,9 +58,12 @@ export function SettingsPage() {
     { id: "settings-public", label: "עמוד ציבורי", card: <PublicPageCard /> },
     { id: "settings-booking", label: "הרשמה לשיעורים", card: <BookingPolicyCard /> },
     { id: "settings-notifications", label: "התראות ותזכורות", card: <NotificationSettingsCard /> },
-    { id: "settings-templates", label: "נוסחי ההודעות", card: <TemplatesCard /> },
+    // The cards that render nothing without a permission have no place in the index either.
+    ...(studio.can("organization.settings.manage")
+      ? [{ id: "settings-templates", label: "נוסחי ההודעות", card: <TemplatesCard /> }]
+      : []),
     ...(studio.can("people.tags.manage") ? [{ id: "settings-tags", label: "תגיות", card: <TagsCard /> }] : []),
-    { id: "settings-plan", label: "המנוי ל־Tempo", card: <PlanCard /> },
+    ...(studio.can("billing.view") ? [{ id: "settings-plan", label: "המנוי ל־Tempo", card: <PlanCard /> }] : []),
   ];
   const current = useCurrentSection(sections.map((section) => section.id));
 

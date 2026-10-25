@@ -78,6 +78,20 @@ describe("studio settings", () => {
     );
   });
 
+  it("leaves out of the index the sections staff cannot see", async () => {
+    renderAt("/o/neshima/settings", { [`GET ${base}`]: organization() }, "staff");
+    const index = await screen.findByRole("navigation", { name: "חלקי ההגדרות" });
+    const labels = within(index)
+      .getAllByRole("link")
+      .map((link) => link.textContent);
+    expect(labels).toContain("פרטי הסטודיו");
+    expect(labels).not.toContain("נוסחי ההודעות");
+    expect(labels).not.toContain("המנוי ל־Tempo");
+    for (const link of within(index).getAllByRole("link")) {
+      expect(document.getElementById(link.getAttribute("href")!.slice(1))!.children.length).toBeGreaterThan(0);
+    }
+  });
+
   it("explains a conflict with someone else's change", async () => {
     renderAt("/o/neshima/settings", {
       [`GET ${base}`]: organization(),
