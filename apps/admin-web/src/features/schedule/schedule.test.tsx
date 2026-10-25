@@ -347,6 +347,18 @@ describe("the weekly timetable on a phone (D15)", () => {
     await userEvent.click(within(week).getByRole("button", { name: /16 באוקטובר/ }));
     expect(within(week).getByText("אין שיעורים ביום הזה")).toBeInTheDocument();
   });
+
+  it("keeps the week's arrows in one group apart from the wide buttons, so the header holds its lines (board #511, O3)", async () => {
+    renderAt("/o/neshima/schedule", { [`GET ${base}/sessions`]: { items: [session()] } });
+
+    const nav = await screen.findByRole("group", { name: "מעבר בין שבועות" });
+    expect(
+      within(nav)
+        .getAllByRole("button")
+        .map((button) => button.textContent || button.getAttribute("aria-label")),
+    ).toEqual(["השבוע הקודם", "היום", "השבוע הבא"]);
+    expect(within(nav).queryByRole("button", { name: "שיעור חדש" })).not.toBeInTheDocument();
+  });
 });
 
 describe("one class", () => {

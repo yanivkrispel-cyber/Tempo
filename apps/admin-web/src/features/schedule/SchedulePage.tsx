@@ -89,7 +89,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
           </span>
           <h1>מערכת שבועית</h1>
         </div>
-        <div className="tp-row" style={{ gap: 8 }}>
+        <div className={styles.actions}>
           {wide && (
             <Segmented
               label="תצוגה"
@@ -101,11 +101,13 @@ function WeekView({ timeZone }: { timeZone: string }) {
               ]}
             />
           )}
-          <IconButton icon="chevron-right" label="השבוע הקודם" onClick={() => goTo(addDays(week, -7))} />
-          <Button variant="secondary" size="sm" onClick={() => goTo(startOfWeek(today))}>
-            היום
-          </Button>
-          <IconButton icon="chevron-left" label="השבוע הבא" onClick={() => goTo(addDays(week, 7))} />
+          <div role="group" aria-label="מעבר בין שבועות" className={styles.weekNav}>
+            <IconButton icon="chevron-right" label="השבוע הקודם" onClick={() => goTo(addDays(week, -7))} />
+            <Button variant="secondary" size="sm" onClick={() => goTo(startOfWeek(today))}>
+              היום
+            </Button>
+            <IconButton icon="chevron-left" label="השבוע הבא" onClick={() => goTo(addDays(week, 7))} />
+          </div>
           {studio.can("bookings.manage") && (
             <Button variant="secondary" icon="mail" onClick={() => setAnnouncing(true)}>
               הודעה לכל הסטודיו
