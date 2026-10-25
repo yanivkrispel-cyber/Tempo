@@ -23,6 +23,11 @@ export const DEV_CANARY_HEALTH_MINUTES = 5;
  */
 export const DEV_CANARY_DEEP_MINUTES = 60;
 
+/** The canary's SNS topic; the Neon usage check in the Database stack emails through it too (#97). */
+export function devCanaryTopicName(config: TempoEnvironmentConfig): string {
+  return resourceName(config, "api-canary");
+}
+
 export interface DevCanaryStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
   readonly httpApi: HttpApi;
@@ -47,7 +52,7 @@ export class DevCanaryStack extends Stack {
     const statePrefix = `/tempo/${config.environmentName}/canary`;
     const smokePath = smokeTestParameterPath(config);
 
-    const topic = new Topic(this, "CanaryTopic", { topicName: functionName, enforceSSL: true });
+    const topic = new Topic(this, "CanaryTopic", { topicName: devCanaryTopicName(config), enforceSSL: true });
     topic.addSubscription(new EmailSubscription(config.cost.alertEmail));
 
     const logGroup = createLogGroup(this, "CanaryLogGroup", config, { logGroupName: `/aws/lambda/${functionName}` });
