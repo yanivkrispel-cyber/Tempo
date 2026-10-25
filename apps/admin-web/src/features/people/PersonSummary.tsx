@@ -1,6 +1,7 @@
 import type { Schemas } from "@tempo/api-client";
 import { Card } from "../../shared/design-system";
-import { formatDate, toIsoDate } from "../../shared/utilities/dates";
+import { useStudioTimeZone } from "../../shared/studio/timeZone";
+import { dateIn, formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
 import { usePersonPasses, type Pass } from "../passes/queries";
@@ -11,6 +12,9 @@ type PersonDetail = Schemas["PersonDetail"];
 /** The person at a glance on a computer (#488): the pass in force, how to reach them, and since when they are on record. */
 export function PersonSummary({ person }: { person: PersonDetail }) {
   const studio = useStudio();
+  const { timeZone } = useStudioTimeZone();
+  // The day on the studio's clock, not the browser's; the browser's until the studio's zone has loaded.
+  const since = timeZone ? dateIn(person.createdAt, timeZone) : toIsoDate(new Date(person.createdAt));
   return (
     <Card as="section" aria-label="סיכום" className={styles.summary}>
       <dl>
@@ -33,7 +37,7 @@ export function PersonSummary({ person }: { person: PersonDetail }) {
         </div>
         <div>
           <dt>ברשומות מאז</dt>
-          <dd className="tp-num">{formatDate(toIsoDate(new Date(person.createdAt)))}</dd>
+          <dd className="tp-num">{formatDate(since)}</dd>
         </div>
       </dl>
     </Card>
