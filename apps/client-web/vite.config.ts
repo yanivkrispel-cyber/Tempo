@@ -28,6 +28,8 @@ function tempoPreviewWorker(): Plugin {
 // default in the API, so local invitation and join links open this app.
 export default defineConfig({
   plugins: [react(), tempoPreviewWorker()],
+  // For the first screen's budget (tools/scripts/bundle-budget.mjs), which deletes it after reading.
+  build: { manifest: true },
   server: { port: 5174, strictPort: true },
   preview: { port: 5174, strictPort: true },
   test: {

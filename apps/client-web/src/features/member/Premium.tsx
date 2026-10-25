@@ -1,36 +1,13 @@
-import qrcode from "qrcode-generator";
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { lazyNamed } from "../../app/lazyScreen";
 import { Dialog, Icon } from "../../shared/design-system";
 import { useCheckinCode } from "./experience";
 import { clockTime } from "./studioTime";
 
-/** A QR code as inline SVG with the standard's four-module quiet zone. */
-export function QrCode({ value, label, size = 200 }: { value: string; label: string; size?: number }) {
-  const { modules, path } = useMemo(() => {
-    const code = qrcode(0, "M");
-    code.addData(value);
-    code.make();
-    const count = code.getModuleCount();
-    let d = "";
-    for (let row = 0; row < count; row++) {
-      for (let col = 0; col < count; col++) if (code.isDark(row, col)) d += `M${col + 4} ${row + 4}h1v1h-1z`;
-    }
-    return { modules: count + 8, path: d };
-  }, [value]);
-  return (
-    <svg
-      className="tp-qr"
-      width={size}
-      height={size}
-      viewBox={`0 0 ${modules} ${modules}`}
-      role="img"
-      aria-label={label}
-      shapeRendering="crispEdges"
-    >
-      <path d={path} fill="var(--ink)" />
-    </svg>
-  );
-}
+// qrcode-generator loads with the pass, not with the home screen (board #511, S-3).
+const QrCode = lazyNamed(() => import("./QrCode"), "QrCode");
+
+const qrPlaceholder = <div className="tp-skeleton" style={{ width: 232, height: 232, borderRadius: 16 }} />;
 
 /**
  * The check-in pass (docs/33 section 8, D19): a QR that changes every 30 seconds, for staff to scan at the door. It
@@ -49,12 +26,18 @@ export function CheckinPass({
 }) {
   const code = useCheckinCode(organizationId, open);
   const data = code.data;
+  // The QR's chunk downloads while the code is fetched, not after it.
+  useEffect(() => {
+    if (open) import("./QrCode").catch(() => undefined);
+  }, [open]);
   return (
     <Dialog open={open} onClose={onClose} title="כרטיס כניסה">
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
         {data ? (
           <>
-            <QrCode value={data.code} label="קוד לסריקה בכניסה לסטודיו" size={232} />
+            <Suspense fallback={qrPlaceholder}>
+              <QrCode value={data.code} label="קוד לסריקה בכניסה לסטודיו" size={232} />
+            </Suspense>
             {data.openClass ? (
               <p>
                 <strong>
@@ -76,7 +59,7 @@ export function CheckinPass({
         ) : code.isError ? (
           <p className="tp-caption">לא הצלחנו להציג את הקוד. נסו שוב בעוד רגע.</p>
         ) : (
-          <div className="tp-skeleton" style={{ width: 232, height: 232, borderRadius: 16 }} />
+          qrPlaceholder
         )}
       </div>
     </Dialog>
