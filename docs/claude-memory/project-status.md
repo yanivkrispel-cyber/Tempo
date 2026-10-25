@@ -1,7 +1,8 @@
 # Project status
 
-Updated 2026-10-23, night (board #481, DAY-PLAN-13: the member home's week and pace, SYNC 9 and axe on the new
-screens, the premium sweep and its small fixes, the orphan listing, decision notes for Kris), after board #471
+Updated 2026-10-25, evening (board #494, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
+email, the studio demo runbook), after board #481 (2026-10-23: the member home's week and pace, SYNC 9 and axe on
+the new screens, the premium sweep and its small fixes, the orphan listing, decision notes for Kris), board #471
 (2026-10-22/23: OwnerLive, the "I'm in" card, the link preview's picture, the today legend, MO7), board #445
 (2026-10-21/22) and what boards #380 (2026-10-19 night) and #404 (2026-10-20)
 landed: white label, the branded sign-in, studio marketing stages A and B, share links by intent and the public
@@ -193,6 +194,11 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | Board #481: the member home's week and pace follow Main (#378 items 3 and 4, #378 closed); SYNC 9 e2e with axe on OwnerLive, the "I'm in" card, the member home and today's legend; `e2e-cleanup.mjs` lists orphaned account rows by Cognito subject (#312) | #480, #483, #482 |
 | Board #481 premium sweep (O3, Q-1, 14 gaps): today's waiting link at 44 px on touch, whole prices without agorot, a Hebrew name for every audit action on dev and the event-week template, short table values on one line, reports' empty weeks as a sentence, the today feed's line breaks, the member inbox by day; the four big gaps are issues #485 to #488 | #484, #489, #490, #491 |
 | Board #481 supply chain: pnpm `trustPolicy: no-downgrade` with two exact exclusions (#313; the last row of #115) | #493 |
+| Board #494 computer layouts (R-1 to R-3; the phone view byte-identical): the member app in two columns with a reading width (#485); today as a table with column heads and fill bars (#486); the week's cancelled classes folded, names on two lines, a week or day switch kept in `?view=day` (#487); settings with a section index, the person page with a summary and past passes folded (#488) | #495, #496, #498, #500, #502, #506 |
+| Board #494: a full class offers only the waitlist on the member's class page, and the device count is capped by places and capacity (#503, found in the demo rehearsal); undici 8.12.3 for GHSA-xjj6-f33q-929c | #505, #497 |
+| Board #494 [K]: `docs/runbooks/studio-demo.md` (a 15-minute demo on `test-studio-1` plus the questions to ask) and `demo-studio.mjs fill` / `unfill` (fictional `@example.com` people only) | #504 |
+| Board #494 [K]: dev emails the owner at 70% of a Neon Free limit, once per billing period, through the canary's topic (#97's safe half; no alarm, $0); the perf-audit scripts and the 2026-10-20 baseline in `tests/e2e/perf/` | #499, #501 |
+| Board #494 layout shift: skeletons at the loaded cards' heights on today and the member profile, the summary line holds its place; the branded sign-in's `autocomplete="username"` (axe) and `auth.setup.ts` through the branded page. Today's CLS 0.281 to about 0.045 (#508, the summary line's no-break space, approved and open at EVENING) | #507 |
 
 - **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
 - **The cold start went from about 8.4 s to 3.5 s** (from Israel, 11 parallel cold `GET /me` on dev, #445 tables 1
@@ -205,8 +211,17 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
   5/5 on `20cc2b6` that morning.
 - P-4 (board #471): the package is not the lever. R2R off is 38% smaller and about 1.0 s slower; trimming needs a
   self-contained publish (backend-patterns.md). Nothing merged.
-- Open from #481: the dev clean-up (K6 and O5) after Kris's Instagram and WhatsApp test; #445 and #471 close then.
-  Kris answered P-2, #313 and #312 on 2026-10-23 (decisions.md); sweep row 13 keeps the brand book's tile.
+- Open from #494: the dev clean-up (K6 and O5) after Kris's Instagram and WhatsApp test; #445 and #471 close then.
+  #97's sign-up gate waits for Kris (A open, B a dev-only allow list in SSM, recommended, or C self sign-up off;
+  the note is on #97). Kris answered P-2, #313 and #312 on 2026-10-23 (decisions.md).
+- #509 (open at EVENING): the Neon usage function used 119 of 128 MB after #499, so it gets 256 MB and a
+  `{"mode":"selftest"}` email; run the self-test once after it merges.
+- **A demo for a studio owner** runs on `test-studio-1` ("YOGAZ", Kris's test owner and member), never on
+  `tempo-smoke-studio`, whose names, sales and lists are e2e leftovers. `demo-studio.mjs fill` made 48 bookings
+  there on 2026-10-25; `unfill` undoes them.
+- Dependabot alerts are off on the repo; the PR audit step (`pnpm audit --audit-level high`) is the only early
+  warning, and it caught GHSA-xjj6-f33q-929c on 2026-10-25 (#497). `pnpm audit` and
+  `dotnet list package --vulnerable` were clean that day.
 - Pages Functions on `/s/*` count against Cloudflare's free 100,000 requests a day (the link previews, SL-9): a
   tripwire row in ADR-0021.
 - R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור
