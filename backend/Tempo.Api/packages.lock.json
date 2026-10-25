@@ -343,24 +343,6 @@
         "resolved": "4.152.3",
         "contentHash": "ddPJvDTCyQQMhhgBjZ1/zs1xWsEVeaIYVCMZOJVHK1gDJBKUskqXwQqRhx9fBhUcycQB2SmqQ2s2iluvOnwFrw=="
       }
-    },
-    "net10.0/win-x64": {
-      "SkiaSharp.NativeAssets.macOS": {
-        "type": "Transitive",
-        "resolved": "4.152.3",
-        "contentHash": "iZavtVZl3wLd2bxyqF/stG1BD64S45oaQrvPJpYzVETGHHP4qF8kvKDwH2fbCCiMP7COEKR5bAx2R8Jkc2/Lcw=="
-      },
-      "SkiaSharp.NativeAssets.Win32": {
-        "type": "Transitive",
-        "resolved": "4.152.3",
-        "contentHash": "Z7oTz0reu2eROlD5sRj8c6IVq6K1nEzZxKaqXWYVrn8tlgliiJ46PVj8prK1uVCzVQXxIO33P2nscmp8m/njUQ=="
-      },
-      "SkiaSharp.NativeAssets.Linux.NoDependencies": {
-        "type": "CentralTransitive",
-        "requested": "[4.152.3, )",
-        "resolved": "4.152.3",
-        "contentHash": "ddPJvDTCyQQMhhgBjZ1/zs1xWsEVeaIYVCMZOJVHK1gDJBKUskqXwQqRhx9fBhUcycQB2SmqQ2s2iluvOnwFrw=="
-      }
     }
   }
 }
