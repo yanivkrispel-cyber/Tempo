@@ -1,0 +1,38 @@
+/* The person at a glance, above the sections on a computer (#488). */
+.summary dl {
+  display: grid;
+  /* One row: the pass, phone, email (the longest) and since when. */
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 1.5fr) minmax(0, 0.7fr);
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+}
+.summary dl > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.summary dt {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-muted);
+}
+.summary dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* An address keeps one line; the full one is in its title and in the contact section. */
+.summary .clip {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detail {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  color: var(--ink-muted);
+}

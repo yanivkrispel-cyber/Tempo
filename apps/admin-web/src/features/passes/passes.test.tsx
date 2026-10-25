@@ -204,6 +204,24 @@ describe("passes on the person card", () => {
     expect(within(items[1]!).queryByRole("button", { name: /ביטול/ })).not.toBeInTheDocument();
   });
 
+  it("folds the passes that ended on a computer, and sums up the one in force (#488)", async () => {
+    renderAt(
+      `/o/neshima/people/${personId}`,
+      personRoutes([pass(), pass({ id: id(21), status: "voided" }), pass({ id: id(22), status: "expired" })]),
+    );
+    const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+    const live = await within(section).findByRole("list", { name: "כרטיסיות ומנויים, מהחדש לישן" });
+    expect(within(live).getAllByRole("listitem")).toHaveLength(1);
+    const fold = within(section).getByText("2 כרטיסיות ומנויים שהסתיימו");
+    expect(fold.closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(fold);
+    expect(fold.closest("details")).toHaveAttribute("open");
+
+    const summary = screen.getByRole("region", { name: "סיכום" });
+    expect(await within(summary).findByText("כרטיסיית 10 כניסות")).toBeInTheDocument();
+    expect(summary).toHaveTextContent("נותרו 6 מתוך 10 · עד 29.12.2026");
+  });
+
   it("grants a pass from today, with a note", async () => {
     let granted = false;
     const api = renderAt(`/o/neshima/people/${personId}`, {

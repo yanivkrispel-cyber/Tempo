@@ -20,6 +20,7 @@ import {
   useToast,
 } from "../../shared/design-system";
 import { formatDate, todayIso, toIsoDate, type IsoDate } from "../../shared/utilities/dates";
+import { useMediaQuery, WIDE_SCREEN } from "../../shared/useMediaQuery";
 import { displayPhone } from "../../shared/utilities/phones";
 import { useStudio } from "../console/studio";
 import { PassesSection } from "../passes/PassesSection";
@@ -31,6 +32,7 @@ import { ExportButton } from "./ExportButton";
 import { InvitePersonDialog } from "./InvitePersonDialog";
 import { personStatus, sourceLabel } from "./labels";
 import { NotesSection } from "./NotesSection";
+import { PersonSummary } from "./PersonSummary";
 import { PersonTagsSection } from "./PersonTagsSection";
 import { RelationshipsSection } from "./RelationshipsSection";
 
@@ -94,6 +96,8 @@ function PersonCard({ person }: { person: PersonDetail }) {
   const writable = studio.can("people.manage") && (person.status === "active" || person.status === "archived");
   const archive = usePatchPerson(person);
   const toast = useToast();
+  // On a computer a summary leads and the past passes fold (#488); a phone keeps its one column as it was.
+  const wide = useMediaQuery(WIDE_SCREEN, true);
 
   const setArchived = (archived: boolean) =>
     archive.mutate(
@@ -127,6 +131,8 @@ function PersonCard({ person }: { person: PersonDetail }) {
           )}
         </div>
       </header>
+
+      {wide && <PersonSummary person={person} />}
 
       <Card as="section" aria-labelledby="details" className="tp-stack">
         <div className="tp-row" style={{ justifyContent: "space-between" }}>
@@ -169,7 +175,7 @@ function PersonCard({ person }: { person: PersonDetail }) {
       <PersonTagsSection person={person} writable={writable} />
       {studio.can("people.notes.view") && <NotesSection person={person} />}
       <ContactPoints person={person} writable={writable} />
-      {studio.can("passes.view") && <PassesSection person={person} />}
+      {studio.can("passes.view") && <PassesSection person={person} foldPast={wide} />}
       {studio.can("people.view") && <HealthSection person={person} />}
       <ConsentSection person={person} />
       <RelationshipsSection person={person} writable={writable} />
