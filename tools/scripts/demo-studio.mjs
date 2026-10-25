@@ -379,6 +379,8 @@ const fillManifest = join(tmpdir(), `tempo-demo-fill-${membership.organization.i
 async function fill() {
   const days = Number.isInteger(args.days) && args.days > 0 ? args.days : 7;
   const sessions = (await call("GET", `${s}/sessions?from=${today()}&to=${addDays(today(), days)}`)).items;
+  // The people list has no cursor and caps at 100 (fine for a demo studio); in a bigger one `fill` sees only the
+  // fictional people on the first page.
   const fictional = (await call("GET", `${s}/people?limit=100`)).items.filter(isFictional);
   const holders = [];
   for (const person of fictional) {
@@ -411,8 +413,13 @@ async function unfill() {
     return;
   }
   const { bookings } = JSON.parse(readFileSync(fillManifest, "utf8"));
-  for (const id of bookings) await call("POST", `${s}/bookings/${id}/cancel`, { returnEntry: true }, [200, 404, 409]);
-  console.log(`✓ ${bookings.length} demo bookings cancelled, entries returned`);
+  let cancelled = 0;
+  for (const id of bookings) {
+    // 404 or 409: the booking is gone already (the class passed, or someone cancelled it); nothing to undo.
+    const booking = await call("POST", `${s}/bookings/${id}/cancel`, { returnEntry: true }, [200, 404, 409]);
+    if (booking?.id) cancelled += 1;
+  }
+  console.log(`✓ ${cancelled} of ${bookings.length} demo bookings cancelled, entries returned`);
   unlinkSync(fillManifest);
 }
 
