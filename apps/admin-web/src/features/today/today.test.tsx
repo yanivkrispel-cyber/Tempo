@@ -111,6 +111,26 @@ describe("the day in the studio (D15, the coach's screen)", () => {
     expect(within(day).getByText(/המתאמנים קיבלו הודעה/)).toBeInTheDocument();
   });
 
+  it("folds the cancelled classes under one line that opens on a tap (board #494, R-2)", async () => {
+    const user = userEvent.setup({ advanceTimers: () => undefined });
+    renderAt("/o/neshima/today", () => [
+      session({ id: id(24) }),
+      session({ id: id(25), status: "cancelled", classType: { id: id(5), name: "ספינינג", category: "cycle" } }),
+      session({ id: id(26), status: "cancelled", classType: { id: id(6), name: "יוגה", category: "yoga" } }),
+    ]);
+    const day = await screen.findByRole("region", { name: "השיעורים היום" });
+    const fold = within(day).getByText("2 שיעורים בוטלו");
+    const details = fold.closest("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    // The held class stays outside the fold; both cancelled ones are inside it.
+    expect(details).not.toContainElement(within(day).getByText("פילאטיס מכשירים"));
+    expect(details).toContainElement(within(day).getByText("ספינינג"));
+    expect(details).toContainElement(within(day).getByText("יוגה"));
+    await user.click(fold);
+    expect(details).toHaveAttribute("open");
+  });
+
   it("sums the day up under the heading, without the cancelled classes", async () => {
     renderAt("/o/neshima/today", () => [
       session({ id: id(31) }),

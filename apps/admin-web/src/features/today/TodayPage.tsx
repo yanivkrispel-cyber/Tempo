@@ -97,15 +97,40 @@ function DayView({ timeZone }: { timeZone: string }) {
   };
   const waitingWords = waiting === 1 ? "דבר אחד מחכה לך" : `${waiting} דברים מחכים לך`;
 
-  const list = (items: Session[]) => (
-    <Card className={styles.day}>
+  // The day as a table with its column heads (OwnerDashboard mockup); the cancelled classes fold under one line at
+  // its foot, so a day of many cancellations doesn't read as a wall of "בוטל" (board #494, R-2).
+  const list = (items: Session[]) => {
+    const held = items.filter((session) => session.status !== "cancelled");
+    const cancelled = items.filter((session) => session.status === "cancelled");
+    const rows = (sessions: Session[]) => (
       <ul className={styles.list}>
-        {items.map((session) => (
+        {sessions.map((session) => (
           <SessionRow key={session.id} session={session} timeZone={timeZone} openedAt={openedAt} />
         ))}
       </ul>
-    </Card>
-  );
+    );
+    return (
+      <Card className={styles.day}>
+        {held.length > 0 && (
+          <>
+            <div className={styles.columns} aria-hidden="true">
+              <span>שעה</span>
+              <span>שיעור</span>
+              <span>תפוסה</span>
+              <span>מצב</span>
+            </div>
+            {rows(held)}
+          </>
+        )}
+        {cancelled.length > 0 && (
+          <details className={styles.cancelled}>
+            <summary>{cancelled.length === 1 ? "שיעור אחד בוטל" : `${cancelled.length} שיעורים בוטלו`}</summary>
+            {rows(cancelled)}
+          </details>
+        )}
+      </Card>
+    );
+  };
 
   return (
     <>
@@ -159,7 +184,7 @@ function DayView({ timeZone }: { timeZone: string }) {
           <div className={live ? styles.first : `${styles.first} ${styles.firstEven}`}>
             {live && <LiveCard session={live} timeZone={timeZone} openedAt={openedAt} />}
             {reports && <SalesCard />}
-            {reports && <OccupancyCard wide={live !== null} />}
+            {reports && <OccupancyCard />}
           </div>
         )}
 
@@ -478,10 +503,10 @@ const parts: { key: Occupancy["cells"][number]["part"]; label: string }[] = [
 const dayLetters = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 
 /** The week's places against capacity, and where it is full: days across, parts of the day down. */
-function OccupancyCard({ wide }: { wide: boolean }) {
+function OccupancyCard() {
   const occupancy = useOccupancy(true);
   if (occupancy.isError) return null;
-  if (!occupancy.data) return <Skeleton height={188} className={wide ? styles.span : undefined} />;
+  if (!occupancy.data) return <Skeleton height={188} className={styles.span} />;
   const data = occupancy.data;
   const share = data.capacity > 0 ? Math.round((data.places / data.capacity) * 100) : 0;
   const previous =
@@ -491,7 +516,7 @@ function OccupancyCard({ wide }: { wide: boolean }) {
   const days = [...new Set(data.cells.map((cell) => cell.day))].sort();
   const cell = (day: string, part: string) => data.cells.find((item) => item.day === day && item.part === part);
   return (
-    <Card as="section" className={cx(styles.kpi, wide && styles.span)} aria-labelledby="occupancy-title">
+    <Card as="section" className={cx(styles.kpi, styles.occupancy, styles.span)} aria-labelledby="occupancy-title">
       <h2 id="occupancy-title" className="tp-eyebrow">
         תפוסה השבוע
       </h2>

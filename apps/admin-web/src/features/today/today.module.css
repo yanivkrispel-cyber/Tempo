@@ -232,6 +232,50 @@
   grid-area: state;
   justify-self: end;
 }
+/* The column heads show only where the row is one line (the 640px container below). */
+.columns {
+  display: none;
+}
+/* The cancelled classes, folded under one line that opens on a tap (board #494, R-2). */
+.cancelled > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+}
+.cancelled > summary::-webkit-details-marker {
+  display: none;
+}
+.cancelled > summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.cancelled[open] > summary::before {
+  transform: rotate(-135deg);
+}
+.cancelled > summary:hover {
+  background: var(--surface-hover);
+}
+.cancelled > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.list + .cancelled,
+.cancelled > .list {
+  border-top: 1px solid var(--line);
+}
 
 /* The live class: a shorter hero, with the numbers on glass. */
 .live {
@@ -405,7 +449,8 @@
     grid-column: 1 / -1;
   }
 }
-@container (min-width: 760px) {
+/* The feed beside the day only where the day still has room for its one-line rows and their heads (#486). */
+@container (min-width: 1000px) {
   .lower {
     grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
   }
@@ -414,9 +459,62 @@
     top: var(--space-5);
   }
 }
+/* Occupancy takes the whole row: the figure and the legend at the start, the week's heat across the rest (#486). */
+@container (min-width: 720px) {
+  .first .span {
+    grid-column: 1 / -1;
+  }
+  .firstEven {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .occupancy {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 2.6fr);
+    grid-template-areas:
+      "title heat"
+      "figure heat"
+      "legend heat";
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--space-6);
+  }
+  .occupancy > h2 {
+    grid-area: title;
+  }
+  .occupancy > .kpiFigure {
+    grid-area: figure;
+  }
+  .occupancy > .heat {
+    grid-area: heat;
+    margin-top: 0;
+    align-self: center;
+  }
+  .occupancy > .heatLegend {
+    grid-area: legend;
+    align-self: end;
+  }
+  .occupancy :global(.tp-heat__cell) {
+    min-height: 28px;
+  }
+}
 @container (min-width: 640px) {
+  /* A fixed state column, so the bars line up under the column heads (#486). */
+  .row,
+  .columns {
+    grid-template-columns: 56px minmax(0, 1.4fr) minmax(160px, 1fr) 128px;
+  }
+  .columns {
+    display: grid;
+    column-gap: var(--space-3);
+    padding: 6px 12px 8px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+  .columns > :last-child {
+    justify-self: end;
+  }
   .row {
-    grid-template-columns: 56px minmax(0, 1.4fr) minmax(160px, 1fr) auto;
     grid-template-areas: "time text fill state";
   }
   .rowTime {
