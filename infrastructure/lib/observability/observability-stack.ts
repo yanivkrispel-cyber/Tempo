@@ -18,13 +18,13 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { applyStandardTags } from "../constructs/tagging";
-import { NEON_USAGE_INTERVAL_HOURS, NEON_USAGE_METRIC } from "../data/database-stack";
+import { NEON_FREE_LIMIT_TRIPWIRE_PERCENT, NEON_USAGE_INTERVAL_HOURS, NEON_USAGE_METRIC } from "../data/database-stack";
 
 export const API_P99_THRESHOLD_MS = 2000;
 export const SES_BOUNCE_RATE_THRESHOLD = 0.05;
 export const SES_COMPLAINT_RATE_THRESHOLD = 0.001;
 /** ADR-0022 tripwire: alert the owners at 70% of any Neon Free plan limit. */
-export const NEON_FREE_LIMIT_ALARM_PERCENT = 70;
+export const NEON_FREE_LIMIT_ALARM_PERCENT = NEON_FREE_LIMIT_TRIPWIRE_PERCENT;
 /**
  * The account's Lambda concurrency quota: a new account gets 10, Tempo's
  * development account was raised to 40 (quota case 179192381800130, still

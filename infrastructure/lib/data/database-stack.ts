@@ -5,6 +5,7 @@ import { Schedule, ScheduleExpression } from "aws-cdk-lib/aws-scheduler";
 import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
 import { IStringParameter, StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
+import { devCanaryTopicName } from "../observability/dev-canary-stack";
 import { TempoEnvironmentConfig, resourceName } from "../../config/environment-config";
 import { resolveDotNetLambdaCode } from "../constructs/dotnet-lambda-code";
 import { TempoFunction } from "../constructs/lambda-defaults";
@@ -39,6 +40,8 @@ export function neonApiKeyParameterName(config: TempoEnvironmentConfig): string 
  */
 export const NEON_USAGE_METRIC = { namespace: "Tempo/Database", metricName: "NeonFreeLimitPercent" } as const;
 export const NEON_USAGE_INTERVAL_HOURS = 6;
+/** ADR-0022 tripwire: the owners hear at 70% of any Neon Free plan limit (an alarm in production, an email in dev). */
+export const NEON_FREE_LIMIT_TRIPWIRE_PERCENT = 70;
 
 /**
  * Neon Free plan limits per project, verified on neon.com/pricing on
@@ -125,13 +128,19 @@ export class DatabaseStack extends Stack {
    * Neon API (the project endpoint works on the Free plan; the consumption
    * history API does not) and publishes the highest share of a Free limit as
    * one custom metric. A failed read throws, so it shows in the Lambda
-   * errors alarm. Development runs it too, without an alarm.
+   * errors alarm. Development runs it too, without an alarm: there the
+   * function itself emails the owner through the dev canary's SNS topic, once
+   * per Neon billing period, when the share reaches the tripwire (#97). The
+   * period it last warned about lives in a standard SSM parameter. $0: no
+   * alarm, no new topic or subscription.
    */
   private addUsageCheck(config: TempoEnvironmentConfig): LambdaFunction {
     const functionName = resourceName(config, "neon-usage");
     const apiKey = StringParameter.fromSecureStringParameterAttributes(this, "NeonApiKeyParameter", {
       parameterName: neonApiKeyParameterName(config)
     });
+
+    const warning = this.addUsageWarning(config);
 
     const fn = new LambdaFunction(this, "NeonUsageFunction", {
       functionName,
@@ -150,7 +159,12 @@ export class DatabaseStack extends Stack {
         ENVIRONMENT: config.environmentName,
         LIMIT_COMPUTE_SECONDS: String(NEON_FREE_LIMITS.computeSeconds),
         LIMIT_STORAGE_BYTES: String(NEON_FREE_LIMITS.storageBytes),
-        LIMIT_EGRESS_BYTES: String(NEON_FREE_LIMITS.egressBytes)
+        LIMIT_EGRESS_BYTES: String(NEON_FREE_LIMITS.egressBytes),
+        ...(warning && {
+          WARN_PERCENT: String(NEON_FREE_LIMIT_TRIPWIRE_PERCENT),
+          WARN_TOPIC_ARN: warning.topicArn,
+          WARN_STATE_PARAMETER: warning.stateName
+        })
       },
       handler: "index.handler",
       code: Code.fromInline(NEON_USAGE_SOURCE)
@@ -166,6 +180,12 @@ export class DatabaseStack extends Stack {
       })
     );
 
+    if (warning) {
+      warning.state.grantRead(fn);
+      warning.state.grantWrite(fn);
+      fn.addToRolePolicy(new PolicyStatement({ actions: ["sns:Publish"], resources: [warning.topicArn] }));
+    }
+
     new Schedule(this, "NeonUsageSchedule", {
       scheduleName: functionName,
       description: "Runs the Neon usage check (ADR-0022)",
@@ -175,10 +195,29 @@ export class DatabaseStack extends Stack {
 
     return fn;
   }
+
+  /**
+   * Where alarms are off (development) and the dev canary exists, the usage
+   * check emails through the canary's topic. The topic lives in the Canary
+   * stack, deployed after this one, so it is named, not imported; until it
+   * exists a publish fails and shows in the function's log.
+   */
+  private addUsageWarning(config: TempoEnvironmentConfig) {
+    const flags = config.featureFlags;
+    if (config.observability.alarmsEnabled || !flags.enableDevCanary || !flags.enableSmokeTestSignIn) return undefined;
+    const stateName = `/tempo/${config.environmentName}/neon/usage-warning`;
+    const state = new StringParameter(this, "NeonUsageWarningState", {
+      parameterName: stateName,
+      description: "The Neon billing period the usage check last emailed about (#97). Written by the function.",
+      stringValue: JSON.stringify({ warnedPeriodEnd: null })
+    });
+    const topicArn = Stack.of(this).formatArn({ service: "sns", resource: devCanaryTopicName(config) });
+    return { state, stateName, topicArn };
+  }
 }
 
-const NEON_USAGE_SOURCE = `
-const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
+export const NEON_USAGE_SOURCE = `
+const { SSMClient, GetParameterCommand, PutParameterCommand } = require("@aws-sdk/client-ssm");
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 
 exports.handler = async () => {
@@ -206,5 +245,21 @@ exports.handler = async () => {
     Namespace: "${NEON_USAGE_METRIC.namespace}",
     MetricData: [{ MetricName: "${NEON_USAGE_METRIC.metricName}", Dimensions: [{ Name: "Environment", Value: env.ENVIRONMENT }], Value: highest, Unit: "Percent" }]
   }));
+
+  if (!env.WARN_TOPIC_ARN || highest < Number(env.WARN_PERCENT)) return;
+  const ssm = new SSMClient({});
+  const stored = await ssm.send(new GetParameterCommand({ Name: env.WARN_STATE_PARAMETER }));
+  const periodEnd = project.consumption_period_end || "unknown";
+  if (JSON.parse(stored.Parameter.Value).warnedPeriodEnd === periodEnd) return;
+  const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+  const shares = Object.entries(percent).map(([name, value]) => name + " " + Math.round(value) + "%").join(", ");
+  await new SNSClient({}).send(new PublishCommand({
+    TopicArn: env.WARN_TOPIC_ARN,
+    Subject: "[tempo-" + env.ENVIRONMENT + "] Neon at " + Math.round(highest) + "% of a Free plan limit",
+    Message: "The Neon project of " + env.ENVIRONMENT + " has used " + shares + " of its Free plan limits this period (until " + periodEnd + "). " +
+      "Over 100% Neon suspends the compute until the next period. This email comes once per period. " +
+      "What to do: docs/claude-memory/database-neon.md (#97)."
+  }));
+  await ssm.send(new PutParameterCommand({ Name: env.WARN_STATE_PARAMETER, Value: JSON.stringify({ warnedPeriodEnd: periodEnd }), Overwrite: true }));
 };
 `;

@@ -29,6 +29,9 @@ ADR-0022 is the source of truth. This file holds the operational facts.
 
 A human writes these values. Claude prepares the command and hands it over.
 
+The three role passwords are at least 32 characters, letters and digits only (#97); rotate any shorter one. Checked
+on 2026-10-25 by length only: all three dev passwords are 48.
+
 ## Migrator
 
 - Runs as a Lambda without a VPC and reads the SSM parameters above. Locally it takes `DATABASE_URL`.
@@ -40,4 +43,6 @@ A human writes these values. Claude prepares the command and hands it over.
   IdentitySchemaTests.cs`.
 - A non-superuser master needs `GRANT migrator TO CURRENT_USER WITH INHERIT FALSE, SET TRUE` (fixed in PR #16).
 - Usage check: the `tempo-<env>-neon-usage` Lambda runs every 6 hours and publishes
-  `Tempo/Database NeonFreeLimitPercent`; the prod alarm fires at 70%.
+  `Tempo/Database NeonFreeLimitPercent`; the prod alarm fires at 70%. Dev has no alarm (alarm budget), so since
+  2026-10-25 (#97) the function itself emails the owner through the dev canary's SNS topic once per Neon billing
+  period at 70%; the period it last warned about is in `/tempo/dev/neon/usage-warning`. Dev was at 19% on 2026-10-25.
