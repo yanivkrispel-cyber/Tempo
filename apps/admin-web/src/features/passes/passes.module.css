@@ -1,0 +1,50 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* On a computer the expired and voided passes fold under one line that opens on a click (#488). */
+.past > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 8px 6px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+}
+.past > summary::-webkit-details-marker {
+  display: none;
+}
+.past > summary::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.past[open] > summary::before {
+  transform: rotate(-135deg);
+}
+.past[open] > summary {
+  margin-bottom: 8px;
+}
+.past > summary:hover {
+  background: var(--surface-hover);
+}
+.past > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

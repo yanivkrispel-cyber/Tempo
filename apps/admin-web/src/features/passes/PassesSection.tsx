@@ -20,6 +20,7 @@ import {
 import { addDays, formatDate, formatDayMonth, todayIn, type IsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { useStudioTimeZone } from "../../shared/studio/timeZone";
+import styles from "./passes.module.css";
 import {
   allowance,
   categoryScope,
@@ -41,8 +42,11 @@ const canFreeze = (pass: Pass) => pass.product.kind === "membership" && pass.sta
 const frozenDays = (freezes: readonly PassFreeze[]) =>
   freezes.reduce((sum, freeze) => sum + (Date.parse(freeze.endsOn) - Date.parse(freeze.startsOn)) / 86_400_000 + 1, 0);
 
-/** "כרטיסיות ומנויים" on the person card (docs/29 section 5.2): what they hold, entries left, grant and void. */
-export function PassesSection({ person }: { person: PersonDetail }) {
+/**
+ * "כרטיסיות ומנויים" on the person card (docs/29 section 5.2): what they hold, entries left, grant and void. With
+ * `foldPast` (a computer, #488) the expired and voided ones fold under one line, so the live ones lead.
+ */
+export function PassesSection({ person, foldPast = false }: { person: PersonDetail; foldPast?: boolean }) {
   const studio = useStudio();
   const passes = usePersonPasses(person.id);
   const [granting, setGranting] = useState(false);
@@ -76,12 +80,8 @@ export function PassesSection({ person }: { person: PersonDetail }) {
       ) : passes.data.length === 0 ? (
         <p className="tp-muted">אין כרטיסייה או מנוי. בלי אחד מהם אי אפשר להירשם לשיעורים.</p>
       ) : (
-        <ul
-          className="tp-stack"
-          style={{ listStyle: "none", padding: 0, margin: 0, gap: 12 }}
-          aria-label="כרטיסיות ומנויים, מהחדש לישן"
-        >
-          {passes.data.map((pass) => (
+        (() => {
+          const item = (pass: Pass) => (
             <PassItem
               key={pass.id}
               pass={pass}
@@ -90,8 +90,31 @@ export function PassesSection({ person }: { person: PersonDetail }) {
               onUnfreeze={manage && pass.status === "active" ? (freeze) => setUnfreezing({ pass, freeze }) : undefined}
               onVoid={manage && pass.status === "active" ? () => setVoiding(pass) : undefined}
             />
-          ))}
-        </ul>
+          );
+          const live = foldPast ? passes.data.filter((pass) => pass.status === "active") : passes.data;
+          const past = foldPast ? passes.data.filter((pass) => pass.status !== "active") : [];
+          return (
+            <>
+              {live.length > 0 ? (
+                <ul className={styles.list} aria-label="כרטיסיות ומנויים, מהחדש לישן">
+                  {live.map(item)}
+                </ul>
+              ) : (
+                <p className="tp-muted">אין כרטיסייה או מנוי בתוקף.</p>
+              )}
+              {past.length > 0 && (
+                <details className={styles.past}>
+                  <summary>
+                    {past.length === 1 ? "כרטיסייה או מנוי אחד שהסתיים" : `${past.length} כרטיסיות ומנויים שהסתיימו`}
+                  </summary>
+                  <ul className={styles.list} aria-label="כרטיסיות ומנויים שהסתיימו, מהחדש לישן">
+                    {past.map(item)}
+                  </ul>
+                </details>
+              )}
+            </>
+          );
+        })()
       )}
       {granting && timeZone && (
         <GrantDialog person={person} today={todayIn(timeZone)} onClose={() => setGranting(false)} />
