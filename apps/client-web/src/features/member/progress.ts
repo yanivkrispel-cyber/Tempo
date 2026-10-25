@@ -16,7 +16,7 @@ const retryOnce = (failures: number, error: unknown) =>
   failures < 1 && !(error instanceof TempoApiError && error.status < 500);
 
 /** The member's progress in the studio; nothing is asked while there is no studio. */
-export function useMyProgress(organizationId: string | undefined) {
+export function useMyProgress(organizationId: string | undefined, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: progressKey(organizationId ?? ""),
@@ -26,7 +26,9 @@ export function useMyProgress(organizationId: string | undefined) {
           params: { path: { organizationId: organizationId! } },
         }),
       ),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(organizationId) && enabled,
+    // Fresh for as long as the home's one read (O5), so the home doesn't ask again for what it just got.
+    staleTime: 30_000,
     retry: retryOnce,
   });
 }

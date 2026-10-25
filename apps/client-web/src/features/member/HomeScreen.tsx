@@ -15,6 +15,7 @@ import { nameOf, useAccount } from "../../account/account";
 import { addDays, dayOfWeek, formatDate, startOfWeek, type IsoDate } from "../../shared/utilities/dates";
 import { freeSpots, myState, waitText } from "./bookingState";
 import { useInstructors, useMyProfile } from "./experience";
+import { useMyHome } from "./home";
 import { dayName, relativeDay } from "./format";
 import { InstallAppCard } from "./InstallApp";
 import styles from "./member.module.css";
@@ -175,15 +176,18 @@ function useTellPromotion(id: string | undefined) {
 
 function StudioHome({ studio }: { studio: Studio }) {
   const { timeZone, now, today } = useStudioClock(studio.id);
-  const inbox = useInbox(studio.id);
+  // One read for the whole home; the parts wait for it and read separately only when it fails (board #511, O5).
+  const home = useMyHome(studio.id);
+  const settled = !home.isFetching;
+  const inbox = useInbox(studio.id, settled);
   const [day, setDay] = useState(today);
   const week = Array.from({ length: 7 }, (_, offset) => addDays(startOfWeek(today), offset));
-  const upcoming = useUpcomingBookings(studio.id);
-  const sessions = useSessions(studio.id, startOfWeek(today), addDays(startOfWeek(today), 6));
-  const progress = useMyProgress(studio.id);
-  const passes = useMyPasses(studio.id);
-  const profile = useMyProfile(studio.id);
-  const instructors = useInstructors(studio.id);
+  const upcoming = useUpcomingBookings(studio.id, settled);
+  const sessions = useSessions(studio.id, startOfWeek(today), addDays(startOfWeek(today), 6), settled);
+  const progress = useMyProgress(studio.id, settled);
+  const passes = useMyPasses(studio.id, settled);
+  const profile = useMyProfile(studio.id, settled);
+  const instructors = useInstructors(studio.id, settled);
   // The installed app's "check-in pass" shortcut (manifest.webmanifest) opens the pass straight away.
   const [params, setParams] = useSearchParams();
 

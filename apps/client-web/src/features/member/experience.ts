@@ -186,7 +186,7 @@ export function useUnlinkBuddy(organizationId: string) {
 }
 
 /** The studio's instructors with their photo and links, by membership id. */
-export function useInstructors(organizationId: string) {
+export function useInstructors(organizationId: string, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: experienceKeys.instructors(organizationId),
@@ -194,18 +194,20 @@ export function useInstructors(organizationId: string) {
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/instructors", { params: { path: { organizationId } } }),
       ).then((list) => new Map(list.items.map((instructor) => [instructor.membershipId, instructor]))),
+    enabled,
     staleTime: 5 * 60_000,
     retry: retryOnce,
   });
 }
 
 /** The caller's own person record in the studio (name, avatar). */
-export function useMyProfile(organizationId: string) {
+export function useMyProfile(organizationId: string, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: experienceKeys.profile(organizationId),
     queryFn: () =>
       unwrap(api.GET("/api/v1/organizations/{organizationId}/me/profile", { params: { path: { organizationId } } })),
+    enabled,
     staleTime: 60_000,
     retry: retryOnce,
   });
