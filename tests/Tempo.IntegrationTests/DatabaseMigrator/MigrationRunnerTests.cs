@@ -30,7 +30,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(38);
+        result.AppliedScripts.Should().HaveCount(39);
         result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
         result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
         result.AppliedScripts[2].Should().EndWith("0003_join_attempts.sql");
@@ -69,6 +69,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         result.AppliedScripts[35].Should().EndWith("0036_share_links_by_intent.sql");
         result.AppliedScripts[36].Should().EndWith("0037_rate_counters.sql");
         result.AppliedScripts[37].Should().EndWith("0038_booking_cancelled_at.sql");
+        result.AppliedScripts[38].Should().EndWith("0039_attended_bookings_index.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -76,9 +77,11 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(38);
+            .Should().Be(39);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
+        (await ScalarAsync<string>(connection, "SELECT pg_get_indexdef('scheduling.ix_bookings_person_attended'::regclass)"))
+            .Should().Contain("(organization_id, person_id) INCLUDE (session_id) WHERE (status = 'attended'::text)", "0039: the members-at-risk report reads attended visits by member (board #511, K4)");
     }
 
     [Fact]
@@ -107,7 +110,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(38);
+        result.AppliedScripts.Should().HaveCount(39);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();
