@@ -18,7 +18,7 @@
  *   node tools/scripts/perf-big-db.mjs create|run|delete --branch perf-big-2026-10-25 [--profile tempo]
  */
 
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,7 +143,7 @@ if (command === "create") {
   mkdirSync(out, { recursive: true });
   // The harness runs in the sdk container (Smart App Control blocks locally built test DLLs on this machine);
   // the connection strings reach it by name (-e NAME), never on the command line.
-  const result = spawnSync(
+  const child = spawn(
     "docker",
     [
       "run",
@@ -166,7 +166,17 @@ if (command === "create") {
       "--logger",
       "console;verbosity=normal",
     ],
-    { env, stdio: "inherit" },
+    { env, stdio: ["ignore", "pipe", "pipe"] },
   );
-  process.exit(result.status ?? 1);
+  // Whatever the harness prints passes through a mask of the four passwords first.
+  const secrets = [
+    ownerPassword,
+    ...["app", "platform", "migrator"].map(
+      (role) => env[`PERF_BIG_${role.toUpperCase()}`].match(/Password=([^;]*)/)[1],
+    ),
+  ];
+  const mask = (chunk) => secrets.reduce((text, secret) => text.split(secret).join("***"), chunk.toString());
+  child.stdout.on("data", (chunk) => process.stdout.write(mask(chunk)));
+  child.stderr.on("data", (chunk) => process.stderr.write(mask(chunk)));
+  child.on("close", (code) => process.exit(code ?? 1));
 }

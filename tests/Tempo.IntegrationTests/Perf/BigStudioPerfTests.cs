@@ -41,7 +41,7 @@ public sealed class PerfBigFactAttribute : FactAttribute
 /// classes a week, a year of bookings and attendance, passes, inbox items and audit events. Fills once (a filled branch
 /// is reused), resets pg_stat_statements, opens the reads of the 10 screens of the perf baseline three times through the
 /// real API host (the member's as a member, the console's as the owner), and writes every query's time to
-/// `tests/e2e/perf/big-db-2026-10-25.md`. S-5's line is 20 ms a query.
+/// `tests/e2e/perf/big-db-<the branch date>.md`. S-5's line is 20 ms a query.
 /// </summary>
 public sealed class BigStudioPerfTests(ITestOutputHelper output) : IDisposable
 {
@@ -140,7 +140,7 @@ public sealed class BigStudioPerfTests(ITestOutputHelper output) : IDisposable
             report.AppendLine(line);
         }
 
-        var file = Path.Combine(RepoRoot(), "tests", "e2e", "perf", "big-db-2026-10-25.md");
+        var file = Path.Combine(RepoRoot(), "tests", "e2e", "perf", $"big-db-{Env("PERF_BIG_BRANCH")["perf-big-".Length..]}.md");
         await File.WriteAllTextAsync(file, report.ToString());
         output.WriteLine(report.ToString());
     }
