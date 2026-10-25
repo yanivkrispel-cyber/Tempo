@@ -59,6 +59,25 @@ describe("studio settings", () => {
     );
   });
 
+  it("indexes its sections, each link leading to its own section (#488)", async () => {
+    renderAt("/o/neshima/settings", { [`GET ${base}`]: organization() });
+    await screen.findByRole("textbox", { name: /שם הסטודיו/ });
+    const index = screen.getByRole("navigation", { name: "חלקי ההגדרות" });
+    const links = within(index).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual(
+      expect.arrayContaining(["פרטי הסטודיו", "מיתוג", "עמוד ציבורי", "התראות ותזכורות", "המנוי ל־Tempo"]),
+    );
+    for (const link of links) {
+      const target = document.getElementById(link.getAttribute("href")!.slice(1));
+      expect(target, link.textContent!).not.toBeNull();
+      expect(target!.children.length, link.textContent!).toBeGreaterThan(0);
+    }
+    expect(within(index).getByRole("link", { name: "פרטי הסטודיו" })).toHaveAttribute("aria-current", "location");
+    expect(document.getElementById("settings-studio")).toContainElement(
+      screen.getByRole("region", { name: "הגדרות הסטודיו" }),
+    );
+  });
+
   it("explains a conflict with someone else's change", async () => {
     renderAt("/o/neshima/settings", {
       [`GET ${base}`]: organization(),

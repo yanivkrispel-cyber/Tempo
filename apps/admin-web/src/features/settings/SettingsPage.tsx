@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { meKey } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
@@ -15,6 +15,7 @@ import { PlanCard } from "./PlanCard";
 import { PublicPageCard } from "./PublicPageCard";
 import { TagsCard } from "./TagsCard";
 import { TemplatesCard } from "./TemplatesCard";
+import styles from "./settings.module.css";
 
 type Organization = Schemas["Organization"];
 
@@ -38,13 +39,11 @@ export function SettingsPage() {
     queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } })),
   });
 
-  return (
-    <>
-      <header>
-        <span className="tp-eyebrow">ניהול</span>
-        <h1>הגדרות הסטודיו</h1>
-      </header>
-      {organization.isError ? (
+  const sections: { id: string; label: string; card: ReactNode }[] = [
+    {
+      id: "settings-studio",
+      label: "פרטי הסטודיו",
+      card: organization.isError ? (
         <Banner tone="danger" icon="info">
           {errorMessage(organization.error, "לא הצלחנו לטעון את ההגדרות. נסו שוב.")}
         </Banner>
@@ -53,17 +52,74 @@ export function SettingsPage() {
       ) : (
         // Keyed by version: after a save the form starts again from what the API returned.
         <SettingsForm key={organization.data.version} organization={organization.data} />
-      )}
-      <BrandCard />
-      <PublicPageCard />
-      <BookingPolicyCard />
-      <NotificationSettingsCard />
-      <TemplatesCard />
-      {studio.can("people.tags.manage") && <TagsCard />}
-      <PlanCard />
-      <InstallAppCard />
+      ),
+    },
+    { id: "settings-brand", label: "מיתוג", card: <BrandCard /> },
+    { id: "settings-public", label: "עמוד ציבורי", card: <PublicPageCard /> },
+    { id: "settings-booking", label: "הרשמה לשיעורים", card: <BookingPolicyCard /> },
+    { id: "settings-notifications", label: "התראות ותזכורות", card: <NotificationSettingsCard /> },
+    { id: "settings-templates", label: "נוסחי ההודעות", card: <TemplatesCard /> },
+    ...(studio.can("people.tags.manage") ? [{ id: "settings-tags", label: "תגיות", card: <TagsCard /> }] : []),
+    { id: "settings-plan", label: "המנוי ל־Tempo", card: <PlanCard /> },
+  ];
+  const current = useCurrentSection(sections.map((section) => section.id));
+
+  return (
+    <>
+      <header>
+        <span className="tp-eyebrow">ניהול</span>
+        <h1>הגדרות הסטודיו</h1>
+      </header>
+      {/* On a computer an index of the sections beside them; on a phone the wrappers are `display: contents` (#488). */}
+      <div className={styles.layout}>
+        <nav className={styles.index} aria-label="חלקי ההגדרות">
+          <ul>
+            {sections.map((section) => (
+              <li key={section.id}>
+                <a href={`#${section.id}`} aria-current={current === section.id ? "location" : undefined}>
+                  {section.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className={styles.sections}>
+          {sections.map((section) => (
+            <div key={section.id} id={section.id} className={styles.section}>
+              {section.card}
+            </div>
+          ))}
+          {/* Only where the browser offers to install, so it has no place in the index. */}
+          <InstallAppCard />
+        </div>
+      </div>
     </>
   );
+}
+
+/** The section at the top of the screen, for the index to mark; none where the browser cannot tell. */
+function useCurrentSection(ids: readonly string[]): string | undefined {
+  const [current, setCurrent] = useState<string | undefined>(ids[0]);
+  const key = ids.join(" ");
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const seen = new Map<string, boolean>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) seen.set(entry.target.id, entry.isIntersecting);
+        const first = key.split(" ").find((id) => seen.get(id));
+        if (first) setCurrent(first);
+      },
+      // A section counts once it reaches the upper third of the screen.
+      { rootMargin: "0px 0px -66% 0px" },
+    );
+    for (const id of key.split(" ")) {
+      const element = document.getElementById(id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [key]);
+  return current;
 }
 
 function SettingsForm({ organization }: { organization: Organization }) {
