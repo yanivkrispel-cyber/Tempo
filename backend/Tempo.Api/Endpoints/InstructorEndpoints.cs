@@ -41,7 +41,7 @@ public static class InstructorEndpoints
 
     private static StaffProfileInput Input(StaffProfileRequest r) => new(r.Headline, r.Bio, r.InstagramHandle, r.PlaylistUrl, r.Visible, r.PublicProfile);
 
-    private static InstructorProfileResponse ToResponse(InstructorProfileView p) =>
+    internal static InstructorProfileResponse ToResponse(InstructorProfileView p) =>
         new(
             p.MembershipId,
             p.DisplayName,

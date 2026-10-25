@@ -129,7 +129,7 @@ public static class OrganizationEndpoints
         return Results.NoContent();
     }
 
-    private static OrganizationResponse ToResponse(OrganizationView o) =>
+    internal static OrganizationResponse ToResponse(OrganizationView o) =>
         new(
             o.Id,
             o.Slug,

@@ -95,7 +95,11 @@ public static class ClassEndpoints
     private static async Task<IResult> ListInboxAsync(HttpContext httpContext, Guid? before, int? limit, IStudioSettingsService settings)
     {
         var page = await settings.ListInboxAsync(TenantRouteFilter.Current(httpContext), before, limit ?? 50, httpContext.RequestAborted);
-        return Results.Ok(new InboxPageResponse(
+        return Results.Ok(ToResponse(page));
+    }
+
+    internal static InboxPageResponse ToResponse(InboxPage page) =>
+        new(
             [.. page.Items.Select(i => new InboxItemResponse(
                 i.Id,
                 i.Kind,
@@ -107,8 +111,7 @@ public static class ClassEndpoints
                 i.Title,
                 i.Body))],
             page.UnreadCount,
-            page.NextBefore));
-    }
+            page.NextBefore);
 
     private static async Task<IResult> MarkReadAsync(HttpContext httpContext, Guid itemId, IStudioSettingsService settings)
     {
