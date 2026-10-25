@@ -9,8 +9,17 @@
  *
  * Usage (from a developer's machine; needs `--profile tempo` rights for cognito-idp:AdminInitiateAuth,
  * ssm:GetParameter and cloudformation:DescribeStacks, the same as the live checks):
- *   node tools/scripts/demo-studio.mjs seed  [--profile tempo] [--manifest <file>] [--force]
- *   node tools/scripts/demo-studio.mjs clean [--profile tempo] [--manifest <file>]
+ *   node tools/scripts/demo-studio.mjs seed   [--profile tempo] [--manifest <file>] [--force]
+ *   node tools/scripts/demo-studio.mjs clean  [--profile tempo] [--manifest <file>]
+ *   node tools/scripts/demo-studio.mjs fill   [--email <owner> --studio <slug>] [--days 7]
+ *   node tools/scripts/demo-studio.mjs unfill [--email <owner> --studio <slug>]
+ *
+ * `fill` (board #494, K3; docs/runbooks/studio-demo.md) makes the coming days of an existing demo studio look lived
+ * in: fictional people (`@example.com` only) who hold an active pass are booked into upcoming classes that are still
+ * empty; the smallest class fills with two waiting. It keeps the booking ids in <tmpdir>/tempo-demo-fill-<studio>.json,
+ * and `unfill` cancels exactly those, with their entries returned. By default both act as the dev test user; with
+ * `--email` they sign in as that studio owner instead, with the password from TEMPO_DEMO_PASSWORD (never printed or
+ * stored), and `--studio` picks the studio by its slug.
  *
  * `seed` writes a manifest (default: <tmpdir>/tempo-demo-studio.json) with every id it created; `clean` reads it,
  * cancels the demo sessions (entries return, waiters are removed), ends the weekly classes, archives the products,
@@ -23,6 +32,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { isFictional, planFill } from "./lib/demo-fill.mjs";
 import { demoMemberEmail, isDemoMember } from "./lib/demo-members.mjs";
 
 const PREFIX = "דמו: ";
@@ -37,14 +47,27 @@ function parseArgs(argv) {
     else if (arg === "--manifest") args.manifest = argv[++i];
     else if (arg === "--api-url") args.apiUrl = argv[++i];
     else if (arg === "--force") args.force = true;
+    else if (arg === "--email") args.email = argv[++i];
+    else if (arg === "--studio") args.studio = argv[++i];
+    else if (arg === "--days") args.days = Number(argv[++i]);
   }
   args.apiUrl ??= process.env.API_BASE_URL ?? DEFAULT_API;
   return args;
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (!["seed", "clean"].includes(args.command)) {
-  console.error("usage: demo-studio.mjs <seed|clean> [--profile tempo] [--manifest <file>] [--force]");
+if (!["seed", "clean", "fill", "unfill"].includes(args.command)) {
+  console.error(
+    "usage: demo-studio.mjs <seed|clean|fill|unfill> [--profile tempo] [--manifest <file>] [--force] [--email <owner> --studio <slug>] [--days 7]",
+  );
+  process.exit(2);
+}
+if (args.email && !process.env.TEMPO_DEMO_PASSWORD) {
+  console.error("✗ --email needs the owner's password in TEMPO_DEMO_PASSWORD");
+  process.exit(2);
+}
+if (args.email && ["seed", "clean"].includes(args.command)) {
+  console.error("✗ seed and clean act on the dev test user's studio only; --email is for fill and unfill");
   process.exit(2);
 }
 
@@ -70,7 +93,9 @@ function signIn() {
         UserPoolId: out("UserPoolId"),
         ClientId: out("ClientWebClientId"),
         AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
-        AuthParameters: { USERNAME: ssm(`${path}/email`), PASSWORD: ssm(`${path}/password`) },
+        AuthParameters: args.email
+          ? { USERNAME: args.email, PASSWORD: process.env.TEMPO_DEMO_PASSWORD }
+          : { USERNAME: ssm(`${path}/email`), PASSWORD: ssm(`${path}/password`) },
       }),
       { mode: 0o600 },
     );
@@ -103,9 +128,11 @@ async function call(method, route, body, expected = [200, 201, 204]) {
 
 await call("POST", "/api/v1/session");
 const me = await call("GET", "/api/v1/me");
-const membership = me.memberships.find((m) => m.permissions.includes("schedule.manage"));
+const membership = me.memberships.find(
+  (m) => m.permissions.includes("schedule.manage") && (!args.studio || m.organization.slug === args.studio),
+);
 if (!membership) {
-  console.error("✗ the test user has no studio with schedule.manage");
+  console.error(`✗ the signed-in user has no studio${args.studio ? ` "${args.studio}"` : ""} with schedule.manage`);
   process.exit(1);
 }
 const s = `/api/v1/organizations/${membership.organization.id}`;
@@ -343,8 +370,63 @@ async function clean() {
   if (existsSync(args.manifest)) unlinkSync(args.manifest);
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// fill and unfill (board #494, K3)
+// ---------------------------------------------------------------------------------------------------------------
+
+const fillManifest = join(tmpdir(), `tempo-demo-fill-${membership.organization.id}.json`);
+
+async function fill() {
+  const days = Number.isInteger(args.days) && args.days > 0 ? args.days : 7;
+  const sessions = (await call("GET", `${s}/sessions?from=${today()}&to=${addDays(today(), days)}`)).items;
+  // The people list has no cursor and caps at 100 (fine for a demo studio); in a bigger one `fill` sees only the
+  // fictional people on the first page.
+  const fictional = (await call("GET", `${s}/people?limit=100`)).items.filter(isFictional);
+  const holders = [];
+  for (const person of fictional) {
+    const passes = (await call("GET", `${s}/people/${person.id}/passes`))?.items ?? [];
+    if (passes.some((p) => p.status === "active" && (p.entriesLeft === null || p.entriesLeft > 0))) holders.push(person.id);
+  }
+  console.log(`✓ ${fictional.length} fictional people, ${holders.length} with an active pass`);
+
+  const done = existsSync(fillManifest) ? JSON.parse(readFileSync(fillManifest, "utf8")) : { bookings: [] };
+  let booked = 0;
+  let waiting = 0;
+  for (const { sessionId, personIds } of planFill(sessions, holders, new Date().toISOString())) {
+    for (const personId of personIds) {
+      // 409: the person can't book this one (no entry left, already booked, booking closed); the plan moves on.
+      const booking = await call("POST", `${s}/sessions/${sessionId}/bookings`, { personId }, [201, 409]);
+      if (!booking?.id) continue;
+      done.bookings.push(booking.id);
+      writeFileSync(fillManifest, JSON.stringify(done, null, 2));
+      if (booking.status === "booked") booked += 1;
+      if (booking.status === "waitlisted") waiting += 1;
+    }
+  }
+  console.log(`✓ ${booked} bookings, ${waiting} on a waitlist (in the next ${days} days)`);
+  console.log(`fill manifest: ${fillManifest}`);
+}
+
+async function unfill() {
+  if (!existsSync(fillManifest)) {
+    console.log("nothing to undo: no fill manifest for this studio");
+    return;
+  }
+  const { bookings } = JSON.parse(readFileSync(fillManifest, "utf8"));
+  let cancelled = 0;
+  for (const id of bookings) {
+    // 404 or 409: the booking is gone already (the class passed, or someone cancelled it); nothing to undo.
+    const booking = await call("POST", `${s}/bookings/${id}/cancel`, { returnEntry: true }, [200, 404, 409]);
+    if (booking?.id) cancelled += 1;
+  }
+  console.log(`✓ ${cancelled} of ${bookings.length} demo bookings cancelled, entries returned`);
+  unlinkSync(fillManifest);
+}
+
 if (args.command === "seed") await seed();
-else await clean();
+else if (args.command === "clean") await clean();
+else if (args.command === "fill") await fill();
+else await unfill();
 
 console.log(
   failures === 0
