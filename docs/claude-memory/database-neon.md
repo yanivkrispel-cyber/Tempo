@@ -46,3 +46,5 @@ on 2026-10-25 by length only: all three dev passwords are 48.
   `Tempo/Database NeonFreeLimitPercent`; the prod alarm fires at 70%. Dev has no alarm (alarm budget), so since
   2026-10-25 (#97) the function itself emails the owner through the dev canary's SNS topic once per Neon billing
   period at 70%; the period it last warned about is in `/tempo/dev/neon/usage-warning`. Dev was at 19% on 2026-10-25.
+  Test the email path without waiting for 70%: invoke the function with `{"mode":"selftest"}` (one email marked
+  "[self-test]", the state untouched). The function uses about 120 MB on a plain run, so it has 256 MB (2026-10-25).
