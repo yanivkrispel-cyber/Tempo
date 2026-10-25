@@ -25,7 +25,8 @@ pnpm --filter @tempo/admin-web dev
 pnpm --filter @tempo/client-web dev                          # same three variables, client-web app client
 ```
 
-For a demo without a real studio, seed the fixture studio and remove it afterwards (`tools/scripts/demo-studio.mjs`,
+For the 15-minute walk to show a studio owner, see `studio-demo.md` (it uses `demo-studio.mjs fill` on a clean
+test studio). For a demo without a real studio, seed the fixture studio and remove it afterwards (`tools/scripts/demo-studio.mjs`,
 night board #136, B1): two rooms, four class types, eight weekly classes, three pass products, twelve fictional
 members, one class full with a waitlist.
 
