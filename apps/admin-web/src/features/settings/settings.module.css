@@ -70,9 +70,12 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
+/* One row of eight only where the form has room for eight 44px targets (beside the settings' index it may not). */
 @media (min-width: 1100px) {
-  .accents {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+  @container (min-width: 440px) {
+    .accents {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
   }
 }
 .accent {
@@ -450,4 +453,102 @@
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+/* The settings' sections, with an index beside them on a computer (#488). On a phone the index is hidden and the
+   wrappers step aside, so the cards stack as before. */
+.layout,
+.sections,
+.section {
+  display: contents;
+}
+.index {
+  display: none;
+}
+/* From 1024px a row of tabs above the sections, sticky, so the cards keep their width; from 1440px, where there
+   is room, a column beside them. */
+@media (min-width: 1024px) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+  .section {
+    display: block;
+    scroll-margin-top: 88px;
+  }
+  .index {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    margin-inline: -8px;
+    padding: 8px;
+    border-radius: var(--radius-lg);
+    background: var(--tp-slab);
+    box-shadow: var(--shadow-raise-sm);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .index ul {
+    display: flex;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .index a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+  .index a:hover {
+    background: var(--surface-hover);
+    color: var(--ink);
+  }
+  .index a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+  .index a[aria-current="location"] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-raise-sm);
+  }
+}
+@media (min-width: 1440px) {
+  .layout {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .section {
+    scroll-margin-top: var(--space-5);
+  }
+  .index {
+    top: var(--space-5);
+    margin-inline: 0;
+    overflow: visible;
+  }
+  .index ul {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .index a {
+    white-space: normal;
+  }
 }
