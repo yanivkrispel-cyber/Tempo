@@ -7,6 +7,7 @@ import {
   EventCard,
   FilterChips,
   IconButton,
+  Segmented,
   Skeleton,
   WeekStrip,
   cx,
@@ -29,6 +30,7 @@ import { useStudio } from "../console/studio";
 import { AnnouncementDialog } from "./AnnouncementDialog";
 import { NewClassDialog } from "./NewClassDialog";
 import { occupancy, sessionBadge, useSessions, weekdayNames, type Session } from "./queries";
+import styles from "./schedule.module.css";
 
 const allInstructors = "all";
 
@@ -52,12 +54,20 @@ function WeekView({ timeZone }: { timeZone: string }) {
   const [creating, setCreating] = useState(false);
   const [announcing, setAnnouncing] = useState(false);
   const manage = studio.can("schedule.manage");
-  const grid = useMediaQuery(WEEK_GRID, true);
+  const wide = useMediaQuery(WEEK_GRID, true);
+  // On a computer the seven columns, or one day as a list on request (#487); narrower, always the day.
+  const view = params.get("view") === "day" ? "day" : "week";
+  const grid = wide && view === "week";
   const [picked, setPicked] = useState<IsoDate | null>(null);
   // The picked day while it is in the week on screen; else today in this week, else its Sunday.
   const agendaDay = picked && days.includes(picked) ? picked : days.includes(today) ? today : week;
 
-  const goTo = (sunday: IsoDate) => setParams(sunday === startOfWeek(today) ? {} : { week: sunday });
+  const show = (sunday: IsoDate, next: "week" | "day" = view) =>
+    setParams({
+      ...(sunday === startOfWeek(today) ? {} : { week: sunday }),
+      ...(next === "day" ? { view: "day" } : {}),
+    });
+  const goTo = (sunday: IsoDate) => show(sunday);
 
   // The filter offers the instructors who teach this week.
   const teaching = new Map<string, string>();
@@ -80,6 +90,17 @@ function WeekView({ timeZone }: { timeZone: string }) {
           <h1>מערכת שבועית</h1>
         </div>
         <div className="tp-row" style={{ gap: 8 }}>
+          {wide && (
+            <Segmented
+              label="תצוגה"
+              value={view}
+              onChange={(next) => show(week, next)}
+              options={[
+                { value: "week", label: "שבוע" },
+                { value: "day", label: "יום" },
+              ]}
+            />
+          )}
           <IconButton icon="chevron-right" label="השבוע הקודם" onClick={() => goTo(addDays(week, -7))} />
           <Button variant="secondary" size="sm" onClick={() => goTo(startOfWeek(today))}>
             היום
@@ -132,7 +153,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
           שיעור קבוע מופיע בלוח לשמונה השבועות הבאים.
         </EmptyState>
       ) : grid ? (
-        <section className="tp-sched" aria-label="השיעורים לפי ימים">
+        <section className={`tp-sched ${styles.grid}`} aria-label="השיעורים לפי ימים">
           <div className="tp-sched__head" aria-hidden="true">
             {days.map((day, index) => (
               <div key={day} className={cx("tp-sched__day", day === today && "tp-sched__day--today")}>
@@ -152,7 +173,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
                   {list.length === 0 ? (
                     <p className="tp-caption tp-muted">אין שיעורים</p>
                   ) : (
-                    list.map((session) => <SessionTile key={session.id} session={session} timeZone={timeZone} />)
+                    <DaySessions sessions={list} timeZone={timeZone} />
                   )}
                 </section>
               );
@@ -169,13 +190,7 @@ function WeekView({ timeZone }: { timeZone: string }) {
           {byDay(agendaDay).length === 0 ? (
             <p className="tp-caption tp-muted">אין שיעורים ביום הזה</p>
           ) : (
-            <ul className="tp-agenda__list">
-              {byDay(agendaDay).map((session) => (
-                <li key={session.id}>
-                  <SessionTile session={session} timeZone={timeZone} />
-                </li>
-              ))}
-            </ul>
+            <DaySessions sessions={byDay(agendaDay)} timeZone={timeZone} list />
           )}
         </section>
       )}
@@ -187,6 +202,35 @@ function WeekView({ timeZone }: { timeZone: string }) {
           today={today}
           onClose={() => setCreating(false)}
         />
+      )}
+    </>
+  );
+}
+
+/** A day's classes: the held ones, then the cancelled ones folded under one line that opens on a tap (board #494, R-2). */
+function DaySessions({ sessions, timeZone, list = false }: { sessions: Session[]; timeZone: string; list?: boolean }) {
+  const held = sessions.filter((session) => session.status !== "cancelled");
+  const cancelled = sessions.filter((session) => session.status === "cancelled");
+  const tiles = (items: Session[]) =>
+    list ? (
+      <ul className={`tp-agenda__list ${styles.list}`}>
+        {items.map((session) => (
+          <li key={session.id}>
+            <SessionTile session={session} timeZone={timeZone} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      items.map((session) => <SessionTile key={session.id} session={session} timeZone={timeZone} />)
+    );
+  return (
+    <>
+      {held.length > 0 && tiles(held)}
+      {cancelled.length > 0 && (
+        <details className={styles.cancelled}>
+          <summary>{cancelled.length === 1 ? "שיעור אחד בוטל" : `${cancelled.length} שיעורים בוטלו`}</summary>
+          <div className={styles.folded}>{tiles(cancelled)}</div>
+        </details>
       )}
     </>
   );
