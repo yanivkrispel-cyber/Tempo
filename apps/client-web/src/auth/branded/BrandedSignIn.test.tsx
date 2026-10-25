@@ -86,7 +86,7 @@ describe("BrandedSignIn: the studio's look", () => {
     setup(fakeCognito());
     const field = screen.getByLabelText("אימייל");
     expect(field).toHaveAttribute("type", "email");
-    expect(field).toHaveAttribute("autocomplete", "username email");
+    expect(field).toHaveAttribute("autocomplete", "username");
     expect(field).toHaveAttribute("inputmode", "email");
   });
 });

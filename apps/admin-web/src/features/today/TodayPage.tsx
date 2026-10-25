@@ -162,8 +162,10 @@ function DayView({ timeZone }: { timeZone: string }) {
         <h1 className={styles.greeting}>
           {greeting(openedAt, timeZone)}, <bdi>{firstName(nameOf(me))}</bdi>
         </h1>
-        {/* While the day loads, an empty line holds the summary's place so the page does not jump (O5). */}
-        {(summary || waiting > 0 || (sessions.isPending && day === "today")) && (
+        {/* While the day or what waits loads, an empty line holds the summary's place so the page does not jump (O5). */}
+        {(summary ||
+          waiting > 0 ||
+          (day === "today" && (sessions.isPending || (reports && suggestions.isPending)))) && (
           <p className={`tp-muted ${styles.summary}`} aria-hidden={summary || waiting > 0 ? undefined : true}>
             {summary ?? (waiting > 0 ? "" : " ")}
             {waiting > 0 && (
@@ -391,7 +393,8 @@ function LiveCard({ session, timeZone, openedAt }: { session: Session; timeZone:
 function SalesCard() {
   const sales = useSales(true);
   if (sales.isError) return null;
-  if (!sales.data) return <Skeleton height={188} />;
+  // The loaded card's height, so the cards below do not jump when it arrives.
+  if (!sales.data) return <Skeleton height={208} />;
   const data = sales.data;
   const change =
     data.previousToDateAgorot > 0
@@ -505,8 +508,10 @@ const dayLetters = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 /** The week's places against capacity, and where it is full: days across, parts of the day down. */
 function OccupancyCard() {
   const occupancy = useOccupancy(true);
+  const wide = useMediaQuery(WIDE_SCREEN, true);
   if (occupancy.isError) return null;
-  if (!occupancy.data) return <Skeleton height={188} className={styles.span} />;
+  // The loaded card's height on each screen (its grid wraps on a phone), so the day below does not jump.
+  if (!occupancy.data) return <Skeleton height={wide ? 236 : 293} className={styles.span} />;
   const data = occupancy.data;
   const share = data.capacity > 0 ? Math.round((data.places / data.capacity) * 100) : 0;
   const previous =

@@ -45,9 +45,10 @@ setup(
 
     // client-web: same user pool, its own app client. The Hosted UI session cookie usually signs it straight in.
     await page.goto(`${clientUrl}/login`);
-    await expect(page.getByRole("heading", { level: 1, name: /ברוכים הבאים/ })).toBeVisible();
+    // The plain sign-in page, or the branded one (WL5), which reaches the Hosted UI through its "usual way" link.
+    await expect(page.getByRole("heading", { level: 1, name: /ברוכים הבאים|שמחים לראות אתכם/ })).toBeVisible();
     await expectNoSeriousA11yViolations(page, testInfo, "client-web /login");
-    await page.getByRole("button", { name: "התחברות" }).click();
+    await page.getByRole("button", { name: /^(התחברות|כניסה בדרך הרגילה)$/ }).click();
     await page.waitForURL((url) => url.origin !== clientUrl || !url.pathname.startsWith("/login"));
     if (new URL(page.url()).origin !== clientUrl) await signInOnHostedUi(page, user);
     await page.waitForURL(

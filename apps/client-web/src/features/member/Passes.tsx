@@ -49,7 +49,8 @@ export function PassStrip({ organizationId }: { organizationId: string }) {
 export function PassesCard({ organizationId }: { organizationId: string }) {
   const passes = useMyPasses(organizationId);
   const { today } = useStudioClock(organizationId);
-  if (passes.isPending) return <Skeleton height={140} />;
+  // The height of the card with one pass, the usual case, so the cards below do not jump when it loads.
+  if (passes.isPending) return <Skeleton height={188} />;
   const live = passes.data ? livePasses(passes.data) : [];
 
   return (

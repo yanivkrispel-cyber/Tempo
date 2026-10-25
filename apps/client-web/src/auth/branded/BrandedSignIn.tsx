@@ -625,7 +625,7 @@ export function EmailField({ value, onChange }: { value: string; onChange: (valu
       <Input
         type="email"
         inputMode="email"
-        autoComplete="username email"
+        autoComplete="username"
         autoCapitalize="none"
         spellCheck={false}
         value={value}
