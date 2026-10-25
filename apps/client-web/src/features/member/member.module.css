@@ -276,28 +276,39 @@
   gap: 8px;
 }
 
-/* On a computer (the app frame, D15): the next class beside the month's figures, then the week and the day's classes
-   two by two. The figures are later in the page, so the grid fills the hole beside the next class with them. */
+/* On a computer (the app frame, D15, #485): home and profile in two columns, the main one at the start (the next
+   class and the week; the passes) and a narrower one beside it (the pace and the pass; the studio and the settings).
+   On a phone and a tablet both wrappers drop out of the box tree, so the page is the same single column as before. */
+.lead,
+.aside {
+  display: contents;
+}
 @media (min-width: 1024px) {
-  .home {
+  .split {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    grid-auto-flow: row dense;
-    align-items: stretch;
+    column-gap: 28px;
+    align-items: start;
   }
-  .home > * {
+  .split > * {
     grid-column: 1 / -1;
   }
-  .home > .next {
+  .split > .lead,
+  .split > .aside {
+    display: flex;
+    flex-direction: column;
+    row-gap: inherit;
+    min-width: 0;
+  }
+  .split > .lead {
     grid-column: 1;
   }
-  .home > .stats {
+  .split > .aside {
     grid-column: 2;
-    grid-template-columns: minmax(0, 1fr);
   }
-  .tiles {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* A list screen (book, bookings, inbox) keeps a reading width instead of rows 840px long. */
+  :global(.tp-app) .screen.narrow {
+    max-width: 680px;
   }
 }
 

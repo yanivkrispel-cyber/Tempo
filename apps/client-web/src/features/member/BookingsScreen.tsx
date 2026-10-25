@@ -77,7 +77,7 @@ function StudioBookings({ studio }: { studio: Studio }) {
   }
 
   return (
-    <main className={`tp-page tp-page--tabbar ${styles.screen}`}>
+    <main className={`tp-page tp-page--tabbar ${styles.screen} ${styles.narrow}`}>
       <header className={styles.heading}>
         <span className="tp-eyebrow">{nameOf(me)}</span>
         <h1 className={styles.title}>{title}</h1>
