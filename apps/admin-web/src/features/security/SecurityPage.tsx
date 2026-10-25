@@ -27,9 +27,8 @@ import {
 } from "../../shared/design-system";
 import { DeleteAccountCard } from "./DeleteAccount";
 import { QrCode } from "./QrCode";
+import { securityPath } from "./securityPath";
 import styles from "./security.module.css";
-
-export const securityPath = "/account/security";
 
 const statusKey = ["account", "totp"] as const;
 
