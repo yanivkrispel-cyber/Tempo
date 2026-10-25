@@ -102,7 +102,9 @@ public static class ClassEndpoints
                 new InboxItemDataResponse(i.SessionId, i.BookingId, i.PassId),
                 i.CreatedAt,
                 i.ReadAt,
-                i.SessionId is { } id && i.SessionStartsAt is { } at ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "") : null,
+                i.SessionId is { } id && i.SessionStartsAt is { } at && i.SessionLocalDate is { } day
+                    ? new InboxSessionResponse(id, at, i.ClassTypeName ?? "", day, i.SessionStatus ?? "scheduled", i.RoomName, i.InstructorName)
+                    : null,
                 i.Text,
                 i.Title,
                 i.Body))],
