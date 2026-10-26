@@ -1,0 +1,2468 @@
+[
+  {
+    "app": "member",
+    "name": "home",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/",
+      "ttfb": 316.5,
+      "domContentLoaded": 1543.6999999284744,
+      "load": 2006.3999999761581,
+      "lcp": 2948,
+      "cls": 0.0004178027383175431,
+      "fcp": 2536,
+      "apiCount": 3,
+      "apiDone": 4399.057021484375,
+      "jsTransferBytes": 199687,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1892.252197265625,
+          "end": 2636.345197265625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2591.85498046875,
+          "end": 2842.92898046875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/home",
+          "start": 2859.447021484375,
+          "end": 4399.057021484375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/",
+      "ttfb": 77.39999997615814,
+      "domContentLoaded": 281.6999999284744,
+      "load": 318.2999999523163,
+      "lcp": 668,
+      "cls": 0,
+      "fcp": 600,
+      "apiCount": 3,
+      "apiDone": 1717.44374609375,
+      "jsTransferBytes": -50097,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 382.136962890625,
+          "end": 558.102962890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 591.681884765625,
+          "end": 593.299884765625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/home",
+          "start": 639.86474609375,
+          "end": 1717.44374609375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "home",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/",
+      "ttfb": 260.60000002384186,
+      "domContentLoaded": 1564.5,
+      "load": 2040.7000000476837,
+      "lcp": 2600,
+      "cls": 0.0004178027383175431,
+      "fcp": 2200,
+      "apiCount": 3,
+      "apiDone": 3777.126962890625,
+      "jsTransferBytes": 199710,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1909.9130859375,
+          "end": 2303.3340859375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2258.324951171875,
+          "end": 2505.820951171875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/home",
+          "start": 2532.011962890625,
+          "end": 3777.126962890625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/",
+      "ttfb": 73.5,
+      "domContentLoaded": 299.7999999523163,
+      "load": 334.39999997615814,
+      "lcp": 728,
+      "cls": 0,
+      "fcp": 640,
+      "apiCount": 3,
+      "apiDone": 1678.574,
+      "jsTransferBytes": -50131,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 400.27001953125,
+          "end": 599.85501953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 627.001953125,
+          "end": 628.890953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/home",
+          "start": 691,
+          "end": 1678.574,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "home",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/",
+      "ttfb": 290,
+      "domContentLoaded": 1465,
+      "load": 2216.399999976158,
+      "lcp": 2428,
+      "cls": 0.0004178027383175431,
+      "fcp": 2052,
+      "apiCount": 3,
+      "apiDone": 3623.81919140625,
+      "jsTransferBytes": 199830,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1749.5908203125,
+          "end": 2144.2618203125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2101.1220703125,
+          "end": 2349.2230703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/home",
+          "start": 2392.47119140625,
+          "end": 3623.81919140625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/",
+      "ttfb": 73.09999990463257,
+      "domContentLoaded": 344.6999999284744,
+      "load": 359.1999999284744,
+      "lcp": 732,
+      "cls": 0,
+      "fcp": 656,
+      "apiCount": 3,
+      "apiDone": 1837.764802734375,
+      "jsTransferBytes": -50157,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 413.8330078125,
+          "end": 624.1500078125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 650.27099609375,
+          "end": 652.08399609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/home",
+          "start": 703.247802734375,
+          "end": 1837.764802734375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "book",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/book",
+      "ttfb": 312.3000000715256,
+      "domContentLoaded": 1587.9000000953674,
+      "load": 2033.9000000953674,
+      "lcp": 2544,
+      "cls": 0.006241322617527289,
+      "fcp": 2212,
+      "apiCount": 5,
+      "apiDone": 3554.76602734375,
+      "jsTransferBytes": 199823,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1929.439208984375,
+          "end": 2309.054208984375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2270.466064453125,
+          "end": 2514.040064453125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/booking-policy",
+          "start": 2531.885986328125,
+          "end": 2761.916986328125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2532.669921875,
+          "end": 3486.989921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 2532.47802734375,
+          "end": 3554.76602734375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/book",
+      "ttfb": 146.5,
+      "domContentLoaded": 278.89999997615814,
+      "load": 302.1999999284744,
+      "lcp": 632,
+      "cls": 0.0067587433237867615,
+      "fcp": 584,
+      "apiCount": 5,
+      "apiDone": 978.682072265625,
+      "jsTransferBytes": -50159,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 365.52001953125,
+          "end": 541.14601953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 575.781005859375,
+          "end": 577.260005859375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/booking-policy",
+          "start": 606.908935546875,
+          "end": 777.039935546875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 606.740966796875,
+          "end": 912.597966796875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 607.924072265625,
+          "end": 978.682072265625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "book",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/book",
+      "ttfb": 273.7999999523163,
+      "domContentLoaded": 3337.1999999284744,
+      "load": 3773.6999999284744,
+      "lcp": 4300,
+      "cls": 0.006241322617527289,
+      "fcp": 3964,
+      "apiCount": 5,
+      "apiDone": 5286.077908203125,
+      "jsTransferBytes": 199686,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 3683.952880859375,
+          "end": 4069.109880859375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 4024.380126953125,
+          "end": 4270.388126953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/booking-policy",
+          "start": 4286.344970703125,
+          "end": 4519.458970703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 4286.5888671875,
+          "end": 5267.6108671875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 4286.930908203125,
+          "end": 5286.077908203125,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/book",
+      "ttfb": 99,
+      "domContentLoaded": 301.39999997615814,
+      "load": 309,
+      "lcp": 672,
+      "cls": 0.006241322617527289,
+      "fcp": 628,
+      "apiCount": 5,
+      "apiDone": 1095.409970703125,
+      "jsTransferBytes": -50147,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 371.22314453125,
+          "end": 561.86614453125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 611.447021484375,
+          "end": 614.814021484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/booking-policy",
+          "start": 650.994873046875,
+          "end": 825.580873046875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 652.076904296875,
+          "end": 907.328904296875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 650.594970703125,
+          "end": 1095.409970703125,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "book",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/book",
+      "ttfb": 273.89999997615814,
+      "domContentLoaded": 1595.3999999761581,
+      "load": 2075.7999999523163,
+      "lcp": 2548,
+      "cls": 0.0062903131106269465,
+      "fcp": 2184,
+      "apiCount": 5,
+      "apiDone": 3514.848861328125,
+      "jsTransferBytes": 199777,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1881.30517578125,
+          "end": 2287.79217578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2246.011962890625,
+          "end": 2570.165962890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/booking-policy",
+          "start": 2528.39599609375,
+          "end": 2969.26799609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2528.2041015625,
+          "end": 3483.4831015625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 2527.682861328125,
+          "end": 3514.848861328125,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/book",
+      "ttfb": 81.79999995231628,
+      "domContentLoaded": 308.59999990463257,
+      "load": 318.39999997615814,
+      "lcp": 692,
+      "cls": 0.006241322617527289,
+      "fcp": 628,
+      "apiCount": 5,
+      "apiDone": 1071.856091796875,
+      "jsTransferBytes": -50089,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 394.6171875,
+          "end": 582.9361875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 616.64892578125,
+          "end": 619.62192578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/booking-policy",
+          "start": 664.822021484375,
+          "end": 876.629021484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 666.40283203125,
+          "end": 922.89683203125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 664.069091796875,
+          "end": 1071.856091796875,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "bookings",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/bookings",
+      "ttfb": 261.39999997615814,
+      "domContentLoaded": 1529.7999999523163,
+      "load": 1985.5,
+      "lcp": 2440,
+      "cls": 0.0005461797342439532,
+      "fcp": 2144,
+      "apiCount": 4,
+      "apiDone": 3322.315146484375,
+      "jsTransferBytes": 199775,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1862.881103515625,
+          "end": 2239.4671035156252,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2199.06591796875,
+          "end": 2443.30091796875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/bookings",
+          "start": 2510.272216796875,
+          "end": 2885.777216796875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 2511.775146484375,
+          "end": 3322.315146484375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/bookings",
+      "ttfb": 129,
+      "domContentLoaded": 282.09999990463257,
+      "load": 289.1999999284744,
+      "lcp": 600,
+      "cls": 0.0005450101844918249,
+      "fcp": 556,
+      "apiCount": 4,
+      "apiDone": 841.99191015625,
+      "jsTransferBytes": -50129,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 346.156982421875,
+          "end": 516.444982421875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 548.150146484375,
+          "end": 550.078146484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/bookings",
+          "start": 587.249267578125,
+          "end": 761.911267578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 588.48291015625,
+          "end": 841.99191015625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "bookings",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/bookings",
+      "ttfb": 239.20000004768372,
+      "domContentLoaded": 1432.5,
+      "load": 1874.1000000238419,
+      "lcp": 2372,
+      "cls": 0.0005461797342439532,
+      "fcp": 2064,
+      "apiCount": 4,
+      "apiDone": 3236.972087890625,
+      "jsTransferBytes": 199743,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1758.90576171875,
+          "end": 2151.96676171875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2118.84619140625,
+          "end": 2362.56319140625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/bookings",
+          "start": 2385.132080078125,
+          "end": 2826.731080078125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 2381.590087890625,
+          "end": 3236.972087890625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/bookings",
+      "ttfb": 84.19999992847443,
+      "domContentLoaded": 285.5,
+      "load": 288.5,
+      "lcp": 592,
+      "cls": 0.0005450101844918249,
+      "fcp": 544,
+      "apiCount": 4,
+      "apiDone": 873.02602734375,
+      "jsTransferBytes": -50171,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 336.63818359375,
+          "end": 510.69418359375004,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 539.516845703125,
+          "end": 541.602845703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/bookings",
+          "start": 577.434814453125,
+          "end": 774.101814453125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 577.85302734375,
+          "end": 873.02602734375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "bookings",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/bookings",
+      "ttfb": 245.5,
+      "domContentLoaded": 1457.5,
+      "load": 1906.2000000476837,
+      "lcp": 2332,
+      "cls": 0.0005461797342439532,
+      "fcp": 2036,
+      "apiCount": 4,
+      "apiDone": 3222.7302617187497,
+      "jsTransferBytes": 199724,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1746.430908203125,
+          "end": 2156.039908203125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2099.593017578125,
+          "end": 2344.900017578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/bookings",
+          "start": 2409.342041015625,
+          "end": 2781.708041015625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 2415.21826171875,
+          "end": 3222.7302617187497,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/bookings",
+      "ttfb": 90.80000007152557,
+      "domContentLoaded": 311.3000000715256,
+      "load": 318.10000002384186,
+      "lcp": 652,
+      "cls": 0.0005450101844918249,
+      "fcp": 600,
+      "apiCount": 4,
+      "apiDone": 893.646025390625,
+      "jsTransferBytes": -50179,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 380.413818359375,
+          "end": 565.010818359375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 595.965087890625,
+          "end": 597.896087890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/bookings",
+          "start": 641.376953125,
+          "end": 813.073953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 641.801025390625,
+          "end": 893.646025390625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "profile",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/profile",
+      "ttfb": 344.60000002384186,
+      "domContentLoaded": 1502.3000000715256,
+      "load": 1999.8999999761581,
+      "lcp": 2580,
+      "cls": 0.09081700929507713,
+      "fcp": 2136,
+      "apiCount": 8,
+      "apiDone": 5771.149802734375,
+      "jsTransferBytes": 199908,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1842.5869140625,
+          "end": 2237.2809140625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2194.4140625,
+          "end": 2445.2330625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/share-link",
+          "start": 2454.68896484375,
+          "end": 2688.69396484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/profile",
+          "start": 2455.719970703125,
+          "end": 2803.553970703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/health-declaration",
+          "start": 2455.582763671875,
+          "end": 3056.779763671875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 2454.512939453125,
+          "end": 3533.852939453125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/buddies",
+          "start": 2459.804931640625,
+          "end": 5082.059931640625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/progress",
+          "start": 2455.247802734375,
+          "end": 5771.149802734375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/profile",
+      "ttfb": 99,
+      "domContentLoaded": 305.2000000476837,
+      "load": 339.7999999523163,
+      "lcp": 960,
+      "cls": 0.09081700929507713,
+      "fcp": 872,
+      "apiCount": 8,
+      "apiDone": 3195.845927734375,
+      "jsTransferBytes": -50103,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 415.4580078125,
+          "end": 806.6760078125001,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 861.21875,
+          "end": 865.93875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/share-link",
+          "start": 925.2890625,
+          "end": 1105.5490625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/buddies",
+          "start": 924.051025390625,
+          "end": 1114.675025390625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/progress",
+          "start": 927.153076171875,
+          "end": 1120.613076171875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/profile",
+          "start": 926.43310546875,
+          "end": 1299.89710546875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 923.902099609375,
+          "end": 1315.694099609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/health-declaration",
+          "start": 927.450927734375,
+          "end": 3195.845927734375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "profile",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/profile",
+      "ttfb": 447.89999997615814,
+      "domContentLoaded": 1634.8999999761581,
+      "load": 2142.5,
+      "lcp": 2916,
+      "cls": 0.09081700929507713,
+      "fcp": 2468,
+      "apiCount": 8,
+      "apiDone": 3627.3717500000002,
+      "jsTransferBytes": 199796,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 2010.345703125,
+          "end": 2594.731703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2528.469970703125,
+          "end": 2871.038970703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/share-link",
+          "start": 2801.4970703125,
+          "end": 3055.8060703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/progress",
+          "start": 2803.694091796875,
+          "end": 3071.728091796875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/buddies",
+          "start": 2801.343017578125,
+          "end": 3075.358017578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/health-declaration",
+          "start": 2803.64208984375,
+          "end": 3113.91008984375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/profile",
+          "start": 2801.616943359375,
+          "end": 3122.282943359375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 2801.21875,
+          "end": 3627.3717500000002,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/profile",
+      "ttfb": 131.19999992847443,
+      "domContentLoaded": 326.5,
+      "load": 333.2999999523163,
+      "lcp": 700,
+      "cls": 0.09081700929507713,
+      "fcp": 616,
+      "apiCount": 8,
+      "apiDone": 981.3761015625,
+      "jsTransferBytes": -50149,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 396.53076171875,
+          "end": 573.28876171875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 603.7138671875,
+          "end": 605.5738671875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/buddies",
+          "start": 655.64794921875,
+          "end": 825.17594921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/share-link",
+          "start": 657.1669921875,
+          "end": 832.5279921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/progress",
+          "start": 659.89794921875,
+          "end": 847.26794921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/profile",
+          "start": 659.1611328125,
+          "end": 872.7881328125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/health-declaration",
+          "start": 660.698974609375,
+          "end": 897.384974609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 654.8291015625,
+          "end": 981.3761015625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "profile",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/profile",
+      "ttfb": 346.89999997615814,
+      "domContentLoaded": 1499.3000000715256,
+      "load": 2007.7000000476837,
+      "lcp": 2632,
+      "cls": 0.09081700929507713,
+      "fcp": 2180,
+      "apiCount": 8,
+      "apiDone": 3526.710916015625,
+      "jsTransferBytes": 199904,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1840.64794921875,
+          "end": 2284.83294921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2242.337890625,
+          "end": 2560.866890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/buddies",
+          "start": 2519.35595703125,
+          "end": 2746.06995703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/share-link",
+          "start": 2519.517822265625,
+          "end": 2754.715822265625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/health-declaration",
+          "start": 2519.58984375,
+          "end": 2792.77584375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/progress",
+          "start": 2518.489013671875,
+          "end": 2815.514013671875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/profile",
+          "start": 2522.10693359375,
+          "end": 3042.12293359375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 2519.013916015625,
+          "end": 3526.710916015625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/profile",
+      "ttfb": 92,
+      "domContentLoaded": 314.2000000476837,
+      "load": 348,
+      "lcp": 704,
+      "cls": 0.09081700929507713,
+      "fcp": 632,
+      "apiCount": 8,
+      "apiDone": 999.023162109375,
+      "jsTransferBytes": -50133,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 412.3359375,
+          "end": 594.9069375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 625.22998046875,
+          "end": 627.25198046875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/share-link",
+          "start": 670.929931640625,
+          "end": 832.654931640625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/health-declaration",
+          "start": 673.930908203125,
+          "end": 865.749908203125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/buddies",
+          "start": 670.097900390625,
+          "end": 865.801900390625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/profile",
+          "start": 672.361083984375,
+          "end": 876.668083984375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/progress",
+          "start": 672.97802734375,
+          "end": 966.65502734375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/passes",
+          "start": 669.441162109375,
+          "end": 999.023162109375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "inbox",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/inbox",
+      "ttfb": 299.6999999284744,
+      "domContentLoaded": 1479.5,
+      "load": 1919.1999999284744,
+      "lcp": 3356,
+      "cls": 0,
+      "fcp": 2108,
+      "apiCount": 3,
+      "apiDone": 3227.975984375,
+      "jsTransferBytes": 199767,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1821.869873046875,
+          "end": 2214.396873046875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2165.948974609375,
+          "end": 2408.377974609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 2442.708984375,
+          "end": 3227.975984375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/inbox",
+      "ttfb": 206.39999997615814,
+      "domContentLoaded": 320.6999999284744,
+      "load": 347.2999999523163,
+      "lcp": 1220,
+      "cls": 0,
+      "fcp": 668,
+      "apiCount": 3,
+      "apiDone": 1131.821818359375,
+      "jsTransferBytes": -50099,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 415.929931640625,
+          "end": 612.491931640625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 659.426025390625,
+          "end": 661.544025390625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 707.163818359375,
+          "end": 1131.821818359375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "inbox",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/inbox",
+      "ttfb": 321,
+      "domContentLoaded": 1685.7000000476837,
+      "load": 2132.4000000953674,
+      "lcp": 3552,
+      "cls": 0,
+      "fcp": 2328,
+      "apiCount": 3,
+      "apiDone": 3431.28203515625,
+      "jsTransferBytes": 199803,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 2040.31396484375,
+          "end": 2439.19596484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2394.970947265625,
+          "end": 2648.774947265625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 2652.56103515625,
+          "end": 3431.28203515625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/inbox",
+      "ttfb": 91.79999995231628,
+      "domContentLoaded": 312.1999999284744,
+      "load": 317.1999999284744,
+      "lcp": 1172,
+      "cls": 0,
+      "fcp": 696,
+      "apiCount": 3,
+      "apiDone": 1079.4657890624999,
+      "jsTransferBytes": -50093,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 386.5830078125,
+          "end": 659.1530078124999,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 691.428955078125,
+          "end": 693.266955078125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 713.6337890625,
+          "end": 1079.4657890624999,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "member",
+    "name": "inbox",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-members.pages.dev/inbox",
+      "ttfb": 352.5,
+      "domContentLoaded": 1556.5,
+      "load": 2024.8999999761581,
+      "lcp": 3412,
+      "cls": 0,
+      "fcp": 2172,
+      "apiCount": 3,
+      "apiDone": 3301.39802734375,
+      "jsTransferBytes": 199974,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1902.376953125,
+          "end": 2295.481953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 2232.7890625,
+          "end": 2477.0540625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 2516.60302734375,
+          "end": 3301.39802734375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-members.pages.dev/inbox",
+      "ttfb": 91.5,
+      "domContentLoaded": 333.7999999523163,
+      "load": 359.2999999523163,
+      "lcp": 1040,
+      "cls": 0,
+      "fcp": 652,
+      "apiCount": 3,
+      "apiDone": 934.78701953125,
+      "jsTransferBytes": -50195,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 423.798828125,
+          "end": 606.903828125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/public/studios/tempo-smoke-studio/manifest.webmanifest",
+          "start": 643.724853515625,
+          "end": 646.475853515625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/me/notifications",
+          "start": 688.77001953125,
+          "end": 934.78701953125,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "today",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/today",
+      "ttfb": 304.60000002384186,
+      "domContentLoaded": 1517.1999999284744,
+      "load": 2142.2999999523163,
+      "lcp": 3184,
+      "cls": 0.02431044465089398,
+      "fcp": 2464,
+      "apiCount": 6,
+      "apiDone": 3234.51993359375,
+      "jsTransferBytes": 194864,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1905.402099609375,
+          "end": 2313.818099609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/activity",
+          "start": 2837.860107421875,
+          "end": 3107.028107421875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/sales",
+          "start": 2818.2861328125,
+          "end": 3166.4061328125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/occupancy",
+          "start": 2830.510009765625,
+          "end": 3177.023009765625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2824.6640625,
+          "end": 3229.2960625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/suggestions",
+          "start": 2825.85693359375,
+          "end": 3234.51993359375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/today",
+      "ttfb": 77.10000002384186,
+      "domContentLoaded": 326,
+      "load": 338.60000002384186,
+      "lcp": 956,
+      "cls": 0.03476577732485785,
+      "fcp": 640,
+      "apiCount": 6,
+      "apiDone": 1279.6730234375,
+      "jsTransferBytes": -50086,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 394.52197265625,
+          "end": 570.17397265625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/activity",
+          "start": 922.705810546875,
+          "end": 1088.916810546875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/sales",
+          "start": 921.52685546875,
+          "end": 1105.45685546875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/occupancy",
+          "start": 921.60888671875,
+          "end": 1145.81988671875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/suggestions",
+          "start": 924.03515625,
+          "end": 1170.01215625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 923.3740234375,
+          "end": 1279.6730234375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "today",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/today",
+      "ttfb": 341.2999999523163,
+      "domContentLoaded": 1525.7999999523163,
+      "load": 2124.2999999523163,
+      "lcp": 2868,
+      "cls": 0.02371662801522038,
+      "fcp": 2388,
+      "apiCount": 6,
+      "apiDone": 3068.26591796875,
+      "jsTransferBytes": 194682,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1860.988037109375,
+          "end": 2282.678037109375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/activity",
+          "start": 2599.615966796875,
+          "end": 2855.889966796875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/sales",
+          "start": 2604.27099609375,
+          "end": 2895.35399609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/occupancy",
+          "start": 2599.400146484375,
+          "end": 2905.177146484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/suggestions",
+          "start": 2599.7548828125,
+          "end": 2966.9578828125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2642.44091796875,
+          "end": 3068.26591796875,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/today",
+      "ttfb": 115.10000002384186,
+      "domContentLoaded": 329.5,
+      "load": 366.90000009536743,
+      "lcp": 1032,
+      "cls": 0.01940842793438468,
+      "fcp": 708,
+      "apiCount": 6,
+      "apiDone": 1275.189001953125,
+      "jsTransferBytes": -50140,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 434.39599609375,
+          "end": 640.79499609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/activity",
+          "start": 1010.65087890625,
+          "end": 1192.15987890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 1010.799072265625,
+          "end": 1224.944072265625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/occupancy",
+          "start": 1010.448974609375,
+          "end": 1241.815974609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/sales",
+          "start": 1006.196044921875,
+          "end": 1246.856044921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/suggestions",
+          "start": 1010.927001953125,
+          "end": 1275.189001953125,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "today",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/today",
+      "ttfb": 286.7000000476837,
+      "domContentLoaded": 1508.6000000238419,
+      "load": 2118.7000000476837,
+      "lcp": 3012,
+      "cls": 0.03236906569636848,
+      "fcp": 2384,
+      "apiCount": 6,
+      "apiDone": 3062.47926953125,
+      "jsTransferBytes": 194561,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1848.26708984375,
+          "end": 2275.7950898437502,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/activity",
+          "start": 2584.73388671875,
+          "end": 2820.47688671875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/suggestions",
+          "start": 2589.906982421875,
+          "end": 2833.055982421875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/sales",
+          "start": 2587.5419921875,
+          "end": 2881.1539921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/occupancy",
+          "start": 2584.947021484375,
+          "end": 2931.546021484375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2589.55126953125,
+          "end": 3062.47926953125,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/today",
+      "ttfb": 141.39999997615814,
+      "domContentLoaded": 299.10000002384186,
+      "load": 331,
+      "lcp": 952,
+      "cls": 0.023738073101015323,
+      "fcp": 640,
+      "apiCount": 6,
+      "apiDone": 1431.124228515625,
+      "jsTransferBytes": -50102,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 399.823974609375,
+          "end": 581.244974609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/activity",
+          "start": 924.02099609375,
+          "end": 1102.25099609375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/sales",
+          "start": 922.01220703125,
+          "end": 1117.24320703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/occupancy",
+          "start": 922.380126953125,
+          "end": 1207.279126953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 924.614990234375,
+          "end": 1237.539990234375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/insights/suggestions",
+          "start": 925.209228515625,
+          "end": 1431.124228515625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "schedule",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/schedule",
+      "ttfb": 348.60000002384186,
+      "domContentLoaded": 1495.2999999523163,
+      "load": 2007.2999999523163,
+      "lcp": 2564,
+      "cls": 0,
+      "fcp": 2316,
+      "apiCount": 2,
+      "apiDone": 3135.41815625,
+      "jsTransferBytes": 171708,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1835.123046875,
+          "end": 2265.062046875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2531.16015625,
+          "end": 3135.41815625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/schedule",
+      "ttfb": 201.90000009536743,
+      "domContentLoaded": 352.8000000715256,
+      "load": 387.3000000715256,
+      "lcp": 984,
+      "cls": 0,
+      "fcp": 680,
+      "apiCount": 2,
+      "apiDone": 1224.835193359375,
+      "jsTransferBytes": -37893,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 448.89111328125,
+          "end": 631.10411328125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 959.398193359375,
+          "end": 1224.835193359375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "schedule",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/schedule",
+      "ttfb": 388.60000002384186,
+      "domContentLoaded": 1580.2000000476837,
+      "load": 2036.6000000238419,
+      "lcp": 2536,
+      "cls": 0,
+      "fcp": 2356,
+      "apiCount": 2,
+      "apiDone": 3180.1360078125,
+      "jsTransferBytes": 171657,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1923.411865234375,
+          "end": 2304.856865234375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2550.9580078125,
+          "end": 3180.1360078125,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/schedule",
+      "ttfb": 75.79999995231628,
+      "domContentLoaded": 278.39999997615814,
+      "load": 305.7999999523163,
+      "lcp": 908,
+      "cls": 0,
+      "fcp": 596,
+      "apiCount": 2,
+      "apiDone": 1258.17816015625,
+      "jsTransferBytes": -37903,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 358.00732421875,
+          "end": 540.18432421875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 881.51416015625,
+          "end": 1258.17816015625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "schedule",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/schedule",
+      "ttfb": 282.5,
+      "domContentLoaded": 1539.2999999523163,
+      "load": 2012.1999999284744,
+      "lcp": 2520,
+      "cls": 0,
+      "fcp": 2292,
+      "apiCount": 2,
+      "apiDone": 3120.6162148437497,
+      "jsTransferBytes": 171561,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1828.06494140625,
+          "end": 2287.6709414062498,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 2517.84521484375,
+          "end": 3120.6162148437497,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/schedule",
+      "ttfb": 129.60000002384186,
+      "domContentLoaded": 339.89999997615814,
+      "load": 346.7000000476837,
+      "lcp": 992,
+      "cls": 0,
+      "fcp": 684,
+      "apiCount": 2,
+      "apiDone": 1220.855,
+      "jsTransferBytes": -37941,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 417.21484375,
+          "end": 620.67984375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/sessions",
+          "start": 961.5,
+          "end": 1220.855,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "people",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/people",
+      "ttfb": 254.60000002384186,
+      "domContentLoaded": 1829.7999999523163,
+      "load": 1834.1999999284744,
+      "lcp": 3276,
+      "cls": 0,
+      "fcp": 2600,
+      "apiCount": 3,
+      "apiDone": 3236.05016796875,
+      "jsTransferBytes": 163746,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 2183.427978515625,
+          "end": 2585.996978515625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/tags",
+          "start": 2838.3779296875,
+          "end": 3131.2389296875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/people",
+          "start": 2837.72216796875,
+          "end": 3236.05016796875,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/people",
+      "ttfb": 201.10000002384186,
+      "domContentLoaded": 355.5,
+      "load": 356.1999999284744,
+      "lcp": 1452,
+      "cls": 0,
+      "fcp": 680,
+      "apiCount": 3,
+      "apiDone": 1378.90597265625,
+      "jsTransferBytes": -36172,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 437.465087890625,
+          "end": 625.716087890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/tags",
+          "start": 960.695068359375,
+          "end": 1141.226068359375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/people",
+          "start": 961.89697265625,
+          "end": 1378.90597265625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "people",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/people",
+      "ttfb": 288.39999997615814,
+      "domContentLoaded": 1535.1000000238419,
+      "load": 1535.6999999284744,
+      "lcp": 2960,
+      "cls": 0,
+      "fcp": 2312,
+      "apiCount": 3,
+      "apiDone": 2946.843068359375,
+      "jsTransferBytes": 163048,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1881.97314453125,
+          "end": 2275.91414453125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/tags",
+          "start": 2540.726318359375,
+          "end": 2837.003318359375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/people",
+          "start": 2540.195068359375,
+          "end": 2946.843068359375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/people",
+      "ttfb": 98.89999997615814,
+      "domContentLoaded": 316.10000002384186,
+      "load": 317.39999997615814,
+      "lcp": 1316,
+      "cls": 0,
+      "fcp": 652,
+      "apiCount": 3,
+      "apiDone": 1213.60583984375,
+      "jsTransferBytes": -36178,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 389.014892578125,
+          "end": 590.475892578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/tags",
+          "start": 935.48291015625,
+          "end": 1148.54391015625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/people",
+          "start": 936.61083984375,
+          "end": 1213.60583984375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "people",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/people",
+      "ttfb": 248.20000004768372,
+      "domContentLoaded": 1486.5,
+      "load": 1487,
+      "lcp": 2912,
+      "cls": 0,
+      "fcp": 2248,
+      "apiCount": 3,
+      "apiDone": 2889.21497265625,
+      "jsTransferBytes": 163619,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1836.56689453125,
+          "end": 2222.5858945312502,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/tags",
+          "start": 2461.171875,
+          "end": 2760.095875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/people",
+          "start": 2461.27197265625,
+          "end": 2889.21497265625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/people",
+      "ttfb": 232.39999997615814,
+      "domContentLoaded": 374.10000002384186,
+      "load": 392.5,
+      "lcp": 1356,
+      "cls": 0,
+      "fcp": 740,
+      "apiCount": 3,
+      "apiDone": 1302.755224609375,
+      "jsTransferBytes": -36148,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 468.0419921875,
+          "end": 670.0589921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/tags",
+          "start": 1008.546142578125,
+          "end": 1182.776142578125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/people",
+          "start": 1011.355224609375,
+          "end": 1302.755224609375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "passes",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/passes",
+      "ttfb": 245.89999997615814,
+      "domContentLoaded": 1584.2999999523163,
+      "load": 1585.1000000238419,
+      "lcp": 2596,
+      "cls": 0,
+      "fcp": 2400,
+      "apiCount": 2,
+      "apiDone": 3285.9341445312502,
+      "jsTransferBytes": 158447,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1997.808837890625,
+          "end": 2401.204837890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/pass-products",
+          "start": 2594.97314453125,
+          "end": 3285.9341445312502,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/passes",
+      "ttfb": 102.5,
+      "domContentLoaded": 315.89999997615814,
+      "load": 316.3000000715256,
+      "lcp": 932,
+      "cls": 0,
+      "fcp": 656,
+      "apiCount": 2,
+      "apiDone": 1211.25991015625,
+      "jsTransferBytes": -30961,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 385.873046875,
+          "end": 562.525046875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/pass-products",
+          "start": 912.23291015625,
+          "end": 1211.25991015625,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "passes",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/passes",
+      "ttfb": 359.1999999284744,
+      "domContentLoaded": 1647.6999999284744,
+      "load": 1648.3999999761581,
+      "lcp": 2612,
+      "cls": 0,
+      "fcp": 2436,
+      "apiCount": 2,
+      "apiDone": 3328.64896484375,
+      "jsTransferBytes": 158305,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1999.786865234375,
+          "end": 2400.697865234375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/pass-products",
+          "start": 2623.18896484375,
+          "end": 3328.64896484375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/passes",
+      "ttfb": 88.29999995231628,
+      "domContentLoaded": 286.2999999523163,
+      "load": 287.09999990463257,
+      "lcp": 884,
+      "cls": 0,
+      "fcp": 588,
+      "apiCount": 2,
+      "apiDone": 1194.141833984375,
+      "jsTransferBytes": -30941,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 350.554931640625,
+          "end": 533.246931640625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/pass-products",
+          "start": 863.829833984375,
+          "end": 1194.141833984375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "passes",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/passes",
+      "ttfb": 466.7999999523163,
+      "domContentLoaded": 1633.3999999761581,
+      "load": 1634,
+      "lcp": 2660,
+      "cls": 0,
+      "fcp": 2532,
+      "apiCount": 2,
+      "apiDone": 3426.87689453125,
+      "jsTransferBytes": 158449,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1993.129150390625,
+          "end": 2391.750150390625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/pass-products",
+          "start": 2726.69189453125,
+          "end": 3426.87689453125,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/passes",
+      "ttfb": 91.29999995231628,
+      "domContentLoaded": 319.39999997615814,
+      "load": 319.7999999523163,
+      "lcp": 968,
+      "cls": 0,
+      "fcp": 672,
+      "apiCount": 2,
+      "apiDone": 1257.794865234375,
+      "jsTransferBytes": -30965,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 388.497802734375,
+          "end": 587.947802734375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/pass-products",
+          "start": 940.036865234375,
+          "end": 1257.794865234375,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "reports",
+    "run": 0,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/reports",
+      "ttfb": 256.7000000476837,
+      "domContentLoaded": 1465.9000000953674,
+      "load": 1965.1000000238419,
+      "lcp": 3440,
+      "cls": 0,
+      "fcp": 2420,
+      "apiCount": 5,
+      "apiDone": 3912.682083984375,
+      "jsTransferBytes": 163091,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1802.508056640625,
+          "end": 2254.597056640625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/passes-ending",
+          "start": 3398.42822265625,
+          "end": 3648.59322265625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/members-at-risk",
+          "start": 3401.09375,
+          "end": 3728.03675,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/summary",
+          "start": 3398.288818359375,
+          "end": 3814.435818359375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/sources",
+          "start": 3398.111083984375,
+          "end": 3912.682083984375,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/reports",
+      "ttfb": 282.39999997615814,
+      "domContentLoaded": 422.10000002384186,
+      "load": 447.39999997615814,
+      "lcp": 1076,
+      "cls": 0,
+      "fcp": 756,
+      "apiCount": 5,
+      "apiDone": 1371.978123046875,
+      "jsTransferBytes": -30923,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 512.475830078125,
+          "end": 684.100830078125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/members-at-risk",
+          "start": 1033.178955078125,
+          "end": 1214.101955078125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/passes-ending",
+          "start": 1032.933837890625,
+          "end": 1225.702837890625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/summary",
+          "start": 1032.83203125,
+          "end": 1328.20403125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/sources",
+          "start": 1029.901123046875,
+          "end": 1371.978123046875,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "reports",
+    "run": 1,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/reports",
+      "ttfb": 238.20000004768372,
+      "domContentLoaded": 1546.7999999523163,
+      "load": 2014.6000000238419,
+      "lcp": 2504,
+      "cls": 0.000019457583935906976,
+      "fcp": 2280,
+      "apiCount": 5,
+      "apiDone": 3075.53887890625,
+      "jsTransferBytes": 164053,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1830.0458984375,
+          "end": 2247.3408984375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/members-at-risk",
+          "start": 2494.22900390625,
+          "end": 2734.60100390625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/summary",
+          "start": 2492.717041015625,
+          "end": 2833.283041015625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/passes-ending",
+          "start": 2496.0751953125,
+          "end": 2933.9951953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/sources",
+          "start": 2496.27587890625,
+          "end": 3075.53887890625,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/reports",
+      "ttfb": 97.19999992847443,
+      "domContentLoaded": 345.10000002384186,
+      "load": 350.89999997615814,
+      "lcp": 988,
+      "cls": 0,
+      "fcp": 664,
+      "apiCount": 5,
+      "apiDone": 1300.63795703125,
+      "jsTransferBytes": -30925,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 420.47314453125,
+          "end": 604.86814453125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/members-at-risk",
+          "start": 959.04296875,
+          "end": 1127.01296875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/passes-ending",
+          "start": 957.88720703125,
+          "end": 1182.55720703125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/summary",
+          "start": 956.8857421875,
+          "end": 1183.2417421875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/sources",
+          "start": 955.23095703125,
+          "end": 1300.63795703125,
+          "status": 200
+        }
+      ]
+    }
+  },
+  {
+    "app": "console",
+    "name": "reports",
+    "run": 2,
+    "first": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/reports",
+      "ttfb": 252,
+      "domContentLoaded": 1492.6000000238419,
+      "load": 1957,
+      "lcp": 2480,
+      "cls": 0.000019457583935906976,
+      "fcp": 2236,
+      "apiCount": 5,
+      "apiDone": 3033.325703125,
+      "jsTransferBytes": 164107,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 1834.406982421875,
+          "end": 2216.212982421875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/members-at-risk",
+          "start": 2458.242919921875,
+          "end": 2781.357919921875,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/passes-ending",
+          "start": 2458.075927734375,
+          "end": 2803.569927734375,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/summary",
+          "start": 2452.968994140625,
+          "end": 2888.348994140625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/sources",
+          "start": 2460.970703125,
+          "end": 3033.325703125,
+          "status": 200
+        }
+      ]
+    },
+    "repeat": {
+      "finalUrl": "https://tempo-studio-console.pages.dev/o/tempo-smoke-studio/reports",
+      "ttfb": 115.10000002384186,
+      "domContentLoaded": 292.89999997615814,
+      "load": 322.10000002384186,
+      "lcp": 932,
+      "cls": 0,
+      "fcp": 620,
+      "apiCount": 5,
+      "apiDone": 1350.780287109375,
+      "jsTransferBytes": -30953,
+      "api": [
+        {
+          "path": "/api/v1/session",
+          "start": 391.802978515625,
+          "end": 566.065978515625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/members-at-risk",
+          "start": 904.4501953125,
+          "end": 1082.9731953125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/passes-ending",
+          "start": 902.9580078125,
+          "end": 1118.7780078125,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/summary",
+          "start": 901.010009765625,
+          "end": 1286.806009765625,
+          "status": 200
+        },
+        {
+          "path": "/api/v1/organizations/:id/reports/sources",
+          "start": 900.769287109375,
+          "end": 1350.780287109375,
+          "status": 200
+        }
+      ]
+    }
+  }
+]
