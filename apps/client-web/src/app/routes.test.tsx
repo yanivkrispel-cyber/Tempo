@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { apiStub, signedInRoutes } from "../test/api";
 import { signedInAuth, signedOutAuth } from "../test/auth";
 import { App } from "./App";
+import { lazyScreen } from "./lazyScreen";
 import { routes } from "./routes";
 
 // Built at runtime so the secret scan never sees a token-shaped literal (.gitleaksignore).
@@ -47,5 +48,14 @@ describe("client-web routes", () => {
   it("does not take the token from a path segment", () => {
     renderAt(`/invite/${token}`);
     expect(screen.getByRole("heading", { name: "הדף לא נמצא" })).toBeInTheDocument();
+  });
+
+  it("shows the screen skeleton while a page outside the member layout loads its chunk (board #523, O2)", () => {
+    const never = () => new Promise<Record<"Page", () => null>>(() => undefined);
+    const router = createMemoryRouter([{ path: "/prices", ...lazyScreen(never, "Page") }], {
+      initialEntries: ["/prices"],
+    });
+    render(<App router={router} auth={signedOutAuth()} apiUrl="https://api.test" fetch={apiStub({}).fetch} />);
+    expect(screen.getByText("טוענים…").closest("main")).toHaveAttribute("aria-busy", "true");
   });
 });
