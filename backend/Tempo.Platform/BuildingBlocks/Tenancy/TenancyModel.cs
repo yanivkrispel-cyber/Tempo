@@ -79,7 +79,8 @@ public sealed record AccountMembership(
     IReadOnlyCollection<string>? Permissions = null,
     PendingOwnershipTransfer? PendingOwnershipTransfer = null,
     string? SubscriptionState = null,
-    string? EntitlementsJson = null)
+    string? EntitlementsJson = null,
+    string? TimeZone = null)
 {
     public IReadOnlyList<RoleSummary> EffectiveRoles => Roles ?? [RoleSummary.Of(SystemRoles.Of(Role))];
 

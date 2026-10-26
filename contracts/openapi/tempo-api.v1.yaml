@@ -4363,6 +4363,12 @@ components:
             slug: { type: string }
             displayName: { type: string }
             status: { $ref: "#/components/schemas/OrganizationStatus" }
+            timeZone:
+              type: string
+              description: >-
+                The studio's IANA time zone, the same as `Organization.timeZone`, so an app can show the studio's
+                clock without reading the studio first. Missing from older APIs: read the studio then.
+              examples: [Asia/Jerusalem]
 
     UpdateMeRequest:
       type: object

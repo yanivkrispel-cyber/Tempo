@@ -30,7 +30,8 @@ public sealed record MyMembershipResponse(
     string? SubscriptionState = null,
     System.Text.Json.JsonElement? Entitlements = null);
 
-public sealed record MyOrganizationResponse(Guid Id, string Slug, string DisplayName, string Status);
+/// <summary>`TimeZone` (board #523): the studio's IANA zone, so the apps can show its clock before reading the studio.</summary>
+public sealed record MyOrganizationResponse(Guid Id, string Slug, string DisplayName, string Status, string? TimeZone = null);
 
 /// <summary>PATCH /api/v1/me (`UpdateMeRequest`). At least one field.</summary>
 public sealed record UpdateMeRequest(string? DisplayName, string? Locale);

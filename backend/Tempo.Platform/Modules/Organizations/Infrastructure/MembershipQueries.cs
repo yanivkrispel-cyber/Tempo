@@ -72,7 +72,7 @@ internal static class MembershipQueries
     {
         await using var command = unitOfWork.Command(
             """
-            SELECT m.id, m.role, m.status, o.id, o.slug, o.display_name, o.status
+            SELECT m.id, m.role, m.status, o.id, o.slug, o.display_name, o.status, o.time_zone
             FROM organizations.memberships m
             JOIN organizations.organizations o ON o.id = m.organization_id
             WHERE m.organization_id = $1 AND m.user_account_id = $2 AND m.status <> 'removed'
@@ -92,7 +92,8 @@ internal static class MembershipQueries
             reader.GetGuid(3),
             reader.GetString(4),
             reader.GetString(5),
-            StoredValue.Parse<OrganizationStatus>(reader.GetString(6)));
+            StoredValue.Parse<OrganizationStatus>(reader.GetString(6)),
+            TimeZone: reader.GetString(7));
     }
 
     /// <summary>
