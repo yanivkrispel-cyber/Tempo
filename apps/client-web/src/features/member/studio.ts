@@ -67,16 +67,24 @@ const org = (organizationId: string) => ({ params: { path: { organizationId } } 
 const retryOnce = (failures: number, error: unknown) =>
   failures < 1 && !(error instanceof TempoApiError && error.status < 500);
 
-/** The studio's IANA time zone; the API's default until it loads or when it cannot be read. */
+/**
+ * The studio's IANA time zone. The session's membership carries it (#524), so a screen doesn't wait a round for the
+ * studio record; an older API leaves it out, and then the record is read, with the API's default until it loads or
+ * when it cannot be read. A record already in the cache (seeded by `/me/home`) wins.
+ */
 export function useStudioTimeZone(organizationId: string): string {
   const api = useApi();
+  const fromSession =
+    useAccount().memberships.find((membership) => membership.organization.id === organizationId)?.organization
+      .timeZone ?? null;
   const query = useQuery({
     queryKey: studioKeys.organization(organizationId),
     queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", org(organizationId))),
+    enabled: fromSession === null,
     staleTime: Infinity,
     retry: retryOnce,
   });
-  return query.data?.timeZone ?? defaultTimeZone;
+  return query.data?.timeZone ?? fromSession ?? defaultTimeZone;
 }
 
 /** The studio's time zone, the current moment and today's date in the studio. */
