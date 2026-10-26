@@ -97,6 +97,37 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
     }
 
     [Fact]
+    public async Task RunAsync_After0039sIndexWasBuiltConcurrentlyByHand_SkipsItAndJournalsTheScript()
+    {
+        // Production with history builds the index CONCURRENTLY before the migrator runs (DbUp's one transaction
+        // can't), so 0039 must not fail on an index that already exists (docs/claude-memory/database-neon.md).
+        var database = await postgres.CreateDatabaseAsync();
+        var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, database, SslMode.Disable);
+        var (app, platform, migrator) = (Role("tempo_app"), Role("tempo_platform"), Role("tempo_migrator"));
+        var upTo0038 = await MigrationRunner.RunAsync(
+            endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None,
+            script => !script.EndsWith("0039_attended_bookings_index.sql", StringComparison.Ordinal));
+        upTo0038.AppliedScripts.Should().HaveCount(38);
+
+        await using var connection = postgres.ConnectAsMaster(database);
+        await connection.OpenAsync();
+        await using (var build = new NpgsqlCommand(
+            "CREATE INDEX CONCURRENTLY ix_bookings_person_attended ON scheduling.bookings (organization_id, person_id) INCLUDE (session_id) WHERE status = 'attended'",
+            connection))
+        {
+            await build.ExecuteNonQueryAsync();
+        }
+
+        var rest = await MigrationRunner.RunAsync(
+            endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None);
+
+        rest.Successful.Should().BeTrue();
+        rest.AppliedScripts.Should().ContainSingle().Which.Should().EndWith("0039_attended_bookings_index.sql");
+        (await ScalarAsync<long>(connection, "SELECT count(*) FROM pg_indexes WHERE indexname = 'ix_bookings_person_attended'"))
+            .Should().Be(1);
+    }
+
+    [Fact]
     public async Task RunAsync_AsNonSuperuserMaster_BootstrapsAndMigrates()
     {
         // Neon and Aurora hand out a CREATEROLE master, not a superuser. Role

@@ -42,6 +42,13 @@ on 2026-10-25 by length only: all three dev passwords are 48.
   on. Runtime roles own nothing, so RLS always applies to them. Tests: `tests/Tempo.IntegrationTests/DatabaseMigrator/
   IdentitySchemaTests.cs`.
 - A non-superuser master needs `GRANT migrator TO CURRENT_USER WITH INHERIT FALSE, SET TRUE` (fixed in PR #16).
+- DbUp runs every script in **one transaction** (`.WithTransaction()` in `MigrationRunner.cs`), so a script can't
+  `CREATE INDEX CONCURRENTLY`, and a plain `CREATE INDEX` blocks writes to its table while it builds. Fine on dev; on a
+  database with history (production), build a new index on a busy table by hand first, as the migrator role:
+  `CREATE INDEX CONCURRENTLY` with the script's exact definition, then check `pg_index.indisvalid` (a failed
+  concurrent build leaves an invalid index: drop it and build again). The script says `IF NOT EXISTS`, so the migrator
+  then skips it and journals the script. 0039 (`ix_bookings_person_attended`, #516) is the first such index; its test
+  is `RunAsync_After0039sIndexWasBuiltConcurrentlyByHand_SkipsItAndJournalsTheScript`.
 - Usage check: the `tempo-<env>-neon-usage` Lambda runs every 6 hours and publishes
   `Tempo/Database NeonFreeLimitPercent`; the prod alarm fires at 70%. Dev has no alarm (alarm budget), so since
   2026-10-25 (#97) the function itself emails the owner through the dev canary's SNS topic once per Neon billing

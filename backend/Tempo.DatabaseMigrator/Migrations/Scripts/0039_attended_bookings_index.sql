@@ -4,5 +4,9 @@
 -- visit" per member filtered each member's bookings by status. With this partial index both read only attended rows,
 -- by member, without touching the table (15 ms on the same data). It grows with the history, so it only gets worse
 -- without it. Attended rows are written once per visit, so the write cost is small. 0038 is the cancel time's (#429).
-CREATE INDEX ix_bookings_person_attended ON scheduling.bookings (organization_id, person_id) INCLUDE (session_id)
+-- IF NOT EXISTS: DbUp runs every script in one transaction, so this can't be CONCURRENTLY. On a database with history
+-- (production), build it by hand first with CREATE INDEX CONCURRENTLY and the same definition; this script then skips
+-- it (docs/claude-memory/database-neon.md, "Migrator").
+CREATE INDEX IF NOT EXISTS ix_bookings_person_attended ON scheduling.bookings (organization_id, person_id)
+    INCLUDE (session_id)
     WHERE status = 'attended';
