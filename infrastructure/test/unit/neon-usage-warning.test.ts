@@ -62,6 +62,7 @@ async function runUsageCheck(options: {
   periodEnd: string;
   warnedPeriodEnd?: string | null;
   warn?: boolean;
+  event?: unknown;
 }) {
   const sent: Sent[] = [];
   let state = JSON.stringify({ warnedPeriodEnd: options.warnedPeriodEnd ?? null });
@@ -110,7 +111,7 @@ async function runUsageCheck(options: {
       }
     })
   });
-  const exports: { handler?: () => Promise<void> } = {};
+  const exports: { handler?: (event?: unknown) => Promise<void> } = {};
   new Function("require", "exports", "process", "fetch", "console", NEON_USAGE_SOURCE)(
     (name: string) => modules[name],
     exports,
@@ -118,7 +119,7 @@ async function runUsageCheck(options: {
     fetch,
     { log: () => undefined }
   );
-  await exports.handler!();
+  await (exports.handler as (event?: unknown) => Promise<void>)(options.event);
   return { sent, state: JSON.parse(state) as { warnedPeriodEnd: string | null } };
 }
 
@@ -164,5 +165,39 @@ describe("Neon usage function's warning", () => {
     const { sent } = await runUsageCheck({ computeSeconds: hours(95), periodEnd: "2026-11-14T00:00:00Z", warn: false });
     expect(sent.map((s) => s.client)).not.toContain("sns");
     expect(sent.filter((s) => s.command === "GetParameter")).toHaveLength(1);
+  });
+});
+
+describe("Neon usage function's self-test (#97 follow-up)", () => {
+  it("sends one '[self-test]' email under the tripwire and leaves the period's state alone", async () => {
+    const { sent, state } = await runUsageCheck({
+      computeSeconds: hours(20),
+      periodEnd: "2026-11-01T00:00:00Z",
+      event: { mode: "selftest" },
+    });
+    const publish = sent.filter((s) => s.command === "Publish");
+    expect(publish).toHaveLength(1);
+    expect(publish[0].input.Subject).toBe("[self-test] [tempo-dev] Neon at 20% of a Free plan limit");
+    expect(sent.map((s) => s.command)).not.toContain("PutParameter");
+    expect(state.warnedPeriodEnd).toBeNull();
+  });
+
+  it("emails even when this period was already warned about", async () => {
+    const { sent } = await runUsageCheck({
+      computeSeconds: hours(80),
+      periodEnd: "2026-11-01T00:00:00Z",
+      warnedPeriodEnd: "2026-11-01T00:00:00Z",
+      event: { mode: "selftest" },
+    });
+    expect(sent.filter((s) => s.command === "Publish")).toHaveLength(1);
+  });
+
+  it("has room for the email path: more than the 128 MB it nearly filled without it", () => {
+    for (const stage of [dev, prod]) {
+      const fn = Object.values(databaseTemplate(stage).findResources("AWS::Lambda::Function")).find((f) =>
+        String(f.Properties.FunctionName).endsWith("-neon-usage")
+      );
+      expect(fn?.Properties.MemorySize).toBe(256);
+    }
   });
 });

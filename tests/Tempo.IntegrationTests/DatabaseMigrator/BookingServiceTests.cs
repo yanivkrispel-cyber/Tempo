@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
@@ -254,6 +256,73 @@ public sealed class BookingServiceTests(PostgresFixture postgres) : IClassFixtur
         inbox.UnreadCount.Should().Be(1);
         await settings.MarkAllReadAsync(s.Owner, CancellationToken.None);
         (await settings.ListInboxAsync(s.Owner, null, 10, CancellationToken.None)).UnreadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TheInbox_CarriesEachClassSummary_InTheSameNumberOfQueries_ForOneItemOrThirty()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var s = await StudioAsync(db);
+        var mine = (Guid)(await db.AsMasterAsync("SELECT id FROM people.people WHERE organization_id = $1 AND membership_id = $2", s.Owner.OrganizationId, s.Owner.MembershipId))!;
+        var instructor = (string)(await db.AsMasterAsync("SELECT display_name FROM people.people WHERE id = $1", mine))!;
+        var room = await s.Timetable.CreateRoomAsync(s.Owner, new NewRoom("חדר המכשירים", 8), CancellationToken.None);
+        var session = await SessionAsync(db, s, capacity: 8, startsIn: TimeSpan.FromDays(1));
+        await db.AsMasterAsync("UPDATE scheduling.sessions SET room_id = $2, instructor_membership_id = $3 WHERE id = $1", session, room.Id, s.Owner.MembershipId);
+        var bare = await SessionAsync(db, s, capacity: 8, startsIn: TimeSpan.FromDays(2));
+        var settings = new StudioSettingsService(db);
+
+        await InboxItemsAsync(db, s, mine, session, 1);
+        var (one, queriesForOne) = await CountingQueriesAsync(() => settings.ListInboxAsync(s.Owner, null, 50, CancellationToken.None));
+        await InboxItemsAsync(db, s, mine, session, 28);
+        await InboxItemsAsync(db, s, mine, bare, 1);
+        var (thirty, queriesForThirty) = await CountingQueriesAsync(() => settings.ListInboxAsync(s.Owner, null, 50, CancellationToken.None));
+
+        one.Items.Should().ContainSingle();
+        thirty.Items.Should().HaveCount(30);
+        queriesForThirty.Should().Be(queriesForOne, "the summaries come from the list's own query, not one read per item");
+        queriesForOne.Should().BeGreaterThan(0, "the listener sees the service's queries");
+        var withRoom = thirty.Items.Where(i => i.SessionId == session).ToList();
+        withRoom.Should().HaveCount(29).And.OnlyContain(i =>
+            i.ClassTypeName == "פילאטיס מכשירים" && i.RoomName == "חדר המכשירים" && i.InstructorName == instructor
+            && i.SessionStatus == "scheduled" && i.SessionLocalDate != null && i.SessionStartsAt != null);
+        var plain = thirty.Items.Single(i => i.SessionId == bare);
+        plain.RoomName.Should().BeNull();
+        plain.InstructorName.Should().BeNull();
+        plain.SessionStatus.Should().Be("scheduled");
+    }
+
+    private static async Task InboxItemsAsync(MigratedDatabase db, Studio s, Guid person, Guid session, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            await db.AsMasterAsync(
+                "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, 'reminder.class_tomorrow', jsonb_build_object('sessionId', $4::text), now())",
+                s.Owner.OrganizationId, Guid.CreateVersion7(), person, session);
+        }
+    }
+
+    /// <summary>Counts the commands Npgsql runs inside <paramref name="action"/>'s own async flow (other tests run in parallel).</summary>
+    private static async Task<(T Result, int Queries)> CountingQueriesAsync<T>(Func<Task<T>> action)
+    {
+        var counting = new AsyncLocal<StrongBox<int>?>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Npgsql",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStarted = activity =>
+            {
+                if (counting.Value is { } box && activity.Kind == ActivityKind.Client)
+                {
+                    Interlocked.Increment(ref box.Value);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        var queries = new StrongBox<int>(0);
+        counting.Value = queries;
+        var result = await action();
+        counting.Value = null;
+        return (result, queries.Value);
     }
 
     private sealed record Studio(TenantContext Owner, PeopleService People, PassService Passes, BookingService Bookings, TimetableService Timetable, Guid ClassType, Guid Card);

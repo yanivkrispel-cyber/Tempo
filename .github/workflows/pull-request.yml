@@ -17,7 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DOTNET_VERSION: "10.0.x"
+  # Exact, not 10.0.x: since 2026-10-25 the floating channel resolves through aka.ms to dotnetorigin.blob.core.windows.net,
+  # which refuses public downloads (409); an exact version installs from builds.dotnet.microsoft.com (board #511).
+  DOTNET_VERSION: "10.0.403"
   NODE_VERSION: "22"
 
 # The five job names are the required checks on main: never rename them. Each job
