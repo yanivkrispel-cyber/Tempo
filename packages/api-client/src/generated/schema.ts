@@ -2906,6 +2906,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/me/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What the member home shows, in one read (self)
+         * @description S-2, board #511. The same answers, for the same caller, as `GET /organizations/{organizationId}`, `GET /me/bookings?scope=upcoming&limit=100` (its items), `GET /sessions` for the studio's week (Sunday to Saturday on the studio's clock; its items), `GET /me/progress`, `GET /me/passes` (its items), `GET /me/profile`, `GET /me/notifications?limit=30` and `GET /instructors` (its items), so a client can fill each of those reads' caches from one request. Those endpoints stay. Needs `schedule.view` and `organization.view`.
+         */
+        get: operations["getMyHome"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/me/progress/goal": {
         parameters: {
             query?: never;
@@ -5580,6 +5602,34 @@ export interface components {
             answers?: components["schemas"]["HealthAnswer"][] | null;
             signedName?: string | null;
             guardianName?: string | null;
+        };
+        /** @description The member home in one read (S-2, board */
+        MyHome: {
+            studio: components["schemas"]["Organization"];
+            /** @description The items of `GET /me/bookings?scope=upcoming&limit=100`. */
+            upcomingBookings: components["schemas"]["MyBooking"][];
+            week: {
+                /**
+                 * Format: date
+                 * @description The studio's Sunday of this week.
+                 */
+                from: string;
+                /**
+                 * Format: date
+                 * @description The Saturday after `from`.
+                 */
+                to: string;
+                /** @description The items of `GET /sessions?from={from}&to={to}`. */
+                sessions: components["schemas"]["Session"][];
+            };
+            progress: components["schemas"]["MyProgress"];
+            /** @description The items of `GET /me/passes`. */
+            passes: components["schemas"]["Pass"][];
+            profile: components["schemas"]["PersonDetail"];
+            /** @description `GET /me/notifications?limit=30`. */
+            notifications: components["schemas"]["InboxPage"];
+            /** @description The items of `GET /instructors`. */
+            instructors: components["schemas"]["Instructor"][];
         };
         MyProgress: {
             /**
@@ -10720,6 +10770,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyProgress"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMyHome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyHome"];
                 };
             };
             401: components["responses"]["Unauthorized"];
