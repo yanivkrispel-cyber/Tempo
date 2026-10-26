@@ -1,7 +1,8 @@
 # Project status
 
-Updated 2026-10-26, morning (board #511, DAY-PLAN-15, the speed night: built and reviewed overnight, held at the
-gate until the .NET pin #522 merged at 05:40), after board #494 (2026-10-25, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
+Updated 2026-10-26, evening (board #523, DAY-PLAN-16: the speed queue landed, the session carries the studio's time
+zone, the console's today and reports in one round), after board #511 (2026-10-25/26, DAY-PLAN-15, the speed night:
+built and reviewed overnight, held at the gate until the .NET pin #522 merged at 05:40), after board #494 (2026-10-25, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
 email, the studio demo runbook), after board #481 (2026-10-23: the member home's week and pace, SYNC 9 and axe on
 the new screens, the premium sweep and its small fixes, the orphan listing, decision notes for Kris), board #471
 (2026-10-22/23: OwnerLive, the "I'm in" card, the link preview's picture, the today legend, MO7), board #445
@@ -201,22 +202,38 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | Board #494 [K]: dev emails the owner at 70% of a Neon Free limit, once per billing period, through the canary's topic (#97's safe half; no alarm, $0); the perf-audit scripts and the 2026-10-20 baseline in `tests/e2e/perf/` | #499, #501 |
 | Board #494 layout shift: skeletons at the loaded cards' heights on today and the member profile, the summary line holds its place; the branded sign-in's `autocomplete="username"` (axe) and `auth.setup.ts` through the branded page. Today's CLS 0.281 to about 0.045 (#508, the summary line's no-break space, approved and open at EVENING) | #507 |
 
-- **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
+- **Migrations on dev go up to 0039** (0039, the attended-bookings index, applied 2026-10-26); **0040** is the next
+  free number.
 - **Board #511 (2026-10-25/26) was held at the gate all night.** From about 19:00Z on 2026-10-25,
   `setup-dotnet` with `DOTNET_VERSION: "10.0.x"` resolves through aka.ms to `dotnetorigin.blob.core.windows.net`,
   which answers 409 ("public access is not permitted"), so Deploy Development and every Backend PR job failed before
   the build. Kris approved pinning `DOTNET_VERSION: "10.0.403"` in both workflows on 2026-10-26 (#522, merged
   `833d0ef`; an exact version installs from `builds.dotnet.microsoft.com`). Keep it exact: bump it by hand when a
-  new SDK is wanted. Merged after it: #509 (the Neon usage function at 256 MB, self-test run once), #513. Built and
-  reviewed overnight: the before numbers (#512), the inbox's class summary (#513), `GET /me/home` (#514), the big
-  studio database tools (#517) and 0039 (#516), [O]'s code splitting (#515, #519), CLS (#518) and the inbox in one
-  call (#520).
+  new SDK is wanted. Built and reviewed overnight, merged on the morning and day of 2026-10-26 (board #523): #509 (the
+  Neon usage function at 256 MB; the self-test email arrived), the before numbers (#512), the inbox's class summary
+  (#513) and [O]'s inbox in one call (#525, which replaced #520 when #513's merge deleted its base), the big studio
+  database tools (#517) and 0039 (#516), [O]'s code splitting (#515, #519) and CLS (#518). `GET /me/home` (#514) got
+  its first review on 2026-10-26 and merged with [O]'s home in one read (#521).
+- **Board #523 (2026-10-26 day):** `MyMembership.organization.timeZone` in `/session` and `/me` (#524): the console's
+  `StudioClock` waited for `GET /organizations/{id}` only for the zone, so today and reports ran one round deeper than
+  needed; with [O]'s #526 they need one round after `/session`. Stacked PRs: retarget to `main` before the base merges,
+  or GitHub closes them when `--delete-branch` removes the base (#520). Two lanes merging at once (10:41, #524 and
+  #525): after posting MERGING, re-read the board's last comment before `gh pr merge`. Docs-only merges start no
+  deploy (`paths-ignore`).
+- **The after numbers** (boards #511 and #523, `tests/e2e/perf/after-2026-10-26*.json`, dev `4cb7dcd`, median of 3
+  first visits, against `baseline-2026-10-25.json`): member home 10 to 4 API calls (`/session`, the studio, `/me/home`,
+  the manifest), inbox 18 to 4, book CLS 0.097 to 0.011, the console's week CLS 0.098 to 0, console LCP 2.8 to 3.4 s
+  down to 2.2 to 2.7 s, each screen's JS 15 to 30% smaller. Two regressions for the next board: a member tab's first
+  tap now waits for its route chunk (about +90 ms; prefetch the tab chunks on idle), and the member profile's LCP
+  (2.6 to 4.2 s on dev; 10 calls, O5's map on #523 has the fix). `premium-live-check` 21/21 and
+  `marketing-live-check --targets` passed on `4cb7dcd`.
 - **A big studio's database** (board #511 K4, `tools/scripts/perf-big-db.mjs`, Neon branch `perf-big-2026-10-25`,
   `tests/e2e/perf/big-db-2026-10-25.md`): 1,500 members, 60 classes a week, a year of history. Every screen query is
   under 6 ms except the owner's members-at-risk report (18.5 to 19.5 ms mean, 23 ms under EXPLAIN, 39 ms on a cold
-  cache): migration 0039 (#516, approved) is a partial index on attended bookings that takes it to 15 ms. When 0039
-  reaches production with history, build the index `CONCURRENTLY` in a script of its own (DbUp wraps scripts in a
-  transaction).
+  cache): migration 0039 (#516) is a partial index on attended bookings that takes it to 15 ms. 0039 says `IF NOT
+  EXISTS`: when it reaches production with history, build the index by hand first with `CREATE INDEX CONCURRENTLY`
+  (DbUp runs every script in one transaction), check `indisvalid`, then let the migrator skip it
+  (`database-neon.md`, "Migrator"). The Neon branch was deleted on 2026-10-26.
 - **The JS budget floor** (board #511, [O]): a bare React 19 + React Router + TanStack Query app is about 97.5 KiB br,
   so the first-screen targets of 90 and 110 KiB (member) are below the framework floor. The budgets are 140 (member)
   and 155 (console), run from each app's `build` (`tools/scripts/bundle-budget.mjs`); Kris to confirm.
@@ -233,8 +250,8 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 - Open from #494: the dev clean-up (K6 and O5) after Kris's Instagram and WhatsApp test; #445 and #471 close then.
   #97's sign-up gate waits for Kris (A open, B a dev-only allow list in SSM, recommended, or C self sign-up off;
   the note is on #97). Kris answered P-2, #313 and #312 on 2026-10-23 (decisions.md).
-- #509 (open at EVENING): the Neon usage function used 119 of 128 MB after #499, so it gets 256 MB and a
-  `{"mode":"selftest"}` email; run the self-test once after it merges.
+- #509 (merged 2026-10-26): the Neon usage function has 256 MB (146 MB used with the email path); the
+  `{"mode":"selftest"}` email arrived in Kris's inbox at 05:53 that morning (compute 21%).
 - **A demo for a studio owner** runs on `test-studio-1` ("YOGAZ", Kris's test owner and member), never on
   `tempo-smoke-studio`, whose names, sales and lists are e2e leftovers. `demo-studio.mjs fill` made 48 bookings
   there on 2026-10-25; `unfill` undoes them.

@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from "react";
 import { Outlet, useSearchParams } from "react-router";
-import { ScreenSkeleton } from "../../app/lazyScreen";
+import { PrefetchScreens, ScreenSkeleton } from "../../app/lazyScreen";
+import { memberScreens } from "../../app/memberScreens";
 import { useStudioAccent, useStudioBrand } from "../../app/studioLook";
 import { useStudioPath } from "../../app/studioPath";
 import { activeMemberships, useAccount } from "../../account/account";
@@ -21,6 +22,15 @@ const sideTabs: TabBarLink[] = [...tabs.slice(0, 3), { to: "/inbox", label: "ה�
 
 const book: TabBarLink = { to: "/book", label: "הרשמה לשיעור", icon: "plus" };
 
+/** The tabs' screens and the inbox (the bell on a phone), loaded ahead once the first screen has painted. */
+const tabScreens = [
+  memberScreens.home,
+  memberScreens.book,
+  memberScreens.bookings,
+  memberScreens.inbox,
+  memberScreens.profile,
+];
+
 /**
  * The member app's frame. On a phone or an upright tablet: the page, then the fixed bottom tab bar. On a computer or a
  * tablet held sideways: the same tabs in a column at the start and the page beside it (D15, #317).
@@ -39,6 +49,7 @@ export function MemberLayout() {
       <>
         <Suspense fallback={<ScreenSkeleton />}>
           <Outlet />
+          <PrefetchScreens loads={tabScreens} />
         </Suspense>
         <TabBar items={tabs} action={book} />
       </>
@@ -64,6 +75,7 @@ export function MemberLayout() {
       />
       <Suspense fallback={<ScreenSkeleton />}>
         <Outlet />
+        <PrefetchScreens loads={tabScreens} />
       </Suspense>
     </div>
   );

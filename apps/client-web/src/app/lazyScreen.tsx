@@ -1,4 +1,4 @@
-import { lazy, type ComponentType, type LazyExoticComponent } from "react";
+import { lazy, useEffect, type ComponentType, type LazyExoticComponent } from "react";
 import { matchRoutes, type RouteObject } from "react-router";
 import { Skeleton } from "../shared/design-system";
 
@@ -28,6 +28,36 @@ export function preloadScreen(routes: RouteObject[], pathname: string, basename?
   for (const match of matchRoutes(routes, pathname, basename) ?? []) {
     (match.route.handle as ScreenHandle | undefined)?.preload().catch(() => undefined);
   }
+}
+
+type Load = () => Promise<unknown>;
+
+/** The device asked to save data, or is on a 2G connection: nothing loads ahead there (board #530, U-5). */
+function savesData(): boolean {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+    .connection;
+  return connection?.saveData === true || /(^|-)2g$/.test(connection?.effectiveType ?? "");
+}
+
+/**
+ * Loads other screens' chunks once the browser is idle, so the first tap on a tab doesn't wait for its chunk (board
+ * #530, O2). Render it next to the screen inside its `Suspense`: it mounts only after the screen has painted, so it
+ * never competes with the screen's own chunk or reads. A failure here is retried when the screen renders.
+ */
+export function PrefetchScreens({ loads }: { loads: readonly Load[] }) {
+  useEffect(() => {
+    if (savesData()) return;
+    const run = () => {
+      for (const load of loads) load().catch(() => undefined);
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(run, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 1500);
+    return () => clearTimeout(id);
+  }, [loads]);
+  return null;
 }
 
 /** While a screen's chunk loads: the same placeholder as the account's loading, so the two read as one wait. */
