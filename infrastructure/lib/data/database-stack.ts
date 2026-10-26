@@ -147,7 +147,8 @@ export class DatabaseStack extends Stack {
       description: "Publishes the share of the Neon Free plan limits used this period (ADR-0022)",
       runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
-      memorySize: 128,
+      // About 120 MB on a plain run (2026-10-25); the email path loads the SNS client on top.
+      memorySize: 256,
       timeout: Duration.seconds(30),
       // The next run is six hours away; a failure is reported, not retried.
       retryAttempts: 0,
@@ -220,7 +221,9 @@ export const NEON_USAGE_SOURCE = `
 const { SSMClient, GetParameterCommand, PutParameterCommand } = require("@aws-sdk/client-ssm");
 const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
 
-exports.handler = async () => {
+exports.handler = async (event) => {
+  // {"mode":"selftest"} sends the email now, marked "[self-test]", and leaves the period's state alone.
+  const selftest = Boolean(event && event.mode === "selftest");
   const env = process.env;
   const key = await new SSMClient({}).send(new GetParameterCommand({ Name: env.API_KEY_PARAMETER, WithDecryption: true }));
   const response = await fetch("https://console.neon.tech/api/v2/projects/" + env.NEON_PROJECT_ID, {
@@ -246,20 +249,23 @@ exports.handler = async () => {
     MetricData: [{ MetricName: "${NEON_USAGE_METRIC.metricName}", Dimensions: [{ Name: "Environment", Value: env.ENVIRONMENT }], Value: highest, Unit: "Percent" }]
   }));
 
-  if (!env.WARN_TOPIC_ARN || highest < Number(env.WARN_PERCENT)) return;
+  if (!env.WARN_TOPIC_ARN || (!selftest && highest < Number(env.WARN_PERCENT))) return;
   const ssm = new SSMClient({});
-  const stored = await ssm.send(new GetParameterCommand({ Name: env.WARN_STATE_PARAMETER }));
   const periodEnd = project.consumption_period_end || "unknown";
-  if (JSON.parse(stored.Parameter.Value).warnedPeriodEnd === periodEnd) return;
+  if (!selftest) {
+    const stored = await ssm.send(new GetParameterCommand({ Name: env.WARN_STATE_PARAMETER }));
+    if (JSON.parse(stored.Parameter.Value).warnedPeriodEnd === periodEnd) return;
+  }
   const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
   const shares = Object.entries(percent).map(([name, value]) => name + " " + Math.round(value) + "%").join(", ");
   await new SNSClient({}).send(new PublishCommand({
     TopicArn: env.WARN_TOPIC_ARN,
-    Subject: "[tempo-" + env.ENVIRONMENT + "] Neon at " + Math.round(highest) + "% of a Free plan limit",
+    Subject: (selftest ? "[self-test] " : "") + "[tempo-" + env.ENVIRONMENT + "] Neon at " + Math.round(highest) + "% of a Free plan limit",
     Message: "The Neon project of " + env.ENVIRONMENT + " has used " + shares + " of its Free plan limits this period (until " + periodEnd + "). " +
       "Over 100% Neon suspends the compute until the next period. This email comes once per period. " +
       "What to do: docs/claude-memory/database-neon.md (#97)."
   }));
+  if (selftest) return;
   await ssm.send(new PutParameterCommand({ Name: env.WARN_STATE_PARAMETER, Value: JSON.stringify({ warnedPeriodEnd: periodEnd }), Overwrite: true }));
 };
 `;

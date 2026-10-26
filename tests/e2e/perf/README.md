@@ -11,6 +11,8 @@ not a CI gate.
 | `cls-debug.mjs`              | Which elements shift during load on one screen                                                                    |
 
 `baseline-2026-10-20.json` is the baseline from the perf audit of 2026-10-20 (3 runs per screen).
+`baseline-2026-10-25.json` (screens) and `baseline-2026-10-25-inp.json` (taps) are the "before" of board #511, on
+`main` `ee17780`; the "after" goes in `after-2026-10-26.json`.
 
 They need `.auth/smoke-user.json` signed in on the **deployed** apps. Make it with the sign-in project pointed at
 Cloudflare Pages (Playwright then reuses those URLs instead of starting the local servers):

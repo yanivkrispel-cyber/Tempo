@@ -6687,14 +6687,21 @@ components:
             are app paths (`/classes/{id}`, `/profile/notifications`). Absent or null on older items and on
             `session.message` / `studio.announcement` (see `text`).
         session:
-          description: The class the notice is about, so a list needs no extra request; null when it has none.
+          description: >-
+            The class the notice is about, so a list needs no request per item (S-1, board #511); null when it has
+            none, or when the class is no longer there. It shows only what `GET /sessions/{sessionId}` would show the
+            same caller.
           oneOf:
             - type: object
-              required: [id, startsAt, classTypeName]
+              required: [id, startsAt, classTypeName, localDate, status, roomName, instructorDisplayName]
               properties:
                 id: { type: string, format: uuid }
                 startsAt: { type: string, format: date-time }
                 classTypeName: { type: string }
+                localDate: { type: string, format: date, description: "The class's day on the studio's clock." }
+                status: { $ref: "#/components/schemas/SessionStatus" }
+                roomName: { type: [string, "null"] }
+                instructorDisplayName: { type: [string, "null"] }
             - type: "null"
 
     InboxPage:

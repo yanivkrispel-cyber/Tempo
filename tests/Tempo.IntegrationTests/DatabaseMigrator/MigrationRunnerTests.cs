@@ -30,7 +30,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(38);
+        result.AppliedScripts.Should().HaveCount(39);
         result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
         result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
         result.AppliedScripts[2].Should().EndWith("0003_join_attempts.sql");
@@ -69,6 +69,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         result.AppliedScripts[35].Should().EndWith("0036_share_links_by_intent.sql");
         result.AppliedScripts[36].Should().EndWith("0037_rate_counters.sql");
         result.AppliedScripts[37].Should().EndWith("0038_booking_cancelled_at.sql");
+        result.AppliedScripts[38].Should().EndWith("0039_attended_bookings_index.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -76,9 +77,11 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(38);
+            .Should().Be(39);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
+        (await ScalarAsync<string>(connection, "SELECT pg_get_indexdef('scheduling.ix_bookings_person_attended'::regclass)"))
+            .Should().Contain("(organization_id, person_id) INCLUDE (session_id) WHERE (status = 'attended'::text)", "0039: the members-at-risk report reads attended visits by member (board #511, K4)");
     }
 
     [Fact]
@@ -91,6 +94,37 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
 
         second.Successful.Should().BeTrue();
         second.AppliedScripts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RunAsync_After0039sIndexWasBuiltConcurrentlyByHand_SkipsItAndJournalsTheScript()
+    {
+        // Production with history builds the index CONCURRENTLY before the migrator runs (DbUp's one transaction
+        // can't), so 0039 must not fail on an index that already exists (docs/claude-memory/database-neon.md).
+        var database = await postgres.CreateDatabaseAsync();
+        var endpoint = new DatabaseEndpoint(postgres.Host, postgres.Port, database, SslMode.Disable);
+        var (app, platform, migrator) = (Role("tempo_app"), Role("tempo_platform"), Role("tempo_migrator"));
+        var upTo0038 = await MigrationRunner.RunAsync(
+            endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None,
+            script => !script.EndsWith("0039_attended_bookings_index.sql", StringComparison.Ordinal));
+        upTo0038.AppliedScripts.Should().HaveCount(38);
+
+        await using var connection = postgres.ConnectAsMaster(database);
+        await connection.OpenAsync();
+        await using (var build = new NpgsqlCommand(
+            "CREATE INDEX CONCURRENTLY ix_bookings_person_attended ON scheduling.bookings (organization_id, person_id) INCLUDE (session_id) WHERE status = 'attended'",
+            connection))
+        {
+            await build.ExecuteNonQueryAsync();
+        }
+
+        var rest = await MigrationRunner.RunAsync(
+            endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None);
+
+        rest.Successful.Should().BeTrue();
+        rest.AppliedScripts.Should().ContainSingle().Which.Should().EndWith("0039_attended_bookings_index.sql");
+        (await ScalarAsync<long>(connection, "SELECT count(*) FROM pg_indexes WHERE indexname = 'ix_bookings_person_attended'"))
+            .Should().Be(1);
     }
 
     [Fact]
@@ -107,7 +141,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(38);
+        result.AppliedScripts.Should().HaveCount(39);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();
