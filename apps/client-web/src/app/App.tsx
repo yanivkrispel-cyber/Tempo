@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { AuthClient } from "@tempo/api-client/auth";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { RouterProvider, type createBrowserRouter } from "react-router";
 import { ApiProvider } from "../api/ApiProvider";
 import { AuthProvider } from "../auth/AuthProvider";
 import { ClockProvider } from "../features/member/clock";
 import { ToastProvider } from "../shared/design-system";
+import { ScreenSkeleton } from "./lazyScreen";
 import { StudioLook } from "./studioLook";
 import { StudioPathProvider } from "./studioPath";
 
@@ -36,7 +37,10 @@ export function App({ router, auth, apiUrl = "", fetch, now, studioSlug = null }
             <StudioPathProvider value={studioSlug}>
               {studioSlug && <StudioLook slug={studioSlug} />}
               <ToastProvider>
-                <RouterProvider router={router} />
+                {/* The pages outside the member layout (public pages, sign-in, invitation, join) load as chunks too. */}
+                <Suspense fallback={<ScreenSkeleton />}>
+                  <RouterProvider router={router} />
+                </Suspense>
               </ToastProvider>
             </StudioPathProvider>
           </ClockProvider>
