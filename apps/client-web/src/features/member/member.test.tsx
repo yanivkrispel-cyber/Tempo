@@ -916,6 +916,14 @@ describe("passes", () => {
     );
   });
 
+  it("keeps the strip's place while the passes load, so the timetable doesn't jump (board #511, O3)", async () => {
+    const { studio } = renderAt("/book");
+    studio.routes[`GET /api/v1/organizations/${organizationId}/me/passes`] = () => new Promise<Response>(() => {});
+    expect(await screen.findByText("השבוע הקרוב")).toBeInTheDocument();
+    expect(document.querySelector('.tp-skeleton[style*="height: 64px"]')).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "הכרטיסייה שלך" })).not.toBeInTheDocument();
+  });
+
   it("says on the timetable when there is no valid pass", async () => {
     renderAt("/book", { passes: [] });
     expect(

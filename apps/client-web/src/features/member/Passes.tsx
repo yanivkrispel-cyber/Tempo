@@ -21,6 +21,8 @@ const summary = (pass: Pass) =>
 /** One line over the timetable: the entries left, so the member knows before booking. */
 export function PassStrip({ organizationId }: { organizationId: string }) {
   const passes = useMyPasses(organizationId);
+  // One pass's height (the usual case) while it loads, so the timetable under it doesn't jump (board #511, O3).
+  if (passes.isPending) return <Skeleton height={64} />;
   // A failed read stays quiet here: booking still explains a missing pass.
   if (!passes.data) return null;
   const live = livePasses(passes.data);

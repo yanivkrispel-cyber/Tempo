@@ -65,3 +65,32 @@
   gap: 10px;
   padding-top: 4px;
 }
+
+/* The header's actions. On a phone they take fixed lines, the week's arrows and then each wide button on its own,
+   as they wrap at 360px anyway: lines that depend on the text's width moved the week 52px when IBM Plex Sans Hebrew
+   replaced the fallback font (board #511, O3). */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  /* The 8px that tp-row's list-row rule gave this row, kept so the header doesn't move. */
+  padding: 8px;
+}
+.actions > * {
+  min-width: 0;
+}
+.weekNav {
+  display: contents;
+}
+@media (max-width: 440px) {
+  .actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .weekNav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
