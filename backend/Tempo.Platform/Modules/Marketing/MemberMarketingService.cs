@@ -15,6 +15,9 @@ public sealed record MyMilestonesView(
     string? UsualTime,
     string? TopInstructor);
 
+/// <summary>The member's own referral link (null until made) and the name of the studio's bring-a-friend reward.</summary>
+public sealed record MyShareLinkView(MarketingLinkView? Link, string? RewardProductName);
+
 /// <summary>
 /// The member's own side of stage B (docs/37 sections 8.2 and 8.5): their own share links (one per channel, reused)
 /// and their milestones, computed live under RLS from attended bookings (no table, no job). Nothing here shows
@@ -27,6 +30,12 @@ public interface IMemberMarketingService
     /// whether the invite shows their first name (SL-8, default on); left out, it stays as it was.
     /// </summary>
     Task<MarketingLinkView> ShareLinkAsync(TenantContext tenant, string? channel, Guid? sessionId, CancellationToken cancellationToken, bool? showName = null);
+
+    /// <summary>
+    /// What the referral card shows, without making anything (board #530, K2): the member's own referral link if they
+    /// made one, and the reward the public link lookup names for it.
+    /// </summary>
+    Task<MyShareLinkView> ReadShareLinkAsync(TenantContext tenant, string? channel, CancellationToken cancellationToken);
 
     Task<MyMilestonesView> MilestonesAsync(TenantContext tenant, CancellationToken cancellationToken);
 }
@@ -117,6 +126,37 @@ public sealed class MemberMarketingService(IDataSourceProvider dataSources) : IM
         }
 
         throw new InvalidOperationException("No free link code after several tries.");
+    }
+
+    public async Task<MyShareLinkView> ReadShareLinkAsync(TenantContext tenant, string? channel, CancellationToken cancellationToken)
+    {
+        if (channel is not "referral")
+        {
+            throw new DomainRuleViolationException(ViolationKind.Validation, "channel.invalid", "Only a referral link can be read here.", "channel");
+        }
+
+        // RLS limits rows to the studio, not to the caller, so created_by keeps it to the member's own link. The reward
+        // follows the public link lookup (R-1): an active product the studio picked, while its public page is on.
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        await using var read = unitOfWork.Command(
+            """
+            SELECT o.slug, l.id, l.code, l.created_at, l.show_name, pr.name
+            FROM organizations.organizations o
+            LEFT JOIN LATERAL (
+                SELECT id, code, created_at, show_name FROM marketing.links
+                WHERE organization_id = o.id AND created_by = $2 AND channel = 'referral' AND session_id IS NULL
+                ORDER BY created_at LIMIT 1) l ON true
+            LEFT JOIN organizations.public_pages pp ON pp.organization_id = o.id AND pp.enabled
+            LEFT JOIN scheduling.pass_products pr ON pr.organization_id = pp.organization_id AND pr.id = pp.referral_reward_product_id AND pr.status = 'active'
+            WHERE o.id = $1
+            """,
+            tenant.OrganizationId, tenant.MembershipId);
+        await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
+        var link = reader.IsDBNull(1)
+            ? null
+            : new MarketingLinkView(reader.GetGuid(1), reader.GetString(2), "referral", null, null, reader.GetString(0), reader.GetFieldValue<DateTimeOffset>(3), Kind(null), null, reader.GetBoolean(4));
+        return new MyShareLinkView(link, reader.IsDBNull(5) ? null : reader.GetString(5));
     }
 
     public async Task<MyMilestonesView> MilestonesAsync(TenantContext tenant, CancellationToken cancellationToken)
