@@ -3217,6 +3217,11 @@ export interface components {
                 slug: string;
                 displayName: string;
                 status: components["schemas"]["OrganizationStatus"];
+                /**
+                 * @description The studio's IANA time zone, the same as `Organization.timeZone`, so an app can show the studio's clock without reading the studio first. Missing from older APIs: read the studio then.
+                 * @example Asia/Jerusalem
+                 */
+                timeZone?: string;
             };
         };
         UpdateMeRequest: {

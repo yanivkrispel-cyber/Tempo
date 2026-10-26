@@ -101,6 +101,26 @@ public sealed class PhaseOneFlowTests(PostgresFixture postgres) : IClassFixture<
         ownerAfter.GetProperty("memberships")[0].GetProperty("organization").GetProperty("status").GetString().Should().Be("suspended");
     }
 
+    [Fact]
+    public async Task TheSession_CarriesEachStudiosTimeZone_SoTheAppsNeedNoStudioReadForTheClock()
+    {
+        // Board #523, K3: the console's pages wait for the studio's clock; with the zone in the session they don't.
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studio = await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו לונדון", slug = "studio-london", timeZone = "Europe/London" }, HttpStatusCode.Created);
+        var studioPath = $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}";
+
+        var session = await SendAsync<JsonElement>(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var me = await SendAsync<JsonElement>(client, HttpMethod.Get, "/api/v1/me", Customer("owner"));
+        var record = await SendAsync<JsonElement>(client, HttpMethod.Get, studioPath, Customer("owner"));
+
+        record.GetProperty("timeZone").GetString().Should().Be("Europe/London");
+        session.GetProperty("memberships")[0].GetProperty("organization").GetProperty("timeZone").GetString().Should().Be("Europe/London");
+        me.GetProperty("memberships")[0].GetProperty("organization").GetProperty("timeZone").GetString().Should().Be("Europe/London");
+    }
+
     private WebApplicationFactory<Program> Factory(MigratedDatabase db)
     {
         var key = new RsaSecurityKey(rsa) { KeyId = "test-key" };

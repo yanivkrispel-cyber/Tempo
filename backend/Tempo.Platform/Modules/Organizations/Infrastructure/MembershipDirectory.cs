@@ -76,7 +76,8 @@ public sealed class MembershipDirectory(IDataSourceProvider dataSources) : IMemb
                        JOIN billing.plan_entitlements e ON e.plan_version_id = s.plan_version_id
                        WHERE s.organization_id = m.organization_id AND s.state <> 'canceled')
                     || (SELECT coalesce(jsonb_object_agg(x.key, x.value), jsonb_build_object()) FROM billing.entitlement_overrides x
-                       WHERE x.organization_id = m.organization_id AND (x.ends_at IS NULL OR x.ends_at > now())))::text
+                       WHERE x.organization_id = m.organization_id AND (x.ends_at IS NULL OR x.ends_at > now())))::text,
+                   o.time_zone
             FROM organizations.memberships m
             JOIN organizations.organizations o ON o.id = m.organization_id
             LEFT JOIN organizations.ownership_transfers t
@@ -107,7 +108,8 @@ public sealed class MembershipDirectory(IDataSourceProvider dataSources) : IMemb
                         reader.GetString(10),
                         await reader.GetFieldValueAsync<DateTimeOffset>(11, cancellationToken)),
                 await reader.IsDBNullAsync(12, cancellationToken) ? null : reader.GetString(12),
-                await reader.IsDBNullAsync(13, cancellationToken) ? null : reader.GetString(13)));
+                await reader.IsDBNullAsync(13, cancellationToken) ? null : reader.GetString(13),
+                reader.GetString(14)));
         }
 
         return memberships;
