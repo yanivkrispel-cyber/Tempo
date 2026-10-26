@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Banner, Button, Card, Toggle, useToast } from "../../shared/design-system";
-import { useReferralLink, useReferralReward } from "./experience";
+import { useMyReferral, useReferralLink } from "./experience";
 import styles from "./member.module.css";
 
 /**
@@ -8,25 +8,22 @@ import styles from "./member.module.css";
  * is attended, she gets the studio's reward, which the card names; the friend is promised nothing. Text only: no
  * card image, and the invite names her by first name unless she turns it off (SL-8).
  */
-export function ReferralCard({
-  organizationId,
-  slug,
-  studioName,
-}: {
-  organizationId: string;
-  slug: string;
-  studioName: string;
-}) {
+export function ReferralCard({ organizationId, studioName }: { organizationId: string; studioName: string }) {
   const toast = useToast();
+  const mine = useMyReferral(organizationId);
   const referral = useReferralLink(organizationId);
   const mint = referral.mutate;
-  // Made when the card shows, so a tap opens the share sheet at once (BookedDialog). Without `showName`: opening her
-  // profile keeps her choice (SL-8); only the switch changes it.
-  useEffect(() => mint(undefined), [mint]);
-  const link = referral.data;
+  // Read, and made only when she has none yet, so a tap opens the share sheet at once (BookedDialog): Safari shares
+  // only inside the tap. Without `showName`: making it keeps the default (SL-8); only the switch changes it.
+  const missing = mine.data?.link === null;
+  useEffect(() => {
+    if (missing) mint(undefined);
+  }, [missing, mint]);
+  const link = referral.data ?? mine.data?.link ?? undefined;
   // Her stored choice (null is the default, on); while a change is on its way, the one she just made.
-  const showName = link ? (link.showName ?? true) : (referral.variables ?? true);
-  const reward = useReferralReward(slug, link?.code).data;
+  const showName = referral.isPending ? (referral.variables ?? true) : (link?.showName ?? true);
+  const reward = mine.data?.reward?.productName.trim() || null;
+  const failed = mine.isError || referral.isError;
 
   async function share() {
     if (!link) return;
@@ -56,12 +53,16 @@ export function ReferralCard({
           "שלחי לחברה את הקישור שלך לסטודיו."
         )}
       </p>
-      {referral.isError ? (
+      {failed ? (
         <div className={styles.referralActions}>
           <Banner tone="danger" icon="info">
             לא הצלחנו להכין את הקישור שלך.
           </Banner>
-          <Button variant="ghost" size="sm" onClick={() => mint(referral.variables)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => (mine.isError ? void mine.refetch() : mint(referral.variables))}
+          >
             נסו שוב
           </Button>
         </div>
@@ -77,7 +78,7 @@ export function ReferralCard({
       )}
       <Toggle
         checked={showName}
-        disabled={referral.isPending}
+        disabled={!link || referral.isPending}
         onChange={(event) => mint(event.target.checked)}
         label="להציג את השם שלי"
       />

@@ -1091,34 +1091,38 @@ describe("passes", () => {
 });
 
 describe("bring a friend (MO5)", () => {
+  const readRoute = `GET /api/v1/organizations/${organizationId}/me/share-link`;
   const shareRoute = `POST /api/v1/organizations/${organizationId}/me/share-link`;
-  const lookupRoute = (code: string) => `GET /api/v1/public/studios/neshima/links/${code}`;
-  /** Her referral link as the API keeps it: `showName` left out keeps the stored choice and answers it (SL-8). */
-  function withReferral(studio: ReturnType<typeof createStudio>, reward: string | null, stored = true) {
+  /**
+   * Her referral link as the API keeps it (board #530, K2): the GET answers it, null until made, with the reward; the
+   * POST makes it once and reuses it, and `showName` left out keeps the stored choice (SL-8).
+   */
+  function withReferral(
+    studio: ReturnType<typeof createStudio>,
+    reward: string | null,
+    { made = false, stored = true }: { made?: boolean; stored?: boolean } = {},
+  ) {
+    const link = () => {
+      const code = stored ? "named002" : "plain002";
+      return { code, channel: "referral", showName: stored, url: `https://members.test/s/neshima/?src=${code}` };
+    };
+    studio.routes[readRoute] = () =>
+      Response.json({ link: made ? link() : null, reward: reward ? { productName: reward } : null });
     studio.routes[shareRoute] = async (request: Request) => {
       const body = (await request.clone().json()) as { showName?: boolean };
       if (body.showName !== undefined) stored = body.showName;
-      const code = stored ? "named002" : "plain002";
-      studio.routes[lookupRoute(code)] = () =>
-        Response.json({
-          target: { kind: "studio" },
-          inviterFirstName: stored ? "נגה" : null,
-          reward: reward ? { productName: reward } : null,
-        });
-      return Response.json({
-        code,
-        channel: "referral",
-        showName: stored,
-        url: `https://members.test/s/neshima/?src=${code}`,
-      });
+      made = true;
+      return Response.json(link());
     };
   }
   const referrals = (api: ReturnType<typeof apiStub>) =>
     api.requests.flatMap((request, index) =>
       request.method === "POST" && request.url.endsWith("/me/share-link") ? [api.bodies[index]] : [],
     );
+  const reads = (api: ReturnType<typeof apiStub>) =>
+    api.requests.filter((request) => request.method === "GET" && request.url.includes("/me/share-link"));
 
-  it("sends her referral link and says what she gets when the friend comes", async () => {
+  it("makes her link once when she has none, and says what she gets when the friend comes", async () => {
     const { api, studio } = renderAt("/profile");
     withReferral(studio, "שיעור מתנה");
     const card = await screen.findByRole("region", { name: "הביאי חברה" });
@@ -1126,10 +1130,13 @@ describe("bring a friend (MO5)", () => {
     expect(await within(card).findByText(/^כשחברה שהזמנת מגיעה/)).toHaveTextContent(
       /^כשחברה שהזמנת מגיעה לשיעור הראשון שלה, את מקבלת שיעור מתנה\.$/,
     );
-    expect(referrals(api)[0]).toEqual({ channel: "referral" });
+    expect(new URL(reads(api)[0]!.url).searchParams.get("channel")).toBe("referral");
+    await waitFor(() => expect(referrals(api)).toEqual([{ channel: "referral" }]));
+    expect(api.requests.some((request) => request.url.includes("/links/"))).toBe(false);
 
     const share = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { ...navigator, share });
+    await waitFor(() => expect(within(card).getByRole("button", { name: "שליחה לחברה" })).toBeEnabled());
     await act(async () => within(card).getByRole("button", { name: "שליחה לחברה" }).click());
     expect(share).toHaveBeenLastCalledWith({
       text: "בואי איתי לסטודיו נשימה",
@@ -1138,16 +1145,37 @@ describe("bring a friend (MO5)", () => {
     vi.unstubAllGlobals();
   });
 
+  it("only reads her link when she has one: opening her profile makes nothing (board #530, O3)", async () => {
+    const { api, studio } = renderAt("/profile");
+    withReferral(studio, "שיעור מתנה", { made: true });
+    const card = await screen.findByRole("region", { name: "הביאי חברה" });
+    const send = within(card).getByRole("button", { name: "שליחה לחברה" });
+    await waitFor(() => expect(send).toBeEnabled());
+    expect(within(card).getByText(/^כשחברה שהזמנת מגיעה/)).toHaveTextContent(/שיעור מתנה/);
+
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, share });
+    await act(async () => send.click());
+    expect(share).toHaveBeenLastCalledWith({
+      text: "בואי איתי לסטודיו נשימה",
+      url: "https://members.test/s/neshima/?src=named002",
+    });
+    vi.unstubAllGlobals();
+    expect(reads(api)).toHaveLength(1);
+    expect(referrals(api)).toEqual([]);
+  });
+
   it("copies the link, and makes it again without her name when she turns it off", async () => {
     const { api, studio } = renderAt("/profile");
-    withReferral(studio, null);
+    withReferral(studio, null, { made: true });
     const card = await screen.findByRole("region", { name: "הביאי חברה" });
     expect(await within(card).findByText("שלחי לחברה את הקישור שלך לסטודיו.")).toBeInTheDocument();
     expect(within(card).queryByText(/את מקבלת/)).not.toBeInTheDocument();
 
-    await userEvent.click(within(card).getByRole("switch", { name: "להציג את השם שלי" }));
-    await waitFor(() => expect(referrals(api)).toHaveLength(2));
-    expect(referrals(api)[1]).toEqual({ channel: "referral", showName: false });
+    const toggle = within(card).getByRole("switch", { name: "להציג את השם שלי" });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await userEvent.click(toggle);
+    await waitFor(() => expect(referrals(api)).toEqual([{ channel: "referral", showName: false }]));
     const writeText = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { ...navigator, share: undefined, clipboard: { writeText } });
     await waitFor(async () => {
@@ -1160,28 +1188,39 @@ describe("bring a friend (MO5)", () => {
 
   it("keeps her name off when she turned it off before: opening her profile does not turn it on (SL-8)", async () => {
     const { api, studio } = renderAt("/profile");
-    withReferral(studio, null, false);
+    withReferral(studio, null, { made: true, stored: false });
     const card = await screen.findByRole("region", { name: "הביאי חברה" });
     const toggle = within(card).getByRole("switch", { name: "להציג את השם שלי" });
-    await waitFor(() => expect(toggle).not.toBeChecked());
-    expect(toggle).toBeEnabled();
-    expect(referrals(api)).toEqual([{ channel: "referral" }]);
-    expect(referrals(api).some((body) => (body as { showName?: boolean }).showName === true)).toBe(false);
+    await waitFor(() => expect(toggle).toBeEnabled());
+    expect(toggle).not.toBeChecked();
+    expect(referrals(api)).toEqual([]);
   });
 
   it("offers a retry when the link cannot be made", async () => {
     const { studio } = renderAt("/profile");
+    withReferral(studio, null);
     let fail = true;
-    const make = () =>
-      fail
-        ? problem(400, "http.400")
-        : Response.json({ code: "named003", url: "https://members.test/s/neshima/?src=named003" });
-    studio.routes[shareRoute] = () => make();
+    const make = studio.routes[shareRoute] as (request: Request) => Promise<Response>;
+    studio.routes[shareRoute] = (request: Request) => (fail ? problem(400, "http.400") : make(request));
     const card = await screen.findByRole("region", { name: "הביאי חברה" });
     expect(await within(card).findByText("לא הצלחנו להכין את הקישור שלך.")).toBeInTheDocument();
     fail = false;
     await userEvent.click(within(card).getByRole("button", { name: "נסו שוב" }));
     expect(await within(card).findByRole("button", { name: "שליחה לחברה" })).toBeEnabled();
+  });
+
+  it("offers a retry when her link cannot be read, and makes nothing meanwhile", async () => {
+    const { api, studio } = renderAt("/profile");
+    withReferral(studio, null, { made: true });
+    let fail = true;
+    const read = studio.routes[readRoute] as () => Response;
+    studio.routes[readRoute] = () => (fail ? problem(400, "http.400") : read());
+    const card = await screen.findByRole("region", { name: "הביאי חברה" });
+    expect(await within(card).findByText("לא הצלחנו להכין את הקישור שלך.")).toBeInTheDocument();
+    fail = false;
+    await userEvent.click(within(card).getByRole("button", { name: "נסו שוב" }));
+    expect(await within(card).findByRole("button", { name: "שליחה לחברה" })).toBeEnabled();
+    expect(referrals(api)).toEqual([]);
   });
 });
 
