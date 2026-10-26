@@ -140,3 +140,10 @@ GitHub stays on the Free plan (decided 2026-10-14), so branch protection is a te
   WAF, outside N-4). #313 option 1: `trustPolicy: no-downgrade`, with `semver@6.3.1` and `undici-types@6.20.0`
   excluded by exact version (#493); remove each when nothing pulls it in. #312 option 3: the orphaned e2e account rows
   stay on dev, to be revisited before production. Sweep row 13: the brand book's sunken empty tile stays.
+- **D29 board #494 defaults (2026-10-25, silence kept them):** R-1 the four computer layouts change only from about
+  1024 px, the phone view byte-identical, one PR per issue; R-2 cancelled classes fold under one line ("N שיעורים
+  בוטלו") in today and the week, never hidden; R-3 settings get a section index with one save per card (the custom
+  listbox stays a design-system question); R-4 only #97's safe half (the dev Neon usage email, the role-password length
+  check: all three dev passwords are 48 characters), the dev sign-up gate stays open until Kris picks A, B or C on #97; R-5 the studio demo runs on
+  `test-studio-1` with fictional people, not on the e2e smoke studio; R-6 the 2026-10-20 perf scripts landed in
+  `tests/e2e/perf/`.

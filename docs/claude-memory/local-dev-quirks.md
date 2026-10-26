@@ -33,3 +33,9 @@ Each of these cost time once.
   days without a restart. Restart every few days, stop Docker when no container is needed (`docker desktop stop`),
   and never close another Claude session to free memory without asking: an idle one may be a Remote Control
   session in use.
+- **Npgsql takes keyword strings, not URIs** (`Host=...;Username=...;Password=...`). Handed a `postgresql://` URI, it
+  throws an `ArgumentException` that echoes the whole string, password included (2026-10-25, board #511). Build
+  keyword strings, and mask the output of anything that holds one (`perf-big-db.mjs` does both).
+- **`setup-dotnet` with a floating `10.0.x`** goes through aka.ms to `dotnetorigin.blob.core.windows.net`, which has
+  answered 409 since 2026-10-25 ~19:00Z. An exact SDK version installs from `builds.dotnet.microsoft.com`. Locally,
+  the Docker `mcr.microsoft.com/dotnet/sdk:10.0` image is unaffected.
