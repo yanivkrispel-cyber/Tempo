@@ -1,6 +1,7 @@
 # Project status
 
-Updated 2026-10-25, evening (board #494, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
+Updated 2026-10-26, morning (board #511, DAY-PLAN-15, the speed night: built and reviewed overnight, held at the
+gate until the .NET pin #522 merged at 05:40), after board #494 (2026-10-25, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
 email, the studio demo runbook), after board #481 (2026-10-23: the member home's week and pace, SYNC 9 and axe on
 the new screens, the premium sweep and its small fixes, the orphan listing, decision notes for Kris), board #471
 (2026-10-22/23: OwnerLive, the "I'm in" card, the link preview's picture, the today legend, MO7), board #445
@@ -201,6 +202,24 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 | Board #494 layout shift: skeletons at the loaded cards' heights on today and the member profile, the summary line holds its place; the branded sign-in's `autocomplete="username"` (axe) and `auth.setup.ts` through the branded page. Today's CLS 0.281 to about 0.045 (#508, the summary line's no-break space, approved and open at EVENING) | #507 |
 
 - **Migrations on dev go up to 0038** (0033 to 0038 all applied); **0039** is the next free number.
+- **Board #511 (2026-10-25/26) was held at the gate all night.** From about 19:00Z on 2026-10-25,
+  `setup-dotnet` with `DOTNET_VERSION: "10.0.x"` resolves through aka.ms to `dotnetorigin.blob.core.windows.net`,
+  which answers 409 ("public access is not permitted"), so Deploy Development and every Backend PR job failed before
+  the build. Kris approved pinning `DOTNET_VERSION: "10.0.403"` in both workflows on 2026-10-26 (#522, merged
+  `833d0ef`; an exact version installs from `builds.dotnet.microsoft.com`). Keep it exact: bump it by hand when a
+  new SDK is wanted. Merged after it: #509 (the Neon usage function at 256 MB, self-test run once), #513. Built and
+  reviewed overnight: the before numbers (#512), the inbox's class summary (#513), `GET /me/home` (#514), the big
+  studio database tools (#517) and 0039 (#516), [O]'s code splitting (#515, #519), CLS (#518) and the inbox in one
+  call (#520).
+- **A big studio's database** (board #511 K4, `tools/scripts/perf-big-db.mjs`, Neon branch `perf-big-2026-10-25`,
+  `tests/e2e/perf/big-db-2026-10-25.md`): 1,500 members, 60 classes a week, a year of history. Every screen query is
+  under 6 ms except the owner's members-at-risk report (18.5 to 19.5 ms mean, 23 ms under EXPLAIN, 39 ms on a cold
+  cache): migration 0039 (#516, approved) is a partial index on attended bookings that takes it to 15 ms. When 0039
+  reaches production with history, build the index `CONCURRENTLY` in a script of its own (DbUp wraps scripts in a
+  transaction).
+- **The JS budget floor** (board #511, [O]): a bare React 19 + React Router + TanStack Query app is about 97.5 KiB br,
+  so the first-screen targets of 90 and 110 KiB (member) are below the framework floor. The budgets are 140 (member)
+  and 155 (console), run from each app's `build` (`tools/scripts/bundle-budget.mjs`); Kris to confirm.
 - **The cold start went from about 8.4 s to 3.5 s** (from Israel, 11 parallel cold `GET /me` on dev, #445 tables 1
   to 3). Building every minimal API endpoint on the first request took 2.9 to 3.9 s; the Request Delegate Generator
   and building them in Init cut routing to 0.2 s. The JWKS fetch and the SSM read start in Init. Left: 1.3 s of
