@@ -117,6 +117,66 @@ public sealed class MemberStageBFlowTests(PostgresFixture postgres) : IClassFixt
     }
 
     [Fact]
+    public async Task ReadingMyReferralLink_WritesNothing_ShowsOnlyMyOwnLink_AndTheStudiosReward()
+    {
+        // Board #530 (K2, U-2, [O]'s O3 note): the profile's referral card reads its link and the reward in one GET and
+        // mints only when the member has no link yet.
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var slug = $"studio-{Guid.NewGuid():N}"[..20];
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var created = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "סטודיו נשימה", slug }, HttpStatusCode.Created);
+        var studioId = created.GetProperty("id").GetGuid();
+        var studioPath = $"/api/v1/organizations/{studioId}";
+        await JoinAsync(client, studioPath, "noga", "client");
+        await JoinAsync(client, studioPath, "dana", "client");
+        var reward = await SendAsync(client, HttpMethod.Post, $"{studioPath}/pass-products", Customer("owner"), new { kind = "punch_card", name = "שיעור מתנה", entries = 1, validDays = 30 }, HttpStatusCode.Created);
+        var rewardId = reward.GetProperty("id").GetGuid();
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true, referralRewardProductId = rewardId });
+        var read = $"{studioPath}/me/share-link?channel=referral";
+        async Task<long> LinksAsync() => (long)(await db.AsMasterAsync("SELECT count(*) FROM marketing.links WHERE organization_id = $1", studioId))!;
+
+        // 1. No link yet: the reward, no link, and nothing written.
+        var before = await SendAsync(client, HttpMethod.Get, read, Customer("noga"));
+        before.GetProperty("link").ValueKind.Should().Be(JsonValueKind.Null);
+        before.GetProperty("reward").GetProperty("productName").GetString().Should().Be("שיעור מתנה");
+        (await LinksAsync()).Should().Be(0L, "a read never mints");
+
+        // 2. After the mint: the same link the POST made, with its name switch.
+        var minted = await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("noga"), new { channel = "referral", showName = false });
+        var code = minted.GetProperty("code").GetString();
+        var after = await SendAsync(client, HttpMethod.Get, read, Customer("noga"));
+        var link = after.GetProperty("link");
+        link.GetProperty("code").GetString().Should().Be(code);
+        link.GetProperty("url").GetString().Should().Be($"{MembersApp}/s/{slug}/?src={code}");
+        link.GetProperty("channel").GetString().Should().Be("referral");
+        link.GetProperty("showName").GetBoolean().Should().BeFalse();
+        after.GetProperty("reward").GetProperty("productName").GetString().Should().Be("שיעור מתנה");
+
+        // 3. Only the caller's own referral link: not Noga's for Dana, not Dana's own card, not the studio's links.
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/marketing/links", Customer("owner"), new { channel = "story", template = "week" }, HttpStatusCode.Created);
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("dana"), new { channel = "member_card" });
+        (await SendAsync(client, HttpMethod.Get, read, Customer("dana"))).GetProperty("link").ValueKind.Should().Be(JsonValueKind.Null);
+        (await SendAsync(client, HttpMethod.Get, read, Customer("owner"))).GetProperty("link").ValueKind.Should().Be(JsonValueKind.Null);
+        (await LinksAsync()).Should().Be(3L, "the reads wrote nothing");
+
+        // 4. No reward when the studio picks none, or while its public page is off (the link leads nowhere then).
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true, referralRewardProductId = (Guid?)null });
+        (await SendAsync(client, HttpMethod.Get, read, Customer("noga"))).GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null);
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = false, openJoin = true, referralRewardProductId = rewardId });
+        var off = await SendAsync(client, HttpMethod.Get, read, Customer("noga"));
+        off.GetProperty("reward").ValueKind.Should().Be(JsonValueKind.Null);
+        off.GetProperty("link").GetProperty("code").GetString().Should().Be(code);
+
+        // 5. Only the referral channel, and only for a member of the studio.
+        (await RawAsync(client, HttpMethod.Get, $"{studioPath}/me/share-link?channel=member_card", Customer("noga"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await RawAsync(client, HttpMethod.Get, $"{studioPath}/me/share-link", Customer("noga"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("stranger"));
+        (await RawAsync(client, HttpMethod.Get, read, Customer("stranger"))).StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task TwoAttendanceMarksAtOnce_ForAReferredFriend_RewardTheReferrerOnce_AndBothSucceed()
     {
         // #397 review: the reward was check-then-INSERT, so two marks of the same friend's first classes in parallel

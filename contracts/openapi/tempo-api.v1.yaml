@@ -652,6 +652,28 @@ paths:
   /api/v1/organizations/{organizationId}/me/share-link:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Marketing]
+      operationId: readMyShareLink
+      summary: "The caller's own referral link, if made, and the studio's bring-a-friend reward (`schedule.view`)"
+      description: >-
+        Board #530 (K2, U-2): the profile's referral card reads what it shows without minting. Read-only: `link` is
+        the caller's own `referral` link (null until the first `POST`), never another member's or the studio's.
+        `reward` is the pass the studio gives the member when a friend's first class is attended (M-17), the same one
+        `GET /public/studios/{slug}/links/{code}` names: null when the studio picked none, the product isn't active,
+        or the public page is off. Not counted against the link limit (S-A); only a `POST` that makes a link is.
+      parameters:
+        - { name: channel, in: query, required: true, schema: { type: string, enum: [referral] } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyShareLink" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     post:
       tags: [Marketing]
       operationId: getMyShareLink
@@ -5802,6 +5824,19 @@ components:
         channel: { type: string, enum: [member_card, referral] }
         sessionId: { type: [string, "null"], format: uuid, description: "`member_card` only: the class the card is about." }
         showName: { type: boolean, description: "SL-8 (SK4): show the caller's first name on the invite. Left out keeps it (default on)." }
+
+    MyShareLink:
+      type: object
+      required: [link, reward]
+      properties:
+        link:
+          oneOf:
+            - $ref: "#/components/schemas/MarketingLink"
+            - type: "null"
+        reward:
+          oneOf:
+            - $ref: "#/components/schemas/PublicLinkReward"
+            - type: "null"
 
     MyMilestones:
       type: object

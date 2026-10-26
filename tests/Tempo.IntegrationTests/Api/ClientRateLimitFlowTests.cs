@@ -98,6 +98,28 @@ public sealed class ClientRateLimitFlowTests(PostgresFixture postgres) : IClassF
             .Should().Be((HttpStatusCode)429, "a member's own link counts against the same limit");
     }
 
+    [Fact]
+    public async Task ReadingMyShareLink_IsOffTheLinkLimit()
+    {
+        // Board #530 (K2, [O]'s finding): the profile reads the referral card on every visit, so only a mint may count.
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db, ("RateLimits:LinksPerUserPerHour", "1"));
+        var client = factory.CreateClient();
+        var (studioPath, _) = await StudioAsync(client);
+        var read = $"{studioPath}/me/share-link?channel=referral";
+
+        for (var i = 0; i < 5; i++)
+        {
+            (await RawAsync(client, HttpMethod.Get, read, Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        (await RawAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("owner"), new { channel = "referral" })).StatusCode
+            .Should().Be(HttpStatusCode.OK, "five reads left the one mint of the hour untouched");
+        (await RawAsync(client, HttpMethod.Post, $"{studioPath}/me/share-link", Customer("owner"), new { channel = "referral" })).StatusCode
+            .Should().Be((HttpStatusCode)429);
+        (await RawAsync(client, HttpMethod.Get, read, Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.OK, "a read still answers over the limit");
+    }
+
     private async Task<(string StudioPath, string Slug)> StudioAsync(HttpClient client)
     {
         var slug = $"studio-{Guid.NewGuid():N}"[..20];

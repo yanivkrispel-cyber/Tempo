@@ -125,6 +125,9 @@ public sealed record ChannelSourceResponse(string Channel, int Members, int Book
 
 public sealed record LinkSourceResponse(Guid LinkId, string Code, string Channel, string? Template, Guid? SessionId, DateTimeOffset CreatedAt, int Members, int Bookings, int Attended, MarketingTargetBody Target);
 
+/// <summary>`MyShareLink` (board #530, K2): the caller's own referral link, null until made, and the studio's reward.</summary>
+public sealed record MyShareLinkResponse(MarketingLinkResponse? Link, PublicLinkRewardResponse? Reward);
+
 /// <summary>`ShareLinkInput`: a member's own link for a card or a referral.</summary>
 public sealed record ShareLinkRequest(string? Channel, Guid? SessionId, bool? ShowName = null);
 

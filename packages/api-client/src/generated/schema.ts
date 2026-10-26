@@ -470,7 +470,11 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /**
+         * The caller's own referral link, if made, and the studio's bring-a-friend reward (`schedule.view`)
+         * @description Board #530 (K2, U-2): the profile's referral card reads what it shows without minting. Read-only: `link` is the caller's own `referral` link (null until the first `POST`), never another member's or the studio's. `reward` is the pass the studio gives the member when a friend's first class is attended (M-17), the same one `GET /public/studios/{slug}/links/{code}` names: null when the studio picked none, the product isn't active, or the public page is off. Not counted against the link limit (S-A); only a `POST` that makes a link is.
+         */
+        get: operations["readMyShareLink"];
         put?: never;
         /**
          * The caller's own link for a member card or for bringing a friend (`schedule.view`)
@@ -4399,6 +4403,10 @@ export interface components {
             /** @description SL-8 (SK4): show the caller's first name on the invite. Left out keeps it (default on). */
             showName?: boolean;
         };
+        MyShareLink: {
+            link: components["schemas"]["MarketingLink"] | null;
+            reward: components["schemas"]["PublicLinkReward"] | null;
+        };
         MyMilestones: {
             attended: number;
             reached: (10 | 25 | 50 | 100 | 200)[];
@@ -6608,6 +6616,34 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    readMyShareLink: {
+        parameters: {
+            query: {
+                channel: "referral";
+            };
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyShareLink"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getMyShareLink: {

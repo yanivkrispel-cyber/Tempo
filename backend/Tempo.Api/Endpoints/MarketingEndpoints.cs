@@ -24,6 +24,8 @@ public static class MarketingEndpoints
         tenant.MapPut("/public-page", UpdateAsync).RequirePermission(Permissions.OrganizationSettingsManage).WithName("updatePublicPage").Produces<PublicPageResponse>();
         // Instructors hold publish.own; the service checks the class is theirs unless the caller holds publish (M-4).
         tenant.MapPost("/marketing/links", CreateLinkAsync).RequirePermission(Permissions.MarketingPublishOwn).WithName("createMarketingLink").Produces<MarketingLinkResponse>(StatusCodes.Status201Created);
+        // A read, so off the link limit (S-A): the profile's card reads it on every visit ([O]'s finding on board #530).
+        tenant.MapGet("/me/share-link", ReadShareLinkAsync).RequirePermission(Permissions.ScheduleView).WithName("readMyShareLink").Produces<MyShareLinkResponse>();
         tenant.MapPost("/me/share-link", ShareLinkAsync).RequirePermission(Permissions.ScheduleView).WithName("getMyShareLink").Produces<MarketingLinkResponse>();
         tenant.MapGet("/me/milestones", MilestonesAsync).RequirePermission(Permissions.ScheduleView).WithName("getMyMilestones").Produces<MyMilestonesResponse>();
         tenant.MapGet("/reports/sources", ReportAsync).RequirePermission(Permissions.ReportsView).WithName("getSourceReport").Produces<SourceReportResponse>();
@@ -102,6 +104,14 @@ public static class MarketingEndpoints
         await limiter.HitAsync("marketing.links.user", tenant.UserAccountId.ToString(), limits.LinksPerUserPerHour, httpContext.RequestAborted);
         var link = await members.ShareLinkAsync(tenant, request.Channel, request.SessionId, httpContext.RequestAborted, request.ShowName);
         return Results.Ok(LinkResponse(link, apps));
+    }
+
+    private static async Task<IResult> ReadShareLinkAsync(HttpContext httpContext, string? channel, IMemberMarketingService members, AppLinks apps)
+    {
+        var mine = await members.ReadShareLinkAsync(TenantRouteFilter.Current(httpContext), channel, httpContext.RequestAborted);
+        return Results.Ok(new MyShareLinkResponse(
+            mine.Link is { } link ? LinkResponse(link, apps) : null,
+            mine.RewardProductName is { } product ? new PublicLinkRewardResponse(product) : null));
     }
 
     private static async Task<IResult> MilestonesAsync(HttpContext httpContext, IMemberMarketingService members)
