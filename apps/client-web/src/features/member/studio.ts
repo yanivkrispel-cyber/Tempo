@@ -87,7 +87,7 @@ export function useStudioClock(organizationId: string): { timeZone: string; now:
 }
 
 /** Sessions from `from` to `to` (local dates, inclusive), with the caller's own place and the pass a booking would use. */
-export function useSessions(organizationId: string, from: IsoDate, to: IsoDate) {
+export function useSessions(organizationId: string, from: IsoDate, to: IsoDate, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: studioKeys.sessions(organizationId, from, to),
@@ -97,6 +97,7 @@ export function useSessions(organizationId: string, from: IsoDate, to: IsoDate) 
           params: { path: { organizationId }, query: { from, to } },
         }),
       ).then((list) => list.items),
+    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
@@ -118,7 +119,7 @@ export function useSession(organizationId: string, sessionId: string, enabled = 
 }
 
 /** Upcoming bookings and waitlist places, soonest first (the API sorts this page by start time). */
-export function useUpcomingBookings(organizationId: string) {
+export function useUpcomingBookings(organizationId: string, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: studioKeys.myBookings(organizationId, "upcoming"),
@@ -128,6 +129,7 @@ export function useUpcomingBookings(organizationId: string) {
           params: { path: { organizationId }, query: { scope: "upcoming", limit: 100 } },
         }),
       ).then((page) => page.items),
+    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
@@ -154,7 +156,7 @@ export function usePastBookings(organizationId: string, enabled = true) {
   });
 }
 
-export function useMyPasses(organizationId: string) {
+export function useMyPasses(organizationId: string, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: studioKeys.myPasses(organizationId),
@@ -162,6 +164,7 @@ export function useMyPasses(organizationId: string) {
       unwrap(api.GET("/api/v1/organizations/{organizationId}/me/passes", org(organizationId))).then(
         (list) => list.items,
       ),
+    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
@@ -272,7 +275,7 @@ export function useCalendarFile(organizationId: string) {
   });
 }
 
-export function useInbox(organizationId: string) {
+export function useInbox(organizationId: string, enabled = true) {
   const api = useApi();
   return useQuery({
     queryKey: studioKeys.inbox(organizationId),
@@ -282,6 +285,7 @@ export function useInbox(organizationId: string) {
           params: { path: { organizationId }, query: { limit: 30 } },
         }),
       ),
+    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });

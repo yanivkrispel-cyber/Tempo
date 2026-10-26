@@ -3820,6 +3820,30 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationId}/me/home:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    get:
+      tags: [Progress]
+      operationId: getMyHome
+      summary: "What the member home shows, in one read (self)"
+      description: >-
+        S-2, board #511. The same answers, for the same caller, as `GET /organizations/{organizationId}`,
+        `GET /me/bookings?scope=upcoming&limit=100` (its items), `GET /sessions` for the studio's week (Sunday to
+        Saturday on the studio's clock; its items), `GET /me/progress`, `GET /me/passes` (its items),
+        `GET /me/profile`, `GET /me/notifications?limit=30` and `GET /instructors` (its items), so a client can fill
+        each of those reads' caches from one request. Those endpoints stay. Needs `schedule.view` and
+        `organization.view`.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyHome" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/me/progress/goal:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -7198,6 +7222,40 @@ components:
           items: { $ref: "#/components/schemas/HealthAnswer" }
         signedName: { type: [string, "null"] }
         guardianName: { type: [string, "null"] }
+
+    MyHome:
+      type: object
+      description: The member home in one read (S-2, board #511); each field has the shape of the read it replaces.
+      required: [studio, upcomingBookings, week, progress, passes, profile, notifications, instructors]
+      properties:
+        studio: { $ref: "#/components/schemas/Organization" }
+        upcomingBookings:
+          type: array
+          description: The items of `GET /me/bookings?scope=upcoming&limit=100`.
+          items: { $ref: "#/components/schemas/MyBooking" }
+        week:
+          type: object
+          required: [from, to, sessions]
+          properties:
+            from: { type: string, format: date, description: "The studio's Sunday of this week." }
+            to: { type: string, format: date, description: "The Saturday after `from`." }
+            sessions:
+              type: array
+              description: The items of `GET /sessions?from={from}&to={to}`.
+              items: { $ref: "#/components/schemas/Session" }
+        progress: { $ref: "#/components/schemas/MyProgress" }
+        passes:
+          type: array
+          description: The items of `GET /me/passes`.
+          items: { $ref: "#/components/schemas/Pass" }
+        profile: { $ref: "#/components/schemas/PersonDetail" }
+        notifications:
+          description: "`GET /me/notifications?limit=30`."
+          $ref: "#/components/schemas/InboxPage"
+        instructors:
+          type: array
+          description: The items of `GET /instructors`.
+          items: { $ref: "#/components/schemas/Instructor" }
 
     MyProgress:
       type: object

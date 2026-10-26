@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Outlet, useSearchParams } from "react-router";
+import { ScreenSkeleton } from "../../app/lazyScreen";
 import { useStudioAccent, useStudioBrand } from "../../app/studioLook";
 import { useStudioPath } from "../../app/studioPath";
 import { activeMemberships, useAccount } from "../../account/account";
@@ -36,7 +37,9 @@ export function MemberLayout() {
   if (!wide) {
     return (
       <>
-        <Outlet />
+        <Suspense fallback={<ScreenSkeleton />}>
+          <Outlet />
+        </Suspense>
         <TabBar items={tabs} action={book} />
       </>
     );
@@ -59,7 +62,9 @@ export function MemberLayout() {
           </div>
         }
       />
-      <Outlet />
+      <Suspense fallback={<ScreenSkeleton />}>
+        <Outlet />
+      </Suspense>
     </div>
   );
 }

@@ -134,6 +134,62 @@ describe("member home", () => {
     expect(within(nav).getByRole("link", { name: "הזמנות" })).not.toHaveAttribute("aria-current");
     expect(within(nav).getByRole("link", { name: "הרשמה לשיעור" })).toHaveAttribute("href", "/book");
   });
+
+  it("reads the home in one call when the API has /me/home (board #511, O5)", async () => {
+    const studio = createStudio();
+    const base = `/api/v1/organizations/${organizationId}`;
+    const read = apiStub(studio.routes).fetch;
+    const get = async (path: string) => (await read(new Request(`https://api.test${base}${path}`))).json();
+    studio.routes[`GET ${base}/me/home`] = {
+      studio: await get(""),
+      upcomingBookings: (await get("/me/bookings?scope=upcoming&limit=100")).items,
+      week: {
+        from: "2026-10-11",
+        to: "2026-10-17",
+        sessions: (await get("/sessions?from=2026-10-11&to=2026-10-17")).items,
+      },
+      progress: await get("/me/progress"),
+      passes: (await get("/me/passes")).items,
+      profile: { id: "person-home", avatarUrl: null, consents: [] },
+      notifications: await get("/me/notifications?limit=30"),
+      instructors: [],
+    };
+    const api = apiStub(studio.routes);
+    render(
+      <App
+        router={createMemoryRouter(routes, { initialEntries: ["/"] })}
+        auth={signedInAuth()}
+        apiUrl="https://api.test"
+        fetch={api.fetch}
+        now={testNow}
+      />,
+    );
+
+    expect(await screen.findByRole("region", { name: "פילאטיס מכשירים" })).toHaveTextContent("היום 13:00");
+    const classes = screen.getByRole("region", { name: "השיעורים של היום" });
+    await waitFor(() => expect(within(classes).getAllByRole("listitem")).toHaveLength(4));
+    const paths = api.requests.map((request) => new URL(request.url).pathname.replace(base, ""));
+    expect(paths.filter((path) => path === "/me/home")).toHaveLength(1);
+    for (const part of [
+      "/me/bookings",
+      "/sessions",
+      "/me/progress",
+      "/me/passes",
+      "/me/profile",
+      "/me/notifications",
+    ]) {
+      expect(paths).not.toContain(part);
+    }
+    expect(paths).not.toContain("/instructors");
+  });
+
+  it("falls back to the separate reads when the API has no /me/home yet", async () => {
+    const { api } = renderAt("/");
+    expect(await screen.findByRole("region", { name: "פילאטיס מכשירים" })).toHaveTextContent("היום 13:00");
+    const paths = api.requests.map((request) => new URL(request.url).pathname);
+    expect(paths.some((path) => path.endsWith("/me/home"))).toBe(true);
+    expect(paths.some((path) => path.endsWith("/me/bookings"))).toBe(true);
+  });
 });
 
 describe("booking a class", () => {
@@ -676,6 +732,55 @@ describe("promotion and the inbox", () => {
     expect(within(item!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
   });
 
+  it("names the class from the item's own summary, without a request per item (board #511, S-1)", async () => {
+    const { api } = renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a08",
+          kind: "reminder.class_tomorrow",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          session: {
+            id: sessionIds.vinyasa,
+            startsAt: "2026-10-14T15:00:00Z",
+            classTypeName: "ויניאסה מהסיכום",
+            localDate: "2026-10-14",
+            status: "scheduled",
+            roomName: null,
+            instructorDisplayName: null,
+          },
+          createdAt: "2026-10-13T08:55:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [item] = within(list).getAllByRole("listitem");
+    expect(item).toHaveTextContent("ויניאסה מהסיכום");
+    expect(item).toHaveTextContent("18:00");
+    expect(api.requests.some((request) => request.url.includes(`/sessions/${sessionIds.vinyasa}`))).toBe(false);
+  });
+
+  it("still asks for the class when the item's summary comes from an API without its day", async () => {
+    const { api } = renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a09",
+          kind: "reminder.class_tomorrow",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          // The summary before S-1: no localDate, status, room or instructor.
+          session: { id: sessionIds.vinyasa, startsAt: "2026-10-14T15:00:00Z", classTypeName: "ויניאסה" } as never,
+          createdAt: "2026-10-13T08:55:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    await waitFor(() =>
+      expect(api.requests.some((request) => request.url.includes(`/sessions/${sessionIds.vinyasa}`))).toBe(true),
+    );
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("תזכורת: יש לך שיעור מחר");
+  });
+
   it("shows reminders, linking class ones to the class", async () => {
     renderAt("/inbox", {
       inbox: [
@@ -914,6 +1019,14 @@ describe("passes", () => {
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "הכרטיסייה שלך" })).toHaveTextContent("נשארו 6 כניסות"),
     );
+  });
+
+  it("keeps the strip's place while the passes load, so the timetable doesn't jump (board #511, O3)", async () => {
+    const { studio } = renderAt("/book");
+    studio.routes[`GET /api/v1/organizations/${organizationId}/me/passes`] = () => new Promise<Response>(() => {});
+    expect(await screen.findByText("השבוע הקרוב")).toBeInTheDocument();
+    expect(document.querySelector('.tp-skeleton[style*="height: 64px"]')).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "הכרטיסייה שלך" })).not.toBeInTheDocument();
   });
 
   it("says on the timetable when there is no valid pass", async () => {

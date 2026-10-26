@@ -100,6 +100,7 @@ try
     app.MapCheckinEndpoints();
     app.MapInsightEndpoints();
     app.MapProgressEndpoints();
+    app.MapHomeEndpoints();
     app.MapReportEndpoints();
     app.MapHealthDeclarationEndpoints();
     app.MapClassEndpoints();

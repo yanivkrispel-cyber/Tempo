@@ -2,7 +2,7 @@ import { subscriptionStateOf } from "../../account/account";
 import { codeMessage } from "../../api/errors";
 import { useProblemCode } from "../../api/problems";
 import { Banner, ButtonLink } from "../../shared/design-system";
-import { securityPath } from "../security/SecurityPage";
+import { securityPath } from "../security/securityPath";
 import { useStudio } from "./studio";
 
 /**

@@ -88,7 +88,7 @@ public static class BookingEndpoints
         _ => throw new DomainRuleViolationException(ViolationKind.Validation, "scope.invalid", "Use upcoming or past.", "scope")
     };
 
-    private static MyBookingPageResponse ToResponse(MyBookingPage page) =>
+    internal static MyBookingPageResponse ToResponse(MyBookingPage page) =>
         new(
             [.. page.Items.Select(i =>
             {

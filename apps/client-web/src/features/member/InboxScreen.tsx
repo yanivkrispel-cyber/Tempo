@@ -176,8 +176,10 @@ function Notice({ studio, item, heading }: { studio: Studio; item: InboxItem; he
   const { timeZone, today } = useStudioClock(studio.id);
   const markRead = useMarkRead(studio.id);
   const sessionId = item.data.sessionId;
-  // The item holds ids only; the class's name and time come from the session, cached across the screens.
-  const session = useSession(studio.id, sessionId ?? "", sessionId !== undefined);
+  // The item carries its class's name and day (S-1, board #511); null means the class is gone. An API from before S-1
+  // sends a summary without the day (or none at all), and then the session is asked for, as before.
+  const summary = item.session?.localDate ? item.session : null;
+  const session = useSession(studio.id, sessionId ?? "", sessionId !== undefined && !summary && item.session !== null);
   const kind = kinds[item.kind]!;
   const to = linkFor(item);
   const unread = !item.readAt;
@@ -191,11 +193,15 @@ function Notice({ studio, item, heading }: { studio: Studio; item: InboxItem; he
     seen.current = true;
     markItemRead(item.id);
   }, [to, unread, item.id, markItemRead]);
-  const when = session.data
-    ? metaLine([
-        session.data.classType.name,
-        `${relativeDay(session.data.localDate, today)} ${clockTime(session.data.startsAt, timeZone)}`,
-      ])
+  const about = summary
+    ? { name: summary.classTypeName, localDate: summary.localDate, startsAt: summary.startsAt }
+    : session.data && {
+        name: session.data.classType.name,
+        localDate: session.data.localDate,
+        startsAt: session.data.startsAt,
+      };
+  const when = about
+    ? metaLine([about.name, `${relativeDay(about.localDate, today)} ${clockTime(about.startsAt, timeZone)}`])
     : null;
 
   const content = (

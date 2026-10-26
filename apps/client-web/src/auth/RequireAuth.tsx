@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useStudioPath } from "../app/studioPath";
-import { PublicStudioPage } from "../features/public/PublicStudioPage";
+import { PublicStudioPage } from "../features/public/lazyPages";
 import { useAuth } from "./AuthProvider";
 
 /**

@@ -6,6 +6,8 @@ import { defineConfig } from "vite";
 // default in the API, so local staff and admin invitation links open this app.
 export default defineConfig({
   plugins: [react()],
+  // For the first page's budget (tools/scripts/bundle-budget.mjs), which deletes it after reading.
+  build: { manifest: true },
   server: { port: 5173, strictPort: true },
   preview: { port: 5173, strictPort: true },
   test: {
