@@ -676,6 +676,55 @@ describe("promotion and the inbox", () => {
     expect(within(item!).getByRole("link")).toHaveAttribute("href", `/classes/${sessionIds.vinyasa}`);
   });
 
+  it("names the class from the item's own summary, without a request per item (board #511, S-1)", async () => {
+    const { api } = renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a08",
+          kind: "reminder.class_tomorrow",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          session: {
+            id: sessionIds.vinyasa,
+            startsAt: "2026-10-14T15:00:00Z",
+            classTypeName: "ויניאסה מהסיכום",
+            localDate: "2026-10-14",
+            status: "scheduled",
+            roomName: null,
+            instructorDisplayName: null,
+          },
+          createdAt: "2026-10-13T08:55:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    const [item] = within(list).getAllByRole("listitem");
+    expect(item).toHaveTextContent("ויניאסה מהסיכום");
+    expect(item).toHaveTextContent("18:00");
+    expect(api.requests.some((request) => request.url.includes(`/sessions/${sessionIds.vinyasa}`))).toBe(false);
+  });
+
+  it("still asks for the class when the item's summary comes from an API without its day", async () => {
+    const { api } = renderAt("/inbox", {
+      inbox: [
+        {
+          id: "0199e5a1-0000-7000-8000-000000000a09",
+          kind: "reminder.class_tomorrow",
+          data: { sessionId: sessionIds.vinyasa, bookingId: bookingIdOf(sessionIds.vinyasa) },
+          // The summary before S-1: no localDate, status, room or instructor.
+          session: { id: sessionIds.vinyasa, startsAt: "2026-10-14T15:00:00Z", classTypeName: "ויניאסה" } as never,
+          createdAt: "2026-10-13T08:55:00Z",
+          readAt: null,
+        },
+      ],
+    });
+    const list = await screen.findByRole("list", { name: "התראות" });
+    await waitFor(() =>
+      expect(api.requests.some((request) => request.url.includes(`/sessions/${sessionIds.vinyasa}`))).toBe(true),
+    );
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("תזכורת: יש לך שיעור מחר");
+  });
+
   it("shows reminders, linking class ones to the class", async () => {
     renderAt("/inbox", {
       inbox: [
