@@ -33,11 +33,18 @@ const session = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-function renderAt(url: string, sessions: (request: Request) => unknown) {
+/** `timeZone` is what the session says of the studio (board #523, K3); older APIs leave it out. */
+function renderAt(url: string, sessions: (request: Request) => unknown, timeZone?: string) {
   const me = {
     ...sampleMe,
     memberships: [
-      { ...studio, role: "staff" as const, roles: [roleSummary("staff")], permissions: permissionsFor.staff },
+      {
+        ...studio,
+        organization: { ...studio.organization, ...(timeZone ? { timeZone } : {}) },
+        role: "staff" as const,
+        roles: [roleSummary("staff")],
+        permissions: permissionsFor.staff,
+      },
     ],
   };
   const api = apiStub({
@@ -195,5 +202,20 @@ describe("the day in the studio (D15, the coach's screen)", () => {
       .map((request) => new URL(request.url).searchParams.toString());
     expect(asked).toContain("from=2026-10-15&to=2026-10-15");
     expect(screen.getByText(/15\.10\.2026/)).toBeInTheDocument();
+  });
+
+  it("reads the day on the session's time zone, without waiting for the studio's record (board #523, O3)", async () => {
+    const { api } = renderAt("/o/neshima/today", () => [session()], "Asia/Jerusalem");
+    expect(await screen.findByRole("link", { name: /פילאטיס מכשירים/ })).toBeInTheDocument();
+
+    const paths = api.requests.map((request) => new URL(request.url).pathname);
+    expect(paths).toContain(`${base}/sessions`);
+    expect(paths).not.toContain(base);
+  });
+
+  it("reads the studio's record for its time zone when the session doesn't carry it", async () => {
+    const { api } = renderAt("/o/neshima/today", () => [session()]);
+    expect(await screen.findByRole("link", { name: /פילאטיס מכשירים/ })).toBeInTheDocument();
+    expect(api.requests.map((request) => new URL(request.url).pathname)).toContain(base);
   });
 });
