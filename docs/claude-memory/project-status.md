@@ -1,7 +1,8 @@
 # Project status
 
-Updated 2026-10-26, evening (board #523, DAY-PLAN-16: the speed queue landed, the session carries the studio's time
-zone, the console's today and reports in one round), after board #511 (2026-10-25/26, DAY-PLAN-15, the speed night:
+Updated 2026-10-27, morning (board #530, DAY-PLAN-17: the member app's time zone from the session, the tab prefetch,
+the profile in two rounds), after board #523 (2026-10-26 day, DAY-PLAN-16: the speed queue landed, the session carries
+the studio's time zone, the console's today and reports in one round), after board #511 (2026-10-25/26, DAY-PLAN-15, the speed night:
 built and reviewed overnight, held at the gate until the .NET pin #522 merged at 05:40), after board #494 (2026-10-25, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
 email, the studio demo runbook), after board #481 (2026-10-23: the member home's week and pace, SYNC 9 and axe on
 the new screens, the premium sweep and its small fixes, the orphan listing, decision notes for Kris), board #471
@@ -227,6 +228,27 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
   tap now waits for its route chunk (about +90 ms; prefetch the tab chunks on idle), and the member profile's LCP
   (2.6 to 4.2 s on dev; 10 calls, O5's map on #523 has the fix). `premium-live-check` 21/21 and
   `marketing-live-check --targets` passed on `4cb7dcd`.
+- **Board #530 (2026-10-26 evening and night):** the member app takes the studio's time zone from the session
+  (#531), so home, book, bookings and profile never read `GET /organizations/{id}`; the four tab screens and the inbox
+  load on idle after the first screen paints, never on `saveData` or 2G (#532); `GET /me/share-link?channel=referral`
+  (`readMyShareLink`, #533) answers the caller's own referral link (null until made) and the studio's reward, read-only
+  and **off** the `marketing.links.user` limiter; the profile's card reads it and mints only when she has no link or the
+  name switch changes (#534). Before, the card minted on every visit, and an hour of visits used up the member's link
+  limit (the card's "לא הצלחנו להכין את הקישור שלך" on dev). Safari runs `navigator.share` only inside the tap, so the
+  link must be in hand before it: never mint on the tap.
+- **`/me/passes` and `/me/progress` (board #530 K1):** EXPLAIN ANALYZE on dev, every statement under 1 ms warm and
+  under 8 ms on a cold cache, so no index or migration. The handlers take 105 ms (passes) and 145 ms (progress) at p50
+  warm: the round trips to the Neon pooler (2 and 5 statements). The slow tail is the cold start (a new Lambda plus the
+  first Neon connection, about 1.4 s) and Neon waking from scale-to-zero, outside N-4. A later saving is folding
+  `/me/progress`'s five reads into one or two statements (about 20 to 40 ms warm).
+- **The after numbers of board #530** (`tests/e2e/perf/after-2026-10-27*.json`, dev `b198e59`, median of 3): member
+  home 3 API calls (from 4), book 5, bookings 4, profile 8 in **2 rounds** after `/session` with no write (LCP 4.18 to
+  2.63 s), inbox 3. First tab taps: schedule 144 to 104 ms, bookings 136 to 80, profile 264 to 144 (the before was 56,
+  48 and 184; what's left is the screen's own render on a 4x-slowed CPU). The inbox's LCP (2.9 to 3.4 s) and the
+  console's (2.5 to 3.0 s, no console change that night) moved with the API's latency on that run:
+  `/me/notifications` 453 to 778 ms. `premium-live-check` 21/21 and `marketing-live-check --targets` 12/12 on
+  `b198e59`. Next-board candidates: an EXPLAIN of `/me/notifications`, a cheaper first render of book and bookings,
+  the profile's CLS 0.091, `/me/progress` in fewer statements.
 - **A big studio's database** (board #511 K4, `tools/scripts/perf-big-db.mjs`, Neon branch `perf-big-2026-10-25`,
   `tests/e2e/perf/big-db-2026-10-25.md`): 1,500 members, 60 classes a week, a year of history. Every screen query is
   under 6 ms except the owner's members-at-risk report (18.5 to 19.5 ms mean, 23 ms under EXPLAIN, 39 ms on a cold
