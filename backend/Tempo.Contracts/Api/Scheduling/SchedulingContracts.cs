@@ -251,8 +251,8 @@ public sealed record InboxItemDataResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? BookingId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? PassId = null);
 
-/// <summary>`InboxItem`: an in-app notification; the data holds ids only.</summary>
-public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName);
+/// <summary>`InboxItem.session`: the class an in-app notification is about, so a list needs no read per item (S-1, board #511).</summary>
+public sealed record InboxSessionResponse(Guid Id, DateTimeOffset StartsAt, string ClassTypeName, DateOnly LocalDate, string Status, string? RoomName, string? InstructorDisplayName);
 
 public sealed record InboxItemResponse(Guid Id, string Kind, InboxItemDataResponse Data, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt, InboxSessionResponse? Session = null, string? Text = null, string? Title = null, string? Body = null);
 
