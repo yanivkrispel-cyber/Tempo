@@ -162,12 +162,13 @@ function DayView({ timeZone }: { timeZone: string }) {
         <h1 className={styles.greeting}>
           {greeting(openedAt, timeZone)}, <bdi>{firstName(nameOf(me))}</bdi>
         </h1>
-        {/* While the day or what waits loads, an empty line holds the summary's place so the page does not jump (O5). */}
+        {/* While the day or what waits loads, an empty line holds the summary's place so the page does not jump (O5). A
+            no-break space: a plain one collapses, and the line with it. */}
         {(summary ||
           waiting > 0 ||
           (day === "today" && (sessions.isPending || (reports && suggestions.isPending)))) && (
           <p className={`tp-muted ${styles.summary}`} aria-hidden={summary || waiting > 0 ? undefined : true}>
-            {summary ?? (waiting > 0 ? "" : " ")}
+            {summary ?? (waiting > 0 ? "" : " ")}
             {waiting > 0 && (
               <>
                 {summary && " "}

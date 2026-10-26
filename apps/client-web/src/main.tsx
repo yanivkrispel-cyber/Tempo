@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { App } from "./app/App";
 import { listenForInstall } from "./app/install";
+import { preloadScreen } from "./app/lazyScreen";
 import { routes } from "./app/routes";
 import { dressStudioHead, studioBasename, studioSlugOf } from "./app/studioPath";
 import { readAppConfig } from "./auth/config";
@@ -27,6 +28,14 @@ const config = readAppConfig();
 const studioSlug = studioSlugOf(window.location.pathname);
 const basename = studioSlug ? studioBasename(studioSlug) : undefined;
 if (studioSlug) dressStudioHead(config.apiUrl, studioSlug);
+// A tab left open across a deploy asks for chunks the new deploy no longer has: load the new version once.
+window.addEventListener("vite:preloadError", (event) => {
+  if (reloadedForChunks()) return;
+  event.preventDefault();
+  window.location.reload();
+});
+// The first screen's chunk downloads alongside the entry's work and `POST /session`, not after them (board #511).
+preloadScreen(routes, window.location.pathname, basename);
 const auth = config.auth ? new AuthClient({ config: config.auth, app: "client-web", basePath: basename }) : null;
 
 createRoot(root).render(
@@ -39,3 +48,16 @@ createRoot(root).render(
     />
   </StrictMode>,
 );
+
+/** True when this tab already reloaded for missing chunks in the last minute, so a broken deploy can't loop. */
+function reloadedForChunks(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem("tempo.chunkReload") ?? 0);
+    if (Date.now() - last < 60_000) return true;
+    sessionStorage.setItem("tempo.chunkReload", String(Date.now()));
+  } catch {
+    // Storage blocked: reloading without a guard could loop, so don't.
+    return true;
+  }
+  return false;
+}
