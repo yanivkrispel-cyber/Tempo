@@ -5,7 +5,7 @@ import { createMemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { routes } from "../../app/routes";
-import { apiStub, problem } from "../../test/api";
+import { apiStub, problem, sampleMe } from "../../test/api";
 import { recordingContext } from "../../test/canvas";
 import { signedInAuth } from "../../test/auth";
 import {
@@ -189,6 +189,34 @@ describe("member home", () => {
     const paths = api.requests.map((request) => new URL(request.url).pathname);
     expect(paths.some((path) => path.endsWith("/me/home"))).toBe(true);
     expect(paths.some((path) => path.endsWith("/me/bookings"))).toBe(true);
+  });
+});
+
+describe("the studio's time zone", () => {
+  const base = `/api/v1/organizations/${organizationId}`;
+
+  it("comes from the session, so no screen reads the studio record (board #530, O1)", async () => {
+    const studio = createStudio();
+    const membership = sampleMe.memberships[0]!;
+    studio.routes["POST /api/v1/session"] = {
+      ...sampleMe,
+      memberships: [{ ...membership, organization: { ...membership.organization, timeZone: "Asia/Jerusalem" } }],
+    };
+    studio.routes[`GET ${base}`] = problem(500, "http.500");
+    const api = apiStub(studio.routes);
+    const router = createMemoryRouter(routes, { initialEntries: ["/book"] });
+    render(<App router={router} auth={signedInAuth()} apiUrl="https://api.test" fetch={api.fetch} now={testNow} />);
+
+    expect(await screen.findByText("פילאטיס מכשירים")).toBeInTheDocument();
+    for (const path of ["/", "/bookings", "/profile"]) await act(() => router.navigate(path));
+    await waitFor(() => expect(api.requests.some((request) => request.url.endsWith("/me/passes"))).toBe(true));
+    expect(api.requests.map((request) => new URL(request.url).pathname)).not.toContain(base);
+  });
+
+  it("reads the studio record when an older API leaves it out of the session", async () => {
+    const { api } = renderAt("/book");
+    expect(await screen.findByText("פילאטיס מכשירים")).toBeInTheDocument();
+    expect(api.requests.map((request) => new URL(request.url).pathname)).toContain(base);
   });
 });
 
