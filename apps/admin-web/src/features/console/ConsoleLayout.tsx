@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { NavLink, Outlet, useParams } from "react-router";
 import { consoleStudios, membershipRoleName, permissionsOf, useAccount } from "../../account/account";
 import { useAuth } from "../../auth/AuthProvider";
+import { ScreenSkeleton } from "../../app/lazyScreen";
 import { Button, ButtonLink, EmptyState, Icon, IconButton, cx, type IconName } from "../../shared/design-system";
 import { useMediaQuery, WIDE_SCREEN } from "../../shared/useMediaQuery";
 import { IncomingTransferBanner } from "../ownership/Ownership";
-import { securityPath } from "../security/SecurityPage";
+import { securityPath } from "../security/securityPath";
 import { CommandPalette, CommandPaletteProvider, useCommandPalette } from "./CommandPalette";
 import styles from "./console.module.css";
 import { ConsoleNotices } from "./ConsoleNotices";
@@ -221,7 +222,9 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
         <ConsoleNotices />
         <IncomingTransferBanner />
         <CommandPaletteProvider value={openPalette}>
-          <Outlet />
+          <Suspense fallback={<ScreenSkeleton inConsole />}>
+            <Outlet />
+          </Suspense>
         </CommandPaletteProvider>
       </div>
 

@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { AuthClient } from "@tempo/api-client/auth";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { RouterProvider, type createBrowserRouter } from "react-router";
 import { ApiProvider } from "../api/ApiProvider";
 import { AuthProvider } from "../auth/AuthProvider";
 import { ToastProvider } from "../shared/design-system";
+import { ScreenSkeleton } from "./lazyScreen";
 
 type Router = ReturnType<typeof createBrowserRouter>;
 
@@ -28,7 +29,10 @@ export function App({ router, auth, apiUrl = "", fetch, queryClient: given }: Ap
       <ApiProvider baseUrl={apiUrl} auth={auth} fetch={fetch}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <RouterProvider router={router} />
+            {/* The pages outside the console (sign-in, invitation, studio choice) load as chunks too. */}
+            <Suspense fallback={<ScreenSkeleton />}>
+              <RouterProvider router={router} />
+            </Suspense>
           </ToastProvider>
         </QueryClientProvider>
       </ApiProvider>

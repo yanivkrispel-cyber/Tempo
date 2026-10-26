@@ -1,6 +1,6 @@
 import type { AuthClient } from "@tempo/api-client/auth";
 import { render, screen, waitFor } from "@testing-library/react";
-import { createMemoryRouter } from "react-router";
+import { createMemoryRouter, type RouteObject } from "react-router";
 import { describe, expect, it } from "vitest";
 import { apiStub, sampleMe } from "../test/api";
 import { signedInAuth, signedOutAuth } from "../test/auth";
@@ -18,6 +18,14 @@ function renderAt(url: string, auth: AuthClient = signedInAuth(), api = apiStub(
 }
 
 describe("admin-web routes", () => {
+  it("loads every console page as its own chunk (board #511, S-3)", () => {
+    const studio = (list: RouteObject[]): RouteObject | undefined =>
+      list.flatMap((route) => (route.path === "/o/:slug" ? [route] : (studio(route.children ?? []) ?? []))).at(0);
+    const pages = studio(routes)!.children!;
+    expect(pages.length).toBeGreaterThan(15);
+    for (const page of pages) expect(page.handle, page.path ?? "index").toHaveProperty("preload");
+  });
+
   it("sends a signed-out visitor to /login", async () => {
     const router = renderAt("/", signedOutAuth());
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("ניהול הסטודיו ב־Tempo");

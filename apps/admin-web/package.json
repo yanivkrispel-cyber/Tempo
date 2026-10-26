@@ -4,13 +4,22 @@
   "private": true,
   "description": "Tempo business admin web for studio owners, admins and staff (Hebrew, RTL). ADR-0024.",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node ../../tools/scripts/bundle-budget.mjs",
     "lint": "tsc --noEmit && eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"
+  },
+  "bundleBudget": {
+    "firstScreenKiB": 155,
+    "screens": [
+      "src/features/today/TodayPage.tsx"
+    ]
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.2",

@@ -7,7 +7,7 @@ import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
 import { Banner, Button, ButtonLink, Card, EmptyState, Field, Icon, Input, useToast } from "../../shared/design-system";
-import { securityPath } from "../security/SecurityPage";
+import { securityPath } from "../security/securityPath";
 
 /** Lowercase Latin letters, digits and hyphens, 3 to 40 characters (contract, `Slug`). */
 const slugPattern = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
