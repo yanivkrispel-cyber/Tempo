@@ -40,7 +40,7 @@ import { clockTime, defaultTimeZone, hasStarted, minutesBetween, studioToday } f
 import { StudioNotices } from "./StudioNotices";
 import { StudioSwitcher, useSwitchableStudios } from "./StudioSwitcher";
 import { useStudioPath } from "../../app/studioPath";
-import { PublicStudioPage } from "../public/PublicStudioPage";
+import { PublicStudioPage } from "../public/lazyPages";
 
 /** The state chip of a class row: the member's own place first, then what is left. */
 function badge(session: Session, now: Date): { text: string; tone: "sage" | "rose" | "amber" | "plain" } {
