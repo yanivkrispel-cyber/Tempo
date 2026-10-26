@@ -20,7 +20,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DOTNET_VERSION: "10.0.x"
+  # Exact, not 10.0.x: since 2026-10-25 the floating channel resolves through aka.ms to dotnetorigin.blob.core.windows.net,
+  # which refuses public downloads (409); an exact version installs from builds.dotnet.microsoft.com (board #511).
+  DOTNET_VERSION: "10.0.403"
   NODE_VERSION: "22"
   AWS_REGION: eu-central-1
   AWS_DEPLOY_ROLE_ARN: arn:aws:iam::687239340846:role/tempo-dev-github-deploy
