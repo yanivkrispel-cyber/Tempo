@@ -99,11 +99,7 @@ export function ProfileScreen() {
         <div className={styles.lead}>
           <PassesCard organizationId={studio.organization.id} />
           <BuddiesCard organizationId={studio.organization.id} />
-          <ReferralCard
-            organizationId={studio.organization.id}
-            slug={studio.organization.slug}
-            studioName={studio.organization.displayName}
-          />
+          <ReferralCard organizationId={studio.organization.id} studioName={studio.organization.displayName} />
         </div>
       )}
 

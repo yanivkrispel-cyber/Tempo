@@ -18,6 +18,7 @@ export const experienceKeys = {
   buddies: (organizationId: string) => ["studio", organizationId, "buddies"] as const,
   instructors: (organizationId: string) => ["studio", organizationId, "instructors"] as const,
   profile: (organizationId: string) => ["studio", organizationId, "my-profile"] as const,
+  referral: (organizationId: string) => ["studio", organizationId, "my-referral"] as const,
 };
 
 const retryOnce = (failures: number, error: unknown) =>
@@ -117,11 +118,34 @@ export function useShareLink(organizationId: string) {
   });
 }
 
-/** Her own referral link to the studio (docs/37 section 8.5, "הביאי חברה"); one per member, reused by the API. */
+/**
+ * What the referral card shows (docs/37 section 8.5, "הביאי חברה"): her own referral link, null until she has one, and
+ * the studio's reward for it. A read, so opening her profile makes nothing and spends none of her hourly links (board
+ * #530, O3).
+ */
+export function useMyReferral(organizationId: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: experienceKeys.referral(organizationId),
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/v1/organizations/{organizationId}/me/share-link", {
+          params: { path: { organizationId }, query: { channel: "referral" } },
+        }),
+      ),
+    staleTime: 5 * 60_000,
+    retry: retryOnce,
+  });
+}
+
+/**
+ * Makes her referral link, or changes whether it names her; one per member, reused by the API. Left out, `showName`
+ * keeps her stored choice (SL-8), as for the class card. The answer goes into the card's read.
+ */
 export function useReferralLink(organizationId: string) {
   const api = useApi();
+  const queryClient = useQueryClient();
   return useMutation({
-    // Left out, `showName` keeps her stored choice (SL-8), as for the class card.
     mutationFn: (showName: boolean | undefined) =>
       unwrap(
         api.POST("/api/v1/organizations/{organizationId}/me/share-link", {
@@ -129,20 +153,10 @@ export function useReferralLink(organizationId: string) {
           body: showName === undefined ? { channel: "referral" } : { channel: "referral", showName },
         }),
       ),
-  });
-}
-
-/** What her referral link earns her (M-17), as its public answer says: the product's name, or null. */
-export function useReferralReward(slug: string, code: string | undefined) {
-  const api = useApi();
-  return useQuery({
-    queryKey: ["public-studio", slug, "link", code],
-    queryFn: () =>
-      unwrap(api.GET("/api/v1/public/studios/{slug}/links/{code}", { params: { path: { slug, code: code! } } })),
-    enabled: Boolean(code),
-    staleTime: 5 * 60_000,
-    retry: false,
-    select: (link) => link.reward?.productName.trim() || null,
+    onSuccess: (link) =>
+      queryClient.setQueryData<Schemas["MyShareLink"]>(experienceKeys.referral(organizationId), (mine) =>
+        mine ? { ...mine, link } : mine,
+      ),
   });
 }
 
