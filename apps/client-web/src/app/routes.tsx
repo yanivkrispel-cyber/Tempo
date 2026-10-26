@@ -4,6 +4,7 @@ import { CallbackPage } from "../auth/CallbackPage";
 import { RequireAuth } from "../auth/RequireAuth";
 import { MemberLayout } from "../features/member/MemberLayout";
 import { lazyScreen } from "./lazyScreen";
+import { memberScreens } from "./memberScreens";
 import { NotFoundPage } from "./NotFoundPage";
 
 // Every screen is its own chunk (board #511, S-3); the frame, the guards and the sign-in callback stay in the entry.
@@ -20,19 +21,19 @@ export const routes: RouteObject[] = [
             // preferences) and docs/31 (health declaration, progress).
             element: <MemberLayout />,
             children: [
-              { path: "/", ...lazyScreen(() => import("../features/member/HomeScreen"), "HomeScreen") },
-              { path: "/book", ...lazyScreen(() => import("../features/member/BookScreen"), "BookScreen") },
+              { path: "/", ...lazyScreen(memberScreens.home, "HomeScreen") },
+              { path: "/book", ...lazyScreen(memberScreens.book, "BookScreen") },
               {
                 path: "/classes/:sessionId",
                 ...lazyScreen(() => import("../features/member/ClassScreen"), "ClassScreen"),
               },
-              { path: "/bookings", ...lazyScreen(() => import("../features/member/BookingsScreen"), "BookingsScreen") },
-              { path: "/inbox", ...lazyScreen(() => import("../features/member/InboxScreen"), "InboxScreen") },
+              { path: "/bookings", ...lazyScreen(memberScreens.bookings, "BookingsScreen") },
+              { path: "/inbox", ...lazyScreen(memberScreens.inbox, "InboxScreen") },
               {
                 path: "/milestone/:count",
                 ...lazyScreen(() => import("../features/member/MilestoneScreen"), "MilestoneScreen"),
               },
-              { path: "/profile", ...lazyScreen(() => import("../features/member/ProfileScreen"), "ProfileScreen") },
+              { path: "/profile", ...lazyScreen(memberScreens.profile, "ProfileScreen") },
               {
                 path: "/profile/notifications",
                 ...lazyScreen(() => import("../features/member/NotificationsScreen"), "NotificationsScreen"),
