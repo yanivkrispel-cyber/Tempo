@@ -5162,13 +5162,21 @@ export interface components {
             title?: string | null;
             /** @description The template's Markdown-light body with the variables filled when the item was written. A backslash escapes `\`, `*`, `[`, `]`, `(` and `)` that came from a value, so a name never bolds or links. Links are app paths (`/classes/{id}`, `/profile/notifications`). Absent or null on older items and on `session.message` / `studio.announcement` (see `text`). */
             body?: string | null;
-            /** @description The class the notice is about, so a list needs no extra request; null when it has none. */
+            /** @description The class the notice is about, so a list needs no request per item (S-1, board #511); null when it has none, or when the class is no longer there. It shows only what `GET /sessions/{sessionId}` would show the same caller. */
             session?: {
                 /** Format: uuid */
                 id: string;
                 /** Format: date-time */
                 startsAt: string;
                 classTypeName: string;
+                /**
+                 * Format: date
+                 * @description The class's day on the studio's clock.
+                 */
+                localDate: string;
+                status: components["schemas"]["SessionStatus"];
+                roomName: string | null;
+                instructorDisplayName: string | null;
             } | null;
         };
         InboxPage: {
