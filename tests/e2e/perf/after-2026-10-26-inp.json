@@ -1,0 +1,14 @@
+{
+  "measured": "2026-10-26T14:00Z",
+  "main": "4cb7dcd",
+  "script": "inp.mjs (Pixel 7, CPU 4x, worst event per tab, 3 entries each)",
+  "member": {
+    "בית": 16,
+    "מערכת": 144,
+    "check-in (icon tab)": 0,
+    "הזמנות": 136,
+    "פרופיל": 264,
+    "open class from /book": 328
+  },
+  "console": { "היום בסטודיו": 16, "חברי הסטודיו": 24, "דוחות": 16, "מערכת שבועית": 16, "שיעורים קבועים": 16 }
+}

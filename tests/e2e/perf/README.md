@@ -12,7 +12,8 @@ not a CI gate.
 
 `baseline-2026-10-20.json` is the baseline from the perf audit of 2026-10-20 (3 runs per screen).
 `baseline-2026-10-25.json` (screens) and `baseline-2026-10-25-inp.json` (taps) are the "before" of board #511, on
-`main` `ee17780`; the "after" goes in `after-2026-10-26.json`.
+`main` `ee17780`. The "after" of boards #511 and #523 is `after-2026-10-26.json` (screens) and
+`after-2026-10-26-inp.json` (taps), on `main` `4cb7dcd`, with both waves of #523 deployed.
 
 They need `.auth/smoke-user.json` signed in on the **deployed** apps. Make it with the sign-in project pointed at
 Cloudflare Pages (Playwright then reuses those URLs instead of starting the local servers):
