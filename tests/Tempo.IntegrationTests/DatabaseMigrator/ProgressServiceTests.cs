@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Tempo.Platform.BuildingBlocks.Errors;
+using Tempo.Platform.BuildingBlocks.Persistence;
 using Tempo.Platform.BuildingBlocks.Tenancy;
 using Tempo.Platform.Modules.Identity.Infrastructure;
 using Tempo.Platform.Modules.Organizations.Application;
@@ -106,6 +107,49 @@ public sealed class ProgressServiceTests(PostgresFixture postgres) : IClassFixtu
         var (_, otherMember, _) = await StudioWithMemberAsync(db, "other");
 
         (await new ProgressService(db, TimeProvider.System).GetMineAsync(otherMember, CancellationToken.None)).MonthlyGoal.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetMine_ReadsInTwoStatements()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, member, person) = await StudioWithMemberAsync(db);
+        var now = new DateTimeOffset(2026, 10, 21, 9, 0, 0, TimeSpan.Zero);
+        await PlaceAsync(db, owner, person, new DateOnly(2026, 10, 13), now.AddDays(-8), "attended");
+        await PlaceAsync(db, owner, person, new DateOnly(2026, 10, 20), now.AddDays(-1), "attended");
+        await PlaceAsync(db, owner, person, new DateOnly(2026, 10, 22), now.AddDays(1), "booked");
+        var progress = new ProgressService(db, new FixedClock(now));
+        await progress.SetMyGoalAsync(member, 6, CancellationToken.None);
+
+        // What opening and rolling back an empty unit of work costs (the tenant context), so only the reads are pinned.
+        var (_, opening) = await QueryCounter.CountAsync(async () =>
+        {
+            await using var unitOfWork = await UnitOfWork.BeginAsync(db, DatabaseRole.Application, member.UserAccountId, member.OrganizationId, CancellationToken.None);
+            return 0;
+        });
+        var (mine, queries) = await QueryCounter.CountAsync(() => progress.GetMineAsync(member, CancellationToken.None));
+
+        (queries - opening).Should().Be(2, "the person, time zone and goal are one read, and the attended and booked days another (board #537, K2)");
+        mine.Month.Should().Be("2026-10");
+        mine.TimeZone.Should().Be("Asia/Jerusalem");
+        mine.VisitsThisMonth.Should().Be(2);
+        mine.MonthlyGoal.Should().Be(6);
+        mine.StreakWeeks.Should().Be(2);
+        mine.Weeks.Should().NotBeNull();
+        var thisWeek = mine.Weeks.Single(w => w.WeekStart == new DateOnly(2026, 10, 18));
+        (thisWeek.Attended, thisWeek.Booked).Should().Be((1, 1));
+    }
+
+    [Fact]
+    public async Task AnArchivedPerson_IsNotFound()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (_, member, person) = await StudioWithMemberAsync(db);
+        await db.AsMasterAsync("UPDATE people.people SET status = 'archived' WHERE id = $1", person);
+
+        var read = () => new ProgressService(db, TimeProvider.System).GetMineAsync(member, CancellationToken.None);
+
+        (await read.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("person.not_found");
     }
 
     private static async Task<(TenantContext Owner, TenantContext Member, Guid Person)> StudioWithMemberAsync(MigratedDatabase db, string slug = "main")

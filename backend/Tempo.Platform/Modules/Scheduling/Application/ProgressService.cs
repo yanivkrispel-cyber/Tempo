@@ -25,8 +25,7 @@ public sealed class ProgressService(IDataSourceProvider dataSources, TimeProvide
     public async Task<ProgressView> GetMineAsync(TenantContext tenant, CancellationToken cancellationToken)
     {
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
-        var person = await MyPersonIdAsync(unitOfWork, tenant, cancellationToken);
-        return await ReadAsync(unitOfWork, tenant.OrganizationId, person, cancellationToken);
+        return await ReadAsync(unitOfWork, tenant, cancellationToken);
     }
 
     public async Task<ProgressView> SetMyGoalAsync(TenantContext tenant, int? monthlyGoal, CancellationToken cancellationToken)
@@ -37,7 +36,7 @@ public sealed class ProgressService(IDataSourceProvider dataSources, TimeProvide
         }
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
-        var person = await MyPersonIdAsync(unitOfWork, tenant, cancellationToken);
+        var person = (await MineAsync(unitOfWork, tenant, cancellationToken)).Person;
         await using (var command = monthlyGoal is { } goal
             ? unitOfWork.Command(
                 """
@@ -51,56 +50,45 @@ public sealed class ProgressService(IDataSourceProvider dataSources, TimeProvide
         }
 
         // A member's own goal is not audited: it is their own setting, like a notification preference.
-        var view = await ReadAsync(unitOfWork, tenant.OrganizationId, person, cancellationToken);
+        var view = await ReadAsync(unitOfWork, tenant, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return view;
     }
 
-    private async Task<ProgressView> ReadAsync(UnitOfWork unitOfWork, Guid organizationId, Guid person, CancellationToken cancellationToken)
+    /// <summary>
+    /// Two statements (board #537, K2): the person, the studio's time zone and the goal, then the attended and booked
+    /// days. The second needs today in the studio's zone, which the first gives.
+    /// </summary>
+    private async Task<ProgressView> ReadAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)
     {
-        var zone = await TimetableService.StudioZoneAsync(unitOfWork, organizationId, cancellationToken);
+        var (person, zone, monthlyGoal) = await MineAsync(unitOfWork, tenant, cancellationToken);
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), zone).DateTime);
 
-        // Only attended places count (G-3); a session's local_date is its day in the studio's time zone.
+        // Only attended places count (G-3); a session's local_date is its day in the studio's time zone. Places still
+        // booked this week are for the current week's dot (docs/33 section 10). UNION ALL keeps each half on its own
+        // index (the attended half on 0039's partial one).
         var attended = new List<DateOnly>();
-        await using (var command = unitOfWork.Command(
-            """
-            SELECT s.local_date
-            FROM scheduling.bookings b
-            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
-            WHERE b.organization_id = $1 AND b.person_id = $2 AND b.status = 'attended' AND s.local_date >= $3
-            """,
-            organizationId, person, Progress.Since(today)))
-        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-        {
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                attended.Add(await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken));
-            }
-        }
-
-        // Places still booked this week, for the current week's dot (docs/33 section 10).
         var booked = new List<DateOnly>();
         await using (var command = unitOfWork.Command(
             """
-            SELECT s.local_date
+            SELECT s.local_date, true
             FROM scheduling.bookings b
             JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
-            WHERE b.organization_id = $1 AND b.person_id = $2 AND b.status = 'booked' AND s.local_date BETWEEN $3 AND $4
+            WHERE b.organization_id = $1 AND b.person_id = $2 AND b.status = 'attended' AND s.local_date >= $3
+            UNION ALL
+            SELECT s.local_date, false
+            FROM scheduling.bookings b
+            JOIN scheduling.sessions s ON s.organization_id = b.organization_id AND s.id = b.session_id
+            WHERE b.organization_id = $1 AND b.person_id = $2 AND b.status = 'booked' AND s.local_date BETWEEN $4 AND $5
             """,
-            organizationId, person, today, Progress.WeekStart(today).AddDays(6)))
+            tenant.OrganizationId, person, Progress.Since(today), today, Progress.WeekStart(today).AddDays(6)))
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
             {
-                booked.Add(await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken));
+                (reader.GetBoolean(1) ? attended : booked).Add(await reader.GetFieldValueAsync<DateOnly>(0, cancellationToken));
             }
         }
-
-        await using var goal = unitOfWork.Command(
-            "SELECT monthly_goal FROM scheduling.member_goals WHERE organization_id = $1 AND person_id = $2",
-            organizationId, person);
-        var monthlyGoal = await goal.ExecuteScalarAsync(cancellationToken) is short value ? (int?)value : null;
 
         return new ProgressView(
             today.ToString("yyyy-MM", CultureInfo.InvariantCulture),
@@ -111,14 +99,27 @@ public sealed class ProgressService(IDataSourceProvider dataSources, TimeProvide
             [.. Progress.Weeks(attended, booked, today).Select(w => new ProgressWeekView(w.WeekStart, w.Attended, w.Booked))]);
     }
 
-    private static async Task<Guid> MyPersonIdAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)
+    /// <summary>The caller's active person in this studio, the studio's time zone and the monthly goal, in one read.</summary>
+    private static async Task<(Guid Person, TimeZoneInfo Zone, int? MonthlyGoal)> MineAsync(UnitOfWork unitOfWork, TenantContext tenant, CancellationToken cancellationToken)
     {
         await using var command = unitOfWork.Command(
-            "SELECT id FROM people.people WHERE organization_id = $1 AND membership_id = $2 AND status = 'active'",
+            """
+            SELECT p.id, o.time_zone, g.monthly_goal
+            FROM people.people p
+            LEFT JOIN organizations.organizations o ON o.id = p.organization_id
+            LEFT JOIN scheduling.member_goals g ON g.organization_id = p.organization_id AND g.person_id = p.id
+            WHERE p.organization_id = $1 AND p.membership_id = $2 AND p.status = 'active'
+            """,
             tenant.OrganizationId, tenant.MembershipId);
-        return await command.ExecuteScalarAsync(cancellationToken) is Guid id
-            ? id
-            : throw new DomainRuleViolationException(ViolationKind.NotFound, "person.not_found", "Your record in this studio was not found.");
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new DomainRuleViolationException(ViolationKind.NotFound, "person.not_found", "Your record in this studio was not found.");
+        }
+
+        var zone = await reader.IsDBNullAsync(1, cancellationToken) ? "Asia/Jerusalem" : reader.GetString(1);
+        int? goal = await reader.IsDBNullAsync(2, cancellationToken) ? null : reader.GetInt16(2);
+        return (reader.GetGuid(0), TimeZoneInfo.FindSystemTimeZoneById(zone), goal);
     }
 
     private Task<UnitOfWork> BeginAsync(TenantContext tenant, CancellationToken cancellationToken) =>
