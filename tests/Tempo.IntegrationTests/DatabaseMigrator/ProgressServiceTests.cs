@@ -136,7 +136,7 @@ public sealed class ProgressServiceTests(PostgresFixture postgres) : IClassFixtu
         mine.MonthlyGoal.Should().Be(6);
         mine.StreakWeeks.Should().Be(2);
         mine.Weeks.Should().NotBeNull();
-        var thisWeek = mine.Weeks!.Single(w => w.WeekStart == new DateOnly(2026, 10, 18));
+        var thisWeek = mine.Weeks.Single(w => w.WeekStart == new DateOnly(2026, 10, 18));
         (thisWeek.Attended, thisWeek.Booked).Should().Be((1, 1));
     }
 
