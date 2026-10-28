@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TempoApiError, unwrap, type Schemas } from "@tempo/api-client";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TempoApiError, unwrap, type Schemas, type TempoClient } from "@tempo/api-client";
 import { useApi } from "../api/ApiProvider";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -14,17 +14,18 @@ export const meKey = ["me"] as const;
  * It is idempotent, so a reload that calls it again is harmless; the data stays fresh until a change replaces it.
  */
 export function useMe() {
-  const api = useApi();
   const { isSignedIn } = useAuth();
-  return useQuery({
+  return useQuery({ ...meQuery(useApi()), enabled: isSignedIn });
+}
+
+export const meQuery = (api: TempoClient) =>
+  queryOptions({
     queryKey: meKey,
     queryFn: () => unwrap(api.POST("/api/v1/session")),
-    enabled: isSignedIn,
     staleTime: Infinity,
     // A 4xx (disabled account, rejected token) will not change on a retry; a network error or a 5xx might.
     retry: (failures, error) => failures < 1 && !(error instanceof TempoApiError && error.status < 500),
   });
-}
 
 /** The account, for screens under <RequireAccount>, which renders them only once it is loaded. */
 export function useAccount(): Me {
