@@ -6,7 +6,9 @@ import { AuthClient } from "@tempo/api-client/auth";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter } from "react-router";
-import { App } from "./app/App";
+import { createApi } from "./api/ApiProvider";
+import { App, createQueryClient } from "./app/App";
+import { startFirstReads } from "./app/firstReads";
 import { listenForInstall } from "./app/install";
 import { preloadScreen } from "./app/lazyScreen";
 import { routes } from "./app/routes";
@@ -37,6 +39,13 @@ window.addEventListener("vite:preloadError", (event) => {
 // The first screen's chunk downloads alongside the entry's work and `POST /session`, not after them (board #511).
 preloadScreen(routes, window.location.pathname, basename);
 const auth = config.auth ? new AuthClient({ config: config.auth, app: "client-web", basePath: basename }) : null;
+const queryClient = createQueryClient();
+const api = createApi({ baseUrl: config.apiUrl, auth });
+// `POST /session` and the first screen's reads start now, not after the first render (board #537, O1).
+if (auth?.isSignedIn) {
+  const pathname = basename ? window.location.pathname.slice(basename.length) : window.location.pathname;
+  startFirstReads({ queryClient, api, pathname, search: window.location.search, studioSlug });
+}
 
 createRoot(root).render(
   <StrictMode>
@@ -45,6 +54,8 @@ createRoot(root).render(
       auth={auth}
       apiUrl={config.apiUrl}
       studioSlug={studioSlug}
+      queryClient={queryClient}
+      api={api}
     />
   </StrictMode>,
 );

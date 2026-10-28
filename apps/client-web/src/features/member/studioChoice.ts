@@ -9,7 +9,8 @@ const listeners = new Set<() => void>();
 /** The choice when storage is blocked (private mode): it lasts until the page reloads. */
 let unsaved: string | null = null;
 
-function read(): string | null {
+/** The organization id this device last chose, or null, outside React. */
+export function readChosenStudio(): string | null {
   try {
     return window.localStorage.getItem(STUDIO_CHOICE_KEY) ?? unsaved;
   } catch {
@@ -32,7 +33,7 @@ function subscribe(listener: () => void): () => void {
 
 /** The organization id this device last chose, or null. */
 export function useChosenStudio(): string | null {
-  return useSyncExternalStore(subscribe, read, () => null);
+  return useSyncExternalStore(subscribe, readChosenStudio, () => null);
 }
 
 export function chooseStudio(organizationId: string): void {

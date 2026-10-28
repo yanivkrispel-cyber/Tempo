@@ -10,27 +10,31 @@ export interface ApiProviderProps {
   auth: AuthClient | null;
   /** Tests pass a stub. */
   fetch?: typeof globalThis.fetch;
+  /** A client made before the first render (`createApi`), so reads can start before it; made here when absent. */
+  client?: TempoClient;
   children: ReactNode;
 }
 
 /** The typed Tempo API client, carrying the signed-in user's access token. */
-export function ApiProvider({ baseUrl, auth, fetch, children }: ApiProviderProps) {
-  const [client] = useState(() => {
-    const api = createTempoClient({ baseUrl, fetch, getAccessToken: () => auth?.getAccessToken() ?? null });
-    api.use({
-      async onResponse({ request, response }) {
-        // A token the API rejects is no use any more: sign out locally so the routes send the user to /login.
-        // Not for a request that went without a token, and not when the API asks for a fresh sign-in for one
-        // privileged action (auth.step_up_required, docs/27 section 3.6): that keeps the session.
-        const sentToken = request.headers.has("Authorization") || request.headers.has("X-Tempo-Authorization");
-        if (response.status === 401 && sentToken && (await problemCode(response)) !== "auth.step_up_required")
-          auth?.forget();
-        return response;
-      },
-    });
-    return api;
-  });
+export function ApiProvider({ baseUrl, auth, fetch, client: given, children }: ApiProviderProps) {
+  const [client] = useState(() => given ?? createApi({ baseUrl, auth, fetch }));
   return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
+}
+
+export function createApi({ baseUrl, auth, fetch }: Pick<ApiProviderProps, "baseUrl" | "auth" | "fetch">): TempoClient {
+  const api = createTempoClient({ baseUrl, fetch, getAccessToken: () => auth?.getAccessToken() ?? null });
+  api.use({
+    async onResponse({ request, response }) {
+      // A token the API rejects is no use any more: sign out locally so the routes send the user to /login.
+      // Not for a request that went without a token, and not when the API asks for a fresh sign-in for one
+      // privileged action (auth.step_up_required, docs/27 section 3.6): that keeps the session.
+      const sentToken = request.headers.has("Authorization") || request.headers.has("X-Tempo-Authorization");
+      if (response.status === 401 && sentToken && (await problemCode(response)) !== "auth.step_up_required")
+        auth?.forget();
+      return response;
+    },
+  });
+  return api;
 }
 
 async function problemCode(response: Response): Promise<string | null> {
