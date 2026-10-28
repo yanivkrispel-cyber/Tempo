@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Banner, Card, Icon, ProgressBar, Skeleton } from "../../shared/design-system";
 import { formatDate } from "../../shared/utilities/dates";
 import { entriesText, livePasses } from "./bookingState";
+import { passesCardHeight, rememberedPassCount, rememberPassCount } from "./passCount";
 import { freezeNote } from "./passText";
 import styles from "./member.module.css";
 import { passLine } from "./passText";
@@ -51,9 +53,12 @@ export function PassStrip({ organizationId }: { organizationId: string }) {
 export function PassesCard({ organizationId }: { organizationId: string }) {
   const passes = useMyPasses(organizationId);
   const { today } = useStudioClock(organizationId);
-  // The height of the card with one pass, the usual case, so the cards below do not jump when it loads.
-  if (passes.isPending) return <Skeleton height={188} />;
   const live = passes.data ? livePasses(passes.data) : [];
+  useEffect(() => {
+    if (passes.data) rememberPassCount(organizationId, live.length);
+  }, [organizationId, passes.data, live.length]);
+  // The height the card had last time on this device, so the cards below do not jump when it loads.
+  if (passes.isPending) return <Skeleton height={passesCardHeight(rememberedPassCount(organizationId))} />;
 
   return (
     <Card as="section" tone="base" className={styles.plan} aria-labelledby="passes-title">
