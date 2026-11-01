@@ -127,6 +127,20 @@ describe("owner transfer", () => {
     ).toBe(true);
   });
 
+  it("asks for a fresh sign-in when cancelling needs step-up, as starting does", async () => {
+    const redirect = vi.fn();
+    renderAs(
+      "owner",
+      "outgoing",
+      { [`DELETE ${base}/ownership-transfer`]: problem(401, "auth.step_up_required") },
+      signedInAuth({ redirect }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "ביטול ההצעה" }));
+    expect(await screen.findByText(/לפעולה הזו צריך לאמת שוב את הזהות/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "התחברות מחדש" }));
+    await waitFor(() => expect(new URL(redirect.mock.calls[0]![0] as string).pathname).toBe("/logout"));
+  });
+
   it("lets the admin accept the offer", async () => {
     const api = renderAs("admin", "incoming", {
       [`POST ${base}/ownership-transfer/accept`]: () =>
