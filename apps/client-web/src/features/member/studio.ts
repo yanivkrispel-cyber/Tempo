@@ -1,7 +1,7 @@
 // The member's studio on the real API: the timetable, bookings, waitlist, passes and the inbox (docs/29 sections 6
 // and 9). Every key starts with the studio's id, so two studios never share a cache entry.
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TempoApiError, unwrap, type Schemas } from "@tempo/api-client";
+import { queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TempoApiError, unwrap, type Schemas, type TempoClient } from "@tempo/api-client";
 import { activeMemberships, useAccount, type MyMembership } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
 import { useStudioPath } from "../../app/studioPath";
@@ -31,9 +31,11 @@ export interface Studio {
  * The generic app shows the studio this device chose in the switcher, else the first active membership (docs/35 W-5).
  */
 export function useStudio(): Studio | null {
-  const memberships = activeMemberships(useAccount());
-  const path = useStudioPath();
-  const chosen = useChosenStudio();
+  return pickStudio(activeMemberships(useAccount()), useStudioPath(), useChosenStudio());
+}
+
+/** `useStudio` outside React: the studio of a studio's own app (`path`), else the chosen one, else the first. */
+export function pickStudio(memberships: MyMembership[], path: string | null, chosen: string | null): Studio | null {
   const studio = path
     ? memberships.find((membership) => membership.organization.slug === path)
     : (memberships.find((membership) => membership.organization.id === chosen) ?? memberships[0]);
@@ -96,8 +98,11 @@ export function useStudioClock(organizationId: string): { timeZone: string; now:
 
 /** Sessions from `from` to `to` (local dates, inclusive), with the caller's own place and the pass a booking would use. */
 export function useSessions(organizationId: string, from: IsoDate, to: IsoDate, enabled = true) {
-  const api = useApi();
-  return useQuery({
+  return useQuery({ ...sessionsQuery(useApi(), organizationId, from, to), enabled });
+}
+
+export const sessionsQuery = (api: TempoClient, organizationId: string, from: IsoDate, to: IsoDate) =>
+  queryOptions({
     queryKey: studioKeys.sessions(organizationId, from, to),
     queryFn: () =>
       unwrap(
@@ -105,11 +110,9 @@ export function useSessions(organizationId: string, from: IsoDate, to: IsoDate, 
           params: { path: { organizationId }, query: { from, to } },
         }),
       ).then((list) => list.items),
-    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
-}
 
 export function useSession(organizationId: string, sessionId: string, enabled = true) {
   const api = useApi();
@@ -128,8 +131,11 @@ export function useSession(organizationId: string, sessionId: string, enabled = 
 
 /** Upcoming bookings and waitlist places, soonest first (the API sorts this page by start time). */
 export function useUpcomingBookings(organizationId: string, enabled = true) {
-  const api = useApi();
-  return useQuery({
+  return useQuery({ ...upcomingBookingsQuery(useApi(), organizationId), enabled });
+}
+
+export const upcomingBookingsQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: studioKeys.myBookings(organizationId, "upcoming"),
     queryFn: () =>
       unwrap(
@@ -137,11 +143,9 @@ export function useUpcomingBookings(organizationId: string, enabled = true) {
           params: { path: { organizationId }, query: { scope: "upcoming", limit: 100 } },
         }),
       ).then((page) => page.items),
-    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
-}
 
 /** Past and cancelled bookings, newest first, a page at a time. */
 export function usePastBookings(organizationId: string, enabled = true) {
@@ -165,29 +169,32 @@ export function usePastBookings(organizationId: string, enabled = true) {
 }
 
 export function useMyPasses(organizationId: string, enabled = true) {
-  const api = useApi();
-  return useQuery({
+  return useQuery({ ...myPassesQuery(useApi(), organizationId), enabled });
+}
+
+export const myPassesQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: studioKeys.myPasses(organizationId),
     queryFn: () =>
       unwrap(api.GET("/api/v1/organizations/{organizationId}/me/passes", org(organizationId))).then(
         (list) => list.items,
       ),
-    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
-}
 
 /** The free-cancellation window, the waitlist cutoff and the booking horizon. */
 export function useBookingPolicy(organizationId: string) {
-  const api = useApi();
-  return useQuery({
+  return useQuery(bookingPolicyQuery(useApi(), organizationId));
+}
+
+export const bookingPolicyQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: studioKeys.policy(organizationId),
     queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}/booking-policy", org(organizationId))),
     staleTime: 5 * 60_000,
     retry: retryOnce,
   });
-}
 
 /** Errors that mean the timetable the member sees is out of date: read it again before explaining. */
 const staleCodes = new Set([
@@ -284,8 +291,11 @@ export function useCalendarFile(organizationId: string) {
 }
 
 export function useInbox(organizationId: string, enabled = true) {
-  const api = useApi();
-  return useQuery({
+  return useQuery({ ...inboxQuery(useApi(), organizationId), enabled });
+}
+
+export const inboxQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: studioKeys.inbox(organizationId),
     queryFn: () =>
       unwrap(
@@ -293,11 +303,9 @@ export function useInbox(organizationId: string, enabled = true) {
           params: { path: { organizationId }, query: { limit: 30 } },
         }),
       ),
-    enabled,
     staleTime: 30_000,
     retry: retryOnce,
   });
-}
 
 export function useMarkRead(organizationId: string) {
   const api = useApi();

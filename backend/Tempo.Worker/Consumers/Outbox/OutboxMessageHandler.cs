@@ -16,15 +16,12 @@ public sealed class OutboxMessageHandler(ILogger logger) : IQueueMessageHandler
 {
     public Task HandleAsync(SQSEvent.SQSMessage record, string correlationId, ILambdaContext context)
     {
+        // Never log a message body, not even a prefix: it may carry personal data (LLD section 15.3, #541 SR-21).
         logger.Information(
-            "Received outbox-publish message {MessageId}. CorrelationId={CorrelationId}. BodyPreview={BodyPreview}",
+            "Received outbox-publish message {MessageId}. CorrelationId={CorrelationId}",
             record.MessageId,
-            correlationId,
-            Truncate(record.Body));
+            correlationId);
 
         return Task.CompletedTask;
     }
-
-    // Never log full message bodies - they may carry sensitive payloads (LLD section 15.3).
-    private static string Truncate(string body) => body.Length > 200 ? body[..200] + "...(truncated)" : body;
 }

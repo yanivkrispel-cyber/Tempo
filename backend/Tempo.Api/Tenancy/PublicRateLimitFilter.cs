@@ -20,20 +20,36 @@ public sealed class PublicRateLimitFilter(TimeProvider clock) : IEndpointFilter
         var httpContext = context.HttpContext;
         var now = clock.GetUtcNow();
         var minute = now.ToUnixTimeSeconds() / 60;
-        var key = $"{httpContext.Connection.RemoteIpAddress}|{httpContext.GetRouteValue(PublicStudioRouteFilter.RouteValue)}";
-        if (Windows.Count > MaxTracked)
+        // The same address the other limiters count (ClientAddress): behind the edge, the viewer, not CloudFront (#541 SR-20).
+        var key = $"{ClientAddress.Of(httpContext)}|{httpContext.GetRouteValue(PublicStudioRouteFilter.RouteValue)}";
+        if (!Windows.ContainsKey(key) && Windows.Count >= MaxTracked)
         {
-            Windows.Clear();
+            // Full: drop the windows of earlier minutes. Never clear the current ones, or a flood of new keys (other
+            // slugs) would give every caller a fresh window; while still full, a new key waits for the next minute.
+            foreach (var (stale, _) in Windows.Where(entry => entry.Value.Minute != minute))
+            {
+                Windows.TryRemove(stale, out _);
+            }
+
+            if (Windows.Count >= MaxTracked)
+            {
+                return TooMany(httpContext, now);
+            }
         }
 
         var window = Windows.AddOrUpdate(key, _ => new Window(minute, 1), (_, w) => w.Minute == minute ? w with { Count = w.Count + 1 } : new Window(minute, 1));
         if (window.Count > PerMinute)
         {
-            httpContext.Response.Headers.RetryAfter = (60 - (now.ToUnixTimeSeconds() % 60)).ToString(CultureInfo.InvariantCulture);
-            return Problems.Result(httpContext, StatusCodes.Status429TooManyRequests, "rate_limited", "Too many requests. Try again in a minute.");
+            return TooMany(httpContext, now);
         }
 
         return await next(context);
+    }
+
+    private static IResult TooMany(HttpContext httpContext, DateTimeOffset now)
+    {
+        httpContext.Response.Headers.RetryAfter = (60 - (now.ToUnixTimeSeconds() % 60)).ToString(CultureInfo.InvariantCulture);
+        return Problems.Result(httpContext, StatusCodes.Status429TooManyRequests, "rate_limited", "Too many requests. Try again in a minute.");
     }
 
     /// <summary>Forgets every window; for tests.</summary>

@@ -111,12 +111,26 @@ public static class OrganizationEndpoints
         Guid membershipId,
         UpdateMemberRequest request,
         [FromHeader(Name = "If-Match")] string? ifMatch,
-        IMemberService members)
+        IMemberService members,
+        TimeProvider clock)
     {
+        var role = ParseEnum<MembershipRole>(request.Role, "role");
+        if (role == MembershipRole.Admin)
+        {
+            // The same change as PUT /members/{id}/roles, so the same rule (docs/27 section 6, #541): rank first,
+            // then a recent sign-in.
+            if (TenantRouteFilter.Current(httpContext).Role != MembershipRole.Owner)
+            {
+                throw new DomainRuleViolationException(ViolationKind.Forbidden, "membership.forbidden_role_change", "You cannot change this member.");
+            }
+
+            StepUp.Require(httpContext, clock);
+        }
+
         var updated = await members.UpdateAsync(
             TenantRouteFilter.Current(httpContext),
             membershipId,
-            ParseEnum<MembershipRole>(request.Role, "role"),
+            role,
             ParseEnum<MembershipStatus>(request.Status, "status"),
             ParseVersion(ifMatch),
             httpContext.RequestAborted);

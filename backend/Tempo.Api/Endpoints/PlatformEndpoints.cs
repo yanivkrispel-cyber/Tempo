@@ -78,8 +78,10 @@ public static class PlatformEndpoints
         return Results.Ok(ToResponse(updated));
     }
 
-    private static async Task<IResult> ForceOwnerTransferAsync(HttpContext httpContext, Guid organizationId, ForceOwnerTransferRequest request, IPlatformService platform)
+    private static async Task<IResult> ForceOwnerTransferAsync(HttpContext httpContext, Guid organizationId, ForceOwnerTransferRequest request, IPlatformService platform, TimeProvider clock)
     {
+        // The only way to change an owner without the owner: an owner transfer, so a recent sign-in (docs/27 section 3.6, #541).
+        StepUp.Require(httpContext, clock);
         var updated = await platform.ForceOwnerTransferAsync(
             OperatorRouteFilter.Current(httpContext),
             organizationId,

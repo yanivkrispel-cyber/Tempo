@@ -161,7 +161,8 @@ function PersonRow({ person }: { person: Person }) {
     <tr>
       <td>
         <Link to={person.id}>{person.displayName}</Link>
-        {person.hasLogin && <span className="tp-caption tp-muted"> · יש חשבון</span>}
+        {/* Its own line: beside the name, the link sat in running text and needed more than color (axe, #537 O3). */}
+        {person.hasLogin && <div className="tp-caption tp-muted">יש חשבון</div>}
       </td>
       <td data-label="טלפון" data-empty={!person.primaryPhone || undefined}>
         {person.primaryPhone ? <bdi className="tp-ltr tp-num">{displayPhone(person.primaryPhone)}</bdi> : "—"}

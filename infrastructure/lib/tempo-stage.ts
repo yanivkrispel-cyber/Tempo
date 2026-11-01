@@ -72,7 +72,13 @@ export class TempoStage extends Stage {
       });
     }
 
-    if (config.featureFlags.enableDevCanary && config.featureFlags.enableSmokeTestSignIn) {
+    // The dev canary calls execute-api, which is off behind an edge (#122);
+    // there the edge stack's own canary checks the API through the distribution.
+    if (
+      config.featureFlags.enableDevCanary &&
+      config.featureFlags.enableSmokeTestSignIn &&
+      !config.featureFlags.enableFrontendHosting
+    ) {
       new DevCanaryStack(this, "Canary", {
         config,
         env,
