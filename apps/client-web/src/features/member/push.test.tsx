@@ -70,6 +70,20 @@ function renderAt(path: string, routesForApi: Record<string, unknown>) {
   return { api, auth, router };
 }
 
+/** What a member's visits leave on the device: the pass count (board #537, O2) and the studio chosen in the switcher. */
+function rememberPerson() {
+  localStorage.setItem(`tempo.client-web.passes.${organizationId}`, "2");
+  localStorage.setItem("tempo.client-web.studio", organizationId);
+  localStorage.setItem("tempo.client-web.passkey-offer", "declined");
+}
+
+/** Sign-out drops the person's keys (O4, #541 SR-34) and keeps the device's own answer to the Face ID offer. */
+function expectPersonForgotten() {
+  expect(localStorage.getItem(`tempo.client-web.passes.${organizationId}`)).toBeNull();
+  expect(localStorage.getItem("tempo.client-web.studio")).toBeNull();
+  expect(localStorage.getItem("tempo.client-web.passkey-offer")).toBe("declined");
+}
+
 beforeEach(() => localStorage.clear());
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -152,6 +166,7 @@ describe("push on this device", () => {
     const browser = fakePushBrowser();
     await browser.subscribe();
     localStorage.setItem("tempo.push.subscriptions", JSON.stringify({ [organizationId]: "sub-1" }));
+    rememberPerson();
     const { api, auth } = renderAt("/profile", {
       [`DELETE ${base}/me/push-subscriptions/sub-1`]: () => new Response(null, { status: 204 }),
     });
@@ -165,6 +180,28 @@ describe("push on this device", () => {
     ).toBe(true);
     expect(browser.unsubscribe).toHaveBeenCalled();
     expect(localStorage.getItem("tempo.push.subscriptions")).toBeNull();
+    expectPersonForgotten();
+  });
+
+  it("forgets this device's push and the person's keys from the account error screen too (#541 SR-33)", async () => {
+    const browser = fakePushBrowser();
+    await browser.subscribe();
+    localStorage.setItem("tempo.push.subscriptions", JSON.stringify({ [organizationId]: "sub-1" }));
+    rememberPerson();
+    const { api, auth } = renderAt("/", {
+      "POST /api/v1/session": problem(403, "account.disabled"),
+      [`DELETE ${base}/me/push-subscriptions/sub-1`]: () => new Response(null, { status: 204 }),
+    });
+    const signOut = vi.spyOn(auth, "signOut").mockImplementation(() => Promise.resolve());
+
+    await userEvent.click(await screen.findByRole("button", { name: "התנתקות" }));
+
+    await waitFor(() => expect(signOut).toHaveBeenCalled());
+    expect(
+      api.requests.some((request) => request.method === "DELETE" && request.url.endsWith("/push-subscriptions/sub-1")),
+    ).toBe(true);
+    expect(browser.unsubscribe).toHaveBeenCalled();
+    expectPersonForgotten();
   });
 
   it("marks a tapped notification read and drops the parameters", async () => {
