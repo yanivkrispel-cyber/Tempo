@@ -25,11 +25,11 @@
       },
       "AWSSDK.SimpleNotificationService": {
         "type": "Direct",
-        "requested": "[4.0.100.17, )",
-        "resolved": "4.0.100.17",
-        "contentHash": "djEB33vWeQ2i6XetSY+HgIkXPQPpN5vCisq/Vye+ojKgQ1UvZglpX6aoBwpKvlCep6eoYOJMYs7XIWU3ajwR0g==",
+        "requested": "[4.0.100.21, )",
+        "resolved": "4.0.100.21",
+        "contentHash": "rZvac1zJU1eop7xOQv6FRa0114j/HmefT8Hz8eKgWizLzEEy17epB/rk2+ITyqi7R2HoyNDAqd0M7ogQJsgdiQ==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.13, 5.0.0)"
         }
       },
       "Serilog": {
@@ -64,8 +64,8 @@
       },
       "AWSSDK.Core": {
         "type": "Transitive",
-        "resolved": "4.0.102.9",
-        "contentHash": "VWGkR0QXDTmThusATC6I9IX06YtYeQNF+1/v6vBbfzIC+MaAuNjYn0aSTIyX+abciZvFhuSSi0d6/pC93wROCw=="
+        "resolved": "4.0.102.13",
+        "contentHash": "vaYs/kwfB+Lv9PeVKYE4g2mQlzVtHImXLWgfTG8UgeCybUAPkew5kwb8GS6RhuzwvImbolyLHT+IM34WoM9lJg=="
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Transitive",
@@ -96,8 +96,8 @@
       "tempo.platform": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.S3": "[4.0.104.2, )",
-          "AWSSDK.SimpleSystemsManagement": "[4.0.104.2, )",
+          "AWSSDK.S3": "[4.0.104.6, )",
+          "AWSSDK.SimpleSystemsManagement": "[4.0.104.6, )",
           "Npgsql": "[10.0.3, )",
           "SkiaSharp": "[4.152.3, )",
           "SkiaSharp.NativeAssets.Linux.NoDependencies": "[4.152.3, )",
@@ -106,20 +106,20 @@
       },
       "AWSSDK.S3": {
         "type": "CentralTransitive",
-        "requested": "[4.0.104.2, )",
-        "resolved": "4.0.104.2",
-        "contentHash": "ImZ1pO9SWh+RAN8hmN5OnonyTvq+/q4dXLxTxjtsZ60c06dnCCy+MX3sc4F3Q8c9J1bg8WoU+VkrrVIpXLviww==",
+        "requested": "[4.0.104.6, )",
+        "resolved": "4.0.104.6",
+        "contentHash": "fSqAOkftU8jKemilzLGZDU0zLEJXHjAemU+8Nd29+sUwRxVK04w6/GY3O4f9S1+JIYwEnHDGcW66VK4AZ2kx6g==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.13, 5.0.0)"
         }
       },
       "AWSSDK.SimpleSystemsManagement": {
         "type": "CentralTransitive",
-        "requested": "[4.0.104.2, )",
-        "resolved": "4.0.104.2",
-        "contentHash": "rXpcI5tFfPQ8FUrgmF58wT69Y/LbgMjuqkXQ66nS0f2XKwbRlOWkmhWibpzFo4iDpJIy4NRvWsUQnGfHfLLmQw==",
+        "requested": "[4.0.104.6, )",
+        "resolved": "4.0.104.6",
+        "contentHash": "yv3MVaxnrp0mftXCZ4QKcd5OynzYdI45o7tpRtzD9eyKjsTf9mXeiHwFPGswfKMP28eCK8AAzCW0z0GfVvvJeg==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.13, 5.0.0)"
         }
       },
       "libphonenumber-csharp": {
