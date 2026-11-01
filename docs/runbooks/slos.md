@@ -22,6 +22,10 @@ What the SLOs don't promise:
   outside ADR-0021.
 - **A Neon wake** after five minutes idle is part of a cold request, not an outage.
 - **Maintenance** announced a day ahead to the studios doesn't count against availability.
+- **The apps on Cloudflare Pages are not measured.** Every SLO here is the API's. A broken bundle or a Pages outage
+  leaves the canary green while members see an empty screen. Today the check is `premium-live-check` after each
+  board's last deploy. A $0 follow-up: the canary also fetches both apps' `/` and checks for a 200 and the bundle's
+  script tag ([O], board #553 review of #569).
 
 Requests from our own load or perf runs are counted separately (below), not left out silently.
 

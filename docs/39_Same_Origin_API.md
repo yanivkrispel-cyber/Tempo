@@ -9,8 +9,10 @@ every call is cross-origin. This note measures the cost, compares three ways out
 
 Every API call carries `Authorization: Bearer ...`, which makes it a non-simple request, so the browser first sends
 `OPTIONS` to the same URL and waits for the answer. The browser caches the answer per URL and origin for
-`Access-Control-Max-Age`. Ours is 3,600 s (`api-stack.ts`, `corsPreflight.maxAge`). Chrome caps it at 7,200 s, and a
-fresh tab cache, a new URL (another organization id, another booking id) or an expired entry pays it again. API
+`Access-Control-Max-Age`. Ours is 3,600 s (`api-stack.ts`, `corsPreflight.maxAge`). Chrome caps it at 7,200 s.
+WebKit (Safari, and every browser on an iPhone) probably keeps an entry for at most 10 minutes, which is **to
+verify** in WebKit's source before relying on it. A fresh tab cache, a new URL (another organization id, another
+booking id, another query string) or an expired entry pays it again. API
 Gateway answers the preflight itself (`apigw-requestid`, no Lambda), so its cost is only the network: **one round
 trip, plus a new TLS connection to a second host on a first visit.**
 
@@ -32,9 +34,11 @@ parallel, but the ones on the first paint's path (session, then the screen's rea
 what same-origin would save on a first visit is **one connection setup plus one or two serial round trips: about
 200 to 400 ms of the first useful paint** on the phone profile, and little on a repeat visit within the hour.
 
-**Not measured yet:** the preflight count and time per screen, as the phone sees them. `screens-perf.mjs` doesn't
-record `OPTIONS` requests. [O] can add that to the next after run (a field per screen: preflights and their total
-time). The numbers above should be checked against it before anything is built.
+**Not measured yet:** the preflight count and time per screen, as the phone sees them. Playwright's
+`page.on("request")`, which `screens-perf.mjs` uses, doesn't surface CORS preflights, so today's API-call counts leave
+them out. [O] adds a CDP count in O6 (`Network.requestWillBeSent` with `type: "Preflight"`, and `loadingFinished` for
+the time) as two fields per screen, `preflights` and `preflightMs`, measured on Chromium only. The numbers above
+should be checked against it before anything is built.
 
 ## The options
 
@@ -42,7 +46,10 @@ time). The numbers above should be checked against it before anything is built.
 
 - `maxAge` from 1 hour to 2 hours, Chrome's cap. That halves the preflights on return visits within two hours.
 - Keep the per-URL variety down where it is cheap. Most screens already read under one organization id.
-- **Saves:** some repeat-visit preflights; nothing on a first visit.
+- The cache key is the full URL, query included. Reads like `?from=<date>` (the timetable, the twelve weeks) get a
+  new URL every day, so they pay a preflight on each day's first visit whatever `maxAge` is.
+- **Saves:** some repeat-visit preflights on Chrome; nothing on a first visit. If WebKit's 10-minute cap holds,
+  nothing past 10 minutes for iPhone members, who are most members in Israel.
 - **Cost and risk:** none; a one-line CDK change with a test.
 
 ### B. A Cloudflare Pages proxy for `/api/*` on each app's origin
@@ -69,6 +76,9 @@ API, and the apps would call `/api/v1/...` on their own origin.
   - *Two paths to the API.* execute-api stays public on dev. In production, #122 (#555) already turns it off behind
     the AWS edge. With Cloudflare in front instead, the same question returns: the API must accept only the proxy.
   - *Outages stack.* A Cloudflare incident takes down the app and the API together. Today it takes only the app.
+- **Which app:** `_worker.js` exists only in the member app. The console has none, so B there means a new worker
+  that sees staff tokens. The console is used on desktop broadband, where a preflight costs about 80 ms, so B is
+  likely worth it for the member app only.
 - **When:** not before the custom domain (#304), because a proxy on `*.pages.dev` would have to be built again on
   the real domain.
 
@@ -83,8 +93,8 @@ AWS refused (ADR-0027).
 
 1. **Now: A**, one small infrastructure PR on a later board: `maxAge` 2 hours, with a test. $0.
 2. **Measure first:** [O] adds the preflight count and time to `screens-perf.mjs` in the next after run.
-3. **With the custom domain (#304): decide B**, with the numbers from step 2, the request volume at that time and
-   the four risks above. It needs the owner's approval if it could pass the free plan.
+3. **With the custom domain (#304): decide B for the member app**, with the numbers from step 2 (WebKit's cap
+   included), the request volume at that time and the four risks above. It needs the owner's approval if it could pass the free plan.
 
 Nothing in this note changes code, infrastructure or the contract.
 
