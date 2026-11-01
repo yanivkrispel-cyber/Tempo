@@ -1,6 +1,7 @@
 using Amazon.S3;
 using Amazon.Lambda.AspNetCoreServer.Hosting;
 using Serilog;
+using Serilog.Events;
 using Serilog.Formatting.Compact;
 using Tempo.Api.DependencyInjection;
 using Tempo.Api.Endpoints;
@@ -34,6 +35,9 @@ try
     builder.Host.UseSerilog(
         (context, _, configuration) => configuration
             .ReadFrom.Configuration(context.Configuration)
+            // ASP.NET's "Request starting/finished" lines carry the query string, and a search term is a name, a
+            // phone or an email (#541). Serilog's request line below logs the path, status and time only.
+            .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("service", "tempo-api")
             .Enrich.WithProperty("environment", Environment.GetEnvironmentVariable("TEMPO_ENVIRONMENT") ?? "local")
