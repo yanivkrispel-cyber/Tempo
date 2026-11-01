@@ -90,6 +90,11 @@ public sealed class PhaseOneFlowTests(PostgresFixture postgres) : IClassFixture<
         seen.GetProperty("memberCounts").GetProperty("client").GetInt32().Should().Be(1);
         (await RawAsync(client, HttpMethod.Get, $"/api/v1/platform/organizations/{studioId}", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
+        // A forced owner transfer is an owner transfer: it needs a recent sign-in (docs/27 section 3.6, #541).
+        var forced = await RawAsync(client, HttpMethod.Post, $"/api/v1/platform/organizations/{studioId}/force-owner-transfer", Operator("kris"), new { toMembershipId = Guid.CreateVersion7(), reason = "end-to-end test", ticket = "T-1" });
+        forced.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await forced.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("auth.step_up_required");
+
         await SendAsync<JsonElement>(client, HttpMethod.Post, $"/api/v1/platform/organizations/{studioId}/suspend", Operator("kris"), new { reason = "end-to-end test" });
 
         // 8. A suspended studio: its own page still answers, the rest is refused.

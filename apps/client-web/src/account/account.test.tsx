@@ -54,7 +54,8 @@ describe("profile on the real account", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "דנה כהן" })).toBeInTheDocument();
     expect(screen.getByText("dana@example.com")).toBeInTheDocument();
-    const studio = screen.getByRole("region", { name: "הסטודיו שלך" });
+    // On a device that never showed the passes, the cards below them wait for the passes (board #537, O2).
+    const studio = await screen.findByRole("region", { name: "הסטודיו שלך" });
     expect(studio).toHaveTextContent("סטודיו נשימה");
     expect(studio).toHaveTextContent("מתאמן");
     expect(within(studio).queryByRole("button", { name: "החלפת סטודיו" })).not.toBeInTheDocument();

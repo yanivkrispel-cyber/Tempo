@@ -59,8 +59,10 @@ public static class OwnershipEndpoints
         return Results.Created($"/api/v1/organizations/{TenantRouteFilter.Current(httpContext).OrganizationId}/ownership-transfer", ToResponse(started));
     }
 
-    private static async Task<IResult> CancelAsync(HttpContext httpContext, IOwnershipService ownership)
+    private static async Task<IResult> CancelAsync(HttpContext httpContext, IOwnershipService ownership, TimeProvider clock)
     {
+        // docs/27 section 6 lists step-up for both POST and DELETE /ownership-transfer (#541).
+        StepUp.Require(httpContext, clock);
         await ownership.CancelAsync(TenantRouteFilter.Current(httpContext), httpContext.RequestAborted);
         return Results.NoContent();
     }

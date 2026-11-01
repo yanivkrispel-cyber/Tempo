@@ -1,7 +1,7 @@
 // The member's home in one read (board #511, O5): `GET /me/home` answers what the home's separate reads answered,
 // and each part seeds the cache its own hook reads, so the other screens find it there too.
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { unwrap, type Schemas } from "@tempo/api-client";
+import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { unwrap, type Schemas, type TempoClient } from "@tempo/api-client";
 import { useApi } from "../../api/ApiProvider";
 import { experienceKeys } from "./experience";
 import { progressKey } from "./progress";
@@ -30,9 +30,11 @@ function seed(queryClient: QueryClient, organizationId: string, home: MyHome) {
  * without `/me/home`, or an error) they read separately, so the home never depends on this one call.
  */
 export function useMyHome(organizationId: string) {
-  const api = useApi();
-  const queryClient = useQueryClient();
-  return useQuery({
+  return useQuery(myHomeQuery(useApi(), useQueryClient(), organizationId));
+}
+
+export const myHomeQuery = (api: TempoClient, queryClient: QueryClient, organizationId: string) =>
+  queryOptions({
     queryKey: homeKey(organizationId),
     queryFn: async () => {
       const home = await unwrap(
@@ -44,4 +46,3 @@ export function useMyHome(organizationId: string) {
     staleTime: 30_000,
     retry: false,
   });
-}

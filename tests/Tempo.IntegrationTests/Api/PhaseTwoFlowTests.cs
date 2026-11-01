@@ -79,13 +79,21 @@ public sealed class PhaseTwoFlowTests(PostgresFixture postgres) : IClassFixture<
 
         // 6. Granting admin needs a recent sign-in.
         var toAdmin = new { roleIds = new[] { Guid.Parse("00000000-0000-7000-8000-000000000002") } };
+        // The member PATCH reaches the same change, so it asks for the same sign-in (#541).
+        var patched = await RawAsync(client, HttpMethod.Patch, $"{studioPath}/members/{staffMembership}", Customer("owner"), new { role = "admin" });
+        patched.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await patched.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("auth.step_up_required");
         var stale = await RawAsync(client, HttpMethod.Put, $"{studioPath}/members/{staffMembership}/roles", Customer("owner"), toAdmin);
         stale.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await stale.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("auth.step_up_required");
         var promoted = await SendAsync(client, HttpMethod.Put, $"{studioPath}/members/{staffMembership}/roles", Customer("owner", freshSignIn: true), toAdmin);
         promoted.GetProperty("roles")[0].GetProperty("key").GetString().Should().Be("admin");
 
-        // 7. The owner hands the studio to the first admin, who accepts.
+        // 7. The owner hands the studio to the first admin, who accepts. Cancelling a transfer needs a recent
+        //    sign-in too (docs/27 section 6, #541).
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/ownership-transfer", Customer("owner", freshSignIn: true), new { toMembershipId = adminMembership }, HttpStatusCode.Created);
+        (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/ownership-transfer", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await SendAsync(client, HttpMethod.Delete, $"{studioPath}/ownership-transfer", Customer("owner", freshSignIn: true), expected: HttpStatusCode.NoContent);
         await SendAsync(client, HttpMethod.Post, $"{studioPath}/ownership-transfer", Customer("owner", freshSignIn: true), new { toMembershipId = adminMembership }, HttpStatusCode.Created);
         var incoming = (await SendAsync(client, HttpMethod.Get, "/api/v1/me", Customer("admin"))).GetProperty("memberships")[0].GetProperty("pendingOwnershipTransfer");
         incoming.GetProperty("direction").GetString().Should().Be("incoming");
