@@ -15,6 +15,8 @@ import { GoalDialog } from "./GoalDialog";
 import { InstallAppRow } from "./InstallApp";
 import { MyDetailsDialog } from "./MyDetailsDialog";
 import { PassesCard } from "./Passes";
+import { rememberedPassCount } from "./passCount";
+import { useMyPasses } from "./studio";
 import { BuddiesCard } from "./BuddiesCard";
 import { ReferralCard } from "./ReferralCard";
 import { useMyProfile, useUploadPicture } from "./experience";
@@ -40,6 +42,10 @@ export function ProfileScreen() {
   const health = useMyHealthDeclaration(studio?.organization.id);
   const myProfile = useMyProfile(studio?.organization.id ?? "");
   const upload = useUploadPicture(studio?.organization.id ?? "");
+  const passes = useMyPasses(studio?.organization.id ?? "", !!studio);
+  // A device that never showed this studio's passes can't size their card ahead, so what sits below it waits for
+  // them instead of jumping when they load (board #537, O2).
+  const holdBelow = !!studio && passes.isPending && rememberedPassCount(studio.organization.id) === null;
 
   const name = nameOf(me);
   return (
@@ -98,121 +104,127 @@ export function ProfileScreen() {
       {studio && (
         <div className={styles.lead}>
           <PassesCard organizationId={studio.organization.id} />
-          <BuddiesCard organizationId={studio.organization.id} />
-          <ReferralCard organizationId={studio.organization.id} studioName={studio.organization.displayName} />
+          {!holdBelow && (
+            <>
+              <BuddiesCard organizationId={studio.organization.id} />
+              <ReferralCard organizationId={studio.organization.id} studioName={studio.organization.displayName} />
+            </>
+          )}
         </div>
       )}
 
-      <div className={styles.aside}>
-        <Card as="section" small className={styles.studio} aria-label="הסטודיו שלך">
-          {studio ? (
-            <>
-              <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
-                {studio.organization.displayName.replace(/^סטודיו\s+/, "").charAt(0)}
-              </span>
-              <div className={styles.studioName}>
-                <div>{studio.organization.displayName}</div>
-                <div className="tp-caption">{membershipRoleName(studio)}</div>
-              </div>
-              {studios.length > 1 && (
-                <Button variant="ghost" size="sm" onClick={soon}>
-                  החלפת סטודיו
-                </Button>
-              )}
-            </>
-          ) : (
-            <div className={styles.studioName}>
-              <div>עוד לא הצטרפת לסטודיו</div>
-              <div className="tp-caption">בקשו מהסטודיו קישור הצטרפות או הזמנה במייל.</div>
-            </div>
-          )}
-        </Card>
-
-        <Card as="section" tone="cream" className={styles.settings} aria-labelledby="notifications">
-          <h2 id="notifications" className={`tp-label tp-muted ${styles.settingsTitle}`}>
-            התראות
-          </h2>
-          <ConsentRows organizationId={studio?.organization.id} studioName={studio?.organization.displayName} />
-          <Link to="/profile/notifications" className="tp-setting">
-            <span className={styles.settingText}>
-              <span>העדפות התראות</span>
-              <span className="tp-caption">תזכורות, התראות בטלפון ושעות שקטות</span>
-            </span>
-            <Icon name="chevron-left" />
-          </Link>
-        </Card>
-
-        <Card as="section" tone="cream" className={styles.settings} aria-labelledby="account">
-          <h2 id="account" className={`tp-label tp-muted ${styles.settingsTitle}`}>
-            חשבון
-          </h2>
-          {studio && studioProfile.data && (
-            <>
-              <button type="button" className="tp-setting" onClick={() => setDetails(true)}>
-                <span>הפרטים שלי</span>
-                <Icon name="chevron-left" />
-              </button>
-              <hr className="tp-divider" />
-            </>
-          )}
-          {studio && progress.data && (
-            <>
-              <button type="button" className="tp-setting" onClick={() => setGoalOpen(true)}>
-                <span className={styles.settingText}>
-                  <span>יעד חודשי</span>
-                  <span className="tp-caption">{goalText(progress.data.monthlyGoal)}</span>
+      {!holdBelow && (
+        <div className={styles.aside}>
+          <Card as="section" small className={styles.studio} aria-label="הסטודיו שלך">
+            {studio ? (
+              <>
+                <span className="tp-rail__logo tp-rail__logo--sm" aria-hidden="true">
+                  {studio.organization.displayName.replace(/^סטודיו\s+/, "").charAt(0)}
                 </span>
-                <Icon name="chevron-left" />
-              </button>
-              <hr className="tp-divider" />
-            </>
-          )}
-          {studio && (
-            <>
-              <Link to="/profile/health" className="tp-setting">
-                <span>הצהרת בריאות</span>
-                {health.data ? (
-                  <HealthStatusChip status={health.data.declaration.status} />
-                ) : (
-                  <Icon name="chevron-left" />
+                <div className={styles.studioName}>
+                  <div>{studio.organization.displayName}</div>
+                  <div className="tp-caption">{membershipRoleName(studio)}</div>
+                </div>
+                {studios.length > 1 && (
+                  <Button variant="ghost" size="sm" onClick={soon}>
+                    החלפת סטודיו
+                  </Button>
                 )}
-              </Link>
-              <hr className="tp-divider" />
-            </>
-          )}
-          <InstallAppRow />
-          <button type="button" className="tp-setting" onClick={soon}>
-            <span>קבלות ותשלומים</span>
-            <Icon name="chevron-left" />
-          </button>
-          <hr className="tp-divider" />
-          <div className="tp-setting">
-            <span>שפה</span>
-            <span className="tp-muted">עברית</span>
-          </div>
-          <hr className="tp-divider" />
-          <button type="button" className="tp-setting" onClick={() => setDeleting(true)}>
-            <span className={styles.settingText}>
-              <span>מחיקת החשבון</span>
-              <span className="tp-caption">ההתחברות נמחקת, הרשומה בסטודיו נשארת</span>
-            </span>
-            <Icon name="chevron-left" />
-          </button>
-        </Card>
+              </>
+            ) : (
+              <div className={styles.studioName}>
+                <div>עוד לא הצטרפת לסטודיו</div>
+                <div className="tp-caption">בקשו מהסטודיו קישור הצטרפות או הזמנה במייל.</div>
+              </div>
+            )}
+          </Card>
 
-        <Button
-          variant="ghost-danger"
-          block
-          loading={signingOut}
-          onClick={() => {
-            setSigningOut(true);
-            // A shared browser must not keep this member's push (docs/30 section 4.3).
-            void forgetPushOnSignOut(api).finally(() => auth.client?.signOut());
-          }}
-        >
-          התנתקות
-        </Button>
-      </div>
+          <Card as="section" tone="cream" className={styles.settings} aria-labelledby="notifications">
+            <h2 id="notifications" className={`tp-label tp-muted ${styles.settingsTitle}`}>
+              התראות
+            </h2>
+            <ConsentRows organizationId={studio?.organization.id} studioName={studio?.organization.displayName} />
+            <Link to="/profile/notifications" className="tp-setting">
+              <span className={styles.settingText}>
+                <span>העדפות התראות</span>
+                <span className="tp-caption">תזכורות, התראות בטלפון ושעות שקטות</span>
+              </span>
+              <Icon name="chevron-left" />
+            </Link>
+          </Card>
+
+          <Card as="section" tone="cream" className={styles.settings} aria-labelledby="account">
+            <h2 id="account" className={`tp-label tp-muted ${styles.settingsTitle}`}>
+              חשבון
+            </h2>
+            {studio && studioProfile.data && (
+              <>
+                <button type="button" className="tp-setting" onClick={() => setDetails(true)}>
+                  <span>הפרטים שלי</span>
+                  <Icon name="chevron-left" />
+                </button>
+                <hr className="tp-divider" />
+              </>
+            )}
+            {studio && progress.data && (
+              <>
+                <button type="button" className="tp-setting" onClick={() => setGoalOpen(true)}>
+                  <span className={styles.settingText}>
+                    <span>יעד חודשי</span>
+                    <span className="tp-caption">{goalText(progress.data.monthlyGoal)}</span>
+                  </span>
+                  <Icon name="chevron-left" />
+                </button>
+                <hr className="tp-divider" />
+              </>
+            )}
+            {studio && (
+              <>
+                <Link to="/profile/health" className="tp-setting">
+                  <span>הצהרת בריאות</span>
+                  {health.data ? (
+                    <HealthStatusChip status={health.data.declaration.status} />
+                  ) : (
+                    <Icon name="chevron-left" />
+                  )}
+                </Link>
+                <hr className="tp-divider" />
+              </>
+            )}
+            <InstallAppRow />
+            <button type="button" className="tp-setting" onClick={soon}>
+              <span>קבלות ותשלומים</span>
+              <Icon name="chevron-left" />
+            </button>
+            <hr className="tp-divider" />
+            <div className="tp-setting">
+              <span>שפה</span>
+              <span className="tp-muted">עברית</span>
+            </div>
+            <hr className="tp-divider" />
+            <button type="button" className="tp-setting" onClick={() => setDeleting(true)}>
+              <span className={styles.settingText}>
+                <span>מחיקת החשבון</span>
+                <span className="tp-caption">ההתחברות נמחקת, הרשומה בסטודיו נשארת</span>
+              </span>
+              <Icon name="chevron-left" />
+            </button>
+          </Card>
+
+          <Button
+            variant="ghost-danger"
+            block
+            loading={signingOut}
+            onClick={() => {
+              setSigningOut(true);
+              // A shared browser must not keep this member's push (docs/30 section 4.3).
+              void forgetPushOnSignOut(api).finally(() => auth.client?.signOut());
+            }}
+          >
+            התנתקות
+          </Button>
+        </div>
+      )}
 
       <EditNameDialog open={editing} onClose={() => setEditing(false)} name={me.displayName ?? ""} />
       {goalOpen && studio && progress.data && (
