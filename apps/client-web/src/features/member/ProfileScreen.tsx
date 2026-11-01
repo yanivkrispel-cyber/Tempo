@@ -2,10 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Avatar, Button, Card, HealthStatusChip, Icon, IconButton, useToast } from "../../shared/design-system";
 import { activeMemberships, membershipRoleName, nameOf, useAccount } from "../../account/account";
-import { useAuth } from "../../auth/AuthProvider";
-import { useApi } from "../../api/ApiProvider";
 import { hasCode } from "../../api/errors";
-import { forgetPushOnSignOut } from "../../account/push";
+import { useSignOut } from "../../account/signOut";
 import { useStudioProfile } from "../../account/studioProfile";
 import { ConsentRows } from "./ConsentRows";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
@@ -26,8 +24,7 @@ import { StudioNotices } from "./StudioNotices";
 
 export function ProfileScreen() {
   const toast = useToast();
-  const auth = useAuth();
-  const api = useApi();
+  const signOut = useSignOut();
   const [signingOut, setSigningOut] = useState(false);
   const me = useAccount();
   const [editing, setEditing] = useState(false);
@@ -217,8 +214,7 @@ export function ProfileScreen() {
             loading={signingOut}
             onClick={() => {
               setSigningOut(true);
-              // A shared browser must not keep this member's push (docs/30 section 4.3).
-              void forgetPushOnSignOut(api).finally(() => auth.client?.signOut());
+              void signOut();
             }}
           >
             התנתקות

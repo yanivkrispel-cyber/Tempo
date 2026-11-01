@@ -3,6 +3,7 @@ import { TempoApiError, unwrap } from "@tempo/api-client";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { meKey, roleName, useMe } from "../../account/account";
+import { useSignOut } from "../../account/signOut";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
@@ -40,7 +41,7 @@ export function InvitePage() {
 function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
   const api = useApi();
   const me = useMe();
-  const { client } = useAuth();
+  const signOut = useSignOut();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
@@ -110,7 +111,7 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
           </Banner>
         )}
         {hasCode(accept.error, "invitation.email_mismatch") ? (
-          <Button block variant="secondary" onClick={() => client?.signOut()}>
+          <Button block variant="secondary" onClick={() => void signOut()}>
             התחברות עם חשבון אחר
           </Button>
         ) : (

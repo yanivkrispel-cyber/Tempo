@@ -83,6 +83,29 @@ describe("/invite", () => {
     expect(screen.queryByRole("button", { name: "אישור ההצטרפות" })).not.toBeInTheDocument();
   });
 
+  it("forgets the first account's push and keys on the way to another one, and keeps the invitation (#541 SR-33)", async () => {
+    window.localStorage.setItem("tempo.push.subscriptions", JSON.stringify({ [studio.id]: "sub-1" }));
+    window.localStorage.setItem(`tempo.client-web.passes.${studio.id}`, "1");
+    const auth = signedInAuth();
+    const signOut = vi.spyOn(auth, "signOut").mockImplementation(() => Promise.resolve());
+    const { api } = renderAt(`/invite#${token}`, auth, {
+      "POST /api/v1/invitations/preview": invitation,
+      "POST /api/v1/invitations/accept": problem(403, "invitation.email_mismatch"),
+      [`DELETE /api/v1/organizations/${studio.id}/me/push-subscriptions/sub-1`]: () =>
+        new Response(null, { status: 204 }),
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "אישור ההצטרפות" }));
+    await userEvent.click(await screen.findByRole("button", { name: "התחברות עם חשבון אחר" }));
+    await waitFor(() => expect(signOut).toHaveBeenCalled());
+    expect(
+      api.requests.some((request) => request.method === "DELETE" && request.url.endsWith("/push-subscriptions/sub-1")),
+    ).toBe(true);
+    expect(window.localStorage.getItem("tempo.push.subscriptions")).toBeNull();
+    expect(window.localStorage.getItem(`tempo.client-web.passes.${studio.id}`)).toBeNull();
+    // The other account accepts the same invitation after its sign-in.
+    expect(window.sessionStorage.getItem("tempo.client-web.pending-invite")).not.toBeNull();
+  });
+
   it("asks to wait after too many attempts", async () => {
     renderAt(`/invite#${token}`, signedInAuth(), {
       "POST /api/v1/invitations/preview": problem(429, "rate_limited", { "Retry-After": "120" }),

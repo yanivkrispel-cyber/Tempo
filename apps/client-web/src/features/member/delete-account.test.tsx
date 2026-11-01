@@ -58,7 +58,8 @@ describe("deleting my account (A-1, A-2)", () => {
     expect(deletes(api)).toHaveLength(0);
   });
 
-  it("deletes with the typed email and signs the person out", async () => {
+  it("deletes with the typed email, forgets the person's keys and signs the person out", async () => {
+    window.localStorage.setItem(`tempo.client-web.passes.${studioId}`, "1");
     const { api, redirect } = renderProfile();
     const dialog = await openDialog();
     await userEvent.type(within(dialog).getByRole("textbox", { name: /כתובת המייל של החשבון/ }), " Noga@Example.com ");
@@ -67,6 +68,7 @@ describe("deleting my account (A-1, A-2)", () => {
     await waitFor(() =>
       expect(redirect).toHaveBeenCalledWith(expect.stringMatching(/\/logout\?client_id=test-client/)),
     );
+    expect(window.localStorage.getItem(`tempo.client-web.passes.${studioId}`)).toBeNull();
   });
 
   it("explains the sole-owner refusal with the studio's name and where to hand it over", async () => {
