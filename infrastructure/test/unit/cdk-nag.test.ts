@@ -17,8 +17,8 @@ interface Violation {
 }
 
 /**
- * cdk-nag AwsSolutions over dev (edge on, so the edge stack is checked) and
- * prod (ADR-0025, Layer 1). Its own app: the validation plugin reads the whole
+ * cdk-nag AwsSolutions over dev (edge on, so the edge stack is checked), dev as
+ * deployed (no edge, so the dev canary is checked) and prod (ADR-0025, Layer 1). Its own app: the validation plugin reads the whole
  * tree, so it must not share the stages of helpers/synth.ts. cdk-nag 3 reports
  * through CDK's policy validation: synth throws on a finding and writes
  * policy-validation-report.json (with the validationReportJson flag), which
@@ -41,11 +41,14 @@ function validate(): { violations: Violation[]; unmatched: string[]; stacks: str
     },
     buildVersion: "test-sha"
   });
+  // Dev as deployed (no edge): the dev canary exists only there (#122).
+  const dev = new TempoStage(app, "NagTempoDevPlain", { config: developmentConfig, buildVersion: "test-sha" });
   const prod = new TempoStage(app, "NagTempoProd", { config: productionConfig, buildVersion: "test-sha" });
-  const stacks = [devWithEdge, prod].flatMap((stage) => stage.node.findAll().filter(Stack.isStack));
+  const stages = [devWithEdge, dev, prod];
+  const stacks = stages.flatMap((stage) => stage.node.findAll().filter(Stack.isStack));
   for (const stack of stacks) new Queue(stack, COVERAGE_PROBE);
   const unmatched = new Set(NAG_ACKNOWLEDGMENTS.flatMap((a) => a.paths));
-  for (const stage of [devWithEdge, prod]) {
+  for (const stage of stages) {
     for (const { id, reason, paths } of NAG_ACKNOWLEDGMENTS) {
       for (const path of paths) {
         const construct = stage.node.findAll().find((c) => c.node.path === `${stage.node.path}/${path}`);
@@ -92,7 +95,7 @@ describe("cdk-nag AwsSolutions (ADR-0025)", () => {
       )
     );
 
-    expect(result.stacks).toContain("NagTempoDev/Canary");
+    expect(result.stacks).toContain("NagTempoDevPlain/Canary");
     expect(result.stacks.filter((stack) => !probed.has(stack))).toEqual([]);
   });
 
