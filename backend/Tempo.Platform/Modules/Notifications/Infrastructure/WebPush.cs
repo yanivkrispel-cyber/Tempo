@@ -62,6 +62,9 @@ public interface IPushSender
 /// </summary>
 public sealed class WebPushSender(HttpClient http, VapidKeys keys, TimeProvider clock) : IPushSender
 {
+    /// <summary>The worker's client for push services.</summary>
+    public static HttpClient CreateHttpClient() => new() { Timeout = TimeSpan.FromSeconds(10) };
+
     private const int TimeToLiveSeconds = 24 * 60 * 60;
 
     public async Task<(PushOutcome Outcome, int? Status)> SendAsync(PushTarget target, ReadOnlyMemory<byte> payload, bool urgent, CancellationToken cancellationToken)

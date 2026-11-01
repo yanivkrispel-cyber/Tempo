@@ -46,7 +46,7 @@ public class Function
     // writes the keys, push deliveries are skipped as channel_unavailable (docs/30 section 4.3).
     private static readonly VapidKeySource VapidKeys = new(Environment.GetEnvironmentVariable, needsPrivateKey: true);
 
-    private static readonly HttpClient PushHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private static readonly HttpClient PushHttp = WebPushSender.CreateHttpClient();
 
     private readonly SqsMessageDispatcher _dispatcher = new(
         Logger,
