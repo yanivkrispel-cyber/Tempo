@@ -84,6 +84,9 @@ public static class CognitoAuthentication
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
+            // Cognito signs with RS256 only; any other algorithm on a trusted key is refused (#541 SR-17).
+            RequireSignedTokens = true,
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             ClockSkew = TimeSpan.FromMinutes(1)
         };
         jwt.Events = new JwtBearerEvents

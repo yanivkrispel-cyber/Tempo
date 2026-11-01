@@ -62,8 +62,12 @@ public interface IPushSender
 /// </summary>
 public sealed class WebPushSender(HttpClient http, VapidKeys keys, TimeProvider clock) : IPushSender
 {
-    /// <summary>The worker's client for push services.</summary>
-    public static HttpClient CreateHttpClient() => new() { Timeout = TimeSpan.FromSeconds(10) };
+    /// <summary>
+    /// The worker's client for push services. It never follows a redirect: the vendor allow-list (<see cref="PushEndpoints"/>)
+    /// is checked on the subscription's endpoint, and a 30x must not carry the POST anywhere else (#541 SR-22).
+    /// </summary>
+    public static HttpClient CreateHttpClient() =>
+        new(new SocketsHttpHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(10) };
 
     private const int TimeToLiveSeconds = 24 * 60 * 60;
 
