@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Tempo.Platform.BuildingBlocks.Errors;
 using Tempo.Platform.BuildingBlocks.Tenancy;
@@ -272,10 +270,10 @@ public sealed class BookingServiceTests(PostgresFixture postgres) : IClassFixtur
         var settings = new StudioSettingsService(db);
 
         await InboxItemsAsync(db, s, mine, session, 1);
-        var (one, queriesForOne) = await CountingQueriesAsync(() => settings.ListInboxAsync(s.Owner, null, 50, CancellationToken.None));
+        var (one, queriesForOne) = await QueryCounter.CountAsync(() => settings.ListInboxAsync(s.Owner, null, 50, CancellationToken.None));
         await InboxItemsAsync(db, s, mine, session, 28);
         await InboxItemsAsync(db, s, mine, bare, 1);
-        var (thirty, queriesForThirty) = await CountingQueriesAsync(() => settings.ListInboxAsync(s.Owner, null, 50, CancellationToken.None));
+        var (thirty, queriesForThirty) = await QueryCounter.CountAsync(() => settings.ListInboxAsync(s.Owner, null, 50, CancellationToken.None));
 
         one.Items.Should().ContainSingle();
         thirty.Items.Should().HaveCount(30);
@@ -299,30 +297,6 @@ public sealed class BookingServiceTests(PostgresFixture postgres) : IClassFixtur
                 "INSERT INTO notifications.inbox_items (organization_id, id, person_id, kind, data, created_at) VALUES ($1, $2, $3, 'reminder.class_tomorrow', jsonb_build_object('sessionId', $4::text), now())",
                 s.Owner.OrganizationId, Guid.CreateVersion7(), person, session);
         }
-    }
-
-    /// <summary>Counts the commands Npgsql runs inside <paramref name="action"/>'s own async flow (other tests run in parallel).</summary>
-    private static async Task<(T Result, int Queries)> CountingQueriesAsync<T>(Func<Task<T>> action)
-    {
-        var counting = new AsyncLocal<StrongBox<int>?>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == "Npgsql",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStarted = activity =>
-            {
-                if (counting.Value is { } box && activity.Kind == ActivityKind.Client)
-                {
-                    Interlocked.Increment(ref box.Value);
-                }
-            },
-        };
-        ActivitySource.AddActivityListener(listener);
-        var queries = new StrongBox<int>(0);
-        counting.Value = queries;
-        var result = await action();
-        counting.Value = null;
-        return (result, queries.Value);
     }
 
     private sealed record Studio(TenantContext Owner, PeopleService People, PassService Passes, BookingService Bookings, TimetableService Timetable, Guid ClassType, Guid Card);

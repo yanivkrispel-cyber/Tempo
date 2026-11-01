@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { TempoClient } from "@tempo/api-client";
 import type { AuthClient } from "@tempo/api-client/auth";
 import { Suspense, useState } from "react";
 import { RouterProvider, type createBrowserRouter } from "react-router";
@@ -24,14 +25,17 @@ export interface AppProps {
   now?: Date;
   /** The studio of a studio's own app (`/s/<slug>/`, the router's basename); null for the generic app. */
   studioSlug?: string | null;
+  /** Made before the first render when reads start before it (`startFirstReads`); made here when absent. */
+  queryClient?: QueryClient;
+  api?: TempoClient;
 }
 
-export function App({ router, auth, apiUrl = "", fetch, now, studioSlug = null }: AppProps) {
-  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1 } } }));
+export function App({ router, auth, apiUrl = "", fetch, now, studioSlug = null, ...made }: AppProps) {
+  const [queryClient] = useState(() => made.queryClient ?? createQueryClient());
 
   return (
     <AuthProvider client={auth}>
-      <ApiProvider baseUrl={apiUrl} auth={auth} fetch={fetch}>
+      <ApiProvider baseUrl={apiUrl} auth={auth} fetch={fetch} client={made.api}>
         <QueryClientProvider client={queryClient}>
           <ClockProvider now={now}>
             <StudioPathProvider value={studioSlug}>
@@ -49,3 +53,5 @@ export function App({ router, auth, apiUrl = "", fetch, now, studioSlug = null }
     </AuthProvider>
   );
 }
+
+export const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: 1 } } });

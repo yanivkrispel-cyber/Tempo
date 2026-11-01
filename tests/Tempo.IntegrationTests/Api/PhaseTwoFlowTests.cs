@@ -79,13 +79,21 @@ public sealed class PhaseTwoFlowTests(PostgresFixture postgres) : IClassFixture<
 
         // 6. Granting admin needs a recent sign-in.
         var toAdmin = new { roleIds = new[] { Guid.Parse("00000000-0000-7000-8000-000000000002") } };
+        // The member PATCH reaches the same change, so it asks for the same sign-in (#541).
+        var patched = await RawAsync(client, HttpMethod.Patch, $"{studioPath}/members/{staffMembership}", Customer("owner"), new { role = "admin" });
+        patched.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await patched.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("auth.step_up_required");
         var stale = await RawAsync(client, HttpMethod.Put, $"{studioPath}/members/{staffMembership}/roles", Customer("owner"), toAdmin);
         stale.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await stale.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("auth.step_up_required");
         var promoted = await SendAsync(client, HttpMethod.Put, $"{studioPath}/members/{staffMembership}/roles", Customer("owner", freshSignIn: true), toAdmin);
         promoted.GetProperty("roles")[0].GetProperty("key").GetString().Should().Be("admin");
 
-        // 7. The owner hands the studio to the first admin, who accepts.
+        // 7. The owner hands the studio to the first admin, who accepts. Cancelling a transfer needs a recent
+        //    sign-in too (docs/27 section 6, #541).
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/ownership-transfer", Customer("owner", freshSignIn: true), new { toMembershipId = adminMembership }, HttpStatusCode.Created);
+        (await RawAsync(client, HttpMethod.Delete, $"{studioPath}/ownership-transfer", Customer("owner"))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        await SendAsync(client, HttpMethod.Delete, $"{studioPath}/ownership-transfer", Customer("owner", freshSignIn: true), expected: HttpStatusCode.NoContent);
         await SendAsync(client, HttpMethod.Post, $"{studioPath}/ownership-transfer", Customer("owner", freshSignIn: true), new { toMembershipId = adminMembership }, HttpStatusCode.Created);
         var incoming = (await SendAsync(client, HttpMethod.Get, "/api/v1/me", Customer("admin"))).GetProperty("memberships")[0].GetProperty("pendingOwnershipTransfer");
         incoming.GetProperty("direction").GetString().Should().Be("incoming");
@@ -112,6 +120,37 @@ public sealed class PhaseTwoFlowTests(PostgresFixture postgres) : IClassFixture<
         audit.GetRawText().Should().NotContain("+972").And.NotContain("yoav@example.com");
         // The stored data keeps ids only; the actor's name is joined from the account when the log is read.
         string.Join(' ', audit.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("data").GetRawText())).Should().NotContain("dana@example.com");
+    }
+
+    /// <summary>
+    /// A search term is personal data (a name, a phone, an email). ASP.NET's own request lines log the query string at
+    /// Information, so they are kept out; the one request line left is Serilog's, which logs the path only (#541).
+    /// </summary>
+    [Fact]
+    public async Task ASearchTerm_NeverReachesTheLog()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "Studio Log", slug = "studio-log" }, HttpStatusCode.Created);
+        var term = $"needle{Guid.NewGuid():N}";
+
+        var original = Console.Out;
+        using var captured = new StringWriter();
+        Console.SetOut(TextWriter.Synchronized(captured));
+        try
+        {
+            await SendAsync(client, HttpMethod.Get, $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}/people?query={term}", Customer("owner"));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var log = captured.ToString();
+        log.Should().Contain("/people", "Serilog's request line still names the path");
+        log.Should().NotContain(term);
     }
 
     private async Task<Guid> JoinByInvitationAsync(HttpClient client, string studioPath, string subject, string role)
