@@ -1,6 +1,7 @@
 # Project status
 
-Updated 2026-10-27, morning (board #530, DAY-PLAN-17: the member app's time zone from the session, the tab prefetch,
+Updated 2026-11-01, evening (board #553, DAY-PLAN-19: the #537 queue landed, the security review of main (#541)
+and its fixes, SLOs and the incident runbook, the same-origin note), after board #530 (2026-10-27, DAY-PLAN-17: the member app's time zone from the session, the tab prefetch,
 the profile in two rounds), after board #523 (2026-10-26 day, DAY-PLAN-16: the speed queue landed, the session carries
 the studio's time zone, the console's today and reports in one round), after board #511 (2026-10-25/26, DAY-PLAN-15, the speed night:
 built and reviewed overnight, held at the gate until the .NET pin #522 merged at 05:40), after board #494 (2026-10-25, DAY-PLAN-14: the four computer layouts #485 to #488, the dev Neon usage
@@ -285,6 +286,42 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 - R-1's wording on the invite page: the reward goes to the member only (M-17), so the line says "כשתגיעי לשיעור
   הראשון, <name> מקבלת <product>" rather than promising the friend anything (#445, agreed by [O]).
 
+## Security review and production readiness (2026-11-01, board #553)
+
+- **The review of `main` for production** is `docs/security/review-2026-11.md` (#554), with [K]'s sections 1 to 9
+  and [O]'s section 10 (the apps). There are 38 findings: 0 critical, 1 high, 12 medium, 25 low.
+  - 15 were fixed and deployed green that day: #555, #556, #557, #571, #572, #574, #575, #576 and #577 (section 13).
+  - Open: #558 (high: the deploy job's OIDC token) and #559 (the Cloudflare token). Both are workflow changes and
+    wait for Kris's "workflow OK".
+  - Also open: #560 (anonymous traffic and the public throttles), #561 (identity tables without RLS, migration 0040
+    when fixed), #562 (Cognito threat protection, a cost decision), #563 (NuGet locked mode), #564 (repeat offer
+    joins) and the low findings in #565 to #567. SR-14 (RLS enabled, not forced) is accepted.
+- **What changed on dev:**
+  - Step-up (a sign-in within 10 minutes) for making someone an admin, for cancelling an ownership transfer and for
+    the forced transfer. The console offers the fresh sign-in (#573).
+  - No query strings in the API log: the hosting diagnostics log at Warning, and per-route timings come from
+    Serilog's `RequestPath` and `Elapsed` (`backend-patterns.md`, "Logs").
+  - Tokens are accepted with RS256 only. The outbox handler logs ids only. The push client follows no redirects.
+  - The public limiter can't be emptied by a flood, and counts the viewer behind the edge.
+  - Both apps send a `Permissions-Policy` (`camera=(self)`). `bin/pages-headers.ts --env=` picks the CSP's config.
+  - Every sign-out forgets the device's push and the person's keys.
+  - execute-api is turned off whenever the edge is on (#122, closed). Dev has no edge, so execute-api still answers
+    there.
+- **Runbooks:** `docs/runbooks/slos.md` (#544) and `incidents.md` (#545). Both say "proposed" until Kris approves the
+  targets. The breach step waits for the lawyer (#548), and the tabletop is still to do before the first paying
+  studio. The GitHub label `incident` exists for them.
+- **`docs/39`, same-origin API:** a preflight costs one round trip (75 to 85 ms from Israel), and a first visit
+  costs about 200 to 400 ms on the phone profile.
+  - Default: `maxAge` 2 h (A) later, then a CDP count of the preflights (O6), then decide on a Pages proxy for the
+    member app (B) with the custom domain (#304).
+  - WebKit may cap the preflight cache at 10 minutes (to verify). SO-1 is open.
+- **The roster** marks an intro pass that is still to pay at the studio (#568).
+- `premium-live-check` passed 21/21 on `070b42c`.
+- Not done on #553: O3 (chip screenshots) and O6 (after perf numbers). There's no `/me/progress` after number,
+  because no member opened it on dev that day (before: p50 141 ms, p90 585 ms). K8 and O7 wait for the phone test.
+- Dependabot #579 to #582 are open. #581 moves FluentAssertions to 8, whose licence is commercial, so it should not
+  merge as is.
+
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in
@@ -305,7 +342,7 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `docs/30` D-1, D-2, D-7, and a look at the provisional defaults | Email waits for D-1 (the domain first) |
 | `docs/29` C-9 to C-13 | Defaults apply unless Kris objects |
 | #97 dev self sign-up and a Neon usage alarm | It gated the full load test (B5) |
-| #96, #123, #122 | Kris decides; nobody else touches them |
+| #96, #123 | Kris decides; nobody else touches them |
 | Consent texts (P-4) and the accountant/lawyer check (P-2) | Before the pilot; P-2 now also covers the health form's wording and its retention (docs/31) |
 | A production copy of the health data key | docs/31 section 15 |
 | Run `tools/scripts/e2e-cleanup.mjs --apply` with an operator token | Removes the e2e studios on dev (24 on 2026-10-23; P2 F4) |
@@ -318,6 +355,9 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
 | Instagram story and WhatsApp preview test on a real phone (#404, #445) | Then O5 and K6 clean the O4 seed and [K]'s Hebrew offer in tempo-smoke-studio |
 | #304 email domain and sender | Unlocks the email code and the passwordless sheet (docs/36) |
+| "workflow OK" for #558 and #559 | The high finding of #541 and its medium neighbour; both change `deploy-development.yml` |
+| #562 Cognito threat protection | A cost decision (ADR-0021) |
+| Approve `slos.md` and `incidents.md` | Their targets and roles; the breach step after #548 |
 
 ## Who works on what
 
