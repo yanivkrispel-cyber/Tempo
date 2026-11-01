@@ -51,7 +51,9 @@ public sealed partial class BookingService : IClassService
                           AND w.status = 'waitlisted' AND w.waitlist_position <= b.waitlist_position)
                    END,
                    pp.name, ps.entries - ps.entries_used, b.created_at,
-                   hd.id IS NOT NULL, hd.expires_at, hd.has_yes, hd.medical_approval_on, b.to_pay_at_studio
+                   hd.id IS NOT NULL, hd.expires_at, hd.has_yes, hd.medical_approval_on,
+                   -- An event place without a pass, or a place held by an intro pass still to pay (docs/38 7.2).
+                   b.to_pay_at_studio OR coalesce(ps.to_pay_at_studio, false)
             FROM scheduling.bookings b
             JOIN people.people p ON p.organization_id = b.organization_id AND p.id = b.person_id
             LEFT JOIN people.health_declarations hd ON hd.organization_id = b.organization_id AND hd.person_id = b.person_id AND hd.superseded_at IS NULL
