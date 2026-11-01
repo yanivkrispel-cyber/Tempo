@@ -91,6 +91,8 @@ export function OutgoingTransferBanner() {
   const api = useApi();
   const toast = useToast();
   const refresh = useRefreshAfterTransfer();
+  const { client } = useAuth();
+  const { pathname } = useLocation();
   const { organizationId, membership } = useStudio();
   const pending = membership.pendingOwnershipTransfer;
   const cancel = useMutation({
@@ -102,18 +104,38 @@ export function OutgoingTransferBanner() {
         }),
       ),
     onSuccess: () => toast.show({ tone: "success", icon: "check", message: "ההצעה בוטלה" }),
-    onError: (error) => toast.show({ tone: "danger", icon: "info", message: errorMessage(error) }),
+    onError: (error) => {
+      // Cancelling needs a recent sign-in too (docs/27 section 6, #556): the banner offers it, as the dialog does.
+      if (!hasCode(error, "auth.step_up_required"))
+        toast.show({ tone: "danger", icon: "info", message: errorMessage(error) });
+    },
     onSettled: refresh,
   });
+  const stepUp = hasCode(cancel.error, "auth.step_up_required");
 
   if (pending?.direction !== "outgoing") return null;
   return (
-    <Banner tone="info" icon="info">
-      <div className="tp-row" style={{ justifyContent: "space-between" }}>
-        <span>הצעת העברת הבעלות ממתינה לתשובה עד {day(pending.expiresAt)}.</span>
-        <Button variant="ghost-danger" size="sm" loading={cancel.isPending} onClick={() => cancel.mutate()}>
-          ביטול ההצעה
-        </Button>
+    <Banner tone={stepUp ? "warning" : "info"} icon="info">
+      <div className="tp-stack">
+        <div className="tp-row" style={{ justifyContent: "space-between" }}>
+          <span>הצעת העברת הבעלות ממתינה לתשובה עד {day(pending.expiresAt)}.</span>
+          <Button variant="ghost-danger" size="sm" loading={cancel.isPending} onClick={() => cancel.mutate()}>
+            ביטול ההצעה
+          </Button>
+        </div>
+        {stepUp && (
+          <div className="tp-row" style={{ justifyContent: "space-between" }}>
+            <span>{errorMessage(cancel.error)}</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="log-out"
+              onClick={() => void client?.signIn(pathname, "reauthenticate")}
+            >
+              התחברות מחדש
+            </Button>
+          </div>
+        )}
       </div>
     </Banner>
   );
