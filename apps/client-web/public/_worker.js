@@ -77,11 +77,14 @@ ${metas}
 `;
 }
 
+// Pages applies `_headers` to static files only, so a worker response repeats the ones a preview needs (#541 SR-36).
 const PREVIEW_HEADERS = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "public, max-age=300",
   "content-security-policy": "default-src 'none'; img-src https:",
   "x-content-type-options": "nosniff",
+  "strict-transport-security": "max-age=31536000",
+  "referrer-policy": "strict-origin-when-cross-origin",
 };
 
 function formatWhen(startsAt, timeZone) {

@@ -112,6 +112,8 @@ describe("handler", () => {
     expect(res.headers.get("cache-control")).toBe("public, max-age=300");
     expect(res.headers.get("content-security-policy")).toBe("default-src 'none'; img-src https:");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("strict-transport-security")).toBe("max-age=31536000");
+    expect(res.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
     const html = await res.text();
     expect(html).toContain("Demo Studio");
     expect(html).toContain(`${API}/api/v1/public/studios/demo/cover`);
