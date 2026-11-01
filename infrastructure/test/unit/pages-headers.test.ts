@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import developmentConfig from "../../config/development";
-import { pagesHeadersFile } from "../../lib/web/pages-headers";
+import productionConfig from "../../config/production";
+import stagingConfig from "../../config/staging";
+import { pagesConfig, pagesHeadersFile } from "../../lib/web/pages-headers";
 
 const apiUrl = "https://2a5q3fao7a.execute-api.eu-central-1.amazonaws.com/";
 
@@ -49,6 +51,24 @@ describe("Cloudflare Pages headers (ADR-0027)", () => {
     expect(assets).toBeGreaterThan(0);
     expect(lines[assets + 1]).toBe("  Cache-Control: public, max-age=31536000, immutable");
     expect(lines.filter((line) => line.includes("Cache-Control"))).toHaveLength(1);
+  });
+
+  it("allows the camera to the site itself (the door scan in LiveRoom) and nothing else it doesn't use (#541 SR-35)", () => {
+    expect(file).toContain(
+      "  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()"
+    );
+  });
+
+  it("builds each environment's headers from its own config, development when none is named (#541 SR-37)", () => {
+    expect(pagesConfig(undefined)).toBe(developmentConfig);
+    expect(pagesConfig("dev")).toBe(developmentConfig);
+    expect(pagesConfig("stg")).toBe(stagingConfig);
+    expect(pagesConfig("prod")).toBe(productionConfig);
+    expect(() => pagesConfig("production")).toThrow(/unknown environment "production"/);
+
+    const prod = pagesHeadersFile(productionConfig, "https://api.example.com/");
+    expect(prod).toContain(`https://tempo-prod-${productionConfig.accountId}.auth.`);
+    expect(prod).not.toContain(developmentConfig.accountId);
   });
 
   it("refuses an API that is not https", () => {
