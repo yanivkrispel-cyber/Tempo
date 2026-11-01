@@ -93,6 +93,11 @@ public sealed class PublicJoinFlowTests(PostgresFixture postgres) : IClassFixtur
         // 3. She books from a WhatsApp link: the booking keeps the last touch; an unknown code is ignored.
         var booking = await SendAsync(client, HttpMethod.Post, $"{studioPath}/sessions/{session.GetProperty("id").GetGuid()}/bookings", Customer("maya"), new { src = "whats01" }, HttpStatusCode.Created);
         (await db.AsMasterAsync("SELECT l.code FROM scheduling.bookings b JOIN marketing.links l ON l.id = b.source_link_id WHERE b.id = $1", booking.GetProperty("id").GetGuid())).Should().Be("whats01");
+        // The place is held by the intro pass that is still to pay, so the roster marks it "לתשלום בסטודיו" (docs/38 7.2).
+        var roster = await SendAsync(client, HttpMethod.Get, $"{studioPath}/sessions/{session.GetProperty("id").GetGuid()}/roster", Customer("owner"));
+        var place = roster.GetProperty("booked").EnumerateArray().Single();
+        place.GetProperty("passName").GetString().Should().Be("שיעור ניסיון");
+        place.GetProperty("toPayAtStudio").GetBoolean().Should().BeTrue();
 
         await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("noa"));
         var unknown = await SendAsync(client, HttpMethod.Post, join, Customer("noa"), new { src = "nosuch1" });
