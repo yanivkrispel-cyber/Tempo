@@ -1,3 +1,4 @@
+using System.Globalization;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using FluentAssertions;
@@ -24,7 +25,7 @@ public sealed class OutboxMessageHandlerTests
             "corr-1",
             Substitute.For<ILambdaContext>());
 
-        var text = string.Join('\n', sink.Events.Select(e => e.RenderMessage() + string.Join(' ', e.Properties.Values)));
+        var text = string.Join('\n', sink.Events.Select(e => e.RenderMessage(CultureInfo.InvariantCulture) + string.Join(' ', e.Properties.Values)));
         text.Should().Contain("msg-7");
         text.Should().NotContain("someone@example.com");
     }
