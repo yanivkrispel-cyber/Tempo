@@ -158,11 +158,24 @@ public sealed class PhaseOneFlowTests(PostgresFixture postgres) : IClassFixture<
         });
     }
 
+    /// <summary>Cognito signs with RS256 only; a token on the same key with another algorithm is refused (#541 SR-17).</summary>
+    [Fact]
+    public async Task ATokenSignedWithAnotherAlgorithm_IsRefused()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+
+        (await RawAsync(client, HttpMethod.Post, "/api/v1/session", Token(CustomerIssuer, "customer-client", "rs512", SecurityAlgorithms.RsaSha512)))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await RawAsync(client, HttpMethod.Post, "/api/v1/session", Customer("rs256"))).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private string Customer(string subject) => Token(CustomerIssuer, "customer-client", subject);
 
     private string Operator(string subject) => Token(OperatorIssuer, "operator-client", subject);
 
-    private string Token(string issuer, string clientId, string subject)
+    private string Token(string issuer, string clientId, string subject, string algorithm = SecurityAlgorithms.RsaSha256)
     {
         var now = DateTime.UtcNow;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
@@ -172,7 +185,7 @@ public sealed class PhaseOneFlowTests(PostgresFixture postgres) : IClassFixture<
             NotBefore = now.AddMinutes(-1),
             IssuedAt = now.AddMinutes(-1),
             Expires = now.AddMinutes(10),
-            SigningCredentials = new SigningCredentials(new RsaSecurityKey(rsa) { KeyId = "test-key" }, SecurityAlgorithms.RsaSha256)
+            SigningCredentials = new SigningCredentials(new RsaSecurityKey(rsa) { KeyId = "test-key" }, algorithm)
         });
     }
 
