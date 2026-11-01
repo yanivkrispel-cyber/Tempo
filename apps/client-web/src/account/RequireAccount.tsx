@@ -1,13 +1,13 @@
 import { Outlet } from "react-router";
 import { errorMessage } from "../api/errors";
-import { useAuth } from "../auth/AuthProvider";
 import { Banner, Button, Skeleton } from "../shared/design-system";
 import { useMe } from "./account";
+import { useSignOut } from "./signOut";
 
 /** Renders the child routes once the account is loaded (`POST /api/v1/session`). Goes inside <RequireAuth>. */
 export function RequireAccount() {
   const me = useMe();
-  const { client } = useAuth();
+  const signOut = useSignOut();
 
   if (me.data) return <Outlet />;
 
@@ -21,7 +21,7 @@ export function RequireAccount() {
           <Button variant="secondary" onClick={() => void me.refetch()}>
             ניסיון נוסף
           </Button>
-          <Button variant="ghost" onClick={() => client?.signOut()}>
+          <Button variant="ghost" onClick={() => void signOut()}>
             התנתקות
           </Button>
         </div>

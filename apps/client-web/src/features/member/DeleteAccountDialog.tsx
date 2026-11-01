@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation } from "react-router";
 import { useAccount } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
+import { forgetPersonOnDevice } from "../../account/signOut";
 import { errorMessage, hasCode } from "../../api/errors";
 import { useAuth } from "../../auth/AuthProvider";
 import { Banner, Button, Dialog, Field, Input } from "../../shared/design-system";
@@ -41,6 +42,7 @@ export function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
     onSuccess: () => {
       // The login is gone: nothing cached for it may outlive it on this device.
       queryClient.clear();
+      forgetPersonOnDevice();
       client?.signOut();
     },
   });
