@@ -209,6 +209,10 @@ export class ApiStack extends Stack {
       apiName: config.apiName,
       description: "Tempo HTTP API (Amazon API Gateway HTTP API, per ADR-0004)",
       createDefaultStage: false,
+      // With an edge in front, every call comes through the distribution's
+      // /api/* origin (the Function URL) and its WAF, so the default
+      // execute-api URL would only be a way around them (#122).
+      disableExecuteApiEndpoint: config.featureFlags.enableFrontendHosting,
       corsPreflight: {
         allowOrigins: [...config.corsAllowedOrigins],
         allowMethods: [
@@ -313,10 +317,14 @@ export class ApiStack extends Stack {
       value: this.functionUrlDomain
     });
 
-    new CfnOutput(this, "HttpApiUrl", {
-      description: "Base URL for the Tempo HTTP API - read by the deployment smoke test",
-      value: this.httpApi.apiEndpoint
-    });
+    // Behind an edge the execute-api URL is off (#122) and the API's base URL
+    // is the distribution's (the edge stack's DistributionDomainName output).
+    if (!config.featureFlags.enableFrontendHosting) {
+      new CfnOutput(this, "HttpApiUrl", {
+        description: "Base URL for the Tempo HTTP API - read by the deployment smoke test",
+        value: this.httpApi.apiEndpoint
+      });
+    }
 
     applyStandardTags(this, config, "api");
   }
