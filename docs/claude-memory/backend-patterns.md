@@ -83,6 +83,14 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   `JwtBearerOptions`; tests post-configure them by scheme name.
 - A 401 is Problem Details with `code: auth.unauthorized`.
 
+## Logs
+
+- ASP.NET's hosting lines (`Request starting` / `Request finished`, `EventId.Id` 1 and 2) are off since #557: they
+  carried the query string, and a search term is a name, a phone or an email (#541). The request line is Serilog's
+  (`UseSerilogRequestLogging`): `RequestMethod`, `RequestPath` (no query), `StatusCode`, `Elapsed` in ms. Per-route
+  handler time in Logs Insights: `filter RequestPath like /\/me\/progress$/ | stats pct(Elapsed, 50), pct(Elapsed, 90)`.
+- Never log a request body, a query string, an email, a phone, a name or a health answer; ids and codes only.
+
 ## Errors
 
 - Throw `DomainRuleViolationException(kind, code, title)` from domain or application code. `DomainRuleViolationHandler`

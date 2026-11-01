@@ -122,6 +122,37 @@ public sealed class PhaseTwoFlowTests(PostgresFixture postgres) : IClassFixture<
         string.Join(' ', audit.GetProperty("items").EnumerateArray().Select(e => e.GetProperty("data").GetRawText())).Should().NotContain("dana@example.com");
     }
 
+    /// <summary>
+    /// A search term is personal data (a name, a phone, an email). ASP.NET's own request lines log the query string at
+    /// Information, so they are kept out; the one request line left is Serilog's, which logs the path only (#541).
+    /// </summary>
+    [Fact]
+    public async Task ASearchTerm_NeverReachesTheLog()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("owner"));
+        var studio = await SendAsync(client, HttpMethod.Post, "/api/v1/organizations", Customer("owner"), new { displayName = "Studio Log", slug = "studio-log" }, HttpStatusCode.Created);
+        var term = $"needle{Guid.NewGuid():N}";
+
+        var original = Console.Out;
+        using var captured = new StringWriter();
+        Console.SetOut(TextWriter.Synchronized(captured));
+        try
+        {
+            await SendAsync(client, HttpMethod.Get, $"/api/v1/organizations/{studio.GetProperty("id").GetGuid()}/people?query={term}", Customer("owner"));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var log = captured.ToString();
+        log.Should().Contain("/people", "Serilog's request line still names the path");
+        log.Should().NotContain(term);
+    }
+
     private async Task<Guid> JoinByInvitationAsync(HttpClient client, string studioPath, string subject, string role)
     {
         var invitation = await SendAsync(client, HttpMethod.Post, $"{studioPath}/invitations", Customer("owner"), new { email = $"{subject}@example.com", role }, HttpStatusCode.Created);
