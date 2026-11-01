@@ -42,8 +42,13 @@ If unsure, it is the higher severity, and the lead may lower it later.
      (`POST /platform/organizations/{id}/suspend`, which needs a registered operator, #301), or stop the whole API
      with reserved concurrency 0 (`aws lambda put-function-concurrency --function-name tempo-<env>-api
      --reserved-concurrent-executions 0`; undo with `delete-function-concurrency`).
-   - A secret is out: rotate it first (a person writes the new value in SSM), then look at what it reached.
+   - A secret is out: rotate it first, then look at what it reached. The SSM secrets get a new value written by a
+     person. The Cloudflare API token is not in SSM: it is a GitHub Actions secret (#559), so a person rotates it
+     in the Cloudflare dashboard and then updates the GitHub secret.
    - A bad deploy: revert the merge on `main`; the deploy follows.
+     - App only (the API is fine): first roll back the Cloudflare Pages deployment (the project's Deployments list,
+       "Rollback"), which takes seconds, then revert on `main`. `sw.js` has no fetch handler and calls
+       `skipWaiting()`, so members get the old build on their next load, the installed app included.
 3. **Keep the evidence before anything is fixed:**
    - Note the time range.
    - Export the Logs Insights results (counts and ids, not personal data) to the private advisory.
