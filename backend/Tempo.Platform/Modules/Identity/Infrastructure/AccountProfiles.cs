@@ -9,16 +9,22 @@ namespace Tempo.Platform.Modules.Identity.Infrastructure;
 /// </summary>
 public sealed class AccountProfiles(IDataSourceProvider dataSources) : IAccountProfiles
 {
-    public async Task<IReadOnlyDictionary<Guid, AccountProfile>> FindAsync(IReadOnlyCollection<Guid> userAccountIds, CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<Guid, AccountProfile>> FindAsync(
+        Guid callerAccountId,
+        Guid? organizationId,
+        IReadOnlyCollection<Guid> userAccountIds,
+        CancellationToken cancellationToken)
     {
         if (userAccountIds.Count == 0)
         {
             return new Dictionary<Guid, AccountProfile>();
         }
 
-        await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, null, null, cancellationToken);
+        // Row-level security shows the app role only the caller's own account, so other accounts come through
+        // find_account_profiles, which reads the caller and the studio from the same two settings (migration 0040).
+        await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, callerAccountId, organizationId, cancellationToken);
         await using var command = unitOfWork.Command(
-            "SELECT id, email, display_name FROM identity.user_accounts WHERE id = ANY($1)",
+            "SELECT id, email, display_name FROM identity.find_account_profiles($1)",
             userAccountIds.ToArray());
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var profiles = new Dictionary<Guid, AccountProfile>();
