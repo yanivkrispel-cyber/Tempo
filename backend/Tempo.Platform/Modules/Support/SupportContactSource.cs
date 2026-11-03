@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using Amazon.Runtime;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 
@@ -36,11 +37,18 @@ public sealed record SupportContact(string Contact, string Kind)
 /// SUPPORT_CONTACT_PARAMETER (`/tempo/&lt;env&gt;/support/contact`, written by a person; the stack only names it).
 /// Locally and in tests: SUPPORT_CONTACT as given. Nothing set, or a value that is neither an email address nor an https
 /// link, means no contact, and the console hides it. SSM is asked at most every ten minutes, so a new value shows
-/// within ten minutes without a deploy.
+/// within ten minutes without a deploy. When SSM fails (throttled, denied, unreachable), the last value stays and SSM is
+/// asked again after a minute, so a failed read never turns into an error for the person asking.
 /// </summary>
-public sealed class SupportContactSource(Func<string, string?> setting, Func<string, CancellationToken, Task<string?>>? readParameter = null) : IDisposable
+public sealed class SupportContactSource(
+    Func<string, string?> setting,
+    Func<string, CancellationToken, Task<string?>>? readParameter = null,
+    TimeProvider? clock = null) : IDisposable
 {
     private static readonly TimeSpan Refresh = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan RetryAfterFailure = TimeSpan.FromMinutes(1);
+
+    private readonly TimeProvider time = clock ?? TimeProvider.System;
 
     private readonly SemaphoreSlim gate = new(1, 1);
     private SupportContact? contact;
@@ -50,7 +58,7 @@ public sealed class SupportContactSource(Func<string, string?> setting, Func<str
 
     public async Task<SupportContact?> GetAsync(CancellationToken cancellationToken)
     {
-        if (DateTimeOffset.UtcNow < nextRead)
+        if (time.GetUtcNow() < nextRead)
         {
             return contact;
         }
@@ -58,10 +66,19 @@ public sealed class SupportContactSource(Func<string, string?> setting, Func<str
         await gate.WaitAsync(cancellationToken);
         try
         {
-            if (DateTimeOffset.UtcNow >= nextRead)
+            if (time.GetUtcNow() >= nextRead)
             {
-                contact = SupportContact.Parse(await ReadAsync(cancellationToken));
-                nextRead = DateTimeOffset.UtcNow.Add(Refresh);
+                try
+                {
+                    contact = SupportContact.Parse(await ReadAsync(cancellationToken));
+                    nextRead = time.GetUtcNow().Add(Refresh);
+                }
+                catch (Exception error) when (error is AmazonServiceException or AmazonClientException)
+                {
+                    // The type only: the message can carry the parameter's ARN.
+                    await Console.Error.WriteLineAsync($"Support contact: the SSM read failed ({error.GetType().Name}); keeping the last value.");
+                    nextRead = time.GetUtcNow().Add(RetryAfterFailure);
+                }
             }
 
             return contact;

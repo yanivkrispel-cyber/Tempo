@@ -3798,7 +3798,7 @@ export interface components {
             code?: string | null;
         };
         SupportContact: {
-            /** @description An email address or an https link; null when none is set. */
+            /** @description An email address or an https link; null when none is set, and then `kind` is null too. */
             contact: string | null;
             /**
              * @description `email` (open as `mailto:`) or `url` (open as a link); null with `contact`.

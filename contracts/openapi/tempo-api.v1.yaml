@@ -5131,7 +5131,7 @@ components:
         contact:
           type: [string, "null"]
           maxLength: 300
-          description: An email address or an https link; null when none is set.
+          description: An email address or an https link; null when none is set, and then `kind` is null too.
         kind:
           type: [string, "null"]
           enum: [email, url, null]

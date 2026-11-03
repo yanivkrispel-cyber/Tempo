@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Amazon.SimpleSystemsManagement;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -65,6 +66,43 @@ public sealed class SupportContactEndpointTests
         reads.Should().Be(1);
     }
 
+    [Fact]
+    public async Task AFailedRead_KeepsTheLastValue_AndTriesAgainAfterAMinute()
+    {
+        var clock = new ManualClock();
+        var reads = 0;
+        using var source = new SupportContactSource(
+            name => name == "SUPPORT_CONTACT_PARAMETER" ? "/tempo/dev/support/contact" : null,
+            (_, _) => ++reads == 2
+                ? throw new AmazonSimpleSystemsManagementException("Rate exceeded")
+                : Task.FromResult<string?>("help@example.com"),
+            clock);
+
+        var first = await source.GetAsync(CancellationToken.None);
+        clock.Now += TimeSpan.FromMinutes(11);
+        var failed = await source.GetAsync(CancellationToken.None);
+        clock.Now += TimeSpan.FromSeconds(30);
+        var waiting = await source.GetAsync(CancellationToken.None);
+        clock.Now += TimeSpan.FromSeconds(31);
+        var again = await source.GetAsync(CancellationToken.None);
+
+        first.Should().Be(new SupportContact("help@example.com", "email"));
+        failed.Should().Be(first);
+        waiting.Should().Be(first);
+        again.Should().Be(first);
+        reads.Should().Be(3, "the failed read is retried after a minute, not on every request");
+    }
+
+    [Fact]
+    public async Task AFailedFirstRead_MeansNoContact_NotAnError()
+    {
+        using var source = new SupportContactSource(
+            name => name == "SUPPORT_CONTACT_PARAMETER" ? "/tempo/dev/support/contact" : null,
+            (_, _) => throw new AmazonSimpleSystemsManagementException("AccessDenied"));
+
+        (await source.GetAsync(CancellationToken.None)).Should().BeNull();
+    }
+
     [Theory]
     [InlineData("help@example.com", "help@example.com", "email")]
     [InlineData("https://example.com/help", "https://example.com/help", "url")]
@@ -89,6 +127,13 @@ public sealed class SupportContactEndpointTests
         api.Accounts.FindByExternalIdentityAsync(TestApi.CustomerIssuer, "user-123", Arg.Any<CancellationToken>())
             .Returns(new AccountSnapshot(Guid.CreateVersion7(), AccountStatus.Active, EmailVerified: true));
         return api;
+    }
+
+    private sealed class ManualClock : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = new(2026, 11, 3, 10, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow() => Now;
     }
 
     private static async Task<HttpResponseMessage> GetAsync(TestApi api)
