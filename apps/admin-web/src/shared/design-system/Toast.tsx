@@ -25,6 +25,8 @@ interface ToastEntry extends ToastOptions {
 
 const ToastContext = createContext<ToastApi | null>(null);
 
+const maxShown = 3;
+
 const toneIcon: Record<ToastTone, IconName> = { neutral: "info", success: "check", danger: "info" };
 
 export function useToast(): ToastApi {
@@ -52,7 +54,8 @@ export function ToastProvider({ children, duration = 5000, label = "הודעות
   const dismiss = useCallback((id: number) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
   const show = useCallback((toast: ToastOptions) => {
     const id = nextId.current++;
-    setToasts((current) => [...current, { ...toast, id }]);
+    // The newest few only: a toast with an action stays until it is used, and older ones would stack up (P3 F6).
+    setToasts((current) => [...current, { ...toast, id }].slice(-maxShown));
     return id;
   }, []);
   const api = useMemo(() => ({ show, dismiss }), [show, dismiss]);
