@@ -22,6 +22,7 @@ import {
 } from "../../shared/design-system";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
+import { QrCode } from "../security/QrCode";
 
 type Invitation = Schemas["Invitation"];
 type InvitableRole = Schemas["InvitableRole"];
@@ -305,12 +306,19 @@ function JoinLinkCard() {
     queryFn: () => unwrap(api.GET("/api/v1/organizations/{organizationId}", { params: { path: { organizationId } } })),
   });
   const [link, setLink] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const canShare = typeof navigator.share === "function";
 
   const rotate = useMutation({
     mutationKey: [organizationId, "invitations.rotate"],
     mutationFn: () =>
       unwrap(api.PUT("/api/v1/organizations/{organizationId}/join-link", { params: { path: { organizationId } } })),
-    onSuccess: (joinLink) => setLink(joinLink.link),
+    onSuccess: (joinLink) => {
+      setConfirming(false);
+      setLink(joinLink.link);
+    },
+    // The card behind shows the error.
+    onError: () => setConfirming(false),
     onSettled: () => queryClient.invalidateQueries({ queryKey: organizationKey }),
   });
   const disable = useMutation({
@@ -340,7 +348,37 @@ function JoinLinkCard() {
           <p>
             <Chip tone={enabled ? "success" : "neutral"}>{enabled ? "פעיל" : "כבוי"}</Chip>
           </p>
-          {link && <CopyLink link={link} label="קישור ההצטרפות החדש" />}
+          {link ? (
+            // Shown once (the API keeps only its hash), so everything to pass it on sits here: copy, share and a QR
+            // for the studio's wall (P3 F2).
+            <div className="tp-row" style={{ alignItems: "flex-start", gap: 16 }}>
+              <div className="tp-stack" style={{ flex: "1 1 16rem", minWidth: 0 }}>
+                <CopyLink link={link} label="קישור ההצטרפות החדש" />
+                {canShare && (
+                  <div>
+                    <Button
+                      variant="secondary"
+                      icon="share"
+                      onClick={() =>
+                        void navigator
+                          .share({ title: organization.data?.displayName, text: "הצטרפות לסטודיו", url: link })
+                          .catch(() => {})
+                      }
+                    >
+                      שיתוף
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <QrCode value={link} label="קוד QR לקישור ההצטרפות" />
+            </div>
+          ) : (
+            enabled && (
+              <p className="tp-caption tp-muted">
+                הקישור מוצג רק כשהוא נוצר. כדי לשלוח אותו שוב, מחליפים אותו ושולחים את החדש.
+              </p>
+            )
+          )}
           {error && (
             <Banner tone="danger" icon="info">
               {errorMessage(error)}
@@ -350,7 +388,7 @@ function JoinLinkCard() {
             <Button
               variant={enabled ? "secondary" : "primary"}
               loading={rotate.isPending}
-              onClick={() => rotate.mutate()}
+              onClick={() => (enabled ? setConfirming(true) : rotate.mutate())}
             >
               {enabled ? "החלפת הקישור" : "יצירת קישור"}
             </Button>
@@ -362,6 +400,22 @@ function JoinLinkCard() {
           </div>
         </>
       )}
+      <Dialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        title="להחליף את קישור ההצטרפות?"
+        description="הקישור הנוכחי יפסיק לעבוד מיד, גם אצל מי שכבר קיבל אותו. מי שכבר הצטרף נשאר בסטודיו."
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setConfirming(false)}>
+              השארת הקישור
+            </Button>
+            <Button loading={rotate.isPending} onClick={() => rotate.mutate()}>
+              החלפה
+            </Button>
+          </>
+        }
+      />
     </Card>
   );
 }
