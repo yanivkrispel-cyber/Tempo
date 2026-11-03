@@ -126,7 +126,15 @@ public sealed record AccountProfile(Guid UserAccountId, string Email, string? Di
 
 public interface IAccountProfiles
 {
-    Task<IReadOnlyDictionary<Guid, AccountProfile>> FindAsync(IReadOnlyCollection<Guid> userAccountIds, CancellationToken cancellationToken);
+    /// <summary>
+    /// The profiles among <paramref name="userAccountIds"/> that the caller may see: its own, and those of accounts
+    /// with a membership (any status) in <paramref name="organizationId"/>. Others are left out (#561, migration 0040).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, AccountProfile>> FindAsync(
+        Guid callerAccountId,
+        Guid? organizationId,
+        IReadOnlyCollection<Guid> userAccountIds,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

@@ -8,13 +8,10 @@ public sealed class AccountDirectory(IDataSourceProvider dataSources) : IAccount
     public async Task<AccountSnapshot?> FindByExternalIdentityAsync(string issuer, string subject, CancellationToken cancellationToken)
     {
         await using var unitOfWork = await UnitOfWork.BeginAsync(dataSources, DatabaseRole.Application, null, null, cancellationToken);
+        // Every request starts here, before the account id is known: row-level security would hide the row, so
+        // the SECURITY DEFINER lookup returns the one account linked to this sign-in (migration 0040).
         await using var command = unitOfWork.Command(
-            """
-            SELECT a.id, a.status, a.email_verified, a.mfa_enabled
-            FROM identity.external_identities e
-            JOIN identity.user_accounts a ON a.id = e.user_account_id
-            WHERE e.issuer = $1 AND e.subject = $2
-            """,
+            "SELECT id, status, email_verified, mfa_enabled FROM identity.find_account_by_external_identity($1, $2)",
             issuer,
             subject);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
