@@ -4009,7 +4009,6 @@ paths:
     get:
       tags: [Account]
       operationId: getSupportContact
-      x-tempo-planned: true
       summary: "How studio staff reach the Tempo team (any signed-in account)"
       description: |
         Board #584, PL-4: the console's "עזרה ויצירת קשר" shows it. The value is the SSM standard parameter

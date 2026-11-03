@@ -91,6 +91,7 @@ try
     app.MapOwnershipEndpoints();
     app.MapPeopleEndpoints();
     app.MapPeopleImportEndpoints();
+    app.MapSupportEndpoints();
     app.MapTagsAndNotesEndpoints();
     app.MapConsentEndpoints();
     app.MapPersonLifecycleEndpoints();

@@ -24,6 +24,7 @@ import { applyStandardTags } from "../constructs/tagging";
 import { pushParameterName } from "../async/push-parameters";
 import { HEALTH_DATA_KEY_CURRENT_VERSION, HEALTH_DATA_KEY_READABLE_VERSIONS, healthDataKeyPrefix } from "./health-parameters";
 import { databaseParameterName } from "../data/database-stack";
+import { supportContactParameterName } from "./support-parameters";
 
 export interface ApiStackProps extends StackProps {
   readonly config: TempoEnvironmentConfig;
@@ -148,6 +149,9 @@ export class ApiStack extends Stack {
         HEALTH_DATA_KEY_PARAMETER_PREFIX: healthDataKeyPrefix(config),
         HEALTH_DATA_KEY_CURRENT_VERSION: HEALTH_DATA_KEY_CURRENT_VERSION,
         MEDIA_BUCKET: this.mediaBucket.bucketName,
+        // The console's help contact (board #584, PL-4): a person writes it with one
+        // command (docs/runbooks/kris-pilot-steps.md); missing means no contact shown.
+        SUPPORT_CONTACT_PARAMETER: supportContactParameterName(config),
         ...database.environment
       }
     });
@@ -164,6 +168,11 @@ export class ApiStack extends Stack {
     }).grantRead(
       this.apiFunction.function
     );
+    // The support contact: by name only, like the VAPID key, so the deploy never waits for it to be written.
+    StringParameter.fromStringParameterAttributes(this, "SupportContactParameter", {
+      parameterName: supportContactParameterName(config),
+      forceDynamicReference: true
+    }).grantRead(this.apiFunction.function);
     // The health data key: GetParameter on its exact versions only. The aws/ssm
     // key policy lets the account's principals decrypt through SSM, so no kms:*
     // statement is added (ADR-0026).
