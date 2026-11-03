@@ -18,9 +18,11 @@ Each of these cost time once.
 - **One Claude session per folder.** Two sessions in one checkout switch branches under each other. Use
   `git worktree add ../Tempo-<topic> -b <branch> origin/main` and remove the worktree after the merge.
 - **SSO tokens expire** after a few hours; `aws sso login --profile tempo-mgmt` again, then re-export for CDK.
-- **`packages.lock.json` churn:** the committed lock files carry a `"net10.0/linux-arm64": {}` section from the
-  Lambda's `--runtime linux-arm64` build, and a plain local `dotnet restore` deletes it. Don't commit that change:
-  `git restore -- 'backend/*/packages.lock.json'`.
+- **`packages.lock.json` is locked in CI** (#563, 2026-11-03): with `CI=true` the solution restore fails (NU1004) when a
+  lock file no longer matches, so a package change commits its lock files. `Tempo.Api` pins
+  `PublishRuntimeIdentifier=linux-arm64`, so its lock holds a `net10.0/linux-arm64` section on every machine (the Web
+  SDK used to add the restoring machine's own runtime). The Lambda publish (`-r linux-arm64`) restores unlocked.
+  Refresh the locks after a package change with a plain `dotnet restore` and commit them.
 - **`dotnet format --verify-no-changes` on Windows** (a CI gate since Q3): with `core.autocrlf=true` the checkout is
   CRLF while `.editorconfig` says `end_of_line = lf`, so it reports thousands of `ENDOFLINE` errors that CI never
   sees. Run it on LF sources in the sdk:10.0 container: copy the tree to `/src` inside the container, strip `\r`
