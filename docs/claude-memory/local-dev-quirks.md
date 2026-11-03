@@ -19,10 +19,12 @@ Each of these cost time once.
   `git worktree add ../Tempo-<topic> -b <branch> origin/main` and remove the worktree after the merge.
 - **SSO tokens expire** after a few hours; `aws sso login --profile tempo-mgmt` again, then re-export for CDK.
 - **`packages.lock.json` is locked in CI** (#563, 2026-11-03): with `CI=true` the solution restore fails (NU1004) when a
-  lock file no longer matches, so a package change commits its lock files. `Tempo.Api` pins
-  `PublishRuntimeIdentifier=linux-arm64`, so its lock holds a `net10.0/linux-arm64` section on every machine (the Web
-  SDK used to add the restoring machine's own runtime). The Lambda publish (`-r linux-arm64`) restores unlocked.
-  Refresh the locks after a package change with a plain `dotnet restore` and commit them.
+  lock file no longer matches, so a package change commits its lock files. Every backend project restores for
+  `linux-arm64` too (`RuntimeIdentifiers` in `backend/Directory.Build.props`; `Tempo.Api` also pins
+  `PublishRuntimeIdentifier`, or the Web SDK adds the restoring machine's own runtime), so each backend lock holds a
+  `net10.0/linux-arm64` section on every machine and the Lambda publish (`-r linux-arm64`) restores locked as well
+  without touching the locks. Test projects stay RID-less. Refresh the locks after a package change with a plain
+  `dotnet restore` and commit them.
 - **`dotnet format --verify-no-changes` on Windows** (a CI gate since Q3): with `core.autocrlf=true` the checkout is
   CRLF while `.editorconfig` says `end_of_line = lf`, so it reports thousands of `ENDOFLINE` errors that CI never
   sees. Run it on LF sources in the sdk:10.0 container: copy the tree to `/src` inside the container, strip `\r`
