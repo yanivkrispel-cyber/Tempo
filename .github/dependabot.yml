@@ -28,6 +28,11 @@ updates:
     groups:
       nuget-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Version 8 moved FluentAssertions to a paid commercial licence (#581), and
+      # N-4 is $0. Stay on 7.x; replacing the library is a separate decision.
+      - dependency-name: "FluentAssertions"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: chore(deps)
 
