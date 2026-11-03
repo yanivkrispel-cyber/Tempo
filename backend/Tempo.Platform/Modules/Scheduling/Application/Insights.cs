@@ -181,6 +181,11 @@ public sealed class InsightService(IDataSourceProvider dataSources, TimeProvider
                 var amount = (long)(await sum.ExecuteScalarAsync(cancellationToken))!;
                 cards.Add(new SuggestionView("passes_ending", ending.Items.Count, [.. ending.Items.Take(3).Select(e => new PersonRefView(e.PersonId, e.DisplayName))], amount));
             }
+
+            if (await JoinedWithoutPassAsync(tenant, cancellationToken) is { } joined)
+            {
+                cards.Add(joined);
+            }
         }
 
         await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
@@ -194,8 +199,41 @@ public sealed class InsightService(IDataSourceProvider dataSources, TimeProvider
             cards.AddRange(await StorySuggestionsAsync(unitOfWork, tenant.OrganizationId, cancellationToken));
         }
 
-        // Money at stake first: renewals, then the people who stopped coming, then a class that could open, then stories.
-        return [.. cards.OrderBy(c => c.Kind switch { "passes_ending" => 0, "members_at_risk" => 1, "waitlist_pressure" => 2, _ => 3 })];
+        // Money at stake first: renewals, then new members who can't book yet, then the people who stopped coming, then a
+        // class that could open, then stories.
+        return [.. cards.OrderBy(c => c.Kind switch { "passes_ending" => 0, "joined_without_pass" => 1, "members_at_risk" => 2, "waitlist_pressure" => 3, _ => 4 })];
+    }
+
+    /// <summary>
+    /// P3 F4 (board #584): members who joined in the last 30 days and hold no active pass. They can't book until the desk
+    /// grants one, and nothing else tells the owner they are waiting. Newest first.
+    /// </summary>
+    private async Task<SuggestionView?> JoinedWithoutPassAsync(TenantContext tenant, CancellationToken cancellationToken)
+    {
+        await using var unitOfWork = await BeginAsync(tenant, cancellationToken);
+        var today = Today(await TimetableService.StudioZoneAsync(unitOfWork, tenant.OrganizationId, cancellationToken));
+        await using var command = unitOfWork.Command(
+            """
+            SELECT p.id, p.display_name
+            FROM people.people p
+            JOIN organizations.memberships m ON m.organization_id = p.organization_id AND m.id = p.membership_id
+            WHERE p.organization_id = $1 AND p.status = 'active' AND m.status = 'active' AND m.role = 'client'
+              AND m.created_at >= now() - interval '30 days'
+              AND NOT EXISTS (
+                  SELECT 1 FROM scheduling.passes ps
+                  WHERE ps.organization_id = p.organization_id AND ps.person_id = p.id AND ps.status = 'active' AND ps.ends_on >= $2)
+            ORDER BY m.created_at DESC
+            """,
+            tenant.OrganizationId,
+            today);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var people = new List<PersonRefView>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            people.Add(new PersonRefView(reader.GetGuid(0), reader.GetString(1)));
+        }
+
+        return people.Count == 0 ? null : new SuggestionView("joined_without_pass", people.Count, [.. people.Take(3)]);
     }
 
     /// <summary>A place frees up this close to the class (after the waitlist closed) and is still worth a story.</summary>
