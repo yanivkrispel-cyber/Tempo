@@ -99,5 +99,11 @@ if (!tokenResponse.ok) throw new Error(`The token exchange failed (${tokenRespon
 const { access_token: token } = await tokenResponse.json();
 console.log(`Signed in as an operator (token length ${token.length}). Running: ${command.join(" ")}\n`);
 
-const child = spawn(command[0], command.slice(1), { stdio: "inherit", env: { ...process.env, TEMPO_OPERATOR_TOKEN: token }, shell: process.platform === "win32" });
+// No shell: the arguments reach the command as given. On Windows, spawn finds an .exe such as node on the PATH by
+// itself; a .cmd script needs its full path.
+const child = spawn(command[0], command.slice(1), { stdio: "inherit", env: { ...process.env, TEMPO_OPERATOR_TOKEN: token } });
+child.on("error", (error) => {
+  console.error(`Could not start ${command[0]}: ${error.message}`);
+  process.exit(1);
+});
 child.on("exit", (exitCode) => process.exit(exitCode ?? 1));
