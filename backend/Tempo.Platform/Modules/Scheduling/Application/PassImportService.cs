@@ -51,7 +51,8 @@ public sealed class PassImportService(IDataSourceProvider dataSources, TimeProvi
 
     private static readonly string[] DateFormats = ["d/M/yyyy", "d.M.yyyy", "yyyy-MM-dd"];
 
-    private sealed record Person(Guid Id, string Status);
+    /// <summary>The person a contact points to; Shared when the same contact sits on two or more active people.</summary>
+    private sealed record Person(Guid Id, string Status, bool Shared);
 
     private sealed record Product(Guid Id, string Kind, int? Entries);
 
@@ -138,7 +139,7 @@ public sealed class PassImportService(IDataSourceProvider dataSources, TimeProvi
                 continue;
             }
 
-            if (byEmail is not null && byPhone is not null && byEmail.Id != byPhone.Id)
+            if (byEmail?.Shared == true || byPhone?.Shared == true || (byEmail is not null && byPhone is not null && byEmail.Id != byPhone.Id))
             {
                 outcomes[i] = Invalid(i, "person", "person.ambiguous");
                 continue;
@@ -346,7 +347,8 @@ public sealed class PassImportService(IDataSourceProvider dataSources, TimeProvi
 
         await using var command = unitOfWork.Command(
             """
-            SELECT DISTINCT ON (cp.type, cp.value) cp.type, cp.value, p.id, p.status
+            SELECT DISTINCT ON (cp.type, cp.value) cp.type, cp.value, p.id, p.status,
+                   count(*) FILTER (WHERE p.status = 'active') OVER (PARTITION BY cp.type, cp.value) > 1
             FROM unnest($2::text[], $3::text[]) AS v(type, value)
             JOIN people.contact_points cp ON cp.organization_id = $1 AND cp.type = v.type AND cp.value = v.value
             JOIN people.people p ON p.organization_id = cp.organization_id AND p.id = cp.person_id
@@ -358,7 +360,7 @@ public sealed class PassImportService(IDataSourceProvider dataSources, TimeProvi
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            found[reader.GetString(0) + ":" + reader.GetString(1)] = new Person(reader.GetGuid(2), reader.GetString(3));
+            found[reader.GetString(0) + ":" + reader.GetString(1)] = new Person(reader.GetGuid(2), reader.GetString(3), reader.GetBoolean(4));
         }
 
         return found;

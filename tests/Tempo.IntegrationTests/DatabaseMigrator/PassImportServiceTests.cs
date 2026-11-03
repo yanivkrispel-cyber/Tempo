@@ -141,6 +141,18 @@ public sealed class PassImportServiceTests(PostgresFixture postgres) : IClassFix
         (await db.AsMasterAsync("SELECT count(*) FROM scheduling.passes")).Should().Be(0L);
     }
 
+    [Fact]
+    public async Task AContactOnTwoActivePeople_IsAmbiguous_NotAGuess()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var studio = await StudioAsync(db, "studio-a");
+        await new PeopleService(db).CreateAsync(studio.Owner, new NewPerson("נועה לוי השנייה", null, null, null, "noa@example.com", null), CancellationToken.None);
+
+        var result = await Import(db).ImportAsync(studio.Owner, dryRun: true, [Row(2, email: "noa@example.com", product: "כרטיסיית 10", left: "6", until: "31/03/2027")], CancellationToken.None);
+
+        result.Rows[0].Should().Match<PassImportRowOutcome>(r => r.Outcome == "invalid" && r.Field == "person" && r.Code == "person.ambiguous");
+    }
+
     [Theory]
     [InlineData(null, null, "כרטיסיית 10", "6", "31/03/2027", null, "contact", "contact.required")]
     [InlineData("not-an-email", null, "כרטיסיית 10", "6", "31/03/2027", null, "email", "email.invalid")]
