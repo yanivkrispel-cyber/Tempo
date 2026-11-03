@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Tempo.Api.Tenancy;
 using Xunit;
@@ -13,7 +15,9 @@ public sealed class CanonicalPathFilterTests
 
     [Theory]
     [InlineData("/api/v1/public/studios/neshima/links/AbC-12_x", true)]
-    [InlineData("/api/v1/public/studios/neshima/links/AbC-12_x/", true)]
+    [InlineData("/api/v1/public/studios/neshima/links/AbC-12_x/", false)]
+    [InlineData("/api/v1/%70ublic/studios/neshima/links/abc", false)]
+    [InlineData("/api/v1/public/studios/ne%73hima/links/abc", true)]
     [InlineData("/api/v1/public/studios/NESHIMA/links/abc", true)]
     [InlineData("/api/v1/PUBLIC/studios/neshima/links/abc", false)]
     [InlineData("/Api/v1/public/studios/neshima/links/abc", false)]
@@ -26,4 +30,24 @@ public sealed class CanonicalPathFilterTests
         (CanonicalPathFilter.IsCanonical(Manifest, "/api/v1/public/studios/x/manifest.webmanifest"),
          CanonicalPathFilter.IsCanonical(Manifest, "/api/v1/public/studios/x/Manifest.webmanifest"))
             .Should().Be((true, false));
+
+    [Fact]
+    public void ThePathAsSent_IsChecked_NotTheDecodedOne()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/v1/public/studios/x/links/abc";
+        context.Features.Get<IHttpRequestFeature>()!.RawTarget = "/api/v1/%70ublic/studios/x/links/abc?utm=1";
+
+        CanonicalPathFilter.SentPath(context).Should().Be("/api/v1/%70ublic/studios/x/links/abc");
+    }
+
+    [Fact]
+    public void WithoutARawTarget_TheDecodedPathIsChecked()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/v1/public/studios/x/links/abc";
+        context.Features.Get<IHttpRequestFeature>()!.RawTarget = "";
+
+        CanonicalPathFilter.SentPath(context).Should().Be("/api/v1/public/studios/x/links/abc");
+    }
 }
