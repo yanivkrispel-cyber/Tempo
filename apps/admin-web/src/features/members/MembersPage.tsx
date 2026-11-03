@@ -18,6 +18,7 @@ import {
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useStudio } from "../console/studio";
 import { OutgoingTransferBanner, TransferDialog } from "../ownership/Ownership";
+import { SetupChecklist } from "../setup/SetupChecklist";
 import { InstructorProfileDialog } from "./InstructorProfileDialog";
 import { RemoveDialog, RoleDialog, nameOfMember, useUpdateMember } from "./MemberDialogs";
 import { assignableRoles, canOfferOwnership, canReactivate, canRemove, canSuspend } from "./rules";
@@ -121,6 +122,8 @@ export function MembersPage() {
       </header>
 
       <OutgoingTransferBanner />
+
+      <SetupChecklist />
 
       {members.isError ? (
         <Banner tone="danger" icon="info">
