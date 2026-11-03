@@ -3218,7 +3218,6 @@ paths:
     post:
       tags: [Passes]
       operationId: importPasses
-      x-tempo-planned: true
       summary: "Check or import open pass balances from a file the console has read (`people.import` and `passes.manage`)"
       description: |
         docs/40 (board #584, PL-2). Run after the people import: each row names a person already in the studio (by
@@ -6731,7 +6730,7 @@ components:
         source:
           type: string
           enum: [desk, import]
-          description: "`import` when the pass came from `importPasses` (docs/40). Always sent once built; optional here until then."
+          description: "`import` when the pass came from `importPasses` (docs/40); `desk` for every other pass. Always sent; optional here so sample data without it still types."
         createdAt: { type: string, format: date-time }
         version: { type: string }
         freezes:

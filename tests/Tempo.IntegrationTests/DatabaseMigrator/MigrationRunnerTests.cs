@@ -30,7 +30,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (endpoint, result) = await MigrateFreshDatabaseAsync();
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(39);
+        result.AppliedScripts.Should().HaveCount(40);
         result.AppliedScripts[0].Should().EndWith("0001_baseline.sql");
         result.AppliedScripts[1].Should().EndWith("0002_identity_organizations_audit.sql");
         result.AppliedScripts[2].Should().EndWith("0003_join_attempts.sql");
@@ -70,6 +70,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         result.AppliedScripts[36].Should().EndWith("0037_rate_counters.sql");
         result.AppliedScripts[37].Should().EndWith("0038_booking_cancelled_at.sql");
         result.AppliedScripts[38].Should().EndWith("0039_attended_bookings_index.sql");
+        result.AppliedScripts[39].Should().EndWith("0041_pass_source.sql");
 
         await using var connection = postgres.ConnectAsMaster(endpoint.DatabaseName);
         await connection.OpenAsync();
@@ -77,7 +78,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         (await ScalarAsync<string>(connection, "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'platform'"))
             .Should().Be("tempo_migrator", "the migrator owns the schema that holds its journal");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM platform.schema_versions"))
-            .Should().Be(39);
+            .Should().Be(40);
         (await ScalarAsync<string>(connection, "SELECT to_regclass('public.schemaversions')::text"))
             .Should().BeNull("DbUp's default journal in public is not used");
         (await ScalarAsync<string>(connection, "SELECT pg_get_indexdef('scheduling.ix_bookings_person_attended'::regclass)"))
@@ -106,7 +107,8 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
         var (app, platform, migrator) = (Role("tempo_app"), Role("tempo_platform"), Role("tempo_migrator"));
         var upTo0038 = await MigrationRunner.RunAsync(
             endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None,
-            script => !script.EndsWith("0039_attended_bookings_index.sql", StringComparison.Ordinal));
+            // Every script before 0039; the later ones run with it below.
+            script => string.CompareOrdinal(script[(script.IndexOf("Scripts.", StringComparison.Ordinal) + 8)..], "0039") < 0);
         upTo0038.AppliedScripts.Should().HaveCount(38);
 
         await using var connection = postgres.ConnectAsMaster(database);
@@ -122,7 +124,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, postgres.Master, app, platform, migrator, new NullUpgradeLog(), CancellationToken.None);
 
         rest.Successful.Should().BeTrue();
-        rest.AppliedScripts.Should().ContainSingle().Which.Should().EndWith("0039_attended_bookings_index.sql");
+        rest.AppliedScripts[0].Should().EndWith("0039_attended_bookings_index.sql");
         (await ScalarAsync<long>(connection, "SELECT count(*) FROM pg_indexes WHERE indexname = 'ix_bookings_person_attended'"))
             .Should().Be(1);
     }
@@ -141,7 +143,7 @@ public sealed class MigrationRunnerTests(PostgresFixture postgres) : IClassFixtu
             endpoint, master, Role($"tempo_app_{suffix}"), Role($"tempo_platform_{suffix}"), Role($"tempo_migrator_{suffix}"), new NullUpgradeLog(), CancellationToken.None);
 
         result.Successful.Should().BeTrue();
-        result.AppliedScripts.Should().HaveCount(39);
+        result.AppliedScripts.Should().HaveCount(40);
 
         await using var connection = postgres.ConnectAsMaster(database);
         await connection.OpenAsync();
