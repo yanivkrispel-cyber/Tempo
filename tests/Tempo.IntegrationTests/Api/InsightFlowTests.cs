@@ -105,6 +105,13 @@ public sealed class InsightFlowTests(PostgresFixture postgres) : IClassFixture<P
         weeks.Should().HaveCount(12);
         weeks.Select(w => w.GetProperty("weekStart").GetDateTime()).Should().BeInAscendingOrder();
         weeks.Should().OnlyContain(w => w.GetProperty("weekStart").GetDateTime().DayOfWeek == DayOfWeek.Sunday);
+
+        // 7. Once the desk grants Shira a card, she no longer waits.
+        var shira = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/people?query=shira@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var product = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/pass-products", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{shira}/passes", Customer("owner"), new { productId = product }, HttpStatusCode.Created);
+        cards = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/insights/suggestions", Customer("owner"))).GetProperty("items").EnumerateArray().ToList();
+        cards.Select(c => c.GetProperty("kind").GetString()).Should().NotContain("joined_without_pass");
     }
 
     /// <summary>A studio with instructor Dana, the members with a 10-entry card each, a room and a class in three days.</summary>

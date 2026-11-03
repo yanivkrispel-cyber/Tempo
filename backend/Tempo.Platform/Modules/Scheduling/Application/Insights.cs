@@ -205,8 +205,9 @@ public sealed class InsightService(IDataSourceProvider dataSources, TimeProvider
     }
 
     /// <summary>
-    /// P3 F4 (board #584): members who joined in the last 30 days and hold no active pass. They can't book until the desk
-    /// grants one, and nothing else tells the owner they are waiting. Newest first.
+    /// P3 F4 (board #584): members who joined in the last 30 days and hold no pass they can book with: none active, or only
+    /// a used-up card. They can't book until the desk grants one, and nothing else tells the owner they are waiting.
+    /// A pass that starts later counts, because the desk has already acted. Newest first.
     /// </summary>
     private async Task<SuggestionView?> JoinedWithoutPassAsync(TenantContext tenant, CancellationToken cancellationToken)
     {
@@ -221,7 +222,8 @@ public sealed class InsightService(IDataSourceProvider dataSources, TimeProvider
               AND m.created_at >= now() - interval '30 days'
               AND NOT EXISTS (
                   SELECT 1 FROM scheduling.passes ps
-                  WHERE ps.organization_id = p.organization_id AND ps.person_id = p.id AND ps.status = 'active' AND ps.ends_on >= $2)
+                  WHERE ps.organization_id = p.organization_id AND ps.person_id = p.id AND ps.status = 'active' AND ps.ends_on >= $2
+                    AND (ps.entries IS NULL OR ps.entries_used < ps.entries))
             ORDER BY m.created_at DESC
             """,
             tenant.OrganizationId,

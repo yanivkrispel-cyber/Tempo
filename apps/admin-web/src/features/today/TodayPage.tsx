@@ -684,6 +684,15 @@ function suggestionText(
         body: suggestion.amountAgorot ? `חידוש שווה ${priceLabel(suggestion.amountAgorot)}.` : null,
         action: one ? "לכרטיס המתאמן" : "לרשימת האנשים",
       };
+    case "joined_without_pass":
+      return {
+        icon: "credit-card",
+        tile: "var(--brand-soft)",
+        ink: "var(--brand-ink)",
+        title: one ? "מתאמן.ת חדש.ה מחכה לכרטיסייה" : `${suggestion.count} מתאמנים חדשים מחכים לכרטיסייה`,
+        body: "בלי כרטיסייה או מנוי אי אפשר להירשם לשיעור.",
+        action: one ? "לכרטיס המתאמן" : "לרשימת האנשים",
+      };
     case "members_at_risk":
       return {
         icon: "clock",
