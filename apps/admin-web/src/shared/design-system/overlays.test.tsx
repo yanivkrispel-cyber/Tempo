@@ -148,6 +148,16 @@ describe("Toast", () => {
     expect(screen.getByRole("region")).not.toHaveTextContent("נרשמת לפילאטיס");
   });
 
+  it("keeps only the three newest, so toasts from earlier screens don't pile up (P3 F6)", async () => {
+    render(
+      <ToastProvider>
+        <Book withUndo />
+      </ToastProvider>,
+    );
+    for (let i = 0; i < 5; i++) await userEvent.click(screen.getByRole("button", { name: "הרשמה" }));
+    expect(screen.getByRole("region").querySelectorAll(".tp-toast")).toHaveLength(3);
+  });
+
   it("explains a missing provider", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => render(<Book />)).toThrow("useToast needs a <ToastProvider> above it.");
