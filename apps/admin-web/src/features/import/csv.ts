@@ -21,6 +21,9 @@ export const MAX_ROWS = 1000;
 
 export type ImportField = "displayName" | "givenName" | "familyName" | "phone" | "email" | "birthDate";
 
+/** The pass import's columns (docs/40 section 3). */
+export type PassImportField = "email" | "phone" | "product" | "entriesLeft" | "validFrom" | "validUntil";
+
 /** The fields in the order the screen lists them. */
 export const IMPORT_FIELDS: readonly ImportField[] = [
   "displayName",
@@ -29,6 +32,15 @@ export const IMPORT_FIELDS: readonly ImportField[] = [
   "phone",
   "email",
   "birthDate",
+];
+
+export const PASS_IMPORT_FIELDS: readonly PassImportField[] = [
+  "email",
+  "phone",
+  "product",
+  "entriesLeft",
+  "validFrom",
+  "validUntil",
 ];
 
 export type Separator = "," | ";" | "\t";
@@ -42,6 +54,7 @@ export interface CsvRow {
 
 /** Which column (by index) holds each field. A field with no column is left out. */
 export type Mapping = Partial<Record<ImportField, number>>;
+export type PassMapping = Partial<Record<PassImportField, number>>;
 
 export interface CsvFile {
   encoding: Encoding;
@@ -168,7 +181,7 @@ function guessSeparator(text: string): Separator {
         break;
       }
     }
-    const known = first.filter((name) => fieldByKey.has(headerKey(name))).length;
+    const known = first.filter((name) => fieldByKey.has(headerKey(name)) || passFieldByKey.has(headerKey(name))).length;
     const score = known * 1000 + first.length;
     if (score > bestScore) {
       best = candidate;
@@ -211,6 +224,57 @@ const HEADER_NAMES: Record<ImportField, string[]> = {
   birthDate: ["תאריך לידה", "יום הולדת", "birth date", "date of birth", "birthday", "dob"],
 };
 
+/** The pass import's own columns; its phone and email columns are named as in the people import. */
+const PASS_HEADER_NAMES: Record<Exclude<PassImportField, "email" | "phone">, string[]> = {
+  product: [
+    "מוצר",
+    "שם מוצר",
+    "כרטיסייה",
+    "כרטיסיה",
+    "מנוי",
+    "סוג מנוי",
+    "סוג כרטיסייה",
+    "product",
+    "product name",
+    "pass",
+    "membership",
+  ],
+  entriesLeft: [
+    "כניסות",
+    "כניסות שנותרו",
+    "נותרו",
+    "יתרה",
+    "יתרת כניסות",
+    "entries",
+    "entries left",
+    "remaining",
+    "remaining entries",
+  ],
+  validFrom: [
+    "בתוקף מ",
+    "בתוקף מתאריך",
+    "מתאריך",
+    "תחילת תוקף",
+    "תאריך התחלה",
+    "valid from",
+    "start date",
+    "starts on",
+  ],
+  validUntil: [
+    "בתוקף עד",
+    "תוקף",
+    "תוקף עד",
+    "עד תאריך",
+    "תאריך סיום",
+    "תאריך תפוגה",
+    "valid until",
+    "end date",
+    "ends on",
+    "expires",
+    "expiry",
+  ],
+};
+
 /** A column name without case, spaces or punctuation: `דוא״ל` and `דוא"ל` match, as do `E-mail` and `email`. */
 export function headerKey(name: string): string {
   return name
@@ -222,6 +286,14 @@ export function headerKey(name: string): string {
 const fieldByKey = new Map<string, ImportField>(
   IMPORT_FIELDS.flatMap((field) => HEADER_NAMES[field].map((name) => [headerKey(name), field] as const)),
 );
+
+const passFieldByKey = new Map<string, PassImportField>([
+  ...HEADER_NAMES.email.map((name) => [headerKey(name), "email"] as const),
+  ...HEADER_NAMES.phone.map((name) => [headerKey(name), "phone"] as const),
+  ...(Object.keys(PASS_HEADER_NAMES) as (keyof typeof PASS_HEADER_NAMES)[]).flatMap((field) =>
+    PASS_HEADER_NAMES[field].map((name) => [headerKey(name), field] as const),
+  ),
+]);
 
 /** The proposed column for each field the header names; the first column wins, and a column serves one field. */
 export function proposeMapping(header: string[]): Mapping {
@@ -238,6 +310,29 @@ export function toImportRows(rows: CsvRow[], mapping: Mapping): Schemas["ImportR
   return rows.map(({ line, cells }) => {
     const row: Schemas["ImportRow"] = { line };
     for (const field of IMPORT_FIELDS) {
+      const column = mapping[field];
+      const value = column === undefined ? "" : (cells[column] ?? "").trim();
+      if (value !== "") row[field] = value;
+    }
+    return row;
+  });
+}
+
+/** `proposeMapping` for the pass import. */
+export function proposePassMapping(header: string[]): PassMapping {
+  const mapping: PassMapping = {};
+  header.forEach((name, column) => {
+    const field = passFieldByKey.get(headerKey(name));
+    if (field && mapping[field] === undefined) mapping[field] = column;
+  });
+  return mapping;
+}
+
+/** The rows as the pass import takes them (docs/40 section 3): each mapped cell trimmed, an empty one left out. */
+export function toPassImportRows(rows: CsvRow[], mapping: PassMapping): Schemas["ImportPassRow"][] {
+  return rows.map(({ line, cells }) => {
+    const row: Schemas["ImportPassRow"] = { line };
+    for (const field of PASS_IMPORT_FIELDS) {
       const column = mapping[field];
       const value = column === undefined ? "" : (cells[column] ?? "").trim();
       if (value !== "") row[field] = value;
