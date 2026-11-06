@@ -24,56 +24,89 @@ a suspended studio. The last two close P2 F6 and F4 once Kris registers as opera
 
 ## The studio's path
 
-| # | Step | State | Where |
-|---|---|---|---|
-| 1 | The operator account (the Tempo team) | **blocked on Kris**: register as the first operator (MFA) | `tools/scripts/register-operator.ps1` |
-| 2 | The owner signs up and creates the studio | done on dev | Phase 1, #30 to #43 |
-| 3 | The free `pilot` plan, entitlements, restricted mode | done on dev | #105, #174 |
-| 4 | Two-step sign-in for owners and staff | done on dev; `TEMPO_REQUIRE_OWNER_MFA` stays off until owners enroll | #127, #150 |
-| 5 | Staff invited, roles and permissions | done on dev | Phase 2, #61 to #88 |
-| 6 | Rooms, class types, weekly classes, the eight-week horizon; ending a class created by mistake | done on dev | #95, #100, #148; #250 |
-| 7 | Pass products granted at the desk (no online payment) | done on dev | #95, #158 |
-| 8 | Members: a record each, invited or by the join link | done on dev | #88 |
-| 9 | The health declaration: sign, status, answers (`health.view`), medical approval, the booking gate | done on dev; **the wording is a draft until P-2** | H2 #239, screens X2 #237 and X3 #238 |
-| 10 | Booking, waitlist with promotion, moves, freezes, add to calendar | done on dev | #95, #154, #157, #158 |
-| 11 | Notifications: inbox, web push, reminders, templates, announcements | done on dev; email waits for the domain (D-1) | docs/30 steps 1 to 4, 6, 7 (#176, #208) |
-| 12 | Attendance and the member's progress (visits, goal, streak) | done on dev | #95; P1 #235, X1 #236 |
-| 13 | Export and erase, including the health declaration; the export still goes out, answers withheld, when the health key can't be read | done on dev | #61 to #90; #239; A3 #264 |
-| 13a | Owner reports: weekly figures, per class type, active and new members; passes ending soon and members at risk (`reports.view`, migration 0021) | done on dev, API and console page | R2 #259; Y0 #256, Y1 #257 |
-| 13b | A person deletes their own login; each studio keeps the person record and its history (migration 0022) | done on dev, API (live check 5/5) and both apps; Playwright `sync6` 6/6 | A1 #262, #267; Y2 #258; Y3 #261 |
-| 13c | The operator removes a suspended studio and every row it owns (migration 0023) | built; **needs the operator** (Kris's step 1) | A2 #263 |
-| 13d | The owner imports the member list from a CSV file: a check first, then the import; people already in the studio are left alone; an optional tag for the batch (migration 0024) | done on dev, API; the console page is K2's Z1 | I1 #323, I2 #325, I3 #329 |
-| 13e | Staff notes and the studio's tags on a person; the people list filters by tag; erase, merge and export carry them (migration 0025) | done on dev, API; the console screens are K2's Z2 | N1 #327 |
-| 13f | Every console on a phone, a tablet and a computer, and the coach's "today" screen (D15) | done on dev; merged without a review at 18:10, then reviewed after the merge | #318, #320, #328 |
-| 14 | Consent texts shown to members | **blocked on Kris**: P-4 | docs/27 section 15 |
-| 15 | The apps on the internet (Cloudflare Pages, ADR-0027; AWS refused CloudFront on 2026-10-17) | done on dev: `deploy-web` publishes and smoke-tests both apps on every deploy since the secrets were set | #310 |
+| #   | Step                                                                                                                                                                           | State                                                                                                    | Where                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| 1   | The operator account (the Tempo team)                                                                                                                                          | **blocked on Kris**: register as the first operator (MFA)                                                | `tools/scripts/register-operator.ps1`   |
+| 2   | The owner signs up and creates the studio                                                                                                                                      | done on dev                                                                                              | Phase 1, #30 to #43                     |
+| 3   | The free `pilot` plan, entitlements, restricted mode                                                                                                                           | done on dev                                                                                              | #105, #174                              |
+| 4   | Two-step sign-in for owners and staff                                                                                                                                          | done on dev; `TEMPO_REQUIRE_OWNER_MFA` stays off until owners enroll                                     | #127, #150                              |
+| 5   | Staff invited, roles and permissions                                                                                                                                           | done on dev                                                                                              | Phase 2, #61 to #88                     |
+| 6   | Rooms, class types, weekly classes, the eight-week horizon; ending a class created by mistake                                                                                  | done on dev                                                                                              | #95, #100, #148; #250                   |
+| 7   | Pass products granted at the desk (no online payment)                                                                                                                          | done on dev                                                                                              | #95, #158                               |
+| 8   | Members: a record each, invited or by the join link                                                                                                                            | done on dev                                                                                              | #88                                     |
+| 9   | The health declaration: sign, status, answers (`health.view`), medical approval, the booking gate                                                                              | done on dev; **the wording is a draft until P-2**                                                        | H2 #239, screens X2 #237 and X3 #238    |
+| 10  | Booking, waitlist with promotion, moves, freezes, add to calendar                                                                                                              | done on dev                                                                                              | #95, #154, #157, #158                   |
+| 11  | Notifications: inbox, web push, reminders, templates, announcements                                                                                                            | done on dev; email waits for the domain (D-1)                                                            | docs/30 steps 1 to 4, 6, 7 (#176, #208) |
+| 12  | Attendance and the member's progress (visits, goal, streak)                                                                                                                    | done on dev                                                                                              | #95; P1 #235, X1 #236                   |
+| 13  | Export and erase, including the health declaration; the export still goes out, answers withheld, when the health key can't be read                                             | done on dev                                                                                              | #61 to #90; #239; A3 #264               |
+| 13a | Owner reports: weekly figures, per class type, active and new members; passes ending soon and members at risk (`reports.view`, migration 0021)                                 | done on dev, API and console page                                                                        | R2 #259; Y0 #256, Y1 #257               |
+| 13b | A person deletes their own login; each studio keeps the person record and its history (migration 0022)                                                                         | done on dev, API (live check 5/5) and both apps; Playwright `sync6` 6/6                                  | A1 #262, #267; Y2 #258; Y3 #261         |
+| 13c | The operator removes a suspended studio and every row it owns (migration 0023)                                                                                                 | built; **needs the operator** (Kris's step 1)                                                            | A2 #263                                 |
+| 13d | The owner imports the member list from a CSV file: a check first, then the import; people already in the studio are left alone; an optional tag for the batch (migration 0024) | done on dev, API; the console page is K2's Z1                                                            | I1 #323, I2 #325, I3 #329               |
+| 13e | Staff notes and the studio's tags on a person; the people list filters by tag; erase, merge and export carry them (migration 0025)                                             | done on dev, API; the console screens are K2's Z2                                                        | N1 #327                                 |
+| 13f | Every console on a phone, a tablet and a computer, and the coach's "today" screen (D15)                                                                                        | done on dev; merged without a review at 18:10, then reviewed after the merge                             | #318, #320, #328                        |
+| 14  | Consent texts shown to members                                                                                                                                                 | **blocked on Kris**: P-4                                                                                 | docs/27 section 15                      |
+| 15  | The apps on the internet (Cloudflare Pages, ADR-0027; AWS refused CloudFront on 2026-10-17)                                                                                    | done on dev: `deploy-web` publishes and smoke-tests both apps on every deploy since the secrets were set | #310                                    |
 
 ## Found in the pilot dry run (P2)
 
 K2 ran a new studio end to end in the browser at phone width on 2026-10-17 (#232, P2). The run used two fresh
 Cognito users (`e2e-p2-owner-…`, `e2e-p2-member-…@example.com`), which were deleted afterwards. It went through:
+
 1. the owner opens a studio;
 2. room, class type, punch card, a weekly class;
 3. the member is recorded, invited and granted a card, then joins;
 4. the member signs the declaration and books;
 5. staff send a message and it reaches the inbox;
 6. staff mark attendance, and the member's home shows one visit and a one-week streak.
-All seven steps were green on the last run.
+   All seven steps were green on the last run.
 
-| # | Finding | State |
-|---|---|---|
-| F1 | A new owner's first screen failed axe contrast (empty-state text 4.3:1) | fixed in #249 |
-| F2 | A tall dialog (the seven answers) pushed its buttons off a phone | fixed in #247 |
-| F3 | The fixed tab bar hid a focused field near the bottom of a form (WCAG 2.4.11) | fixed in #247 |
-| F4 | **A studio could not be removed.** Seven e2e studios are left on dev: six `e2e-p2-…` from the dry run and one `e2e-sync6-…` from Y3 (each sync6 run adds one). | path in place: A2 #263 removes a suspended studio, and `tools/scripts/e2e-cleanup.mjs --apply` (A4 #266) suspends and removes them; **blocked on Kris**: the operator token |
-| F5 | A weekly class created by mistake could only end on its first day | fixed in #250 (an unbooked class ends before its first day; migration 0019) |
-| F6 | No API removed an account | path in place: `DELETE /me` (A1 #262) for any login that can still sign in. **Kris**: 14 e2e account rows whose Cognito users are gone (listed by `e2e-cleanup.mjs`; each sync6 run adds its owner's) need an operator route or a one-off SQL on dev |
-| F7 | Push not checked: headless Chromium has no push service (the inbox item arrived) | **Kris**: one manual check on a phone with client-web installed |
-| F8 | Once in five runs, a console page stayed on its skeleton for over 15 s (cold start, or the concurrency cap of 10) | noted; E-4 keeps the cap |
+| #   | Finding                                                                                                                                                        | State                                                                                                                                                                                                                                                |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | A new owner's first screen failed axe contrast (empty-state text 4.3:1)                                                                                        | fixed in #249                                                                                                                                                                                                                                        |
+| F2  | A tall dialog (the seven answers) pushed its buttons off a phone                                                                                               | fixed in #247                                                                                                                                                                                                                                        |
+| F3  | The fixed tab bar hid a focused field near the bottom of a form (WCAG 2.4.11)                                                                                  | fixed in #247                                                                                                                                                                                                                                        |
+| F4  | **A studio could not be removed.** Seven e2e studios are left on dev: six `e2e-p2-…` from the dry run and one `e2e-sync6-…` from Y3 (each sync6 run adds one). | path in place: A2 #263 removes a suspended studio, and `tools/scripts/e2e-cleanup.mjs --apply` (A4 #266) suspends and removes them; **blocked on Kris**: the operator token                                                                          |
+| F5  | A weekly class created by mistake could only end on its first day                                                                                              | fixed in #250 (an unbooked class ends before its first day; migration 0019)                                                                                                                                                                          |
+| F6  | No API removed an account                                                                                                                                      | path in place: `DELETE /me` (A1 #262) for any login that can still sign in. **Kris**: 14 e2e account rows whose Cognito users are gone (listed by `e2e-cleanup.mjs`; each sync6 run adds its owner's) need an operator route or a one-off SQL on dev |
+| F7  | Push not checked: headless Chromium has no push service (the inbox item arrived)                                                                               | **Kris**: one manual check on a phone with client-web installed                                                                                                                                                                                      |
+| F8  | Once in five runs, a console page stayed on its skeleton for over 15 s (cold start, or the concurrency cap of 10)                                              | noted; E-4 keeps the cap                                                                                                                                                                                                                             |
 
 The H5 live check and the `sync5` Playwright run leave fictional data on dev on purpose. Each `sync5` run leaves the
 smoke user's own declaration, answered "yes" on the generic draft questions, and the next run replaces it. The H5
 member is erased after its run. Neither is real health data.
+
+## Found in the pilot dry run (P3)
+
+Board #584, O5 (decision PL-6), on 2026-11-03. Playwright project `pilot-p3` (`tests/e2e/specs/pilot-p3/`) drives the
+screens only, with one fresh owner (1280px, then 390px) and one fresh member (Pixel 7), both `e2e-p3-…@example.com`,
+against dev. The owner signs in, opens the studio, sets the brand, adds a room, a class type, a punch card and a weekly
+class nine minutes ahead, and makes the join link; the member opens the link and joins; the owner gives the pass on the
+person card; the member books; the owner marks them attended. It passed (4 of 4, axe clean on every screen, the owner's
+eight console screens fit 390px). The numbers come from `test-results/pilot-p3/metrics.json`; every `click`, `tap`,
+`check` and `uncheck` the spec performs is counted, typing is not. Minutes are a machine's pace (the dev API answered
+fast), a floor and not a person's time.
+
+| Milestone                    | Minutes | Clicks (owner + member) |
+| ---------------------------- | ------- | ----------------------- |
+| (a) first weekly class saved | 0.2     | 19 + 0                  |
+| (b) first member joined      | 0.4     | 25 (22 + 3)             |
+| (c) first attended booking   | 0.5     | 35 (29 + 6)             |
+
+The run leaves one `e2e-p3-…` studio on dev for `tools/scripts/e2e-cleanup.mjs` (A-4); the Cognito users are deleted.
+
+| #     | Finding                                                                                                                                                                                                                                                                                                                                                                    | Severity | Side                                                              |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
+| P3 F1 | **No guidance after "פתיחת הסטודיו".** The first screen is the members table with the owner alone; nothing says that a first class needs a room, a class type and (for booking) a pass, or where the join link is. The owner has to know seven screens in order (settings, rooms, class types, passes, schedule, invitations, people). A first-steps checklist is the fix. | high     | app (admin-web)                                                   |
+| P3 F2 | **The join link is under "הזמנות", a menu item named for email invitations.** It shows once, with no QR and no share button, and a new link cancels the old one. An owner who wants "the link for my members" is not pointed to it; the public page (Settings) has a link and a QR but is a different thing (docs/37).                                                     | medium   | app (admin-web)                                                   |
+| P3 F3 | **A member who joins by the link has no name.** The person card shows first and last name as "—", the roster and the people list show the email prefix, and the member app greets "בוקר טוב, e2e-p3-member-…". Neither the join page nor the Hosted UI asks for a name.                                                                                                    | medium   | app (client-web) and API (join creates the person from the email) |
+| P3 F4 | **A joined member can't book until the owner finds them in "אנשים" and gives a pass** ("מתן כרטיסייה או מנוי"); nothing tells the owner a person has joined and waits for one. 6 of the 35 clicks.                                                                                                                                                                         | medium   | app (admin-web notice)                                            |
+| P3 F5 | **A new room opens its map dialog at once (D20).** The owner has to take or leave it before anything else works (the scrim blocks the menu): one more click and a screen the owner did not ask for in a first run.                                                                                                                                                         | low      | app (admin-web)                                                   |
+| P3 F6 | **Toasts from earlier screens stack** (three at once on the invitations screen: class type, product, class) and follow the owner to the next screens.                                                                                                                                                                                                                      | low      | app (admin-web)                                                   |
+| P3 F7 | **The booking confirmation toast was not found** by the test (the member's list shows "נרשמת" inline). Not confirmed as a defect: check by hand on a phone that a toast shows.                                                                                                                                                                                             | low      | app (client-web), to confirm                                      |
+| P3 F8 | 19 clicks over seven screens to the first class is a lot for a first session; the join link and the first class are the natural first two steps of a guided setup (see F1). Brand, room map and the pass product are not needed to take the first booking.                                                                                                                 | medium   | app (admin-web)                                                   |
+
+No blocker found: nothing in the path was impossible, and no API error was hit.
 
 ## Open follow-ups (not blocking a pilot)
 
@@ -82,15 +115,15 @@ member is erased after its run. Neither is real health data.
 - #322, #324 and #326 (the design session's Studio Experience plan, docs/33) were opened outside board #321 and
   claimed migrations 0024 and 0025, which the board used; their migrations move to 0026 and up.
 
-| Item | Where |
-|---|---|
-| CloudFront minimum TLS 1.2 with the domain | #241 |
-| `trustPolicy: no-downgrade` for pnpm: the frozen install fails on `semver@6.3.1` and `undici-types@6.20.0` (trust downgrade) | #115 |
-| `minimumReleaseAge` is one day, not Semgrep's seven: seven rejects 9 lock entries from this week | #265 |
-| A removed studio's rows stay in Neon's point-in-time history until it ages out (6 h on the Free plan); the production deletion promise must say so | A2 review, #263 |
-| Until #261, `expectFitsNarrowPhone` could not fail on the Pixel 7 projects (`innerWidth` grows with a page that is too wide), so the next sync2 to sync5 and design-system runs may show sideways scroll that was always there | Y3 #261 |
-| Where `admin-web` lives beside `client-web` on the one distribution | K2's CSP review, #232 |
-| A production copy of the health data key (offline backup, or not) | docs/31 section 15 |
+| Item                                                                                                                                                                                                                           | Where                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| CloudFront minimum TLS 1.2 with the domain                                                                                                                                                                                     | #241                  |
+| `trustPolicy: no-downgrade` for pnpm: the frozen install fails on `semver@6.3.1` and `undici-types@6.20.0` (trust downgrade)                                                                                                   | #115                  |
+| `minimumReleaseAge` is one day, not Semgrep's seven: seven rejects 9 lock entries from this week                                                                                                                               | #265                  |
+| A removed studio's rows stay in Neon's point-in-time history until it ages out (6 h on the Free plan); the production deletion promise must say so                                                                             | A2 review, #263       |
+| Until #261, `expectFitsNarrowPhone` could not fail on the Pixel 7 projects (`innerWidth` grows with a page that is too wide), so the next sync2 to sync5 and design-system runs may show sideways scroll that was always there | Y3 #261               |
+| Where `admin-web` lives beside `client-web` on the one distribution                                                                                                                                                            | K2's CSP review, #232 |
+| A production copy of the health data key (offline backup, or not)                                                                                                                                                              | docs/31 section 15    |
 
 ## Kris's list
 

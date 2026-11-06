@@ -115,21 +115,24 @@ public sealed class AccountDeletionService(IDataSourceProvider dataSources) : IA
 
     private static async Task<(Guid Id, string Email)> FindAsync(UnitOfWork unitOfWork, SignIn signIn, CancellationToken cancellationToken)
     {
-        await using var command = unitOfWork.Command(
-            """
-            SELECT a.id, a.email
-            FROM identity.external_identities e
-            JOIN identity.user_accounts a ON a.id = e.user_account_id
-            WHERE e.issuer = $1 AND e.subject = $2
-            FOR UPDATE OF a
-            """,
-            signIn.Issuer,
-            signIn.Subject);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        return await reader.ReadAsync(cancellationToken)
-            ? (reader.GetGuid(0), reader.GetString(1))
-            : throw new DomainRuleViolationException(ViolationKind.NotFound, "account.not_provisioned", "Start a session first.");
+        // Row-level security hides the account until its id is set (migration 0040), so the sign-in names the
+        // account through the SECURITY DEFINER lookup, and the row is then locked as that account.
+        Guid accountId;
+        await using (var lookup = unitOfWork.Command("SELECT id FROM identity.find_account_by_external_identity($1, $2)", signIn.Issuer, signIn.Subject))
+        {
+            accountId = await lookup.ExecuteScalarAsync(cancellationToken) as Guid?
+                ?? throw NotProvisioned();
+        }
+
+        await AsAccountAsync(unitOfWork, accountId, cancellationToken);
+        await using var command = unitOfWork.Command("SELECT email FROM identity.user_accounts WHERE id = $1 FOR UPDATE", accountId);
+        return await command.ExecuteScalarAsync(cancellationToken) is string email
+            ? (accountId, email)
+            : throw NotProvisioned();
     }
+
+    private static DomainRuleViolationException NotProvisioned() =>
+        new(ViolationKind.NotFound, "account.not_provisioned", "Start a session first.");
 
     /// <summary>The account with no studio, the way account routes run.</summary>
     private static Task AsAccountAsync(UnitOfWork unitOfWork, Guid accountId, CancellationToken cancellationToken) =>

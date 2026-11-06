@@ -26,6 +26,7 @@ public static class RouteGroups
     /// </summary>
     public static RouteGroupBuilder MapPublicStudioGroup(this IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup($"/api/v1/public/studios/{{{PublicStudioRouteFilter.RouteValue}}}")
+            .AddEndpointFilter<CanonicalPathFilter>()
             .AddEndpointFilter<PublicRateLimitFilter>()
             .AddEndpointFilter<PublicStudioRouteFilter>();
 
