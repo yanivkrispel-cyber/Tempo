@@ -30,17 +30,17 @@
          `notifications.deliver` to the work queue with AWSSDK.SQS (docs/30). -->
     <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.106.6" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.22" />
-    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.7" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.21" />
+    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.8" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.22" />
     <!-- Pictures (docs/33 section 6, D17): S3 for the bytes, SkiaSharp (MIT) to re-encode them to WebP. -->
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.7" />
-    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.8" />
+    <PackageVersion Include="SkiaSharp" Version="4.154.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
 
     <!-- Database / migrator (ADR-0022) -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <!-- Israeli phone normalization, docs/27 section 4.2; approved by Kris 2026-10-15 -->
-    <PackageVersion Include="libphonenumber-csharp" Version="9.0.41" />
+    <PackageVersion Include="libphonenumber-csharp" Version="9.0.42" />
     <PackageVersion Include="dbup-postgresql" Version="7.0.1" />
 
     <!-- Tests -->
