@@ -79,6 +79,13 @@ public sealed class InsightFlowTests(PostgresFixture postgres) : IClassFixture<P
         slot.GetProperty("startsAt").GetDateTimeOffset().Should().BeOnOrAfter(session.GetProperty("endsAt").GetDateTimeOffset());
         slot.GetProperty("roomName").GetString().Should().Be("חדר המכשירים");
 
+        // 3a. A member who joins and has no pass yet can't book: a card says so, after the renewal (P3 F4).
+        await JoinByInvitationAsync(client, studioPath, "shira", "client");
+        cards = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/insights/suggestions", Customer("owner"))).GetProperty("items").EnumerateArray().ToList();
+        cards.Select(c => c.GetProperty("kind").GetString()).Should().Equal("passes_ending", "joined_without_pass", "waitlist_pressure");
+        cards[1].GetProperty("count").GetInt32().Should().Be(1, "every other member got a card of 10 when they joined");
+        cards[1].GetProperty("people")[0].GetProperty("displayName").GetString().Should().NotBeNullOrEmpty();
+
         // 4. What happens now: the bookings and the sale, newest first, with names.
         var activity = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/insights/activity?limit=50", Customer("owner"))).GetProperty("items").EnumerateArray().ToList();
         activity.Select(a => a.GetProperty("kind").GetString()).Should().Contain(["booking.created", "booking.waitlisted", "pass.granted"]);
@@ -98,6 +105,13 @@ public sealed class InsightFlowTests(PostgresFixture postgres) : IClassFixture<P
         weeks.Should().HaveCount(12);
         weeks.Select(w => w.GetProperty("weekStart").GetDateTime()).Should().BeInAscendingOrder();
         weeks.Should().OnlyContain(w => w.GetProperty("weekStart").GetDateTime().DayOfWeek == DayOfWeek.Sunday);
+
+        // 7. Once the desk grants Shira a card, she no longer waits.
+        var shira = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/people?query=shira@example.com", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var product = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/pass-products", Customer("owner"))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        await SendAsync(client, HttpMethod.Post, $"{studioPath}/people/{shira}/passes", Customer("owner"), new { productId = product }, HttpStatusCode.Created);
+        cards = (await SendAsync(client, HttpMethod.Get, $"{studioPath}/insights/suggestions", Customer("owner"))).GetProperty("items").EnumerateArray().ToList();
+        cards.Select(c => c.GetProperty("kind").GetString()).Should().NotContain("joined_without_pass");
     }
 
     /// <summary>A studio with instructor Dana, the members with a 10-entry card each, a room and a class in three days.</summary>

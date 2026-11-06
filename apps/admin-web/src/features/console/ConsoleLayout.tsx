@@ -209,6 +209,9 @@ function ConsoleFrame({ studio, switchable }: { studio: Studio; switchable: bool
               החלפת סטודיו
             </ButtonLink>
           )}
+          <ButtonLink to="help" variant="ghost" size="sm" icon="info" onClick={() => setMenuOpen(false)}>
+            עזרה ויצירת קשר
+          </ButtonLink>
           <ButtonLink to={securityPath} variant="ghost" size="sm" icon="shield">
             אבטחת החשבון
           </ButtonLink>

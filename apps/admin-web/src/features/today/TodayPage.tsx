@@ -147,7 +147,7 @@ function DayView({ timeZone }: { timeZone: string }) {
           </button>
         )}
         <span className={styles.spacer} />
-        {waiting > 0 && <IconButton icon="bell" label={waitingWords} count={waiting} onClick={showWaiting} />}
+        {waiting > 0 && <IconButton icon="bell" label={`מחכה לך: ${waiting}`} count={waiting} onClick={showWaiting} />}
         {studio.can("schedule.manage") && (
           <Button icon="plus" onClick={() => setCreating(true)}>
             שיעור חדש
@@ -624,12 +624,14 @@ function SuggestionCard({ suggestion, timeZone }: { suggestion: Suggestion; time
   const names = suggestion.people.slice(0, 3);
   const more = suggestion.count - names.length;
   const text = suggestionText(suggestion, timeZone);
+  // One new member and the right to grant: the card opens the grant itself (P3 F4).
+  const grant = text.grant && suggestion.count === 1 && studio.can("passes.manage");
   const to = text.publish
     ? `/o/${studio.slug}/publish?${new URLSearchParams(text.publish).toString()}`
     : suggestion.sessionId
       ? `/o/${studio.slug}/schedule/sessions/${suggestion.sessionId}`
       : suggestion.count === 1 && names[0]
-        ? `/o/${studio.slug}/people/${names[0].id}`
+        ? `/o/${studio.slug}/people/${names[0].id}${grant ? "?grant=1" : ""}`
         : `/o/${studio.slug}/people`;
   return (
     <li className="tp-insight">
@@ -654,7 +656,7 @@ function SuggestionCard({ suggestion, timeZone }: { suggestion: Suggestion; time
       )}
       {text.body && <p className="tp-muted">{text.body}</p>}
       <ButtonLink to={to} variant="secondary" size="sm" className={styles.insightAction}>
-        {text.action}
+        {grant ? "מתן כרטיסייה או מנוי" : text.action}
       </ButtonLink>
     </li>
   );
@@ -672,6 +674,8 @@ function suggestionText(
   action: string;
   /** The story it opens on the publish page, for the `story_*` cards. */
   publish?: Record<string, string>;
+  /** The card's person needs a pass, so the card can open the grant. */
+  grant?: boolean;
 } {
   const one = suggestion.count === 1;
   switch (suggestion.kind) {
@@ -683,6 +687,16 @@ function suggestionText(
         title: one ? "כרטיסייה אחת מסתיימת השבוע" : `${suggestion.count} כרטיסיות מסתיימות השבוע`,
         body: suggestion.amountAgorot ? `חידוש שווה ${priceLabel(suggestion.amountAgorot)}.` : null,
         action: one ? "לכרטיס המתאמן" : "לרשימת האנשים",
+      };
+    case "joined_without_pass":
+      return {
+        icon: "credit-card",
+        tile: "var(--brand-soft)",
+        ink: "var(--brand-ink)",
+        title: one ? "מתאמן.ת חדש.ה מחכה לכרטיסייה" : `${suggestion.count} מתאמנים חדשים מחכים לכרטיסייה`,
+        body: "בלי כרטיסייה או מנוי אי אפשר להירשם לשיעור.",
+        action: one ? "לכרטיס המתאמן" : "לרשימת האנשים",
+        grant: true,
       };
     case "members_at_risk":
       return {
