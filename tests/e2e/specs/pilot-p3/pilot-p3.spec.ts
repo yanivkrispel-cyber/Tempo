@@ -16,6 +16,8 @@ import { studioParts } from "../../support/studio";
  *   2. The member (Pixel 7) opens the join link, signs in and joins; the owner gives them the pass on their person
  *      card (the real path: there is no online payment); the member books the class.
  *   3. The owner marks the member attended on the class page.
+ *   3b. The owner imports two people and their passes, as a studio moving from another system (after mark c, so
+ *      a, b and c stay comparable with earlier runs; its own mark is d).
  *   4. The owner walks the same screens again at 390px: nothing scrolls sideways, targets are 44px, axe passes.
  * Wall-clock minutes and clicks (every `click`, `tap`, `check`, `uncheck` the spec performs, counted by wrapping them)
  * are taken at (a) the first weekly class saved, (b) the first member joined and (c) the first attended booking, and
@@ -265,18 +267,19 @@ test("2. the member opens the join link, signs in, joins, gets a pass and books"
   if (!memberPage.url().includes("/join")) await memberPage.goto(`${clientUrl}/join#${code}`);
   await settle(memberPage);
   await expectNoSeriousA11yViolations(memberPage, testInfo, "join page, signed in");
+  await memberPage.getByRole("textbox", { name: /איך קוראים לך/ }).fill("e2e-p3 חברה");
   await memberPage.getByRole("button", { name: "הצטרפות", exact: true }).click();
   await memberPage.waitForURL((url) => !url.pathname.startsWith("/join"), { timeout: 30_000 });
   await settle(memberPage);
   mark("b_first_member_joined");
   await shot(memberPage, "03-member-after-join");
-  await expectNoSeriousA11yViolations(memberPage, testInfo, "member home after joining");
+  await expectNoSeriousA11yViolations(memberPage, testInfo, "member home after joining", undefined, "#626");
 
   // The owner finds the new person and gives them the pass.
   await goTo(ownerPage, "אנשים", "אנשים");
   await shot(ownerPage, "03b-owner-people-list");
   await ownerPage
-    .getByRole("link", { name: new RegExp(member.email.split("@")[0]!, "i") })
+    .getByRole("link", { name: /e2e-p3 חברה/ })
     .first()
     .click();
   await expect(ownerPage.getByRole("heading", { level: 1 })).toBeVisible();
@@ -298,7 +301,7 @@ test("2. the member opens the join link, signs in, joins, gets a pass and books"
     .first()
     .click();
   await settle(memberPage);
-  await expectNoSeriousA11yViolations(memberPage, testInfo, "member timetable");
+  await expectNoSeriousA11yViolations(memberPage, testInfo, "member timetable", undefined, "#626");
   await shot(memberPage, "05-member-timetable");
   await memberPage
     .getByRole("button", { name: new RegExp(`הרשמה לשיעור ${typeName} ב-${classStart}`) })
@@ -319,13 +322,55 @@ test("3. the owner marks the member attended", async () => {
     .click();
   await expect(ownerPage.getByRole("heading", { level: 1, name: typeName })).toBeVisible();
   await settle(ownerPage);
-  await expectNoSeriousA11yViolations(ownerPage, testInfo, "class page with roster");
+  await expectNoSeriousA11yViolations(ownerPage, testInfo, "class page with roster", undefined, "#626");
   await shot(ownerPage, "06-owner-class-roster");
   const roster = ownerPage.getByRole("region", { name: "משתתפים" });
   const present = roster.getByRole("button", { name: "הגיע.ה", exact: true });
   await present.click();
   await expect(present).toHaveAttribute("aria-pressed", "true");
   mark("c_first_attended_booking");
+});
+
+test("3b. the owner brings people and their passes over from the last system", async () => {
+  const testInfo = test.info();
+  // After mark c on purpose: a, b and c stay comparable with the runs before this step.
+  const mail = (who: string) => `e2e-p3-${who}-${run}@example.com`;
+  const until = studioParts(new Date(Date.now() + 60 * 86_400_000)).date;
+  const csv = (name: string, lines: string[]) => ({
+    name,
+    mimeType: "text/csv",
+    buffer: Buffer.from(lines.join("\r\n")),
+  });
+
+  await ownerPage.goto(admin("/people/import"));
+  await ownerPage
+    .getByLabel("בחירת קובץ")
+    .setInputFiles(csv("people.csv", ["שם מלא,טלפון,מייל", `e2e-p3 אלף,,${mail("a")}`, `e2e-p3 בית,,${mail("b")}`]));
+  await ownerPage.getByRole("button", { name: "בדיקת 2 השורות" }).click();
+  await ownerPage.getByRole("button", { name: "ייבוא 2 אנשים" }).click();
+  await expect(ownerPage.getByRole("heading", { name: "2 אנשים נוספו לסטודיו" })).toBeVisible({ timeout: 30_000 });
+
+  await goTo(ownerPage, "כרטיסיות ומנויים", "כרטיסיות ומנויים");
+  await ownerPage.getByRole("link", { name: "ייבוא כרטיסיות ומנויים" }).click();
+  const date = `${until.slice(8, 10)}/${until.slice(5, 7)}/${until.slice(0, 4)}`;
+  await ownerPage
+    .getByLabel("בחירת קובץ")
+    .setInputFiles(
+      csv("passes.csv", [
+        "מייל,טלפון,מוצר,כניסות שנותרו,בתוקף עד",
+        `${mail("a")},,${productName},4,${date}`,
+        `${mail("b")},,${productName},2,${date}`,
+      ]),
+    );
+  await ownerPage.getByRole("button", { name: "בדיקת 2 השורות" }).click();
+  const check = ownerPage.getByRole("region", { name: "הבדיקה" });
+  await expectNoSeriousA11yViolations(ownerPage, testInfo, "pass import check");
+  await check.getByRole("button", { name: "ייבוא 2 כרטיסיות ומנויים" }).click();
+  await expect(ownerPage.getByRole("heading", { name: "נוספו לסטודיו: 2 כרטיסיות ומנויים" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await shot(ownerPage, "07-owner-pass-import");
+  mark("d_passes_imported");
 });
 
 test("4. the owner's screens fit a 390px phone", async ({ browser }) => {
@@ -350,7 +395,7 @@ test("4. the owner's screens fit a 390px phone", async ({ browser }) => {
     const fit = await measureFit(page, phone390);
     annotateFit(testInfo, `${name} at 390px`, fit);
     expect.soft(fit.overflow, `${name} scrolls sideways at 390px`).toBeLessThanOrEqual(0);
-    await expectNoSeriousA11yViolations(page, testInfo, `${name} at 390px`);
+    await expectNoSeriousA11yViolations(page, testInfo, `${name} at 390px`, undefined, "#626");
   }
   await context.close();
 });

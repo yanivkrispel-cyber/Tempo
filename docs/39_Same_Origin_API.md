@@ -34,11 +34,12 @@ parallel, but the ones on the first paint's path (session, then the screen's rea
 what same-origin would save on a first visit is **one connection setup plus one or two serial round trips: about
 200 to 400 ms of the first useful paint** on the phone profile, and little on a repeat visit within the hour.
 
-**Not measured yet:** the preflight count and time per screen, as the phone sees them. Playwright's
-`page.on("request")`, which `screens-perf.mjs` uses, doesn't surface CORS preflights, so today's API-call counts leave
-them out. [O] adds a CDP count in O6 (`Network.requestWillBeSent` with `type: "Preflight"`, and `loadingFinished` for
-the time) as two fields per screen, `preflights` and `preflightMs`, measured on Chromium only. The numbers above
-should be checked against it before anything is built.
+**Measured on 2026-11-06 (board #612, O6):** `tests/e2e/perf/after-2026-11-06.json`, on `main` `f903c0a`, with
+`preflights` and `preflightMs` per screen, on Chromium only. Playwright's `page.on("request")` leaves CORS preflights
+out, so the count comes from CDP: `Network.requestWillBeSent` with `initiator.type` `"preflight"` (the `type` field is
+`Other`), and `loadingFinished` for the time. A first visit sends 2 to 8 preflights per screen, the same in all 3 runs,
+and they add up to 275 to 895 ms (a sum: most run in parallel, so this is not time a person waits). A repeat visit
+sends none. That confirms the count above and the default below.
 
 ## The options
 
