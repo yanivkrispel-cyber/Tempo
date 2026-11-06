@@ -4,39 +4,39 @@
     "net10.0": {
       "Amazon.Lambda.AspNetCoreServer.Hosting": {
         "type": "Direct",
-        "requested": "[2.2.0, )",
-        "resolved": "2.2.0",
-        "contentHash": "BvmDCUU19/MICEt9DooF5LldytwlWXGMFYD56TrWbcJc4+GNNdOe0+fRumjDMfKq/0DqBE+4pcydqq0lO0Olyg==",
+        "requested": "[2.2.1, )",
+        "resolved": "2.2.1",
+        "contentHash": "MldjW5hJB9M9z8a3qi+Q/VeMRLhVPWv4qQ1lJZ3zPPRfu0MfpaWekfrtI8ox9olJmX8J+8PBH5ixGFLX5vnO8g==",
         "dependencies": {
-          "Amazon.Lambda.APIGatewayEvents": "3.0.0",
-          "Amazon.Lambda.AspNetCoreServer": "10.2.0",
+          "Amazon.Lambda.APIGatewayEvents": "3.0.1",
+          "Amazon.Lambda.AspNetCoreServer": "10.2.1",
           "Amazon.Lambda.Core": "3.3.0",
-          "Amazon.Lambda.RuntimeSupport": "2.1.3"
+          "Amazon.Lambda.RuntimeSupport": "2.2.0"
         }
       },
       "AWSSDK.CognitoIdentityProvider": {
         "type": "Direct",
-        "requested": "[4.0.106.1, )",
-        "resolved": "4.0.106.1",
-        "contentHash": "cl5VeRlRWtoIWsG0HjFqVRjDqYjzGFv2x2tb/QWIncNJi3qgNCTeKPI7nOY7gQHeqyQ8lU6wSR1pufMHOuha+Q==",
+        "requested": "[4.0.106.6, )",
+        "resolved": "4.0.106.6",
+        "contentHash": "+13k/7tiJUSCEUZXcriRX9xsxkPgmy6QVMB5EkXQBhIOU7+HYAtEFwYmJ1h3rGgWUhdFscbQnTAQ6uumpgE9ow==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.14, 5.0.0)"
         }
       },
       "AWSSDK.SQS": {
         "type": "Direct",
-        "requested": "[4.0.100.14, )",
-        "resolved": "4.0.100.14",
-        "contentHash": "bFMwWy14LyVocTM9kVfyVRgjbgJBkBXEJXi8i6KLVJV2PXVnVeTfwlxClMFTMDOPhYWlpmHzO2aHuaBdVlaFzg==",
+        "requested": "[4.0.100.21, )",
+        "resolved": "4.0.100.21",
+        "contentHash": "+pWC/vZv3jmdyYIPH3edjDkzxExKATtJkr1MspiO4Bzm8vk6jb4U4QqJCXuxFOD2dV3JMMGQtDe1Cfm4RR8OHQ==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.6, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.14, 5.0.0)"
         }
       },
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
         "type": "Direct",
-        "requested": "[10.0.12, )",
-        "resolved": "10.0.12",
-        "contentHash": "DeE+Bq2OqB3FikFkZk+7gFBeLOQhkSolejLrbi+a9zpfvXtW1Ff6Nd6DIvHXIm+pc4aM4+52vDy3jnuau0qoUQ==",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "DaTs32NtRkTabidrvhLhcXpa+Uguw0rN5FaX8Q1HmzbYtcI72iSauYlN4WmqbrXp6QQoB8fmZlHk5/bjiMTY7A==",
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
         }
@@ -91,8 +91,8 @@
       },
       "Amazon.Lambda.APIGatewayEvents": {
         "type": "Transitive",
-        "resolved": "3.0.0",
-        "contentHash": "1JxlUCqIps7p9FLRfFrgaLCVqgg2J39ZOmZDmV/R1LMwb2eT4/glaKwhxC3r01HeDsozk1jUe1KYRGgzxJaVXg=="
+        "resolved": "3.0.1",
+        "contentHash": "+gTGEtrcoCBRtCgcqEl3AlFrYrQY4pFreL22KkmpvXaNX1Lwlrbgk/crEcfuD3Q0wO2AspsJ3xMMj7pJxDYTKA=="
       },
       "Amazon.Lambda.ApplicationLoadBalancerEvents": {
         "type": "Transitive",
@@ -101,14 +101,14 @@
       },
       "Amazon.Lambda.AspNetCoreServer": {
         "type": "Transitive",
-        "resolved": "10.2.0",
-        "contentHash": "hLf/d0xSYlsIDAfM8dQzIlaPAso0GFfmRxt1tCXf7HYVE3iI7F/uSIDeXBmUKtU3D5IBoqSbHt/UpZ1FxqLlXg==",
+        "resolved": "10.2.1",
+        "contentHash": "yql4ujM7Q2v6GfrBFbMB1SMaDu3wSHsfS/WfNr1OzUfVKseUKO+swo6Y/v1x/gQpJDKAzrP/pmwC/NuI9oPYjg==",
         "dependencies": {
-          "Amazon.Lambda.APIGatewayEvents": "3.0.0",
+          "Amazon.Lambda.APIGatewayEvents": "3.0.1",
           "Amazon.Lambda.ApplicationLoadBalancerEvents": "3.0.0",
           "Amazon.Lambda.Core": "3.3.0",
           "Amazon.Lambda.Logging.AspNetCore": "5.0.0",
-          "Amazon.Lambda.Serialization.SystemTextJson": "3.0.0"
+          "Amazon.Lambda.Serialization.SystemTextJson": "3.0.1"
         }
       },
       "Amazon.Lambda.Logging.AspNetCore": {
@@ -121,8 +121,8 @@
       },
       "Amazon.Lambda.RuntimeSupport": {
         "type": "Transitive",
-        "resolved": "2.1.3",
-        "contentHash": "bBOA9nh2q3DillDYJJmFDnlJDTRWmmJTAopCsd7RaLDdYds3AWuREFSFuDulzBACeU20Icm2OPmtDaGWapRIEg==",
+        "resolved": "2.2.0",
+        "contentHash": "S2ey3Wwb1JBJzYOa1jHDfbATziS7BVDRd9ZzBBTIRf8+2KsAujlEUwbCAZ5WpfGl0poiTVdvD4S9ttrCX3fmdg==",
         "dependencies": {
           "Amazon.Lambda.Core": "3.3.0",
           "SnapshotRestore.Registry": "1.0.2"
@@ -130,8 +130,8 @@
       },
       "AWSSDK.Core": {
         "type": "Transitive",
-        "resolved": "4.0.102.9",
-        "contentHash": "VWGkR0QXDTmThusATC6I9IX06YtYeQNF+1/v6vBbfzIC+MaAuNjYn0aSTIyX+abciZvFhuSSi0d6/pC93wROCw=="
+        "resolved": "4.0.102.14",
+        "contentHash": "pRYOOIyj40UdQ6G9iq8AOU30sFPqWS/umM/sFTmAl4n1S6AVbVa67DJpJTxD+9qJFqweHPcyVW7Qb4BbUBLJdg=="
       },
       "Microsoft.Bcl.Cryptography": {
         "type": "Transitive",
@@ -234,13 +234,13 @@
       },
       "SkiaSharp.NativeAssets.macOS": {
         "type": "Transitive",
-        "resolved": "4.152.3",
-        "contentHash": "iZavtVZl3wLd2bxyqF/stG1BD64S45oaQrvPJpYzVETGHHP4qF8kvKDwH2fbCCiMP7COEKR5bAx2R8Jkc2/Lcw=="
+        "resolved": "4.153.1",
+        "contentHash": "YTojWeWIhnpF7uC8vpMxB5wRONKkDB2t3r/nNPA3DL2pgj9fqMXRevA/rIanYazWnco4jo1ufgp3HkXuh1Tz8A=="
       },
       "SkiaSharp.NativeAssets.Win32": {
         "type": "Transitive",
-        "resolved": "4.152.3",
-        "contentHash": "Z7oTz0reu2eROlD5sRj8c6IVq6K1nEzZxKaqXWYVrn8tlgliiJ46PVj8prK1uVCzVQXxIO33P2nscmp8m/njUQ=="
+        "resolved": "4.153.1",
+        "contentHash": "Yqg6rChTVh0BUE8QQxtOA3uUBnihfgID4yex/AvDa0+os2bVcBjmI3Qj9tnOB+R1hd/Jry1Gwl8qw5JI9HZG8Q=="
       },
       "SnapshotRestore.Registry": {
         "type": "Transitive",
@@ -262,11 +262,11 @@
       "tempo.platform": {
         "type": "Project",
         "dependencies": {
-          "AWSSDK.S3": "[4.0.104.2, )",
-          "AWSSDK.SimpleSystemsManagement": "[4.0.104.2, )",
+          "AWSSDK.S3": "[4.0.104.7, )",
+          "AWSSDK.SimpleSystemsManagement": "[4.0.104.7, )",
           "Npgsql": "[10.0.3, )",
-          "SkiaSharp": "[4.152.3, )",
-          "SkiaSharp.NativeAssets.Linux.NoDependencies": "[4.152.3, )",
+          "SkiaSharp": "[4.153.1, )",
+          "SkiaSharp.NativeAssets.Linux.NoDependencies": "[4.153.1, )",
           "libphonenumber-csharp": "[9.0.41, )"
         }
       },
@@ -287,20 +287,20 @@
       },
       "AWSSDK.S3": {
         "type": "CentralTransitive",
-        "requested": "[4.0.104.2, )",
-        "resolved": "4.0.104.2",
-        "contentHash": "ImZ1pO9SWh+RAN8hmN5OnonyTvq+/q4dXLxTxjtsZ60c06dnCCy+MX3sc4F3Q8c9J1bg8WoU+VkrrVIpXLviww==",
+        "requested": "[4.0.104.7, )",
+        "resolved": "4.0.104.7",
+        "contentHash": "mmURYvVR/+CM3+9FycHsz+ZZ2I3B1PPch7msARX8fKtiAfkDHYXCzdwQOKA5SvGGvleOKhLGa8YcWlAlbAtu0g==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.14, 5.0.0)"
         }
       },
       "AWSSDK.SimpleSystemsManagement": {
         "type": "CentralTransitive",
-        "requested": "[4.0.104.2, )",
-        "resolved": "4.0.104.2",
-        "contentHash": "rXpcI5tFfPQ8FUrgmF58wT69Y/LbgMjuqkXQ66nS0f2XKwbRlOWkmhWibpzFo4iDpJIy4NRvWsUQnGfHfLLmQw==",
+        "requested": "[4.0.104.7, )",
+        "resolved": "4.0.104.7",
+        "contentHash": "sM/URIgVsDtOAi9njB14KCQRQL5UXlVqs+3SGucDKgHHyQGIT1Ev5IKUPhaY7whZd4ixkIstiw2QQIouG3Ankw==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.9, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.14, 5.0.0)"
         }
       },
       "libphonenumber-csharp": {
@@ -329,19 +329,37 @@
       },
       "SkiaSharp": {
         "type": "CentralTransitive",
-        "requested": "[4.152.3, )",
-        "resolved": "4.152.3",
-        "contentHash": "IoasRVR929K39+urVXW/9rX8UQ95Z9g3yXUNENCjpvT0/on/I0PjC51w/E5fW+NGHx5dkTpjSYPt7LnbU28TAQ==",
+        "requested": "[4.153.1, )",
+        "resolved": "4.153.1",
+        "contentHash": "TghYLOUaP3q6rTjQw7U9uQaaXh8lEs9rfA1U7/VtmyAptVDtj/SmjtcWzFWmcC/VMWxe3QgbV9uyvqDL7ySFtQ==",
         "dependencies": {
-          "SkiaSharp.NativeAssets.Win32": "4.152.3",
-          "SkiaSharp.NativeAssets.macOS": "4.152.3"
+          "SkiaSharp.NativeAssets.Win32": "4.153.1",
+          "SkiaSharp.NativeAssets.macOS": "4.153.1"
         }
       },
       "SkiaSharp.NativeAssets.Linux.NoDependencies": {
         "type": "CentralTransitive",
-        "requested": "[4.152.3, )",
-        "resolved": "4.152.3",
-        "contentHash": "ddPJvDTCyQQMhhgBjZ1/zs1xWsEVeaIYVCMZOJVHK1gDJBKUskqXwQqRhx9fBhUcycQB2SmqQ2s2iluvOnwFrw=="
+        "requested": "[4.153.1, )",
+        "resolved": "4.153.1",
+        "contentHash": "NrnPjcxjcRau4GMOY0BTpUdMey+MnmLU3jC5AuExEFHPS2NkX1tdkXW0n/c5nQMMHBTAMpHnt7qEOpXs2FNfIQ=="
+      }
+    },
+    "net10.0/linux-x64": {
+      "SkiaSharp.NativeAssets.macOS": {
+        "type": "Transitive",
+        "resolved": "4.153.1",
+        "contentHash": "YTojWeWIhnpF7uC8vpMxB5wRONKkDB2t3r/nNPA3DL2pgj9fqMXRevA/rIanYazWnco4jo1ufgp3HkXuh1Tz8A=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "4.153.1",
+        "contentHash": "Yqg6rChTVh0BUE8QQxtOA3uUBnihfgID4yex/AvDa0+os2bVcBjmI3Qj9tnOB+R1hd/Jry1Gwl8qw5JI9HZG8Q=="
+      },
+      "SkiaSharp.NativeAssets.Linux.NoDependencies": {
+        "type": "CentralTransitive",
+        "requested": "[4.153.1, )",
+        "resolved": "4.153.1",
+        "contentHash": "NrnPjcxjcRau4GMOY0BTpUdMey+MnmLU3jC5AuExEFHPS2NkX1tdkXW0n/c5nQMMHBTAMpHnt7qEOpXs2FNfIQ=="
       }
     }
   }

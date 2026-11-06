@@ -88,5 +88,6 @@ public static class PassEndpoints
             p.Status,
             p.CreatedAt,
             p.Version.ToString(CultureInfo.InvariantCulture),
-            [.. (p.Freezes ?? []).Select(f => new PassFreezeResponse(f.Id, f.StartsOn, f.EndsOn))]);
+            [.. (p.Freezes ?? []).Select(f => new PassFreezeResponse(f.Id, f.StartsOn, f.EndsOn))],
+            p.Source);
 }
