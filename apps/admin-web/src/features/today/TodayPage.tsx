@@ -147,7 +147,7 @@ function DayView({ timeZone }: { timeZone: string }) {
           </button>
         )}
         <span className={styles.spacer} />
-        {waiting > 0 && <IconButton icon="bell" label={waitingWords} count={waiting} onClick={showWaiting} />}
+        {waiting > 0 && <IconButton icon="bell" label={`מחכה לך: ${waiting}`} count={waiting} onClick={showWaiting} />}
         {studio.can("schedule.manage") && (
           <Button icon="plus" onClick={() => setCreating(true)}>
             שיעור חדש
