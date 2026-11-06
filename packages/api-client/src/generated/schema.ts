@@ -5196,7 +5196,7 @@ export interface components {
              */
             status: "active" | "voided" | "expired";
             /**
-             * @description `import` when the pass came from `importPasses` (docs/40). Always sent once built; optional here until then.
+             * @description `import` when the pass came from `importPasses` (docs/40); `desk` for every other pass. Always sent; optional here so sample data without it still types.
              * @enum {string}
              */
             source?: "desk" | "import";

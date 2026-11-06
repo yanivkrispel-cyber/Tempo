@@ -33,7 +33,8 @@ public sealed record PassView(
     string Status,
     DateTimeOffset CreatedAt,
     long Version,
-    IReadOnlyList<PassFreezeView>? Freezes = null)
+    IReadOnlyList<PassFreezeView>? Freezes = null,
+    string Source = "desk")
 {
     public int? EntriesLeft => Entries is { } entries ? entries - EntriesUsed : null;
 }
@@ -87,7 +88,8 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
                ps.created_at, ps.version,
                coalesce(ARRAY(SELECT f.id FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
                coalesce(ARRAY(SELECT f.starts_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
-               coalesce(ARRAY(SELECT f.ends_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}')
+               coalesce(ARRAY(SELECT f.ends_on FROM scheduling.pass_freezes f WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id ORDER BY f.starts_on), '{}'),
+               ps.source
         FROM scheduling.passes ps
         JOIN scheduling.pass_products pp ON pp.organization_id = ps.organization_id AND pp.id = ps.product_id
         """;
@@ -275,7 +277,8 @@ public sealed class PassService(IDataSourceProvider dataSources, TimeProvider cl
                 Freezes(
                     await reader.GetFieldValueAsync<Guid[]>(15, cancellationToken),
                     await reader.GetFieldValueAsync<DateOnly[]>(16, cancellationToken),
-                    await reader.GetFieldValueAsync<DateOnly[]>(17, cancellationToken))));
+                    await reader.GetFieldValueAsync<DateOnly[]>(17, cancellationToken)),
+                reader.GetString(18)));
         }
 
         return passes;
