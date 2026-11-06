@@ -16,6 +16,8 @@ import { studioParts } from "../../support/studio";
  *   2. The member (Pixel 7) opens the join link, signs in and joins; the owner gives them the pass on their person
  *      card (the real path: there is no online payment); the member books the class.
  *   3. The owner marks the member attended on the class page.
+ *   3b. The owner imports two people and their passes, as a studio moving from another system (after mark c, so
+ *      a, b and c stay comparable with earlier runs; its own mark is d).
  *   4. The owner walks the same screens again at 390px: nothing scrolls sideways, targets are 44px, axe passes.
  * Wall-clock minutes and clicks (every `click`, `tap`, `check`, `uncheck` the spec performs, counted by wrapping them)
  * are taken at (a) the first weekly class saved, (b) the first member joined and (c) the first attended booking, and
@@ -326,6 +328,48 @@ test("3. the owner marks the member attended", async () => {
   await present.click();
   await expect(present).toHaveAttribute("aria-pressed", "true");
   mark("c_first_attended_booking");
+});
+
+test("3b. the owner brings people and their passes over from the last system", async () => {
+  const testInfo = test.info();
+  // After mark c on purpose: a, b and c stay comparable with the runs before this step.
+  const mail = (who: string) => `e2e-p3-${who}-${run}@example.com`;
+  const until = studioParts(new Date(Date.now() + 60 * 86_400_000)).date;
+  const csv = (name: string, lines: string[]) => ({
+    name,
+    mimeType: "text/csv",
+    buffer: Buffer.from(lines.join("\r\n")),
+  });
+
+  await ownerPage.goto(admin("/people/import"));
+  await ownerPage
+    .getByLabel("בחירת קובץ")
+    .setInputFiles(csv("people.csv", ["שם מלא,טלפון,מייל", `e2e-p3 אלף,,${mail("a")}`, `e2e-p3 בית,,${mail("b")}`]));
+  await ownerPage.getByRole("button", { name: "בדיקת 2 השורות" }).click();
+  await ownerPage.getByRole("button", { name: "ייבוא 2 אנשים" }).click();
+  await expect(ownerPage.getByRole("heading", { name: "2 אנשים נוספו לסטודיו" })).toBeVisible({ timeout: 30_000 });
+
+  await goTo(ownerPage, "כרטיסיות ומנויים", "כרטיסיות ומנויים");
+  await ownerPage.getByRole("link", { name: "ייבוא כרטיסיות ומנויים" }).click();
+  const date = `${until.slice(8, 10)}/${until.slice(5, 7)}/${until.slice(0, 4)}`;
+  await ownerPage
+    .getByLabel("בחירת קובץ")
+    .setInputFiles(
+      csv("passes.csv", [
+        "מייל,טלפון,מוצר,כניסות שנותרו,בתוקף עד",
+        `${mail("a")},,${productName},4,${date}`,
+        `${mail("b")},,${productName},2,${date}`,
+      ]),
+    );
+  await ownerPage.getByRole("button", { name: "בדיקת 2 השורות" }).click();
+  const check = ownerPage.getByRole("region", { name: "הבדיקה" });
+  await expectNoSeriousA11yViolations(ownerPage, testInfo, "pass import check");
+  await check.getByRole("button", { name: "ייבוא 2 כרטיסיות ומנויים" }).click();
+  await expect(ownerPage.getByRole("heading", { name: "נוספו לסטודיו: 2 כרטיסיות ומנויים" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await shot(ownerPage, "07-owner-pass-import");
+  mark("d_passes_imported");
 });
 
 test("4. the owner's screens fit a 390px phone", async ({ browser }) => {
