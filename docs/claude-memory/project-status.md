@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-11-01, evening (board #553, DAY-PLAN-19: the #537 queue landed, the security review of main (#541)
+Updated 2026-11-06, evening (board #612, DAY-PLAN-21: the queue of #584 landed, see "The pilot sprint landed"), after board #553 (2026-11-01, DAY-PLAN-19: the #537 queue landed, the security review of main (#541)
 and its fixes, SLOs and the incident runbook, the same-origin note), after board #530 (2026-10-27, DAY-PLAN-17: the member app's time zone from the session, the tab prefetch,
 the profile in two rounds), after board #523 (2026-10-26 day, DAY-PLAN-16: the speed queue landed, the session carries
 the studio's time zone, the console's today and reports in one round), after board #511 (2026-10-25/26, DAY-PLAN-15, the speed night:
@@ -322,6 +322,25 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
 - Dependabot #579 to #582 are open. #581 moves FluentAssertions to 8, whose licence is commercial, so it should not
   merge as is.
 
+## The pilot sprint landed (2026-11-06, boards #584 and #612)
+
+- **Board #584 (2026-11-03) wrote it and stopped halfway; board #612 (DAY-PLAN-21, 2026-11-06) landed it.** Kris was
+  resting, so a second session on Ofir's machine ran his lane under KR-1 and KR-2 without his prior approval. Kris
+  still has to confirm or undo that. 24 PRs merged on 2026-11-06, every deploy green, no revert. `main` ends at
+  `3e68ef9`; open PRs are Dependabot's #621, #622 and #623, left out of the plan.
+- **New on dev:** pass import (`importPasses`, migration 0041, console page #611, PI-8 #624), help and contact in the
+  console (#597, #606; the contact stays hidden until Kris sets `/tempo/dev/support/contact`), the joined-without-pass
+  card (#599, #625). The FAQ page reads `docs/pilot/faq.md` at build, so a FAQ edit ships with the next app deploy.
+- **In the repo for Kris:** the legal pack in `docs/legal/` (#594), the pilot kit in `docs/pilot/` (#593), his steps in
+  `docs/runbooks/kris-pilot-steps.md` with `operator-token.mjs` and the pilot pulse (#596), and `docs/41`, the
+  whole-studio export (#618: a proposal, no code).
+- **Security:** SR-8 (#607), SR-12 (#601, CI restores NuGet in locked mode), SR-13 (#620, reversible), SR-18 (#615: the
+  fallback policy fails closed), SR-27 and SR-29 (#616). The CORS preflight is cached for two hours (#617).
+- **Checks on the final `main`:** `pilot-p3` 5 of 5 (run `mw57w00d`, no blocker; clicks 19, 25, 35 as on #584, 41 with
+  the pass import). After numbers against 2026-10-27: average LCP on a first visit 2,719 to 2,482 ms, on a repeat
+  909 to 700 ms. One regression, the member profile, 2,632 to 3,404 ms (#628). `premium-live-check` 21/21 on `3e68ef9`.
+  Numbers are in `docs/runbooks/pilot-readiness.md`. The a11y notes are #626, which DAY-PLAN-22 (#627) takes.
+
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in
@@ -335,7 +354,7 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 
 | Item | Note |
 |---|---|
-| Register as the first operator | `tools/scripts/register-operator.ps1`, needs Kris's MFA |
+| Register as the first operator | Most likely done (an active operator row matches a pool user, 2026-11-03); Kris signs in with `tools/scripts/operator-token.mjs` |
 | IAM grants so CI can run the smoke test with `--sign-in` | `cognito-idp:AdminInitiateAuth` and `ssm:GetParameter` for the deploy role |
 | Confirm the canary's SNS email subscription | From #119 |
 | Retention days | 90 days invitations, 180 days inbox items (`RetentionPolicy.Default`) |
@@ -358,6 +377,11 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | "workflow OK" for #558 and #559 | The high finding of #541 and its medium neighbour; both change `deploy-development.yml` |
 | #562 Cognito threat protection | A cost decision (ADR-0021) |
 | Approve `slos.md` and `incidents.md` | Their targets and roles; the breach step after #548 |
+| Confirm or undo KR-1 (board #612) | Ofir's machine ran the [K] lane without prior approval; the board's EVENING lists what it did |
+| #564: does a card paid at the desk release the next join? | #620 is reversible. Nothing clears `to_pay_at_studio`, so a paid desk card blocks the next join of that offer until it ends; only used, expired or voided release it |
+| #565 SR-19: may a disabled account delete itself? | Today's behaviour is in `docs/security/review-2026-11.md` |
+| `find_account_profiles` returns removed or suspended members' emails (#600 note a) | Needs a migration |
+| `docs/41` whole-studio export; the F8 clicks (KR-9); the pilot offer's weekly 20-minute call in the first month (`docs/pilot/pilot-offer.md`) | `docs/41` is a proposal: nothing hands a leaving studio its data yet. The other two are product questions |
 
 ## Who works on what
 
