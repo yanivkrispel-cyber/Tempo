@@ -39,6 +39,11 @@ describe("API Gateway is an HTTP API, never a REST API (ADR-0004)", () => {
     expect(api.Properties.CorsConfiguration.ExposeHeaders).toEqual(expect.arrayContaining(["Location", "Retry-After"]));
   });
 
+  it("CORS caches the preflight for two hours, Chrome's cap (docs/39 option A)", () => {
+    const [api] = Object.values(template.findResources("AWS::ApiGatewayV2::Api"));
+    expect(api.Properties.CorsConfiguration.MaxAge).toBe(7200);
+  });
+
   it("CORS has no wildcard origin combined with credentials", () => {
     const apis = template.findResources("AWS::ApiGatewayV2::Api");
     const [api] = Object.values(apis);
