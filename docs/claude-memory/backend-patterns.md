@@ -61,7 +61,10 @@ How the API is put together since the Phase 1 building blocks (docs/26 sections 
   VALUES (uuidv7(), '<email>', 'https://cognito-idp.eu-central-1.amazonaws.com/<pool id>', '<sub>', 'active', now(), now());
   ```
 
-  The first sign-in sets a TOTP device, because the pool requires MFA.
+  MFA is required on the staging and production operator pools and optional on dev since #316. There is no operator
+  app: `node tools/scripts/operator-token.mjs -- <command>` signs in through the operator client's Hosted UI (callback
+  `http://localhost:5175/auth/callback`) and runs the command with `TEMPO_OPERATOR_TOKEN` set, never printing it.
+  Dev has had one active operator row since 2026-10 (checked 2026-11-03). Kris's steps: `docs/runbooks/kris-pilot-steps.md`.
 - A studio's own audit log: `GET /organizations/{id}/audit-events`, owner and admin, names for user actors only.
 
 ## The 10-studio tripwire (step 9, part 2)
