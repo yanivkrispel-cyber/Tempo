@@ -9,6 +9,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- CI (GitHub Actions sets CI=true) fails a restore that would change a lock file instead of re-resolving quietly
+         (#563, SR-12): the solution restore, the Lambda publishes (`-r linux-arm64`, whose runtime every backend lock
+         file lists, see backend/Directory.Build.props) and the vulnerable-package check, on every PR and deploy. -->
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
 
   <ItemGroup>

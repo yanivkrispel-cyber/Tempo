@@ -7,6 +7,10 @@
     <!-- Precompiled code for the linux-arm64 publish: the first request on a new Lambda instance no longer
          waits for the JIT (perf audit 2026-10-20: about 3 s on the first request). Ignored by build and test. -->
     <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- The Lambda's runtime, said once: the Web SDK otherwise adds the restoring machine's own runtime to the restore,
+         so the lock file differed between Windows, CI's x64 Linux and the arm64 publish, and CI's locked restore
+         (#563) could not pass on all of them. -->
+    <PublishRuntimeIdentifier>linux-arm64</PublishRuntimeIdentifier>
     <!-- The minimal API endpoints' request delegates generated at compile time instead of built by reflection and
          compiled expressions on the first request (board #445 P-1: about 2.6 s before the first middleware). -->
     <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
