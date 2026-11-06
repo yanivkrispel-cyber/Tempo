@@ -81,7 +81,7 @@ const code = await new Promise((resolve, reject) => {
   server.on("error", (error) => reject(new Error(`Port ${PORT} is busy (${error.code}); close what uses it and run again.`)));
   server.listen(PORT, "127.0.0.1", () => {
     console.log(`Opening the operator sign-in (${poolName}) in the browser. If it doesn't open, paste this address:\n${authorize}\n`);
-    const opener = process.platform === "win32" ? ["cmd", ["/c", "start", "", authorize.toString()]] : [process.platform === "darwin" ? "open" : "xdg-open", [authorize.toString()]];
+    const opener = process.platform === "win32" ? ["rundll32", ["url.dll,FileProtocolHandler", authorize.toString()]] : [process.platform === "darwin" ? "open" : "xdg-open", [authorize.toString()]];
     spawn(opener[0], opener[1], { stdio: "ignore", detached: true }).unref();
   });
   setTimeout(() => {
