@@ -279,6 +279,23 @@ public sealed class InvitationServiceTests(PostgresFixture postgres) : IClassFix
         (await refused.Should().ThrowAsync<DomainRuleViolationException>()).Which.Code.Should().Be("invitation.not_found");
     }
 
+    [Fact]
+    public async Task Invitation_PreviewByACallerOutsideTheStudio_ShowsTheInviterAndNoAccountOfAnotherStudio()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var (owner, studioId) = await StudioAsync(db);
+        var outsider = await AccountAsync(db, "staff@example.com", "Outsider");
+        var otherStudio = await new OrganizationService(db).CreateAsync(outsider, new NewOrganization("Other", "studio-other", null, null), "c", CancellationToken.None);
+        var otherMember = await MemberAsync(db, otherStudio.Id, "other@example.com", MembershipRole.Staff);
+        var created = await Invitations(db).CreateAsync(owner, "staff@example.com", MembershipRole.Staff, CancellationToken.None);
+
+        var preview = await Invitations(db).PreviewAsync(outsider, created.Token, CancellationToken.None);
+        var found = await new AccountProfiles(db).FindAsync(outsider.UserAccountId, studioId, [owner.UserAccountId, otherMember.UserAccountId], CancellationToken.None);
+
+        preview.InvitedByDisplayName.Should().Be("Owner", "the token made the inviter's studio the tenant, and the inviter belongs to it");
+        found.Keys.Should().Equal(owner.UserAccountId);
+    }
+
     private static InvitationService Invitations(MigratedDatabase db) => new(db, new AccountProfiles(db), new AttemptLimiter(db));
 
     private static MemberService Members(MigratedDatabase db) => new(db, new AccountProfiles(db));
