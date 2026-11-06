@@ -73,6 +73,7 @@ export const routes: RouteObject[] = [
               },
               { path: "publish", ...lazyScreen(() => import("../features/publish/PublishPage"), "PublishPage") },
               { path: "settings", ...lazyScreen(() => import("../features/settings/SettingsPage"), "SettingsPage") },
+              { path: "help", ...lazyScreen(() => import("../features/help/HelpPage"), "HelpPage") },
               {
                 path: "settings/templates/:kind",
                 ...lazyScreen(() => import("../features/settings/TemplatePage"), "TemplatePage"),
