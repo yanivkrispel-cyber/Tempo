@@ -136,7 +136,7 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         var created = (await ReadAsync(unitOfWork, tenant.OrganizationId, invitationId, cancellationToken))!;
         await unitOfWork.CommitAsync(cancellationToken);
 
-        return new CreatedInvitation((await WithInvitersAsync([created], cancellationToken))[0], token);
+        return new CreatedInvitation((await WithInvitersAsync(tenant, [created], cancellationToken))[0], token);
     }
 
     public async Task<InvitationPage> ListAsync(TenantContext tenant, InvitationQuery query, CancellationToken cancellationToken)
@@ -174,7 +174,7 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         }
 
         var page = rows.Take(limit).ToList();
-        return new InvitationPage(await WithInvitersAsync(page, cancellationToken), rows.Count > limit ? page[^1].Id : null);
+        return new InvitationPage(await WithInvitersAsync(tenant, page, cancellationToken), rows.Count > limit ? page[^1].Id : null);
     }
 
     public async Task RevokeAsync(TenantContext tenant, Guid invitationId, CancellationToken cancellationToken)
@@ -235,7 +235,9 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             throw InvitationNotFound();
         }
 
-        var inviter = await profiles.FindAsync([invitation.InviterAccountId], cancellationToken);
+        // The invitee shares no studio with the inviter yet; the token made this studio the tenant above, and the
+        // inviter has a membership in it, so the profile lookup shows the inviter's name and nobody else's.
+        var inviter = await profiles.FindAsync(caller.UserAccountId, organizationId, [invitation.InviterAccountId], cancellationToken);
         return new InvitationPreview(organizationId, studioName, invitation.Role, inviter.GetValueOrDefault(invitation.InviterAccountId)?.DisplayName, invitation.ExpiresAt);
     }
 
@@ -255,7 +257,7 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
         }
 
         var (organizationId, invitationId, email, role, status, expiresAt) = found.Value;
-        var callerEmail = (await profiles.FindAsync([caller.UserAccountId], cancellationToken)).GetValueOrDefault(caller.UserAccountId)?.Email;
+        var callerEmail = (await profiles.FindAsync(caller.UserAccountId, null, [caller.UserAccountId], cancellationToken)).GetValueOrDefault(caller.UserAccountId)?.Email;
         if (!string.Equals(email, callerEmail, StringComparison.OrdinalIgnoreCase))
         {
             throw status == "pending"
@@ -366,9 +368,9 @@ public sealed partial class InvitationService(IDataSourceProvider dataSources, I
             reader.GetGuid(6),
             reader.GetGuid(7));
 
-    private async Task<List<InvitationView>> WithInvitersAsync(List<Row> rows, CancellationToken cancellationToken)
+    private async Task<List<InvitationView>> WithInvitersAsync(TenantContext tenant, List<Row> rows, CancellationToken cancellationToken)
     {
-        var inviters = await profiles.FindAsync([.. rows.Select(r => r.InviterAccountId).Distinct()], cancellationToken);
+        var inviters = await profiles.FindAsync(tenant.UserAccountId, tenant.OrganizationId, [.. rows.Select(r => r.InviterAccountId).Distinct()], cancellationToken);
         return
         [
             .. rows.Select(r => new InvitationView(
