@@ -33,7 +33,7 @@ creating people or products on the fly, `.xlsx`, uploads to the server, an impor
 | PI-5 | The product is found by name among the studio's **active** products, ignoring case and outer spaces. The row never creates a product. |
 | PI-6 | A card keeps the product's size: `entries` = the product's entries and `entries_used` = entries minus `entriesLeft`, so the member sees "6 of 10 left". A membership takes no `entriesLeft`. |
 | PI-7 | `validUntil` is required; `validFrom` defaults to the studio's today. The pass runs from `validFrom` to `validUntil`, inclusive, whatever the product's length. |
-| PI-8 | Running the same file twice adds nothing: a row whose person already has an active **imported** pass of the same product ending the same day is `exists`. Two consequences, both on purpose: a pass from an earlier run that the desk voided is created again by the next run (it is no longer active), and a row with a corrected `entriesLeft` and the same key stays `exists` and changes nothing, so a wrong balance is fixed at the desk on the person's card. |
+| PI-8 | Running the same file twice adds nothing: a row whose person already has an active **imported** pass of the same product ending the same day is `exists`. The day compared is the one the file gave: a freeze moves `ends_on`, so its frozen days come off before the match, and a frozen pass is still found. Two consequences, both on purpose: a pass from an earlier run that the desk voided is created again by the next run (it is no longer active), and a row with a corrected `entriesLeft` and the same key stays `exists` and changes nothing, so a wrong balance is fixed at the desk on the person's card. |
 | PI-9 | Migration 0041 adds `scheduling.passes.source` (`desk` or `import`, default `desk`). `Pass.source` is in the API, so the person's card and the member's passes can say "יובא". Audit: `pass.granted` per pass with `source: import` and one `passes.imported` with the totals; no names, emails or phones. Nothing is sent to the member. |
 
 ## 3. The request
@@ -65,7 +65,7 @@ A row that passes is then, in this order:
 
 - `duplicate_in_file` (with `duplicateOfLine`) when an earlier valid row has the same person and product;
 - `exists` (with `passId`) when the person has an active pass with `source = import`, that product and that
-  `ends_on` (PI-8);
+  `ends_on` before any freeze (PI-8);
 - otherwise `valid` (dry run) or `created` (with `passId`).
 
 The result is the people import's shape: `{ dryRun, importId, totals: { rows, valid, created, exists,

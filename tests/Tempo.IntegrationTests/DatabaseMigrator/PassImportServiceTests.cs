@@ -107,6 +107,26 @@ public sealed class PassImportServiceTests(PostgresFixture postgres) : IClassFix
     }
 
     [Fact]
+    public async Task AFrozenImportedMembership_IsStillFoundByARerun_NotGrantedAgain()
+    {
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        var studio = await StudioAsync(db, "studio-a");
+        var first = await Import(db).ImportAsync(studio.Owner, dryRun: false, FiveRows(), CancellationToken.None);
+        var membership = first.Rows.Single(r => r.Line == 3).PassId!.Value;
+        var passes = new PassService(db, Clock);
+
+        await passes.FreezeAsync(studio.Owner, membership, new NewFreeze(new DateOnly(2026, 11, 10), new DateOnly(2026, 11, 14)), CancellationToken.None);
+        var frozen = await passes.FreezeAsync(studio.Owner, membership, new NewFreeze(new DateOnly(2026, 11, 20), new DateOnly(2026, 11, 21)), CancellationToken.None);
+        var second = await Import(db).ImportAsync(studio.Owner, dryRun: false, FiveRows(), CancellationToken.None);
+
+        frozen.EndsOn.Should().Be(new DateOnly(2027, 1, 7), "seven frozen days moved the last day");
+        second.Totals.Created.Should().Be(0);
+        second.ImportId.Should().BeNull("nothing was created");
+        second.Rows.Single(r => r.Line == 3).Should().Match<PassImportRowOutcome>(r => r.Outcome == "exists" && r.PassId == membership);
+        (await db.AsMasterAsync("SELECT count(*) FROM scheduling.passes WHERE source = 'import'")).Should().Be(2L);
+    }
+
+    [Fact]
     public async Task APassAlreadyGrantedAtTheDesk_DoesNotStopTheImport()
     {
         await using var db = await MigratedDatabase.CreateAsync(postgres);

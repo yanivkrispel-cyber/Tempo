@@ -382,7 +382,7 @@ public sealed class PassImportService(IDataSourceProvider dataSources, TimeProvi
         return products;
     }
 
-    /// <summary>Section 5 step 4: the active imported passes of the people found, for PI-8.</summary>
+    /// <summary>Section 5 step 4: the active imported passes of the people found, for PI-8, by the last day the file gave: a freeze moves <c>ends_on</c>, so its days come off.</summary>
     private static async Task<Dictionary<(Guid, Guid, DateOnly), Guid>> ImportedAsync(UnitOfWork unitOfWork, Guid organizationId, List<ReadyRow> rows, CancellationToken cancellationToken)
     {
         var found = new Dictionary<(Guid, Guid, DateOnly), Guid>();
@@ -393,10 +393,14 @@ public sealed class PassImportService(IDataSourceProvider dataSources, TimeProvi
 
         await using var command = unitOfWork.Command(
             """
-            SELECT person_id, product_id, ends_on, id
-            FROM scheduling.passes
-            WHERE organization_id = $1 AND person_id = ANY($2::uuid[]) AND source = 'import' AND status = 'active'
-            ORDER BY created_at
+            SELECT ps.person_id, ps.product_id,
+                   ps.ends_on - COALESCE((SELECT sum(f.ends_on - f.starts_on + 1)::int
+                                          FROM scheduling.pass_freezes f
+                                          WHERE f.organization_id = ps.organization_id AND f.pass_id = ps.id), 0),
+                   ps.id
+            FROM scheduling.passes ps
+            WHERE ps.organization_id = $1 AND ps.person_id = ANY($2::uuid[]) AND ps.source = 'import' AND ps.status = 'active'
+            ORDER BY ps.created_at
             """,
             organizationId,
             rows.Select(r => r.PersonId).Distinct().ToArray());
