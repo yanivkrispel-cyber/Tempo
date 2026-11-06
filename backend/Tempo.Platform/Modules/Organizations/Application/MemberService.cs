@@ -79,7 +79,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
         }
 
         var page = rows.Take(limit).ToList();
-        var items = await WithProfilesAsync(page, cancellationToken);
+        var items = await WithProfilesAsync(tenant, page, cancellationToken);
         return new MemberPage(items, rows.Count > limit ? page[^1].Id : null);
     }
 
@@ -162,7 +162,7 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
         }
 
         await unitOfWork.CommitAsync(cancellationToken);
-        return (await WithProfilesAsync([updated], cancellationToken))[0];
+        return (await WithProfilesAsync(tenant, [updated], cancellationToken))[0];
     }
 
     public async Task RemoveAsync(TenantContext tenant, Guid membershipId, CancellationToken cancellationToken)
@@ -213,9 +213,9 @@ public sealed class MemberService(IDataSourceProvider dataSources, IAccountProfi
             : throw new DomainRuleViolationException(ViolationKind.NotFound, "membership.not_found", "Member not found.");
     }
 
-    private async Task<List<MemberView>> WithProfilesAsync(List<Row> rows, CancellationToken cancellationToken)
+    private async Task<List<MemberView>> WithProfilesAsync(TenantContext tenant, List<Row> rows, CancellationToken cancellationToken)
     {
-        var found = await profiles.FindAsync([.. rows.Select(r => r.UserAccountId).Distinct()], cancellationToken);
+        var found = await profiles.FindAsync(tenant.UserAccountId, tenant.OrganizationId, [.. rows.Select(r => r.UserAccountId).Distinct()], cancellationToken);
         return
         [
             .. rows.Select(r =>

@@ -131,7 +131,8 @@ public sealed record PassResponse(
     string Status,
     DateTimeOffset CreatedAt,
     string Version,
-    IReadOnlyList<PassFreezeResponse> Freezes);
+    IReadOnlyList<PassFreezeResponse> Freezes,
+    string Source = "desk");
 
 /// <summary>`PassFreeze`: days a membership is frozen, studio dates, inclusive.</summary>
 public sealed record PassFreezeResponse(Guid Id, DateOnly StartsOn, DateOnly EndsOn);

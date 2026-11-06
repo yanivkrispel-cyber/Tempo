@@ -103,6 +103,12 @@ export default defineConfig({
       testDir: "./specs/sync9",
     },
     {
+      // Pilot dry run P3 (board #584, O5): a fresh e2e owner at 1280px and 390px and a member on a Pixel 7 sign in
+      // through the Hosted UI themselves and use the screens only; minutes and clicks are measured.
+      name: "pilot-p3",
+      testDir: "./specs/pilot-p3",
+    },
+    {
       // D15 (#317): every screen of both apps on phones, tablets and computers. Each test sizes its own contexts
       // (support/screens.ts). E2E_SCREENSHOTS=1 also keeps a full-page picture of each for review.
       name: "screens",

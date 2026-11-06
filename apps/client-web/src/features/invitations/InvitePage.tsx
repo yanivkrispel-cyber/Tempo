@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TempoApiError, unwrap } from "@tempo/api-client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { meKey, roleName, useMe } from "../../account/account";
 import { useSignOut } from "../../account/signOut";
@@ -10,6 +10,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { SignInButtons } from "../../auth/SignInButtons";
 import { Banner, Button, ButtonLink, Skeleton, useToast } from "../../shared/design-system";
 import { InvalidLink } from "../../shared/InvalidLink";
+import { NameField, nameMissing, needsName } from "../../shared/NameField";
 import { chooseStudio } from "../member/studioChoice";
 import { formatDate, toIsoDate } from "../../shared/utilities/dates";
 import { useLinkSecret } from "../../shared/utilities/linkSecret";
@@ -45,6 +46,9 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
+  const askName = needsName(me.data?.displayName);
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string>();
 
   // Preview needs the account, so it waits for POST /session.
   const preview = useQuery({
@@ -55,7 +59,11 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
   });
 
   const accept = useMutation({
-    mutationFn: () => unwrap(api.POST("/api/v1/invitations/accept", { body: { token } })),
+    mutationFn: async () => {
+      // The name first: accepting makes the studio's person from the account's name (P3 F3).
+      if (askName) await unwrap(api.PATCH("/api/v1/me", { body: { displayName: name.trim() } }));
+      return unwrap(api.POST("/api/v1/invitations/accept", { body: { token } }));
+    },
     onSuccess: async (membership) => {
       onUsed();
       // The generic app opens on the studio just joined (docs/35 W-5).
@@ -105,6 +113,16 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
           {invitedByDisplayName && <>הזמנה מאת {invitedByDisplayName} · </>}
           תפקיד: {roleName(role)} · בתוקף עד {formatDate(toIsoDate(new Date(expiresAt)))}
         </p>
+        {askName && !gone && (
+          <NameField
+            value={name}
+            onChange={(value) => {
+              setName(value);
+              setNameError(undefined);
+            }}
+            error={nameError}
+          />
+        )}
         {accept.isError && (
           <Banner tone="danger" icon="info">
             {errorMessage(accept.error, "לא הצלחנו לאשר את ההזמנה. נסו שוב.")}
@@ -116,7 +134,11 @@ function Invitation({ token, onUsed }: { token: string; onUsed: () => void }) {
           </Button>
         ) : (
           !gone && (
-            <Button block loading={accept.isPending} onClick={() => accept.mutate()}>
+            <Button
+              block
+              loading={accept.isPending}
+              onClick={() => (askName && !name.trim() ? setNameError(nameMissing) : accept.mutate())}
+            >
               אישור ההצטרפות
             </Button>
           )
