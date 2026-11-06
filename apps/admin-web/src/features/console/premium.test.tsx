@@ -225,13 +225,14 @@ describe("the owner's day (docs/33 section 9)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "בוקר טוב, דנה" })).toBeInTheDocument();
 
     // The bell counts what waits, and it and the line under the greeting take the owner to it.
-    const [bell, line] = await screen.findAllByRole("button", { name: "3 דברים מחכים לך" });
+    const bell = await screen.findByRole("button", { name: "מחכה לך: 3" });
+    const line = screen.getByRole("button", { name: "3 דברים מחכים לך" });
     expect(bell).toHaveTextContent("3");
-    await userEvent.click(bell!);
+    await userEvent.click(bell);
     const waiting = screen.getByRole("heading", { level: 2, name: "מחכה לך" });
     expect(waiting).toHaveFocus();
     (document.activeElement as HTMLElement).blur();
-    await userEvent.click(line!);
+    await userEvent.click(line);
     expect(waiting).toHaveFocus();
 
     await userEvent.click(screen.getByRole("button", { name: /^חיפוש מתאמנת, שיעור או פעולה/ }));
@@ -253,6 +254,26 @@ describe("the owner's day (docs/33 section 9)", () => {
     } finally {
       restore();
     }
+  });
+
+  it("opens the grant from the card of one member who joined without a pass", async () => {
+    const one = { kind: "joined_without_pass", count: 1, people: [{ id: id(63), displayName: "נועה לוי" }] };
+    renderAt("/o/neshima/today", { ...insights, [`GET ${base}/insights/suggestions`]: { items: [one] } });
+    const link = await screen.findByRole("link", { name: "מתן כרטיסייה או מנוי" });
+    expect(link).toHaveAttribute("href", `/o/neshima/people/${id(63)}?grant=1`);
+  });
+
+  it("sends several members who joined without a pass to the people list", async () => {
+    const two = {
+      kind: "joined_without_pass",
+      count: 2,
+      people: [
+        { id: id(63), displayName: "נועה לוי" },
+        { id: id(64), displayName: "תמר בר" },
+      ],
+    };
+    renderAt("/o/neshima/today", { ...insights, [`GET ${base}/insights/suggestions`]: { items: [two] } });
+    expect(await screen.findByRole("link", { name: "לרשימת האנשים" })).toHaveAttribute("href", "/o/neshima/people");
   });
 
   it("keeps the numbers from someone without reports", async () => {
