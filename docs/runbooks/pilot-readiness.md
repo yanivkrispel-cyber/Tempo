@@ -1,7 +1,7 @@
 # Runbook: pilot readiness
 
 Written on 2026-10-17 (day board #232, R1) and updated the same afternoon (board #253, U6) and evening (board #321,
-U7), then on 2026-11-03 (board #584, K8: the P3 dry run's API side and the pilot sprint). It lists every step a
+U7), then on 2026-11-03 (board #584, K8: the P3 dry run's API side and the pilot sprint) and on 2026-11-06 (board #612: final states and the P3 rerun). It lists every step a
 real studio goes through on Tempo. Each step is
 marked **done on dev**, with the PR that shipped it, or **blocked on Kris**, with the item that blocks it. The how-to
 for each step is in `docs/runbooks/pilot-onboarding.md`. This page answers a different question: can a studio
@@ -54,8 +54,8 @@ a suspended studio. The last two close P2 F6 and F4 once Kris registers as opera
 | 13e | Staff notes and the studio's tags on a person; the people list filters by tag; erase, merge and export carry them (migration 0025)                                             | done on dev, API; the console screens are K2's Z2                                                        | N1 #327                                 |
 | 13f | Every console on a phone, a tablet and a computer, and the coach's "today" screen (D15)                                                                                        | done on dev; merged without a review at 18:10, then reviewed after the merge                             | #318, #320, #328                        |
 | 13g | The setup checklist on the console's home: nine first steps, each read from a list the console already loads (PL-3) | done on dev | O2 #586 |
-| 13h | Pass import: the passes a studio's members already paid for, from a CSV file, a check first, then the import (migration 0041) | API: #598; the console page is O3 | docs/40 #591, contract #592, #598 |
-| 13i | "עזרה ויצירת קשר": the Tempo team's contact and the FAQ in the console (PL-4) | API: #597, read from SSM `/tempo/dev/support/contact`, which Kris sets; the console page is O4 (#606) | #595, #597; `docs/pilot/faq.md` |
+| 13h | Pass import: the passes a studio's members already paid for, from a CSV file, a check first, then the import (migration 0041) | done on dev: API #598, console page #611; PI-8 (a frozen imported pass is found by a re-run) #624 | docs/40 #591, contract #592, #598 |
+| 13i | "עזרה ויצירת קשר": the Tempo team's contact and the FAQ in the console (PL-4) | done on dev: API #597, console page #606; the contact is read from SSM `/tempo/dev/support/contact`, which Kris sets | #595, #597; `docs/pilot/faq.md` |
 | 14  | Consent texts shown to members | **blocked on Kris**: P-4; the draft for the lawyer is in `docs/legal/` | docs/27 sections 4.3 and 14 (there is no section 15); #594 |
 | 15  | The apps on the internet (Cloudflare Pages, ADR-0027; AWS refused CloudFront on 2026-10-17)                                                                                    | done on dev: `deploy-web` publishes and smoke-tests both apps on every deploy since the secrets were set | #310                                    |
 
@@ -139,11 +139,31 @@ about 3.5 s before the first byte on a fully cold instance, under 1.3 s here bec
 | P3 F1 | No guidance after opening the studio | fix: the setup checklist, #586 (O2) |
 | P3 F2 | The join link is hidden under invitations, shown once, no QR | fix: #589 (confirm before replacing, QR, share) |
 | P3 F3 | A member who joins by link has no name | app-side only: #604 asks "איך קוראים לך?" and saves it with `PATCH /me` before joining (no API change) |
-| P3 F4 | Nothing tells the owner that a member joined and needs a pass | API: #599 (`joined_without_pass` card; a used-up card counts as no pass); the console card is [O]'s |
+| P3 F4 | Nothing tells the owner that a member joined and needs a pass | API: #599 (`joined_without_pass` card; a used-up card counts as no pass); the console card is #625 |
 | P3 F5 | A new room opens its map at once | kept: D20 is Ofir's decision |
 | P3 F6 | Toasts stack up | fix: #588 (three at most) |
 | P3 F7 | Booking toast not found by the test | to confirm on a phone (Kris's phone test) |
 | P3 F8 | 19 clicks to the first class | product question for Kris and Ofir |
+
+### P3 again on the final `main` (board #612, O6)
+
+Run `mw57w00d` on `main` `f903c0a`, on 2026-11-06: 5 of 5 passed in 2.0 min, no blocker. The only accessibility notes
+are #626. The run adds one step, the pass import, after the old marks so they stay comparable.
+
+| Milestone | Clicks on #584 | Clicks now |
+|---|---|---|
+| First weekly class | 19 | 19 |
+| First member joined | 25 | 25 |
+| First attended booking | 35 | 35 |
+| Passes imported (new step) | none | 41 (owner 35, member 6) |
+
+Minutes are machine pace and moved between runs the same day, so they say nothing about a person's time.
+
+After numbers (`tests/e2e/perf/after-2026-11-06.json`, median of 3, Pixel 7, Slow 4G, CPU 4x) against 2026-10-27, as
+the average of ten screens: LCP on a first visit 2,719 to 2,482 ms, API done 3,305 to 2,861 ms, LCP on a repeat visit
+909 to 700 ms. The files are ten days apart, so small moves may be noise. One regression: the member profile, 2,632 to
+3,404 ms LCP on a first visit (#628, not a blocker). A first visit sends 2 to 8 CORS preflights per screen and a repeat
+visit none, so `docs/39`'s default stands.
 
 ## Open follow-ups (not blocking a pilot)
 
@@ -155,7 +175,7 @@ From board #584:
 - The member app shows no **studio's own contact**: it needs a settings field, a contract and a migration, so it
   waits until after the pilot (O4, member side).
 - From the #600 review: `find_account_profiles` could give removed or suspended members' names without their email,
-  and an integration test should cover the invitation preview read by a caller outside the studio.
+  which needs a migration, so it is on Kris's list. The invitation preview read by a caller outside the studio has its integration test (#619).
 - On dev a suspended studio can be removed after 0 days (`TEMPO_STUDIO_REMOVAL_MIN_DAYS`).
 
 - Staff notes go into a person's export (docs/34 section 9, a **(reading)**): confirm with the lawyer under P-2.
