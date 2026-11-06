@@ -42,13 +42,10 @@ public sealed class AccountService(IDataSourceProvider dataSources, ICognitoUser
 
     private const string UniqueViolation = "23505";
 
+    // The account id is not known yet, so row-level security would hide the row; the SECURITY DEFINER lookup
+    // returns the one account linked to this sign-in (migration 0040).
     private const string SelectByIdentity =
-        """
-        SELECT a.id, a.email, a.email_verified, a.display_name, a.locale, a.status, a.identity_synced_at
-        FROM identity.external_identities e
-        JOIN identity.user_accounts a ON a.id = e.user_account_id
-        WHERE e.issuer = $1 AND e.subject = $2
-        """;
+        "SELECT id, email, email_verified, display_name, locale, status, identity_synced_at FROM identity.find_account_by_external_identity($1, $2)";
 
     public async Task<AccountView> StartSessionAsync(SignIn signIn, CancellationToken cancellationToken)
     {

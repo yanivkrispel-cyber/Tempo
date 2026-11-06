@@ -71,7 +71,7 @@ public sealed class AuditService(IDataSourceProvider dataSources, IAccountProfil
 
         // Names only for people; an operator shows as its actor type.
         var userIds = page.Where(r => r.Event.ActorType == "user" && r.ActorId is not null).Select(r => r.ActorId!.Value).Distinct().ToList();
-        var names = await profiles.FindAsync(userIds, cancellationToken);
+        var names = await profiles.FindAsync(tenant.UserAccountId, tenant.OrganizationId, userIds, cancellationToken);
         var items = page
             .Select(r => r.Event.ActorType == "user" && r.ActorId is { } id && names.TryGetValue(id, out var profile)
                 ? r.Event with { ActorDisplayName = profile.DisplayName ?? profile.Email }

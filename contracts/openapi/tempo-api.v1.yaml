@@ -3212,6 +3212,41 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/organizations/{organizationId}/passes/import:
+    parameters:
+      - $ref: "#/components/parameters/OrganizationId"
+    post:
+      tags: [Passes]
+      operationId: importPasses
+      x-tempo-planned: true
+      summary: "Check or import open pass balances from a file the console has read (`people.import` and `passes.manage`)"
+      description: |
+        docs/40 (board #584, PL-2). Run after the people import: each row names a person already in the studio (by
+        email or phone), one of the studio's active products (by name), the entries left on a card and the dates. No
+        money. The console reads the CSV in the browser; the file never reaches the server. At most 1,000 rows (more
+        is 400 `import.too_many_rows`). Every row gets one outcome: `valid` (dry run) or `created`; `exists` (the
+        person already has an active imported pass of that product ending that day, so a second run adds nothing);
+        `duplicate_in_file` (an earlier row has the same person and product); `invalid` (with `field` and `code`).
+        `dryRun: true` writes nothing. `dryRun: false` creates every good row in one transaction with
+        `source = import`; an invalid row never blocks the others. Nothing is sent to the member. The route needs
+        `people.import`; a caller without `passes.manage` is 403 `permission.denied`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportPassesRequest" }
+      responses:
+        "200":
+          description: The outcome of every row and the totals.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportPassesResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "402": { $ref: "#/components/responses/Restricted" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/organizations/{organizationId}/passes/{passId}/void:
     parameters:
       - $ref: "#/components/parameters/OrganizationId"
@@ -5105,6 +5140,80 @@ components:
           type: [string, "null"]
           description: "`invalid`: `required`, `too_long`, `phone.invalid`, `email.invalid`, `birth_date.invalid` or `contact.required`."
 
+    ImportPassesRequest:
+      type: object
+      required: [dryRun, rows]
+      description: docs/40 section 3. Cells are sent as the file has them, trimmed; the API validates and normalizes.
+      properties:
+        dryRun: { type: boolean, description: True checks every row and writes nothing. }
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/ImportPassRow" }
+
+    ImportPassRow:
+      type: object
+      required: [line]
+      properties:
+        line: { type: integer, minimum: 1, description: "The row's line in the file, echoed in the result." }
+        email: { type: [string, "null"], maxLength: 254, description: "Finds the person, with or instead of the phone." }
+        phone: { type: [string, "null"], maxLength: 40, description: "Israeli local or with a country code, as `createPerson` reads it." }
+        product: { type: [string, "null"], maxLength: 80, description: "An active product's name, ignoring case and outer spaces." }
+        entriesLeft:
+          type: [string, "null"]
+          maxLength: 10
+          description: "A card: a whole number from 1 to the product's entries. A membership: empty."
+        validFrom:
+          type: [string, "null"]
+          maxLength: 20
+          description: "Empty means the studio's today. `dd/mm/yyyy` (or `d/m/yyyy`), `d.m.yyyy` or `yyyy-mm-dd`."
+        validUntil:
+          type: [string, "null"]
+          maxLength: 20
+          description: "Required, inclusive, not before the studio's today and at most 730 days ahead. Same formats."
+
+    ImportPassesResult:
+      type: object
+      required: [dryRun, totals, rows]
+      properties:
+        dryRun: { type: boolean }
+        importId: { type: [string, "null"], format: uuid, description: "Null on a dry run; the id in the `passes.imported` audit entry." }
+        totals: { $ref: "#/components/schemas/ImportTotals" }
+        rows:
+          type: array
+          description: One outcome per row, in the order sent.
+          items: { $ref: "#/components/schemas/ImportPassRowResult" }
+
+    ImportPassRowResult:
+      type: object
+      required: [line, outcome]
+      properties:
+        line: { type: integer }
+        outcome:
+          type: string
+          enum: [valid, created, exists, duplicate_in_file, invalid]
+        personId:
+          type: [string, "null"]
+          format: uuid
+          description: The person the row names, when found.
+        passId:
+          type: [string, "null"]
+          format: uuid
+          description: The created pass (`created`) or the imported one already there (`exists`).
+        duplicateOfLine: { type: [integer, "null"], description: "`duplicate_in_file`: the earlier line." }
+        field:
+          type: [string, "null"]
+          enum: [phone, email, contact, person, product, entries_left, valid_from, valid_until, null]
+          description: "`invalid`: the field at fault (`contact` when there is neither phone nor email)."
+        code:
+          type: [string, "null"]
+          description: |
+            `invalid`: `required`, `phone.invalid`, `email.invalid`, `contact.required`, `person.not_found`,
+            `person.ambiguous`, `person.read_only`, `product.not_found`, `product.ambiguous`, `entries_left.invalid`,
+            `entries_left.too_many`, `entries_left.not_allowed`, `date.invalid`, `valid_until.past`,
+            `valid_until.too_far` or `valid_from.after_until`.
+
     Tag:
       type: object
       required: [id, name, color, peopleCount, createdAt, version]
@@ -6622,6 +6731,10 @@ components:
         entriesLeft: { type: [integer, "null"] }
         note: { type: [string, "null"], maxLength: 200 }
         status: { type: string, enum: [active, voided, expired], description: "`expired` is computed from `endsOn`." }
+        source:
+          type: string
+          enum: [desk, import]
+          description: "`import` when the pass came from `importPasses` (docs/40). Always sent once built; optional here until then."
         createdAt: { type: string, format: date-time }
         version: { type: string }
         freezes:

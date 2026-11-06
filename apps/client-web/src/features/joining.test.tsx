@@ -64,6 +64,20 @@ describe("/invite", () => {
     expect(window.localStorage.getItem("tempo.client-web.studio")).toBe(membership.organization.id);
   });
 
+  it("asks an account with no name for one before accepting (P3 F3)", async () => {
+    const { api } = renderAt(`/invite#${token}`, signedInAuth(), {
+      "POST /api/v1/session": { ...sampleMe, displayName: "  " },
+      "POST /api/v1/invitations/preview": invitation,
+      "PATCH /api/v1/me": { ...sampleMe, displayName: "מאיה ברק" },
+      "POST /api/v1/invitations/accept": membership,
+    });
+    await userEvent.type(await screen.findByRole("textbox", { name: /איך קוראים לך/ }), "מאיה ברק");
+    await userEvent.click(screen.getByRole("button", { name: "אישור ההצטרפות" }));
+    await waitFor(() => expect(api.requests.some((request) => request.url.endsWith("/invitations/accept"))).toBe(true));
+    const patch = api.requests.findIndex((request) => request.method === "PATCH");
+    expect(api.bodies[patch]).toEqual({ displayName: "מאיה ברק" });
+  });
+
   it("says when the invitation is gone and forgets the token", async () => {
     renderAt(`/invite#${token}`, signedInAuth(), {
       "POST /api/v1/invitations/preview": problem(404, "invitation.not_found"),
@@ -128,6 +142,35 @@ describe("/join", () => {
     const join = api.requests.findIndex((request) => new URL(request.url).pathname === "/api/v1/join");
     expect(api.bodies[join]).toEqual({ code });
     expect(window.localStorage.getItem("tempo.client-web.studio")).toBe(membership.organization.id);
+  });
+
+  it("asks an account with no name for one and saves it before joining (P3 F3)", async () => {
+    const nameless = { ...sampleMe, displayName: null };
+    const { router, api } = renderAt(`/join#${code}`, signedInAuth(), {
+      "POST /api/v1/session": nameless,
+      "POST /api/v1/join/preview": { organization: studio },
+      "PATCH /api/v1/me": { ...sampleMe, displayName: "מאיה ברק" },
+      "POST /api/v1/join": membership,
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "הצטרפות" }));
+    expect(screen.getByRole("textbox", { name: /איך קוראים לך/ })).toHaveAccessibleDescription(
+      "כתבו את השם שלכם, כך הסטודיו יידע מי הצטרף.",
+    );
+    expect(api.requests.some((request) => request.url.endsWith("/api/v1/join"))).toBe(false);
+
+    await userEvent.type(screen.getByRole("textbox", { name: /איך קוראים לך/ }), " מאיה ברק ");
+    await userEvent.click(screen.getByRole("button", { name: "הצטרפות" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    const paths = api.requests.map((request) => `${request.method} ${new URL(request.url).pathname}`);
+    const patch = paths.indexOf("PATCH /api/v1/me");
+    expect(api.bodies[patch]).toEqual({ displayName: "מאיה ברק" });
+    expect(patch).toBeLessThan(paths.indexOf("POST /api/v1/join"));
+  });
+
+  it("does not ask an account that has a name", async () => {
+    renderAt(`/join#${code}`, signedInAuth(), { "POST /api/v1/join/preview": { organization: studio } });
+    await screen.findByRole("heading", { name: "הצטרפות לסטודיו נשימה" });
+    expect(screen.queryByRole("textbox", { name: /איך קוראים לך/ })).not.toBeInTheDocument();
   });
 
   it("says when the link was replaced", async () => {

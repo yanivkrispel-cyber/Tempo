@@ -153,6 +153,29 @@ describe("invitations", () => {
     ).toEqual(["PUT", "DELETE"]);
   });
 
+  it("asks before replacing a live link, then shows the new one with its QR (P3 F2)", async () => {
+    const api = renderAs("owner", {
+      [`GET ${base}`]: () => json(organization(true)),
+      [`PUT ${base}/join-link`]: () =>
+        json({ link: "http://localhost:5174/join#new", createdAt: "2026-10-15T08:00:00Z" }),
+    });
+    const card = await screen.findByRole("region", { name: "קישור הצטרפות למתאמנים" });
+    expect(await within(card).findByText(/הקישור מוצג רק כשהוא נוצר/)).toBeInTheDocument();
+
+    await userEvent.click(within(card).getByRole("button", { name: "החלפת הקישור" }));
+    const dialog = screen.getByRole("dialog", { name: "להחליף את קישור ההצטרפות?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "השארת הקישור" }));
+    expect(api.requests.some((request) => request.method === "PUT")).toBe(false);
+
+    await userEvent.click(within(card).getByRole("button", { name: "החלפת הקישור" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "החלפה" }));
+    expect(await within(card).findByRole("textbox", { name: "קישור ההצטרפות החדש" })).toHaveValue(
+      "http://localhost:5174/join#new",
+    );
+    expect(within(card).getByRole("img", { name: "קוד QR לקישור ההצטרפות" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("shows the section in the navigation only to members who can invite", async () => {
     renderAs("staff", {}, "/o/neshima");
     const nav = await screen.findByRole("navigation", { name: "ניהול הסטודיו" });
