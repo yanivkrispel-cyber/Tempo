@@ -237,7 +237,7 @@ export class ApiStack extends Stack {
         allowHeaders: ["Content-Type", "Authorization", "X-Tempo-Authorization", "X-Correlation-Id", "If-Match"],
         exposeHeaders: ["Location", "Retry-After", "X-Correlation-Id"],
         allowCredentials: false,
-        maxAge: Duration.hours(1)
+        maxAge: Duration.hours(2)
       }
     });
 
