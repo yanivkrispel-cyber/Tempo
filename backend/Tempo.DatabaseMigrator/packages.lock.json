@@ -19,11 +19,11 @@
       },
       "AWSSDK.SimpleSystemsManagement": {
         "type": "Direct",
-        "requested": "[4.0.104.7, )",
-        "resolved": "4.0.104.7",
-        "contentHash": "sM/URIgVsDtOAi9njB14KCQRQL5UXlVqs+3SGucDKgHHyQGIT1Ev5IKUPhaY7whZd4ixkIstiw2QQIouG3Ankw==",
+        "requested": "[4.0.104.8, )",
+        "resolved": "4.0.104.8",
+        "contentHash": "RnmOq87DphPIsjuEZ4GSVtqMStbKL+Qh2RM3nQgnvBcSWFJxea3PnL2wsIHAWLYSDaguF1tjQEjBtYQUys9Zqg==",
         "dependencies": {
-          "AWSSDK.Core": "[4.0.102.14, 5.0.0)"
+          "AWSSDK.Core": "[4.0.102.15, 5.0.0)"
         }
       },
       "dbup-postgresql": {
@@ -77,8 +77,8 @@
       },
       "AWSSDK.Core": {
         "type": "Transitive",
-        "resolved": "4.0.102.14",
-        "contentHash": "pRYOOIyj40UdQ6G9iq8AOU30sFPqWS/umM/sFTmAl4n1S6AVbVa67DJpJTxD+9qJFqweHPcyVW7Qb4BbUBLJdg=="
+        "resolved": "4.0.102.15",
+        "contentHash": "GGqiCBOGPKUkkSkTRB3oXcdvz7PzMEGwXu5WI4V+gDZQm0oPg+SGqKe+1OeMEnZmiIyqhIoYph3uI17HJZ2ynQ=="
       },
       "dbup-core": {
         "type": "Transitive",
