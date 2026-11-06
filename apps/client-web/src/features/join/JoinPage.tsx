@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TempoApiError, unwrap } from "@tempo/api-client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { meKey, useMe } from "../../account/account";
 import { useApi } from "../../api/ApiProvider";
@@ -9,6 +9,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { SignInButtons } from "../../auth/SignInButtons";
 import { Banner, Button, ButtonLink, Skeleton, useToast } from "../../shared/design-system";
 import { InvalidLink } from "../../shared/InvalidLink";
+import { NameField, nameMissing, needsName } from "../../shared/NameField";
 import { chooseStudio } from "../member/studioChoice";
 import { useLinkSecret } from "../../shared/utilities/linkSecret";
 
@@ -44,6 +45,9 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
+  const askName = needsName(me.data?.displayName);
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string>();
 
   // Preview needs the account, so it waits for POST /session.
   const preview = useQuery({
@@ -54,7 +58,11 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
   });
 
   const join = useMutation({
-    mutationFn: () => unwrap(api.POST("/api/v1/join", { body: { code } })),
+    mutationFn: async () => {
+      // The name first: joining makes the studio's person from the account's name (P3 F3).
+      if (askName) await unwrap(api.PATCH("/api/v1/me", { body: { displayName: name.trim() } }));
+      return unwrap(api.POST("/api/v1/join", { body: { code } }));
+    },
     onSuccess: async (membership) => {
       onUsed();
       // The generic app opens on the studio just joined (docs/35 W-5).
@@ -100,13 +108,27 @@ function Join({ code, onUsed }: { code: string; onUsed: () => void }) {
         <span className="tp-eyebrow">הצטרפות לסטודיו</span>
         <h1>הצטרפות ל{preview.data.organization.displayName}</h1>
         <p className="tp-muted">אחרי ההצטרפות אפשר לראות את מערכת השיעורים ולהירשם.</p>
+        {askName && !gone && (
+          <NameField
+            value={name}
+            onChange={(value) => {
+              setName(value);
+              setNameError(undefined);
+            }}
+            error={nameError}
+          />
+        )}
         {join.isError && (
           <Banner tone="danger" icon="info">
             {isNotFound(join.error) ? notFound : errorMessage(join.error, "לא הצלחנו לצרף אותך. נסו שוב.")}
           </Banner>
         )}
         {!gone && (
-          <Button block loading={join.isPending} onClick={() => join.mutate()}>
+          <Button
+            block
+            loading={join.isPending}
+            onClick={() => (askName && !name.trim() ? setNameError(nameMissing) : join.mutate())}
+          >
             הצטרפות
           </Button>
         )}
