@@ -2415,6 +2415,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationId}/passes/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check or import open pass balances from a file the console has read (`people.import` and `passes.manage`)
+         * @description docs/40 (board #584, PL-2). Run after the people import: each row names a person already in the studio (by
+         *     email or phone), one of the studio's active products (by name), the entries left on a card and the dates. No
+         *     money. The console reads the CSV in the browser; the file never reaches the server. At most 1,000 rows (more
+         *     is 400 `import.too_many_rows`). Every row gets one outcome: `valid` (dry run) or `created`; `exists` (the
+         *     person already has an active imported pass of that product ending that day, so a second run adds nothing);
+         *     `duplicate_in_file` (an earlier row has the same person and product); `invalid` (with `field` and `code`).
+         *     `dryRun: true` writes nothing. `dryRun: false` creates every good row in one transaction with
+         *     `source = import`; an invalid row never blocks the others. Nothing is sent to the member. The route needs
+         *     `people.import`; a caller without `passes.manage` is 403 `permission.denied`.
+         */
+        post: operations["importPasses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organizationId}/passes/{passId}/void": {
         parameters: {
             query?: never;
@@ -3806,6 +3836,68 @@ export interface components {
              */
             kind: "email" | "url" | null;
         };
+        /** @description docs/40 section 3. Cells are sent as the file has them, trimmed; the API validates and normalizes. */
+        ImportPassesRequest: {
+            /** @description True checks every row and writes nothing. */
+            dryRun: boolean;
+            rows: components["schemas"]["ImportPassRow"][];
+        };
+        ImportPassRow: {
+            /** @description The row's line in the file, echoed in the result. */
+            line: number;
+            /** @description Finds the person, with or instead of the phone. */
+            email?: string | null;
+            /** @description Israeli local or with a country code, as `createPerson` reads it. */
+            phone?: string | null;
+            /** @description An active product's name, ignoring case and outer spaces. */
+            product?: string | null;
+            /** @description A card: a whole number from 1 to the product's entries. A membership: empty. */
+            entriesLeft?: string | null;
+            /** @description Empty means the studio's today. `dd/mm/yyyy` (or `d/m/yyyy`), `d.m.yyyy` or `yyyy-mm-dd`. */
+            validFrom?: string | null;
+            /** @description Required, inclusive, not before the studio's today and at most 730 days ahead. Same formats. */
+            validUntil?: string | null;
+        };
+        ImportPassesResult: {
+            dryRun: boolean;
+            /**
+             * Format: uuid
+             * @description Null on a dry run; the id in the `passes.imported` audit entry.
+             */
+            importId?: string | null;
+            totals: components["schemas"]["ImportTotals"];
+            /** @description One outcome per row, in the order sent. */
+            rows: components["schemas"]["ImportPassRowResult"][];
+        };
+        ImportPassRowResult: {
+            line: number;
+            /** @enum {string} */
+            outcome: "valid" | "created" | "exists" | "duplicate_in_file" | "invalid";
+            /**
+             * Format: uuid
+             * @description The person the row names, when found.
+             */
+            personId?: string | null;
+            /**
+             * Format: uuid
+             * @description The created pass (`created`) or the imported one already there (`exists`).
+             */
+            passId?: string | null;
+            /** @description `duplicate_in_file`: the earlier line. */
+            duplicateOfLine?: number | null;
+            /**
+             * @description `invalid`: the field at fault (`contact` when there is neither phone nor email).
+             * @enum {string|null}
+             */
+            field?: "phone" | "email" | "contact" | "person" | "product" | "entries_left" | "valid_from" | "valid_until" | null;
+            /**
+             * @description `invalid`: `required`, `phone.invalid`, `email.invalid`, `contact.required`, `person.not_found`,
+             *     `person.ambiguous`, `person.read_only`, `product.not_found`, `product.ambiguous`, `entries_left.invalid`,
+             *     `entries_left.too_many`, `entries_left.not_allowed`, `date.invalid`, `valid_until.past`,
+             *     `valid_until.too_far` or `valid_from.after_until`.
+             */
+            code?: string | null;
+        };
         Tag: {
             /** Format: uuid */
             id: string;
@@ -5136,6 +5228,11 @@ export interface components {
              * @enum {string}
              */
             status: "active" | "voided" | "expired";
+            /**
+             * @description `import` when the pass came from `importPasses` (docs/40); `desk` for every other pass. Always sent; optional here so sample data without it still types.
+             * @enum {string}
+             */
+            source?: "desk" | "import";
             /** Format: date-time */
             createdAt: string;
             version: string;
@@ -10024,6 +10121,37 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    importPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: components["parameters"]["OrganizationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPassesRequest"];
+            };
+        };
+        responses: {
+            /** @description The outcome of every row and the totals. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPassesResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            402: components["responses"]["Restricted"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     voidPass: {

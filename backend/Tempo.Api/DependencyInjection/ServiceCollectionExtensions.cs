@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IOwnershipService, OwnershipService>();
         services.AddSingleton<IPeopleService, PeopleService>();
         services.AddSingleton<IPeopleImportService, PeopleImportService>();
+        services.AddSingleton<IPassImportService, PassImportService>();
         services.AddSingleton<IPeopleTagsAndNotesService, PeopleTagsAndNotesService>();
         services.AddSingleton<ITimetableService, TimetableService>();
         services.AddSingleton<IPassService, PassService>();

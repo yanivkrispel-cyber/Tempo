@@ -20,6 +20,10 @@ updates:
       # major describes APIs that are not there (#582). Raise it with the runtime.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # A new router major brings a member nothing right before the pilot (#610).
+      # Look at it again after the pilot.
+      - dependency-name: "react-router"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: chore(deps)
 
@@ -33,6 +37,11 @@ updates:
     groups:
       nuget-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Version 8 moved FluentAssertions to a paid commercial licence (#581), and
+      # N-4 is $0. Stay on 7.x; replacing the library is a separate decision.
+      - dependency-name: "FluentAssertions"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: chore(deps)
 

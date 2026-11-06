@@ -102,6 +102,8 @@ If the settings or the smoke user cannot be resolved, the sign-in setup and ever
      occupancy legend and the month's sales in whole shekels (LV-2).
    - The three Cognito users are deleted at the end; the studio stays for the operator's cleanup (A-4).
 
+9. **Pilot dry run P3** (`specs/pilot-p3/`, project `pilot-p3`, board #584 O5): run it alone (`pnpm e2e --project=pilot-p3`, about two minutes). A fresh `e2e-p3-…` owner (1280px, then 390px) and member (Pixel 7) go through the screens only: studio, brand, room, class type, pass, a weekly class nine minutes ahead, the join link, the member joins, the owner gives the pass, the member books, the owner marks attendance. Minutes and clicks at each milestone go to `test-results/pilot-p3/metrics.json`. The studio stays for the operator's cleanup (A-4); `E2E_SCREENSHOTS=1` keeps pictures.
+
 **axe on every screen.** `support/axe.ts` audits each screen against WCAG 2.2 A and AA. A serious or critical
 violation fails the test; minor and moderate ones are attached to the report as annotations. The audit runs with the
 pointer moved off the page, so it checks the resting screen and not a hover state.
