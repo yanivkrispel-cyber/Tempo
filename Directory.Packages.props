@@ -2,7 +2,7 @@
   <ItemGroup>
     <!-- ASP.NET Core / hosting (net10.0, per ADR-0016) -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
@@ -21,21 +21,21 @@
 
     <!-- AWS Lambda hosting -->
     <PackageVersion Include="Amazon.Lambda.Core" Version="3.4.0" />
-    <PackageVersion Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="2.2.0" />
+    <PackageVersion Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="2.2.1" />
     <PackageVersion Include="Amazon.Lambda.SQSEvents" Version="3.0.1" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="3.0.1" />
 
     <!-- AWS SDK clients (least-privilege, ADR-0015). AWSSDK.EventBridge is
          added when the outbox worker starts publishing for real; the API sends
          `notifications.deliver` to the work queue with AWSSDK.SQS (docs/30). -->
-    <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.106.1" />
-    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.17" />
-    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.2" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.14" />
+    <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.106.6" />
+    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.22" />
+    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.104.7" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.21" />
     <!-- Pictures (docs/33 section 6, D17): S3 for the bytes, SkiaSharp (MIT) to re-encode them to WebP. -->
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.2" />
-    <PackageVersion Include="SkiaSharp" Version="4.152.3" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.152.3" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.7" />
+    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
 
     <!-- Database / migrator (ADR-0022) -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
