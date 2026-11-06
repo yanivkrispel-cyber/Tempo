@@ -255,6 +255,26 @@ describe("the owner's day (docs/33 section 9)", () => {
     }
   });
 
+  it("opens the grant from the card of one member who joined without a pass", async () => {
+    const one = { kind: "joined_without_pass", count: 1, people: [{ id: id(63), displayName: "נועה לוי" }] };
+    renderAt("/o/neshima/today", { ...insights, [`GET ${base}/insights/suggestions`]: { items: [one] } });
+    const link = await screen.findByRole("link", { name: "מתן כרטיסייה או מנוי" });
+    expect(link).toHaveAttribute("href", `/o/neshima/people/${id(63)}?grant=1`);
+  });
+
+  it("sends several members who joined without a pass to the people list", async () => {
+    const two = {
+      kind: "joined_without_pass",
+      count: 2,
+      people: [
+        { id: id(63), displayName: "נועה לוי" },
+        { id: id(64), displayName: "תמר בר" },
+      ],
+    };
+    renderAt("/o/neshima/today", { ...insights, [`GET ${base}/insights/suggestions`]: { items: [two] } });
+    expect(await screen.findByRole("link", { name: "לרשימת האנשים" })).toHaveAttribute("href", "/o/neshima/people");
+  });
+
   it("keeps the numbers from someone without reports", async () => {
     const { api } = renderAt("/o/neshima/today", insights, permissionsFor.staff);
     expect(await screen.findByRole("region", { name: "השיעורים היום" })).toBeInTheDocument();
