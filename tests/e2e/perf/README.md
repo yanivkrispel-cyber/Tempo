@@ -16,6 +16,8 @@ not a CI gate.
 `after-2026-10-26-inp.json` (taps), on `main` `4cb7dcd`, with both waves of #523 deployed.
 The "after" of board #530 is `after-2026-10-27.json` and `after-2026-10-27-inp.json` (the median of 3 tap runs), on
 `main` `b198e59`, with the member app's time zone from the session, the tab prefetch and the referral card's read.
+The "after" of board #612 is `after-2026-11-06.json` and `after-2026-11-06-inp.json` (the median of 3 tap runs), on
+`main` `f903c0a`. From this file on, each screen also has `preflights` and `preflightMs` (CDP, `docs/39`).
 
 They need `.auth/smoke-user.json` signed in on the **deployed** apps. Make it with the sign-in project pointed at
 Cloudflare Pages (Playwright then reuses those URLs instead of starting the local servers):

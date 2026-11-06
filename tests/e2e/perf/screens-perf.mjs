@@ -51,7 +51,7 @@ async function measure(page, cdp, url) {
   // Playwright's request events leave CORS preflights out, so count them over CDP (Chromium only).
   const preflights = new Map();
   const onPreflightSent = (e) => {
-    if (e.type === "Preflight") preflights.set(e.requestId, { start: e.timestamp, ms: 0 });
+    if (e.initiator?.type === "preflight") preflights.set(e.requestId, { start: e.timestamp, ms: 0 });
   };
   const onPreflightDone = (e) => {
     const preflight = preflights.get(e.requestId);
