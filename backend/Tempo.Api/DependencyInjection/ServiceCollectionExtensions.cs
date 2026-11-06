@@ -19,6 +19,7 @@ using Tempo.Platform.Modules.People.Infrastructure;
 using Tempo.Platform.Modules.Scheduling.Application;
 using Tempo.Platform.Modules.Organizations.Infrastructure;
 using Tempo.Platform.Modules.PlatformAdmin;
+using Tempo.Platform.Modules.Support;
 
 namespace Tempo.Api.DependencyInjection;
 
@@ -81,6 +82,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDeliveryLogService, DeliveryLogService>();
         services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
         services.AddSingleton(sp => new VapidKeySource(key => sp.GetRequiredService<IConfiguration>()[key], needsPrivateKey: false));
+        services.AddSingleton(sp => new SupportContactSource(key => sp.GetRequiredService<IConfiguration>()[key]));
         services.AddSingleton<IConsentService, ConsentService>();
         services.AddSingleton<IHealthDataKeys>(sp => new HealthDataKeys(key => sp.GetRequiredService<IConfiguration>()[key]));
         services.AddSingleton<IHealthDeclarationService, HealthDeclarationService>();

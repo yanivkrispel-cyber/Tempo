@@ -3087,6 +3087,30 @@ export interface paths {
         patch: operations["updateBillingAccount"];
         trace?: never;
     };
+    "/api/v1/support-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How studio staff reach the Tempo team (any signed-in account)
+         * @description Board #584, PL-4: the console's "עזרה ויצירת קשר" shows it. The value is the SSM standard parameter
+         *     `/tempo/<env>/support/contact`, set by a person: an email address, or an https link (for example a WhatsApp
+         *     link). The API reads it at most every ten minutes. `contact` is null when the parameter is missing or holds
+         *     neither, and the console then hides the contact. It is Tempo's contact, for studio staff; the member app shows
+         *     the studio's own contact instead.
+         */
+        get: operations["getSupportContact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plans": {
         parameters: {
             query?: never;
@@ -3802,6 +3826,15 @@ export interface components {
             field?: "display_name" | "phone" | "email" | "birth_date" | "contact" | null;
             /** @description `invalid`: `required`, `too_long`, `phone.invalid`, `email.invalid`, `birth_date.invalid` or `contact.required`. */
             code?: string | null;
+        };
+        SupportContact: {
+            /** @description An email address or an https link; null when none is set, and then `kind` is null too. */
+            contact: string | null;
+            /**
+             * @description `email` (open as `mailto:`) or `url` (open as a link); null with `contact`.
+             * @enum {string|null}
+             */
+            kind: "email" | "url" | null;
         };
         /** @description docs/40 section 3. Cells are sent as the file has them, trimmed; the API validates and normalizes. */
         ImportPassesRequest: {
@@ -11147,6 +11180,27 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getSupportContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportContact"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listPlans: {

@@ -4039,6 +4039,25 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/support-contact:
+    get:
+      tags: [Account]
+      operationId: getSupportContact
+      summary: "How studio staff reach the Tempo team (any signed-in account)"
+      description: |
+        Board #584, PL-4: the console's "עזרה ויצירת קשר" shows it. The value is the SSM standard parameter
+        `/tempo/<env>/support/contact`, set by a person: an email address, or an https link (for example a WhatsApp
+        link). The API reads it at most every ten minutes. `contact` is null when the parameter is missing or holds
+        neither, and the console then hides the contact. It is Tempo's contact, for studio staff; the member app shows
+        the studio's own contact instead.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportContact" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/plans:
     get:
       tags: [Billing]
@@ -5138,6 +5157,19 @@ components:
         code:
           type: [string, "null"]
           description: "`invalid`: `required`, `too_long`, `phone.invalid`, `email.invalid`, `birth_date.invalid` or `contact.required`."
+
+    SupportContact:
+      type: object
+      required: [contact, kind]
+      properties:
+        contact:
+          type: [string, "null"]
+          maxLength: 300
+          description: An email address or an https link; null when none is set, and then `kind` is null too.
+        kind:
+          type: [string, "null"]
+          enum: [email, url, null]
+          description: "`email` (open as `mailto:`) or `url` (open as a link); null with `contact`."
 
     ImportPassesRequest:
       type: object
