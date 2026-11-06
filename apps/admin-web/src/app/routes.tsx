@@ -67,6 +67,10 @@ export const routes: RouteObject[] = [
                 path: "passes",
                 ...lazyScreen(() => import("../features/passes/PassProductsPage"), "PassProductsPage"),
               },
+              {
+                path: "passes/import",
+                ...lazyScreen(() => import("../features/passes/PassImportPage"), "PassImportPage"),
+              },
               { path: "publish", ...lazyScreen(() => import("../features/publish/PublishPage"), "PublishPage") },
               { path: "settings", ...lazyScreen(() => import("../features/settings/SettingsPage"), "SettingsPage") },
               {
