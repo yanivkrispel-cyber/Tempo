@@ -97,7 +97,7 @@ export class DatabaseStack extends Stack {
       functionName: resourceName(config, "database-migrator"),
       component: "database-migrator",
       description:
-        "Tempo.DatabaseMigrator - deployment-only. Not exposed through API Gateway; invocation is restricted to the deployment role.",
+        "Tempo.DatabaseMigrator - deployment-only, run by the deploy workflow. Not exposed through API Gateway. It has no resource policy, so IAM in this account decides who may invoke it.",
       code: resolveDotNetLambdaCode("Tempo.DatabaseMigrator"),
       handler: "Tempo.DatabaseMigrator::Tempo.DatabaseMigrator.Function::FunctionHandler",
       memoryMb: config.lambda.workerMemoryMb,
