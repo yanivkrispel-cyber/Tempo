@@ -103,3 +103,18 @@
   align-items: flex-end;
   gap: var(--space-3);
 }
+/* The pass import's product names: two or three to a row where there is room. */
+.products {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.products li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}

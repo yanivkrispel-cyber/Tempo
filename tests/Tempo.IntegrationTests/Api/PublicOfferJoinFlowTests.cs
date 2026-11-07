@@ -133,6 +133,51 @@ public sealed class PublicOfferJoinFlowTests(PostgresFixture postgres) : IClassF
         return await client.SendAsync(request);
     }
 
+    [Fact]
+    public async Task ARepeatOfferJoin_GrantsNothingWhileAnOpenUnpaidPassExists()
+    {
+        PublicRateLimitFilter.Reset();
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, slug, studioId) = await StudioAsync(client, "owner");
+        var join = $"/api/v1/public/studios/{slug}/join";
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true });
+        var card = await ProductAsync(client, studioPath, "כרטיסייה", 3);
+        await db.AsMasterAsync("UPDATE scheduling.pass_products SET public_listed = true, public_order = 0 WHERE id = $1", card);
+        await SendAsync(client, HttpMethod.Post, "/api/v1/session", Customer("maya"));
+
+        async Task<Guid> TakeAsync()
+        {
+            // This test is about the grant, not the three joins an hour per account.
+            PublicRateLimitFilter.Reset();
+            await db.AsMasterAsync("DELETE FROM identity.rate_counters");
+            return (await SendAsync(client, HttpMethod.Post, join, Customer("maya"), new { productId = card })).GetProperty("introPass").GetProperty("passId").GetGuid();
+        }
+
+        // 1. The second join answers with the first pass and adds nothing, not even an audit row.
+        var first = await TakeAsync();
+        (await TakeAsync()).Should().Be(first);
+        (await PassesAsync(db, studioId, card)).Should().Be(1L);
+        (await db.AsMasterAsync("SELECT count(*) FROM audit.audit_events WHERE organization_id = $1 AND action = 'pass.granted'", studioId)).Should().Be(1L);
+
+        // 2. A used-up card, an expired one and a voided one are not open: each lets the next join grant again.
+        await db.AsMasterAsync("UPDATE scheduling.passes SET entries_used = entries WHERE id = $1", first);
+        var second = await TakeAsync();
+        second.Should().NotBe(first);
+        await db.AsMasterAsync("UPDATE scheduling.passes SET starts_on = current_date - 40, ends_on = current_date - 10 WHERE id = $1", second);
+        var third = await TakeAsync();
+        third.Should().NotBe(second);
+        await db.AsMasterAsync("UPDATE scheduling.passes SET status = 'voided' WHERE id = $1", third);
+        (await TakeAsync()).Should().NotBe(third);
+        (await PassesAsync(db, studioId, card)).Should().Be(4L);
+
+        // 3. A pass not marked to pay at the studio doesn't hold back the offer.
+        await db.AsMasterAsync("UPDATE scheduling.passes SET to_pay_at_studio = false WHERE organization_id = $1", studioId);
+        await TakeAsync();
+        (await PassesAsync(db, studioId, card)).Should().Be(5L);
+    }
+
     private async Task ProblemAsync(HttpClient client, string path, string who, object body, HttpStatusCode status, string code)
     {
         var response = await RawAsync(client, path, Customer(who), body);

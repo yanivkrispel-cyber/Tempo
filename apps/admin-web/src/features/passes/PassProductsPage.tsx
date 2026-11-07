@@ -6,6 +6,7 @@ import { errorMessage } from "../../api/errors";
 import {
   Banner,
   Button,
+  ButtonLink,
   Checkbox,
   Chip,
   Dialog,
@@ -54,11 +55,19 @@ export function PassProductsPage() {
           <span className="tp-eyebrow">מכירות</span>
           <h1>כרטיסיות ומנויים</h1>
         </div>
-        {manage && (
-          <Button icon="plus" onClick={() => setCreating(true)}>
-            מוצר חדש
-          </Button>
-        )}
+        <div className="tp-row" style={{ gap: 8 }}>
+          {/* Moving passes over from a file (docs/40 section 9): owners and admins. */}
+          {manage && studio.can("people.import") && (
+            <ButtonLink to="import" variant="secondary" icon="upload">
+              ייבוא כרטיסיות ומנויים
+            </ButtonLink>
+          )}
+          {manage && (
+            <Button icon="plus" onClick={() => setCreating(true)}>
+              מוצר חדש
+            </Button>
+          )}
+        </div>
       </header>
 
       <Segmented
@@ -117,8 +126,12 @@ export function PassProductsPage() {
                     <Chip tone={product.kind === "membership" ? "brand" : "neutral"}>{kindLabels[product.kind]}</Chip>
                   </td>
                   <td data-label="מה כולל">{allowance(product.kind, product.entries, product.weeklyCap)}</td>
-                  <td data-label="תוקף" className="tp-cell-nowrap">{daysLabel(product.validDays)}</td>
-                  <td data-label="שיעורים" className="tp-cell-nowrap">{categoryScope(product.classCategory)}</td>
+                  <td data-label="תוקף" className="tp-cell-nowrap">
+                    {daysLabel(product.validDays)}
+                  </td>
+                  <td data-label="שיעורים" className="tp-cell-nowrap">
+                    {categoryScope(product.classCategory)}
+                  </td>
                   <td data-label="מחיר" className="tp-num">
                     {priceLabel(product.priceAgorot)}
                   </td>

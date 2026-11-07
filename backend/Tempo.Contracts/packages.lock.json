@@ -8,6 +8,7 @@
         "resolved": "10.35.0.4138",
         "contentHash": "T5o/tuyPw9pHRkyWxW07TkSri4I4pLpqwH922JuhphDjHAM7BUHaGE67h/w+65evHsIar8mYB2Ey6OmOLj9QDw=="
       }
-    }
+    },
+    "net10.0/linux-arm64": {}
   }
 }

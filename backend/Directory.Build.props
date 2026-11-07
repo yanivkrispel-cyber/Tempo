@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!-- Every backend project ships in a linux-arm64 Lambda package, so its restore and its lock file carry that
+         runtime too (#563). Without it, CI's `dotnet publish -r linux-arm64` added a linux-arm64 section to the
+         Platform, Contracts and Worker lock files after the locked solution restore, and the next locked restore
+         (the vulnerable-package check) failed with NU1004. The test projects run on the host and stay without one. -->
+    <RuntimeIdentifiers>linux-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+</Project>

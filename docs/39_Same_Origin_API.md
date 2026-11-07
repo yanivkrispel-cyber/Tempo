@@ -9,7 +9,7 @@ every call is cross-origin. This note measures the cost, compares three ways out
 
 Every API call carries `Authorization: Bearer ...`, which makes it a non-simple request, so the browser first sends
 `OPTIONS` to the same URL and waits for the answer. The browser caches the answer per URL and origin for
-`Access-Control-Max-Age`. Ours is 3,600 s (`api-stack.ts`, `corsPreflight.maxAge`). Chrome caps it at 7,200 s.
+`Access-Control-Max-Age`. Ours is 7,200 s (`api-stack.ts`, `corsPreflight.maxAge`; 3,600 s when measured below). Chrome caps it at 7,200 s.
 WebKit (Safari, and every browser on an iPhone) probably keeps an entry for at most 10 minutes, which is **to
 verify** in WebKit's source before relying on it. A fresh tab cache, a new URL (another organization id, another
 booking id, another query string) or an expired entry pays it again. API
@@ -34,11 +34,12 @@ parallel, but the ones on the first paint's path (session, then the screen's rea
 what same-origin would save on a first visit is **one connection setup plus one or two serial round trips: about
 200 to 400 ms of the first useful paint** on the phone profile, and little on a repeat visit within the hour.
 
-**Not measured yet:** the preflight count and time per screen, as the phone sees them. Playwright's
-`page.on("request")`, which `screens-perf.mjs` uses, doesn't surface CORS preflights, so today's API-call counts leave
-them out. [O] adds a CDP count in O6 (`Network.requestWillBeSent` with `type: "Preflight"`, and `loadingFinished` for
-the time) as two fields per screen, `preflights` and `preflightMs`, measured on Chromium only. The numbers above
-should be checked against it before anything is built.
+**Measured on 2026-11-06 (board #612, O6):** `tests/e2e/perf/after-2026-11-06.json`, on `main` `f903c0a`, with
+`preflights` and `preflightMs` per screen, on Chromium only. Playwright's `page.on("request")` leaves CORS preflights
+out, so the count comes from CDP: `Network.requestWillBeSent` with `initiator.type` `"preflight"` (the `type` field is
+`Other`), and `loadingFinished` for the time. A first visit sends 2 to 8 preflights per screen, the same in all 3 runs,
+and they add up to 275 to 895 ms (a sum: most run in parallel, so this is not time a person waits). A repeat visit
+sends none. That confirms the count above and the default below.
 
 ## The options
 
@@ -91,7 +92,7 @@ AWS refused (ADR-0027).
 
 ## Default
 
-1. **Now: A**, one small infrastructure PR on a later board: `maxAge` 2 hours, with a test. $0.
+1. **Now: A**, done on 2026-11-06 (board #612 K7): `maxAge` 2 hours, with a test. $0.
 2. **Measure first:** [O] adds the preflight count and time to `screens-perf.mjs` in the next after run.
 3. **With the custom domain (#304): decide B for the member app**, with the numbers from step 2 (WebKit's cap
    included), the request volume at that time and the four risks above. It needs the owner's approval if it could pass the free plan.

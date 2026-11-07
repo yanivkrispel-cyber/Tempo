@@ -42,7 +42,7 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
     reason:
       "xray:PutTraceSegments and xray:PutTelemetryRecords (active tracing) and cloudwatch:PutMetricData (pinned to " +
       "the Tempo/Database namespace by a condition) have no resource-level permissions.",
-    paths: LAMBDA_ROLES.filter((path) => !path.startsWith("Edge/"))
+    paths: LAMBDA_ROLES.filter((path) => !path.startsWith("Edge/")).map((path) => `${path}/DefaultPolicy`)
   },
   {
     id: "AwsSolutions-IAM5[Resource::<MediaBucketBCBB02BA.Arn>/incoming/*]",
@@ -57,12 +57,12 @@ export const NAG_ACKNOWLEDGMENTS: NagAcknowledgment[] = [
   {
     id: "AwsSolutions-IAM5[Resource::<NeonUsageFunction64053658.Arn>:*]",
     reason: "EventBridge Scheduler's role may invoke this one function and its versions; CDK adds the :* suffix.",
-    paths: ["Database"]
+    paths: ["Database/SchedulerRoleForTarget-c5646a/DefaultPolicy"]
   },
   {
     id: "AwsSolutions-IAM5[Resource::<CanaryFunctionD1692701.Arn>:*]",
     reason: "EventBridge Scheduler's role may invoke this one function and its versions; CDK adds the :* suffix.",
-    paths: ["Edge", "Canary"]
+    paths: ["Edge/SchedulerRoleForTarget-7ef946/DefaultPolicy", "Canary/SchedulerRoleForTarget-7ef946/DefaultPolicy"]
   },
   {
     id: "AwsSolutions-IAM5[Resource::arn:aws:iam::687239340846:role/cdk-*]",
