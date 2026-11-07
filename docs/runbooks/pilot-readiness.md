@@ -150,6 +150,9 @@ about 3.5 s before the first byte on a fully cold instance, under 1.3 s here bec
 Run `mw57w00d` on `main` `f903c0a`, on 2026-11-06: 5 of 5 passed in 2.0 min, no blocker. The only accessibility notes
 are #626. The run adds one step, the pass import, after the old marks so they stay comparable.
 
+Run `mw6hhvw1` on `b7ee774` plus this fix, on 2026-11-07 (board #627, O6): 5 of 5 passed in 1.9 min with the #626 marks
+removed, so every screen passes axe on its own. The one finding is #640.
+
 | Milestone | Clicks on #584 | Clicks now |
 |---|---|---|
 | First weekly class | 19 | 19 |

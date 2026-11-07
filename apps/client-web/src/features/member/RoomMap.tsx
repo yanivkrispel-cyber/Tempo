@@ -123,6 +123,7 @@ function SpotTile({
             <Icon name="star" />
           </span>
         )}
+        {/* Label in Name: axe joins the spans without a space, so the initials and the number need this one. */}{" "}
         <span className="tp-spot__label">{spot.label}</span>
       </button>
     </div>
