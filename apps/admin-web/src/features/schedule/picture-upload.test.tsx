@@ -66,7 +66,7 @@ function renderClassTypes() {
 }
 
 async function uploadCover(file: File) {
-  await userEvent.click(await screen.findByRole("button", { name: `עריכת ${classType.name}` }));
+  await userEvent.click(await screen.findByRole("button", { name: `עריכה: ${classType.name}` }));
   const dialog = screen.getByRole("dialog", { name: "עריכת סוג שיעור" });
   const input = dialog.querySelector<HTMLInputElement>('input[type="file"]')!;
   await userEvent.upload(input, file);

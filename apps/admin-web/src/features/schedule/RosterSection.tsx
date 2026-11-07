@@ -240,7 +240,7 @@ function RosterRow({ entry, timeZone, markable, onCancel, onMove }: RosterRowPro
             variant="ghost-danger"
             size="sm"
             onClick={onCancel}
-            aria-label={entry.status === "waitlisted" ? `הסרת ${name} מההמתנה` : `ביטול ההרשמה של ${name}`}
+            aria-label={entry.status === "waitlisted" ? `הסרה: ${name} מההמתנה` : `ביטול ההרשמה של ${name}`}
           >
             {entry.status === "waitlisted" ? "הסרה" : "ביטול"}
           </Button>

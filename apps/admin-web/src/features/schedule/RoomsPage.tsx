@@ -106,7 +106,7 @@ export function RoomsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setEditing(room)}
-                          aria-label={`עריכת ${room.name}`}
+                          aria-label={`עריכה: ${room.name}`}
                         >
                           עריכה
                         </Button>
@@ -160,7 +160,7 @@ function ArchiveButton({ room }: { room: Room }) {
       variant={archived ? "ghost" : "ghost-danger"}
       size="sm"
       loading={patch.isPending}
-      aria-label={archived ? `החזרת ${room.name} מהארכיון` : `העברת ${room.name} לארכיון`}
+      aria-label={archived ? `החזרה: ${room.name}` : `לארכיון: ${room.name}`}
       onClick={() =>
         patch.mutate(
           { status: archived ? "active" : "archived" },

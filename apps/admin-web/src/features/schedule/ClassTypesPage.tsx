@@ -126,7 +126,7 @@ export function ClassTypesPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setEditing(classType)}
-                          aria-label={`עריכת ${classType.name}`}
+                          aria-label={`עריכה: ${classType.name}`}
                         >
                           עריכה
                         </Button>
@@ -135,7 +135,7 @@ export function ClassTypesPage() {
                             variant="ghost-danger"
                             size="sm"
                             onClick={() => setArchiving(classType)}
-                            aria-label={`העברת ${classType.name} לארכיון`}
+                            aria-label={`לארכיון: ${classType.name}`}
                           >
                             לארכיון
                           </Button>
@@ -190,7 +190,7 @@ function RestoreButton({ classType }: { classType: ClassType }) {
       variant="ghost"
       size="sm"
       loading={restore.isPending}
-      aria-label={`החזרת ${classType.name} מהארכיון`}
+      aria-label={`החזרה: ${classType.name}`}
       onClick={() =>
         restore.mutate(
           { status: "active" },

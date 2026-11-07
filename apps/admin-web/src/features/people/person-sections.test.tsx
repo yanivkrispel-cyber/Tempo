@@ -194,7 +194,7 @@ describe("relationships on the person card", () => {
     });
     const section = await screen.findByRole("region", { name: "קשרים" });
     expect(section).toHaveTextContent("איש הקשר לחירום: מיכל");
-    await userEvent.click(within(section).getByRole("button", { name: "הסרת הקשר עם מיכל" }));
+    await userEvent.click(within(section).getByRole("button", { name: "הסרה: הקשר עם מיכל" }));
     await waitFor(() => expect(section).toHaveTextContent("אין הורים, אפוטרופסים או אנשי קשר לחירום."));
     expect(api.requests.some((request) => request.method === "DELETE")).toBe(true);
   });

@@ -181,7 +181,7 @@ function PassItem({
         </span>
         <span className="tp-row" style={{ gap: 4 }}>
           {onFreeze && (
-            <Button variant="ghost" size="sm" onClick={onFreeze} aria-label={`הקפאת ${pass.product.name}`}>
+            <Button variant="ghost" size="sm" onClick={onFreeze} aria-label={`הקפאה: ${pass.product.name}`}>
               הקפאה
             </Button>
           )}
@@ -238,7 +238,7 @@ function PassItem({
                     variant="ghost"
                     size="sm"
                     onClick={() => onUnfreeze(freeze)}
-                    aria-label={`הסרת ההקפאה ${range}`}
+                    aria-label={`הסרה: ההקפאה ${range}`}
                   >
                     הסרה
                   </Button>

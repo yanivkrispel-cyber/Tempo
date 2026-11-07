@@ -78,7 +78,7 @@ export function RelationshipsSection({ person, writable }: { person: PersonDetai
                     variant="ghost-danger"
                     size="sm"
                     onClick={() => remove.mutate(relationship)}
-                    aria-label={`הסרת הקשר עם ${relationship.otherDisplayName}`}
+                    aria-label={`הסרה: הקשר עם ${relationship.otherDisplayName}`}
                   >
                     הסרה
                   </Button>

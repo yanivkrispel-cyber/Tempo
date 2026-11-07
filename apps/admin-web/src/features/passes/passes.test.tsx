@@ -170,7 +170,7 @@ describe("pass products", () => {
     const api = renderAt("/o/neshima/passes", {
       [`POST ${base}/pass-products/${card.id}/archive`]: () => json({ ...card, status: "archived" }),
     });
-    await userEvent.click(await screen.findByRole("button", { name: "העברת כרטיסיית 10 כניסות לארכיון" }));
+    await userEvent.click(await screen.findByRole("button", { name: "לארכיון: כרטיסיית 10 כניסות" }));
     const dialog = screen.getByRole("dialog", { name: "להפסיק למכור את כרטיסיית 10 כניסות?" });
     await userEvent.click(within(dialog).getByRole("button", { name: "העברה לארכיון" }));
     expect(await screen.findByText("המוצר עבר לארכיון")).toBeInTheDocument();
@@ -335,9 +335,9 @@ describe("passes on the person card", () => {
       expect(freezes).toHaveTextContent("הקפאה מתוכננת 20.11 עד 30.11");
       expect(freezes).toHaveTextContent("התוקף מוארך עד 10.12.2026");
       // Only the upcoming one can be removed; a started freeze stays.
-      expect(within(freezes).getAllByRole("button", { name: /הסרת ההקפאה/ })).toHaveLength(1);
-      expect(within(section).getAllByRole("button", { name: /^הקפאת/ })).toHaveLength(1);
-      expect(within(section).queryByRole("button", { name: "הקפאת כרטיסיית 10 כניסות" })).not.toBeInTheDocument();
+      expect(within(freezes).getAllByRole("button", { name: /הסרה: ההקפאה/ })).toHaveLength(1);
+      expect(within(section).getAllByRole("button", { name: /^הקפאה: / })).toHaveLength(1);
+      expect(within(section).queryByRole("button", { name: "הקפאה: כרטיסיית 10 כניסות" })).not.toBeInTheDocument();
     });
 
     it("sends the dates, and explains a refusal inside the dialog", async () => {
@@ -361,7 +361,7 @@ describe("passes on the person card", () => {
         },
       });
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
-      await userEvent.click(await within(section).findByRole("button", { name: "הקפאת פעמיים בשבוע" }));
+      await userEvent.click(await within(section).findByRole("button", { name: "הקפאה: פעמיים בשבוע" }));
       const dialog = screen.getByRole("dialog", { name: "הקפאת פעמיים בשבוע" });
       await userEvent.clear(within(dialog).getByRole("textbox", { name: /תחילת ההקפאה/ }));
       await userEvent.type(within(dialog).getByRole("textbox", { name: /תחילת ההקפאה/ }), "01.11.2026");
@@ -381,7 +381,7 @@ describe("passes on the person card", () => {
         [`DELETE ${base}/passes/${id(30)}/freezes/${id(41)}`]: () => json(membership()),
       });
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
-      await userEvent.click(await within(section).findByRole("button", { name: "הסרת ההקפאה 20.11 עד 30.11" }));
+      await userEvent.click(await within(section).findByRole("button", { name: "הסרה: ההקפאה 20.11 עד 30.11" }));
       const dialog = screen.getByRole("dialog", { name: "להסיר את ההקפאה?" });
       await userEvent.click(within(dialog).getByRole("button", { name: "הסרת ההקפאה" }));
       expect(await screen.findByText("ההקפאה הוסרה")).toBeInTheDocument();
@@ -407,7 +407,7 @@ describe("passes on the person card", () => {
           ),
       });
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
-      await userEvent.click(await within(section).findByRole("button", { name: "הסרת ההקפאה 20.11 עד 30.11" }));
+      await userEvent.click(await within(section).findByRole("button", { name: "הסרה: ההקפאה 20.11 עד 30.11" }));
       const dialog = screen.getByRole("dialog", { name: "להסיר את ההקפאה?" });
       await userEvent.click(within(dialog).getByRole("button", { name: "הסרת ההקפאה" }));
       expect(
@@ -419,7 +419,7 @@ describe("passes on the person card", () => {
       renderAt(`/o/neshima/people/${personId}`, freezeRoutes([membership()]), "staff");
       const section = await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
       expect(await within(section).findByText(/פעמיים בשבוע/)).toBeInTheDocument();
-      expect(within(section).queryByRole("button", { name: /^הקפאת/ })).not.toBeInTheDocument();
+      expect(within(section).queryByRole("button", { name: /^הקפאה: / })).not.toBeInTheDocument();
     });
   });
 });

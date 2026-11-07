@@ -349,7 +349,7 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
                       variant="ghost"
                       size="sm"
                       onClick={() => makePrimary.mutate(contact)}
-                      aria-label={`הפיכת ${contact.value} לראשי`}
+                      aria-label={`ראשי: ${contact.value}`}
                     >
                       ראשי
                     </Button>
@@ -358,7 +358,7 @@ function ContactPoints({ person, writable }: { person: PersonDetail; writable: b
                     variant="ghost-danger"
                     size="sm"
                     onClick={() => remove.mutate(contact)}
-                    aria-label={`מחיקת ${contact.value}`}
+                    aria-label={`מחיקה: ${contact.value}`}
                   >
                     מחיקה
                   </Button>

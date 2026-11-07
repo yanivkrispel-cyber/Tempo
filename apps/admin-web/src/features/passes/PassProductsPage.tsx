@@ -141,7 +141,7 @@ export function PassProductsPage() {
                         variant="ghost-danger"
                         size="sm"
                         onClick={() => setArchiving(product)}
-                        aria-label={`העברת ${product.name} לארכיון`}
+                        aria-label={`לארכיון: ${product.name}`}
                       >
                         לארכיון
                       </Button>

@@ -151,7 +151,7 @@ function Templates({ timeZone }: { timeZone: string }) {
                             variant="ghost"
                             size="sm"
                             onClick={() => setEditing(template)}
-                            aria-label={`עריכת ${label}`}
+                            aria-label={`עריכה: ${label}`}
                           >
                             עריכה
                           </Button>
