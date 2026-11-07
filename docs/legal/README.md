@@ -26,6 +26,7 @@
 | [`privacy-policy.md`](privacy-policy.md) | מדיניות הפרטיות למתאמנים. הסטודיו הוא בעל המאגר, `Tempo` מעבדת את המידע עבורו |
 | [`terms-members.md`](terms-members.md) | תנאי השימוש לאפליקציית המתאמנים |
 | [`studio-pilot-agreement.md`](studio-pilot-agreement.md) | ההסכם עם סטודיו בפיילוט: `Tempo` כמעבדת מידע, הפיילוט החינמי, הסיום, החזרת הנתונים ומחיקתם |
+| [`facts-pack.md`](facts-pack.md) | עובדות לפגישה: מפת המידע (איזו טבלה מחזיקה מה), טבלת שמירה, ספקי משנה ובקרות האבטחה, כולל פערים פתוחים |
 | [`questions-for-lawyer.md`](questions-for-lawyer.md) | רשימת השאלות לפגישה, ממוספרת, וכל שאלה מפנה לקובץ ולסעיף |
 
 ## סדר קריאה מומלץ לעורך הדין
