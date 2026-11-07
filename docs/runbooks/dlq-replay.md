@@ -15,7 +15,8 @@ real use also serves as the test. Add what it showed here.
 
 A message with no handler for its `MessageType` attribute throws in `SqsMessageDispatcher`, so it reaches the DLQ too.
 
-**14 days is the limit.** A message left in the DLQ longer is gone. Look at the alarm the same day.
+**14 days is the limit, and it counts from the first send.** On a Standard queue the time on the work queue counts
+too, so a message that reaches the DLQ late has less than 14 days left. Look at the alarm the same day.
 
 ## Is it safe to send again?
 
