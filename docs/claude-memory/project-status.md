@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-11-06, evening (board #612, DAY-PLAN-21: the queue of #584 landed, see "The pilot sprint landed"), after board #553 (2026-11-01, DAY-PLAN-19: the #537 queue landed, the security review of main (#541)
+Updated 2026-11-07, evening (board #627, DAY-PLAN-22: Dependabot, #626, #628 and the papers around Kris's decisions, see "The day after the sprint"), after board #612 (2026-11-06, DAY-PLAN-21: the queue of #584 landed, see "The pilot sprint landed"), after board #553 (2026-11-01, DAY-PLAN-19: the #537 queue landed, the security review of main (#541)
 and its fixes, SLOs and the incident runbook, the same-origin note), after board #530 (2026-10-27, DAY-PLAN-17: the member app's time zone from the session, the tab prefetch,
 the profile in two rounds), after board #523 (2026-10-26 day, DAY-PLAN-16: the speed queue landed, the session carries
 the studio's time zone, the console's today and reports in one round), after board #511 (2026-10-25/26, DAY-PLAN-15, the speed night:
@@ -341,6 +341,24 @@ links D25 and the public surface's protections D24 in its section 12). Epic #432
   909 to 700 ms. One regression, the member profile, 2,632 to 3,404 ms (#628). `premium-live-check` 21/21 on `3e68ef9`.
   Numbers are in `docs/runbooks/pilot-readiness.md`. The a11y notes are #626, which DAY-PLAN-22 (#627) takes.
 
+## The day after the sprint (2026-11-07, board #627)
+
+- **Kris was still resting, so Ofir's machine ran both lanes again**, [K] under KR-1, KR-2 and LR-1 to LR-5, on
+  Ofir's go. Kris still has to confirm or undo that, with KR-1. 13 PRs merged on 2026-11-07, six of them by [K]; every deploy green, no revert. `main` ends at `86f4c7e`;
+  no PR is open.
+- **Dependabot:** #621, #622 and #623 merged. #622 moved the image library the upload path uses, so
+  `premium-live-check` ran on dev after its deploy: the avatar went through the real bucket and came back as webp.
+- **For Kris, in the repo:** the facts pack for the lawyer's meeting (`docs/legal/facts-pack.md`, #636, #642), the DLQ
+  replay runbook, the environment inventory and a billing draft (`docs/runbooks/`, #637), the F8 note (`docs/42`, #638).
+  None of them decides anything. The DLQ runbook has not been rehearsed: dev's DLQ held no message that day.
+- **The decisions page:** every open `needs-decision` issue, sorted and summarised for Kris (K2, LR-5), is a private
+  artifact until Ofir shares it. It takes no decision.
+- **Apps:** #626 is closed: the accessible names in both apps open with the visible text (#634, #639) and a
+  spot's initials and number read as one label (#643). `pilot-p3` 5 of 5 on `b7ee774` plus #643 (run `mw6hhvw1`)
+  with no `knownIssue` mark left, clicks 19, 25, 35, 41; the one finding is #640 (`qa`, open). #628 is closed by
+  #635: the profile's reads start together and `me/profile` is read once, LCP 3,404 to about 2,700 ms. [O]'s
+  untraced note: most other screens read 100 to 300 ms slower in that run, on a busy machine; a quiet run first.
+
 ## Apps
 
 `apps/client-web` and `apps/admin-web` run on the real API for Phases 1 to 3 and the scheduling skeleton (sign-in
@@ -368,7 +386,7 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | Before production: the orphaned e2e account rows on dev | Kris, 2026-10-23 (#312, option 3): they stay on dev for now (about 150, two or three more per e2e run, no login); `e2e-cleanup.mjs` lists them (#482) |
 | The two **(reading)** report rules in docs/32 section 6 | A renewed pass is not "ending"; nobody is "at risk" in their first 30 days |
 | `TEMPO_STUDIO_REMOVAL_MIN_DAYS` and Neon's point-in-time history | 30 days by default outside dev; a removed studio stays in Neon's history until it ages out |
-| Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150) |
+| Owner MFA switch (`TEMPO_REQUIRE_OWNER_MFA`) | The TOTP enrollment screen is in (#127, #150). Off by default and the infrastructure does not set it, while #562 says the API enforces TOTP for owners |
 | The real logo | The icons use K1's redraw of LOGO1.png as a temporary logo (Kris, 2026-10-18) |
 | `docs/35` W-1 to W-12 (white label) | Defaults apply unless Kris changes them; then WL1 to WL6 |
 | `s3:ListBucket` on `incoming/*` for the API role | Optional IAM change; #370 works without it |
@@ -382,6 +400,7 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | #565 SR-19: may a disabled account delete itself? | Today's behaviour is in `docs/security/review-2026-11.md` |
 | `find_account_profiles` returns removed or suspended members' emails (#600 note a) | Needs a migration |
 | `docs/41` whole-studio export; the F8 clicks (KR-9, options in `docs/42`); the pilot offer's weekly 20-minute call in the first month (`docs/pilot/pilot-offer.md`) | `docs/41` is a proposal: nothing hands a leaving studio its data yet. The other two are product questions |
+| Found on 2026-11-07 while writing the papers (board #627) | Nothing changes a subscription after it is created, and there is no paid plan (`billing-operations.md`). A new Cognito pool gives every user a new id, and no runbook links it to a restored database. `session_messages` are never deleted, and the 7-year retention is not built. Google Fonts is missing from the privacy policy's sub-processors, and the drafts mention email, which is not built |
 
 ## Who works on what
 
