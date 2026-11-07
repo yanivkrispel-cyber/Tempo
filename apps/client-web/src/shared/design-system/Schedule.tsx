@@ -107,7 +107,10 @@ export interface WeekStripProps {
   marked?: ReadonlySet<IsoDate>;
 }
 
-/** Seven days in a well; each button is named by its full date ("יום רביעי, 14 באוקטובר"). */
+/**
+ * Seven days in a well. A button's name opens with what it shows, then the full date ("ד׳ 14, יום רביעי, 14 באוקטובר"),
+ * so voice control finds it by the visible text (WCAG 2.5.3).
+ */
 export function WeekStrip({ days, value, onChange, today, label = "ימי השבוע", marked }: WeekStripProps) {
   return (
     <div role="group" aria-label={label} className="tp-week">
@@ -117,7 +120,7 @@ export function WeekStrip({ days, value, onChange, today, label = "ימי השב
           type="button"
           className="tp-week__day"
           aria-pressed={day === value}
-          aria-label={`${fullDate.format(asDate(day))}${day === today ? ", היום" : ""}${marked?.has(day) ? ", יש לך שיעור" : ""}`}
+          aria-label={`${weekdayNarrow.format(asDate(day))} ${Number(day.slice(8, 10))}, ${fullDate.format(asDate(day))}${day === today ? ", היום" : ""}${marked?.has(day) ? ", יש לך שיעור" : ""}`}
           onClick={() => onChange(day)}
         >
           {weekdayNarrow.format(asDate(day))}

@@ -8,6 +8,7 @@ import {
   Icon,
   ProgressRing,
   WeekStrip,
+  initials,
   shortDate,
   useToast,
 } from "../../shared/design-system";
@@ -122,7 +123,11 @@ function HomeFrame({
   return (
     <main className={`tp-page tp-page--tabbar ${styles.screen}${split ? ` ${styles.split}` : ""}`}>
       <header className={styles.header}>
-        <Link to="/profile" aria-label="הפרופיל שלי" className={styles.meLink}>
+        <Link
+          to="/profile"
+          aria-label={avatar ? "הפרופיל שלי" : `${initials(name)}, הפרופיל שלי`}
+          className={styles.meLink}
+        >
           <Avatar name={name} src={avatar ?? undefined} size="lg" />
         </Link>
         <div className={styles.heading}>
