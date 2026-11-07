@@ -107,7 +107,7 @@
 | `Neon` | בסיס הנתונים `Postgres` (ענף לכל מפתח) | כל המידע בסעיף 1.1. הצהרות הבריאות מוצפנות לפני שהן מגיעות | `aws-eu-central-1` (פרנקפורט), על `AWS` | `database-neon.md` |
 | `Cloudflare` | `Cloudflare Pages` (קבצי האפליקציות) ועובד קטן לדפי שיתוף `/s/*` | קבצים סטטיים. העובד מושך מה-API נתונים ציבוריים של הסטודיו (שם, שיעור, הצעה) לתצוגה מקדימה. לא מתאמנים | רשת עולמית. אזור עיבוד: לאימות | ADR-0027, `review-2026-11.md` סעיף 10 |
 | שירותי התראות של יצרני דפדפנים | `fcm.googleapis.com`, `push.services.mozilla.com`, `notify.windows.com`, `push.apple.com` (רשימת היתרים בקוד) | כתובת המנוי, מפתחות, ותוכן ההתראה (מה בתוכן בפועל: לאימות) | לפי יצרן הדפדפן; לאימות | `WebPush.cs:42` |
-| `Google Fonts` | הגופן `Karantina` נטען בדפדפן בעת ציור תמונות שיתוף | כתובת רשת של הגולש ופרטי דפדפן, אצל `Google` | לאימות | `drawStory.ts:59`, `drawMilestone.ts:16`, `edge-stack.ts:47-48` |
+| `Google Fonts` | גופני המערכת (`Frank Ruhl Libre`, `IBM Plex Sans Hebrew`, `IBM Plex Mono`) נטענים מ-`Google` בכל עמוד של שתי האפליקציות. הגופן `Karantina` נטען גם בעת ציור תמונות שיתוף | כתובת רשת של הגולש ופרטי דפדפן, אצל `Google`, בכל ביקור | לאימות | `packages/design-system/css/base.css:6`, `drawStory.ts:59`, `drawMilestone.ts:16`, `edge-stack.ts:47-48` |
 | `GitHub` | קוד, `CI`, `OIDC` לפריסה | לא אמור להכיל מידע אישי. כתובות מייל של צוות הוחלפו בקבצים במקומות כלליים; ההיסטוריה נשארת (#96) | לאימות | `production-readiness.md` |
 | ספק משלוח מיילים (`SES` מתוכנן) | מיילים למתאמנים | לא פעיל. ערוץ ה-`email` לא נבנה בעבודת המשלוח (נמצא רק `push`) | לא נקבע | `docs/30` סעיף 4.2, `NotificationDeliveryJob.cs` |
 | ספק סליקה | אין | אין סליקה ואין פרטי אשראי | | `0009_billing.sql` (שורת הפתיחה) |
