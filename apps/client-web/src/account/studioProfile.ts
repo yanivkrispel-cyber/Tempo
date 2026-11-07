@@ -26,6 +26,8 @@ export function useStudioProfile(organizationId: string | undefined) {
         }),
       ),
     enabled: Boolean(organizationId),
+    // The same entry as `useMyProfile`: with no stale time here, the consent rows read it again as they mount (#628).
+    staleTime: 60_000,
   });
 }
 

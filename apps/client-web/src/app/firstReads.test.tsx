@@ -12,6 +12,8 @@ import { routes } from "./routes";
 /** Starts the reads as `main.tsx` does, with nothing rendered yet. */
 function start(pathname: string, search = "") {
   const studio = createStudio();
+  studio.routes[`GET ${studioPath}/me/buddies`] = { items: [] };
+  studio.routes[`GET ${studioPath}/me/share-link`] = { link: null };
   const stub = apiStub(studio.routes);
   const auth = signedInAuth();
   const queryClient = createQueryClient();
@@ -69,6 +71,22 @@ describe("first reads (board #537, O1)", () => {
     );
   });
 
+  it("starts the profile's reads together, the held cards' too, and the screen reads none of them again (#628)", async () => {
+    const { calls, renderApp } = start("/profile");
+    const once = [
+      `GET ${studioPath}/me/passes`,
+      `GET ${studioPath}/me/profile`,
+      `GET ${studioPath}/me/buddies`,
+      `GET ${studioPath}/me/share-link`,
+    ];
+    await waitFor(() => expect(calls()).toEqual(["POST /api/v1/session", ...once]));
+
+    renderApp();
+    await screen.findByRole("button", { name: "התנתקות" });
+    await waitFor(() => expect(calls()).toContain(`GET ${studioPath}/me/health-declaration`));
+    for (const call of once) expect(calls().filter((made) => made === call)).toHaveLength(1);
+  });
+
   it("starts the home's one read", async () => {
     const { calls } = start("/");
     await waitFor(() => expect(calls()).toEqual(["POST /api/v1/session", `GET ${studioPath}/me/home`]));
@@ -79,7 +97,7 @@ describe("first reads (board #537, O1)", () => {
     await waitFor(() => expect(week.calls()).toHaveLength(3));
     expect(week.calls()).not.toContain(`GET ${studioPath}/sessions`);
 
-    const profile = start("/profile");
-    await waitFor(() => expect(profile.calls()).toEqual(["POST /api/v1/session"]));
+    const inbox = start("/inbox");
+    await waitFor(() => expect(inbox.calls()).toEqual(["POST /api/v1/session"]));
   });
 });
