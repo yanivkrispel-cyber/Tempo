@@ -399,6 +399,7 @@ function StaffSpot({
             <Icon name="info" />
           </span>
         )}
+        {/* Label in Name: axe joins the spans without a space, so the initials and the number need this one. */}{" "}
         <span className="tp-spot__label">{spot.label}</span>
       </button>
       {person && <span className="tp-spot__name">{person.displayName.split(" ")[0]}</span>}

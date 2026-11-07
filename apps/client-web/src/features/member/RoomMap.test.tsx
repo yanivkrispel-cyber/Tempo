@@ -25,7 +25,10 @@ const room = (avatarUrl: string | null) =>
 describe("a buddy's spot on the room map", () => {
   it("opens its name with the initials and the number it shows (#626)", () => {
     render(<RoomMap map={room(null)} selectedId={null} onSelect={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "מכ 3, מכשיר 3, מאיה כהן כאן" })).toBeDisabled();
+    const spot = screen.getByRole("button", { name: "מכ 3, מכשיר 3, מאיה כהן כאן" });
+    expect(spot).toBeDisabled();
+    // axe reads the text with no separator of its own, so the space has to be in the button.
+    expect(spot.textContent).toBe("מכ 3");
   });
 
   it("leaves the initials out when a picture shows instead", () => {

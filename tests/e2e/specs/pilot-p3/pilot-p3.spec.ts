@@ -273,7 +273,7 @@ test("2. the member opens the join link, signs in, joins, gets a pass and books"
   await settle(memberPage);
   mark("b_first_member_joined");
   await shot(memberPage, "03-member-after-join");
-  await expectNoSeriousA11yViolations(memberPage, testInfo, "member home after joining", undefined, "#626");
+  await expectNoSeriousA11yViolations(memberPage, testInfo, "member home after joining");
 
   // The owner finds the new person and gives them the pass.
   await goTo(ownerPage, "אנשים", "אנשים");
@@ -301,7 +301,7 @@ test("2. the member opens the join link, signs in, joins, gets a pass and books"
     .first()
     .click();
   await settle(memberPage);
-  await expectNoSeriousA11yViolations(memberPage, testInfo, "member timetable", undefined, "#626");
+  await expectNoSeriousA11yViolations(memberPage, testInfo, "member timetable");
   await shot(memberPage, "05-member-timetable");
   await memberPage
     .getByRole("button", { name: new RegExp(`הרשמה לשיעור ${typeName} ב-${classStart}`) })
@@ -333,7 +333,7 @@ test("3. the owner marks the member attended", async () => {
     .click();
   await expect(ownerPage.getByRole("heading", { level: 1, name: typeName })).toBeVisible();
   await settle(ownerPage);
-  await expectNoSeriousA11yViolations(ownerPage, testInfo, "class page with roster", undefined, "#626");
+  await expectNoSeriousA11yViolations(ownerPage, testInfo, "class page with roster");
   await shot(ownerPage, "06-owner-class-roster");
   const roster = ownerPage.getByRole("region", { name: "משתתפים" });
   const present = roster.getByRole("button", { name: "הגיע.ה", exact: true });
@@ -406,7 +406,7 @@ test("4. the owner's screens fit a 390px phone", async ({ browser }) => {
     const fit = await measureFit(page, phone390);
     annotateFit(testInfo, `${name} at 390px`, fit);
     expect.soft(fit.overflow, `${name} scrolls sideways at 390px`).toBeLessThanOrEqual(0);
-    await expectNoSeriousA11yViolations(page, testInfo, `${name} at 390px`, undefined, "#626");
+    await expectNoSeriousA11yViolations(page, testInfo, `${name} at 390px`);
   }
   await context.close();
 });
