@@ -1,7 +1,7 @@
 // The premium capabilities on the real API (docs/33): the room map and spots, the usual spot, buddies, the check-in
 // code, instructors, and the member's own picture. Keys start with the studio's id like everything in studio.ts.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TempoApiError, unwrap, type Schemas } from "@tempo/api-client";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TempoApiError, unwrap, type Schemas, type TempoClient } from "@tempo/api-client";
 import { useApi } from "../../api/ApiProvider";
 import { studioKeys, type Booking } from "./studio";
 
@@ -90,16 +90,20 @@ export function useCheckinCode(organizationId: string, enabled: boolean) {
 }
 
 export function useBuddies(organizationId: string) {
-  const api = useApi();
-  return useQuery({
+  return useQuery(myBuddiesQuery(useApi(), organizationId));
+}
+
+export const myBuddiesQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: experienceKeys.buddies(organizationId),
     queryFn: () =>
       unwrap(
         api.GET("/api/v1/organizations/{organizationId}/me/buddies", { params: { path: { organizationId } } }),
       ).then((list) => list.items),
+    // Long enough that the card, held until the passes load, doesn't read again what the first reads just read.
+    staleTime: 30_000,
     retry: retryOnce,
   });
-}
 
 /**
  * The member's own link for a class card (SL-8). `showName` changes whether the invite names her; left out, the API
@@ -124,8 +128,11 @@ export function useShareLink(organizationId: string) {
  * #530, O3).
  */
 export function useMyReferral(organizationId: string) {
-  const api = useApi();
-  return useQuery({
+  return useQuery(myReferralQuery(useApi(), organizationId));
+}
+
+export const myReferralQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: experienceKeys.referral(organizationId),
     queryFn: () =>
       unwrap(
@@ -136,7 +143,6 @@ export function useMyReferral(organizationId: string) {
     staleTime: 5 * 60_000,
     retry: retryOnce,
   });
-}
 
 /**
  * Makes her referral link, or changes whether it names her; one per member, reused by the API. Left out, `showName`
@@ -216,16 +222,17 @@ export function useInstructors(organizationId: string, enabled = true) {
 
 /** The caller's own person record in the studio (name, avatar). */
 export function useMyProfile(organizationId: string, enabled = true) {
-  const api = useApi();
-  return useQuery({
+  return useQuery({ ...myProfileQuery(useApi(), organizationId), enabled });
+}
+
+export const myProfileQuery = (api: TempoClient, organizationId: string) =>
+  queryOptions({
     queryKey: experienceKeys.profile(organizationId),
     queryFn: () =>
       unwrap(api.GET("/api/v1/organizations/{organizationId}/me/profile", { params: { path: { organizationId } } })),
-    enabled,
     staleTime: 60_000,
     retry: retryOnce,
   });
-}
 
 /**
  * A picture: an upload ticket, a presigned POST straight to storage, then finalize (docs/33 section 6.3). The server re-encodes

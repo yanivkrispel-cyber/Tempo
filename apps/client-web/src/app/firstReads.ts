@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { TempoClient } from "@tempo/api-client";
 import { activeMemberships, meQuery, type Me } from "../account/account";
+import { myBuddiesQuery, myProfileQuery, myReferralQuery } from "../features/member/experience";
 import { myHomeQuery } from "../features/member/home";
 import {
   bookingPolicyQuery,
@@ -62,6 +63,13 @@ function readScreen({ queryClient, api, pathname, search, studioSlug, now }: Fir
     case "/bookings":
       void queryClient.prefetchQuery(upcomingBookingsQuery(api, id));
       void queryClient.prefetchQuery(inboxQuery(api, id));
+      break;
+    case "/profile":
+      // The cards below the passes wait for them on a device that never showed them (#628), so their reads can't.
+      void queryClient.prefetchQuery(myPassesQuery(api, id));
+      void queryClient.prefetchQuery(myProfileQuery(api, id));
+      void queryClient.prefetchQuery(myBuddiesQuery(api, id));
+      void queryClient.prefetchQuery(myReferralQuery(api, id));
       break;
   }
 }
