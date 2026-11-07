@@ -134,7 +134,8 @@ public sealed class PublicJoinService(IDataSourceProvider dataSources, IAttemptL
     /// <summary>
     /// SL-4: a product the studio lists, granted to pay at the studio. 404 `product.not_found` when it isn't listed here,
     /// 409 `offer.ended` once archived or past its last day, 409 `offer.not_newcomer` for a newcomers-only offer the
-    /// person holds or held.
+    /// person holds or held. SR-13: while the person holds an open pass of this product, still to pay at the studio, a
+    /// repeat join grants nothing and answers with that pass.
     /// </summary>
     private async Task<IntroPassView> GrantOfferAsync(UnitOfWork unitOfWork, Guid organizationId, Guid person, Guid membershipId, Guid userAccountId, Guid productId, string correlationId, CancellationToken cancellationToken)
     {
@@ -174,6 +175,11 @@ public sealed class PublicJoinService(IDataSourceProvider dataSources, IAttemptL
         if (newcomersOnly && await HeldAsync(unitOfWork, organizationId, person, productId, cancellationToken))
         {
             throw new DomainRuleViolationException(ViolationKind.Conflict, "offer.not_newcomer", "This offer is for newcomers.");
+        }
+
+        if (await OpenUnpaidPassAsync(unitOfWork, organizationId, person, productId, today, cancellationToken) is { } open)
+        {
+            return new IntroPassView(open, name, true);
         }
 
         return await GrantAsync(unitOfWork, organizationId, person, membershipId, userAccountId, productId, name, validDays, entries, "public_offer", correlationId, today, cancellationToken);
@@ -216,15 +222,33 @@ public sealed class PublicJoinService(IDataSourceProvider dataSources, IAttemptL
     /// </summary>
     private static async Task<bool> HeldAsync(UnitOfWork unitOfWork, Guid organizationId, Guid person, Guid productId, CancellationToken cancellationToken)
     {
-        await using (var lockPerson = unitOfWork.Command("SELECT pg_advisory_xact_lock(hashtextextended('scheduling.person_offer:' || $1::text, 0))", person))
-        {
-            await lockPerson.ExecuteNonQueryAsync(cancellationToken);
-        }
-
+        await LockPersonAsync(unitOfWork, person, cancellationToken);
         await using var had = unitOfWork.Command(
             "SELECT 1 FROM scheduling.passes WHERE organization_id = $1 AND person_id = $2 AND product_id = $3",
             organizationId, person, productId);
         return await had.ExecuteScalarAsync(cancellationToken) is not null;
+    }
+
+    /// <summary>The person's oldest pass of this product that is live, has entries left and is still to pay at the studio.</summary>
+    private static async Task<Guid?> OpenUnpaidPassAsync(UnitOfWork unitOfWork, Guid organizationId, Guid person, Guid productId, DateOnly today, CancellationToken cancellationToken)
+    {
+        await LockPersonAsync(unitOfWork, person, cancellationToken);
+        await using var open = unitOfWork.Command(
+            """
+            SELECT id FROM scheduling.passes
+            WHERE organization_id = $1 AND person_id = $2 AND product_id = $3 AND to_pay_at_studio
+              AND status = 'active' AND ends_on >= $4 AND (entries IS NULL OR entries_used < entries)
+            ORDER BY created_at
+            LIMIT 1
+            """,
+            organizationId, person, productId, today);
+        return await open.ExecuteScalarAsync(cancellationToken) as Guid?;
+    }
+
+    private static async Task LockPersonAsync(UnitOfWork unitOfWork, Guid person, CancellationToken cancellationToken)
+    {
+        await using var lockPerson = unitOfWork.Command("SELECT pg_advisory_xact_lock(hashtextextended('scheduling.person_offer:' || $1::text, 0))", person);
+        await lockPerson.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task<IntroPassView> GrantAsync(

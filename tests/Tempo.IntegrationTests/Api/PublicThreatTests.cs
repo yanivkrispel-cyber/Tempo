@@ -99,6 +99,31 @@ public sealed class PublicThreatTests(PostgresFixture postgres) : IClassFixture<
             .Should().Be(0L, "joining B made no membership in A");
     }
 
+    [Fact]
+    public async Task APublicRouteInAnotherCase_Is404_SoItCantSkipTheGatewaysPublicThrottles()
+    {
+        // #560 SR-8: API Gateway matches route keys case by case and ASP.NET doesn't, so a mixed-case path would fall
+        // through to {proxy+} without the public throttles and still be served.
+        PublicRateLimitFilter.Reset();
+        await using var db = await MigratedDatabase.CreateAsync(postgres);
+        using var factory = Factory(db);
+        var client = factory.CreateClient();
+        var (studioPath, slug, _) = await StudioAsync(client, "owner");
+        await SendAsync(client, HttpMethod.Put, $"{studioPath}/public-page", Customer("owner"), new { enabled = true, openJoin = true });
+
+        (await client.GetAsync($"/api/v1/public/studios/{slug}")).StatusCode.Should().Be(HttpStatusCode.OK);
+        foreach (var path in new[] { $"/api/v1/PUBLIC/studios/{slug}", $"/api/v1/public/Studios/{slug}", $"/API/v1/public/studios/{slug}", $"/api/v1/public/studios/{slug}/BRAND" })
+        {
+            var response = await client.GetAsync(path);
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound, path);
+            (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("route.not_found", path);
+        }
+
+        // The join route's own throttle must not be skippable either.
+        var join = await SendAsync(client, HttpMethod.Post, $"/api/v1/public/studios/{slug}/JOIN", Customer("maya"), new { }, HttpStatusCode.NotFound);
+        join.GetProperty("code").GetString().Should().Be("route.not_found");
+    }
+
     /// <summary>Everything a client can compare about a 404: status, code, title, field names and the caching headers.</summary>
     private static async Task<object> NotFoundAsync(HttpClient client, string path)
     {

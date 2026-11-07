@@ -53,6 +53,7 @@ public static class CognitoAuthentication
 
         services.AddAuthorizationBuilder()
             .SetDefaultPolicy(new AuthorizationPolicyBuilder(CustomerScheme).RequireAuthenticatedUser().Build())
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder(CustomerScheme).RequireAuthenticatedUser().Build())
             .AddPolicy(OperatorPolicy, policy => policy.AddAuthenticationSchemes(OperatorScheme).RequireAuthenticatedUser());
 
         return services;

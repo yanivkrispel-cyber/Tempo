@@ -29,11 +29,11 @@ creating people or products on the fly, `.xlsx`, uploads to the server, an impor
 | PI-1 | `POST …/passes/import { dryRun, rows }`, the route needs `people.import` (owner, admin) and the service also checks `passes.manage`. No new permission key. |
 | PI-2 | The console reads the CSV in the browser, as docs/34 I-2 (same separators, encodings, 2 MB and 1,000 rows). Only JSON rows reach the API; no file is stored. More than 1,000 rows is 400 `import.too_many_rows`. |
 | PI-3 | A row's fields: `email`, `phone`, `product`, `entriesLeft`, `validFrom`, `validUntil`, plus `line`. **No money column.** |
-| PI-4 | The person is found by email or phone among the studio's contact points (as docs/34 step 3). The row never creates a person: run the people import first. |
+| PI-4 | The person is found by email or phone among the studio's contact points (as docs/34 step 3). The row never creates a person: run the people import first. A contact can sit on two active people (`contact_points.value` is not unique); such a row is `person.ambiguous` rather than a guess, and the studio fixes it on the people page. |
 | PI-5 | The product is found by name among the studio's **active** products, ignoring case and outer spaces. The row never creates a product. |
 | PI-6 | A card keeps the product's size: `entries` = the product's entries and `entries_used` = entries minus `entriesLeft`, so the member sees "6 of 10 left". A membership takes no `entriesLeft`. |
 | PI-7 | `validUntil` is required; `validFrom` defaults to the studio's today. The pass runs from `validFrom` to `validUntil`, inclusive, whatever the product's length. |
-| PI-8 | Running the same file twice adds nothing: a row whose person already has an active **imported** pass of the same product ending the same day is `exists`. |
+| PI-8 | Running the same file twice adds nothing: a row whose person already has an active **imported** pass of the same product ending the same day is `exists`. The day compared is the one the file gave: a freeze moves `ends_on`, so its frozen days come off before the match, and a frozen pass is still found. Two consequences, both on purpose: a pass from an earlier run that the desk voided is created again by the next run (it is no longer active), and a row with a corrected `entriesLeft` and the same key stays `exists` and changes nothing, so a wrong balance is fixed at the desk on the person's card. |
 | PI-9 | Migration 0041 adds `scheduling.passes.source` (`desk` or `import`, default `desk`). `Pass.source` is in the API, so the person's card and the member's passes can say "יובא". Audit: `pass.granted` per pass with `source: import` and one `passes.imported` with the totals; no names, emails or phones. Nothing is sent to the member. |
 
 ## 3. The request
@@ -53,7 +53,7 @@ formats of docs/34 section 4 (`dd/mm/yyyy`, `d/m/yyyy`, `d.m.yyyy`, `yyyy-mm-dd`
 | 1 | Phone and email read as in `createPerson` (`ContactValues`) | `phone` / `phone.invalid`, `email` / `email.invalid` |
 | 2 | At least one of them | `contact` / `contact.required` |
 | 3 | A live person in this studio has it | `person` / `person.not_found` |
-| 4 | Email and phone don't point to two different people | `person` / `person.ambiguous` |
+| 4 | Email and phone don't point to two different people, and neither sits on two active people | `person` / `person.ambiguous` |
 | 5 | The person is active (not archived, merged or anonymized) | `person` / `person.read_only` |
 | 6 | `product` is given and names exactly one active product | `product` / `required`, `product.not_found`, `product.ambiguous` |
 | 7 | A card: `entriesLeft` is a whole number from 1 to the product's entries | `entries_left` / `required`, `entries_left.invalid`, `entries_left.too_many` |
@@ -65,7 +65,7 @@ A row that passes is then, in this order:
 
 - `duplicate_in_file` (with `duplicateOfLine`) when an earlier valid row has the same person and product;
 - `exists` (with `passId`) when the person has an active pass with `source = import`, that product and that
-  `ends_on` (PI-8);
+  `ends_on` before any freeze (PI-8);
 - otherwise `valid` (dry run) or `created` (with `passId`).
 
 The result is the people import's shape: `{ dryRun, importId, totals: { rows, valid, created, exists,
@@ -111,7 +111,7 @@ Every pass there today is `desk`; the intro pass from a public join (docs/37) st
 ## 8. API (contract first)
 
 - `POST /api/v1/organizations/{organizationId}/passes/import`, `importPasses`: `ImportPassesRequest` →
-  `ImportPassesResult` (200), 400, 401, 403, 404.
+  `ImportPassesResult` (200), 400, 401, 402 (the studio is in restricted mode), 403, 404.
 - `Pass` gains `source` (`desk` or `import`), always sent.
 
 ## 9. The console (O3)

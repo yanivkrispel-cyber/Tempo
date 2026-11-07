@@ -1,0 +1,50 @@
+.contactHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.tile {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--taupe-soft);
+  color: var(--taupe-ink);
+}
+.contact a {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.contact bdi {
+  overflow-wrap: anywhere;
+}
+
+.questions {
+  display: grid;
+}
+.question {
+  border-block-start: 1px solid var(--line);
+  padding-block: var(--space-3);
+}
+.question:first-child {
+  border-block-start: 0;
+  padding-block-start: 0;
+}
+.question summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.5;
+}
+/* A finger-sized line on a touch screen, keeping the disclosure triangle (display stays list-item). */
+@media (pointer: coarse) {
+  .question summary {
+    padding-block: 8px;
+  }
+}
+.question p {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-muted);
+  line-height: 1.6;
+}

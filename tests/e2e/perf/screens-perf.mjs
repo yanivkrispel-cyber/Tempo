@@ -46,8 +46,19 @@ const vitalsScript = () => {
   }).observe({ type: "paint", buffered: true });
 };
 
-async function measure(page, url) {
+async function measure(page, cdp, url) {
   const api = [];
+  // Playwright's request events leave CORS preflights out, so count them over CDP (Chromium only).
+  const preflights = new Map();
+  const onPreflightSent = (e) => {
+    if (e.initiator?.type === "preflight") preflights.set(e.requestId, { start: e.timestamp, ms: 0 });
+  };
+  const onPreflightDone = (e) => {
+    const preflight = preflights.get(e.requestId);
+    if (preflight) preflight.ms = (e.timestamp - preflight.start) * 1000;
+  };
+  cdp.on("Network.requestWillBeSent", onPreflightSent);
+  cdp.on("Network.loadingFinished", onPreflightDone);
   let jsBytes = 0;
   const t0 = Date.now();
   const onFinished = async (req) => {
@@ -96,13 +107,26 @@ async function measure(page, url) {
     ["requestfinished", onFinished],
   ])
     page.off(event, fn);
+  cdp.off("Network.requestWillBeSent", onPreflightSent);
+  cdp.off("Network.loadingFinished", onPreflightDone);
   const vitals = await page.evaluate(() => window.__perf);
   const nav = await page.evaluate(() => {
     const n = performance.getEntriesByType("navigation")[0];
     return { ttfb: n.responseStart, domContentLoaded: n.domContentLoadedEventEnd, load: n.loadEventEnd };
   });
   const apiDone = api.length ? Math.max(...api.map((a) => a.end)) : 0;
-  return { finalUrl: page.url(), ...nav, ...vitals, apiCount: api.length, apiDone, jsTransferBytes: jsBytes, api };
+  const preflightMs = Math.round([...preflights.values()].reduce((sum, preflight) => sum + preflight.ms, 0));
+  return {
+    finalUrl: page.url(),
+    ...nav,
+    ...vitals,
+    apiCount: api.length,
+    apiDone,
+    preflights: preflights.size,
+    preflightMs,
+    jsTransferBytes: jsBytes,
+    api,
+  };
 }
 
 const browser = await chromium.launch();
@@ -121,12 +145,12 @@ for (const [app, name, url] of screens) {
     await cdp.send("Network.enable");
     await cdp.send("Network.emulateNetworkConditions", NETWORK);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_RATE });
-    const first = await measure(page, url);
-    const repeat = await measure(page, url); // same context: HTTP cache warm, as on a second open
+    const first = await measure(page, cdp, url);
+    const repeat = await measure(page, cdp, url); // same context: HTTP cache warm, as on a second open
     results.push({ app, name, run, first, repeat });
     const f = (v) => String(Math.round(v)).padStart(6);
     console.log(
-      `${app.padEnd(8)}${name.padEnd(10)} run${run} first: fcp${f(first.fcp)} lcp${f(first.lcp)} apiDone${f(first.apiDone)} api#${first.apiCount} js${f(first.jsTransferBytes / 1024)}KB cls ${first.cls.toFixed(3)} | repeat: lcp${f(repeat.lcp)} apiDone${f(repeat.apiDone)}  ${first.finalUrl.replace(/^https:\/\/[^/]+/, "")}`,
+      `${app.padEnd(8)}${name.padEnd(10)} run${run} first: fcp${f(first.fcp)} lcp${f(first.lcp)} apiDone${f(first.apiDone)} api#${first.apiCount} pre#${first.preflights}/${repeat.preflights} js${f(first.jsTransferBytes / 1024)}KB cls ${first.cls.toFixed(3)} | repeat: lcp${f(repeat.lcp)} apiDone${f(repeat.apiDone)}  ${first.finalUrl.replace(/^https:\/\/[^/]+/, "")}`,
     );
     await context.close();
   }

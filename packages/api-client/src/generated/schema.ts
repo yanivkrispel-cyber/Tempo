@@ -3087,6 +3087,30 @@ export interface paths {
         patch: operations["updateBillingAccount"];
         trace?: never;
     };
+    "/api/v1/support-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How studio staff reach the Tempo team (any signed-in account)
+         * @description Board #584, PL-4: the console's "עזרה ויצירת קשר" shows it. The value is the SSM standard parameter
+         *     `/tempo/<env>/support/contact`, set by a person: an email address, or an https link (for example a WhatsApp
+         *     link). The API reads it at most every ten minutes. `contact` is null when the parameter is missing or holds
+         *     neither, and the console then hides the contact. It is Tempo's contact, for studio staff; the member app shows
+         *     the studio's own contact instead.
+         */
+        get: operations["getSupportContact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plans": {
         parameters: {
             query?: never;
@@ -3802,6 +3826,15 @@ export interface components {
             field?: "display_name" | "phone" | "email" | "birth_date" | "contact" | null;
             /** @description `invalid`: `required`, `too_long`, `phone.invalid`, `email.invalid`, `birth_date.invalid` or `contact.required`. */
             code?: string | null;
+        };
+        SupportContact: {
+            /** @description An email address or an https link; null when none is set, and then `kind` is null too. */
+            contact: string | null;
+            /**
+             * @description `email` (open as `mailto:`) or `url` (open as a link); null with `contact`.
+             * @enum {string|null}
+             */
+            kind: "email" | "url" | null;
         };
         /** @description docs/40 section 3. Cells are sent as the file has them, trimmed; the API validates and normalizes. */
         ImportPassesRequest: {
@@ -4989,10 +5022,10 @@ export interface components {
         };
         Suggestion: {
             /**
-             * @description The `story_*` cards (docs/37 section 7.4, M-13) come with `marketing.publish` and the public page on: `story_weekly` from the owner's day and time (count = this week's classes), `story_spot_opened` for a place freed after the waitlist closed, 90 minutes or more before the class (count = places, with the session), `story_schedule_changed` for classes of the next 7 days cancelled or given a new instructor in the last 24 hours (count).
+             * @description `joined_without_pass` (board #584, P3 F4, with `people.view`): members who joined in the last 30 days, invited or by the join link, and hold no active pass with entries left (a used-up card counts as no pass), so they can't book yet (count, the newest three in `people`). The `story_*` cards (docs/37 section 7.4, M-13) come with `marketing.publish` and the public page on: `story_weekly` from the owner's day and time (count = this week's classes), `story_spot_opened` for a place freed after the waitlist closed, 90 minutes or more before the class (count = places, with the session), `story_schedule_changed` for classes of the next 7 days cancelled or given a new instructor in the last 24 hours (count).
              * @enum {string}
              */
-            kind: "passes_ending" | "members_at_risk" | "waitlist_pressure" | "story_weekly" | "story_spot_opened" | "story_schedule_changed";
+            kind: "passes_ending" | "joined_without_pass" | "members_at_risk" | "waitlist_pressure" | "story_weekly" | "story_spot_opened" | "story_schedule_changed";
             count: number;
             people: components["schemas"]["PersonRef"][];
             amountAgorot?: number | null;
@@ -5196,7 +5229,7 @@ export interface components {
              */
             status: "active" | "voided" | "expired";
             /**
-             * @description `import` when the pass came from `importPasses` (docs/40). Always sent once built; optional here until then.
+             * @description `import` when the pass came from `importPasses` (docs/40); `desk` for every other pass. Always sent; optional here so sample data without it still types.
              * @enum {string}
              */
             source?: "desk" | "import";
@@ -11147,6 +11180,27 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getSupportContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportContact"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listPlans: {

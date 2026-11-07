@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@tempo/api-client";
 import { useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router";
 import { useApi } from "../../api/ApiProvider";
 import { errorMessage } from "../../api/errors";
 import {
@@ -49,6 +50,7 @@ const frozenDays = (freezes: readonly PassFreeze[]) =>
 export function PassesSection({ person, foldPast = false }: { person: PersonDetail; foldPast?: boolean }) {
   const studio = useStudio();
   const passes = usePersonPasses(person.id);
+  const [params, setParams] = useSearchParams();
   const [granting, setGranting] = useState(false);
   const [voiding, setVoiding] = useState<Pass | null>(null);
   const [freezing, setFreezing] = useState<Pass | null>(null);
@@ -57,6 +59,20 @@ export function PassesSection({ person, foldPast = false }: { person: PersonDeta
   // A pass starts on the studio's today, so granting waits for its time zone.
   const { timeZone } = useStudioTimeZone();
   const today = timeZone ? todayIn(timeZone) : undefined;
+  // The home's "joined and holds no pass" card lands here with the grant open (P3 F4).
+  const asked = manage && params.has("grant");
+  const closeGrant = () => {
+    setGranting(false);
+    if (params.has("grant")) {
+      setParams(
+        (current) => {
+          current.delete("grant");
+          return current;
+        },
+        { replace: true },
+      );
+    }
+  };
 
   return (
     <Card as="section" aria-labelledby="passes" className="tp-stack">
@@ -116,8 +132,8 @@ export function PassesSection({ person, foldPast = false }: { person: PersonDeta
           );
         })()
       )}
-      {granting && timeZone && (
-        <GrantDialog person={person} today={todayIn(timeZone)} onClose={() => setGranting(false)} />
+      {(granting || asked) && timeZone && (
+        <GrantDialog person={person} today={todayIn(timeZone)} onClose={closeGrant} />
       )}
       {freezing && today && (
         <FreezeDialog pass={freezing} personId={person.id} today={today} onClose={() => setFreezing(null)} />
