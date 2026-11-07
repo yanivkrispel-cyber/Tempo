@@ -381,7 +381,7 @@ the plan card). Since 2026-10-17 nothing is sample data: the home goal and strea
 | #564: does a card paid at the desk release the next join? | #620 is reversible. Nothing clears `to_pay_at_studio`, so a paid desk card blocks the next join of that offer until it ends; only used, expired or voided release it |
 | #565 SR-19: may a disabled account delete itself? | Today's behaviour is in `docs/security/review-2026-11.md` |
 | `find_account_profiles` returns removed or suspended members' emails (#600 note a) | Needs a migration |
-| `docs/41` whole-studio export; the F8 clicks (KR-9); the pilot offer's weekly 20-minute call in the first month (`docs/pilot/pilot-offer.md`) | `docs/41` is a proposal: nothing hands a leaving studio its data yet. The other two are product questions |
+| `docs/41` whole-studio export; the F8 clicks (KR-9, options in `docs/42`); the pilot offer's weekly 20-minute call in the first month (`docs/pilot/pilot-offer.md`) | `docs/41` is a proposal: nothing hands a leaving studio its data yet. The other two are product questions |
 
 ## Who works on what
 

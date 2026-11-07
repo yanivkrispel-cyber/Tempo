@@ -159,10 +159,10 @@ for the database (`restore.md`, "A real restore").
 **Missing.**
 - The health data key (`/tempo/<env>/health/data-key/<v>`, ADR-0026): if the parameter is lost, every health answer
   is unreadable. Whether to keep an offline copy is #308.
-- Rebuilding an environment from scratch: CDK bootstrap, the SSM values a human writes (the list is in
-  `database-neon.md`), Cognito pools (users cannot be exported with passwords), DNS and certificates once the
-  domain exists. Never rehearsed.
-- The queue: the DLQ alarm exists in prod config, a replay procedure does not (`docs/19` section 9).
+- Rebuilding an environment from scratch: the list of human-held values and the order are in
+  `docs/runbooks/environment-inventory.md`. Never rehearsed. A new Cognito pool changes every user's `sub`, and no
+  procedure links a restored database to it.
+- The queue: the DLQ alarm exists in prod config; the replay procedure is `docs/runbooks/dlq-replay.md`, not rehearsed.
 
 **Default.** RTO 4 hours approved as is. #308: docs/31 section 7.1 leaves the key copy open ("an open item, not
 a default"); this runbook proposes one offline copy of the production key on an encrypted drive held by Kris, since
@@ -257,6 +257,8 @@ invoicing service fees are **needs Kris's approval** (per transaction, no fixed 
 confirms the invoice type (**to verify**).
 
 **Acceptance.** A written procedure: invoice, payment received, subscription state, refund. One dry run on dev.
+`docs/runbooks/billing-operations.md` is the draft. It also records that no route or job changes a subscription yet, so
+the default above has nothing behind it.
 
 ## 8. Incidents
 
@@ -377,7 +379,8 @@ Until Kris decides: no production value goes into the repo, issues or Actions lo
 
 - `docs/24_Development_Roadmap.md` section 9, `docs/19_DevOps.md`, `docs/20_Security.md`, `docs/21_Testing.md`
 - ADR-0014, ADR-0019, ADR-0021, ADR-0022, ADR-0026, ADR-0027 in `docs/ADR/`
-- `docs/runbooks/pilot-readiness.md`, `docs/runbooks/restore.md`, `SECURITY.md`
+- `docs/runbooks/pilot-readiness.md`, `docs/runbooks/restore.md`, `docs/runbooks/dlq-replay.md`,
+  `docs/runbooks/environment-inventory.md`, `docs/runbooks/billing-operations.md`, `SECURITY.md`
 - Sources for item 9d, read on 2026-10-28:
   - <https://www.pearlcohen.com/israel-significant-amendment-to-the-privacy-law-takes-effect/>
   - <https://advisor.saymine.com/blog-1/israel-enforces-major-privacy-reform-under-amendment-13>
