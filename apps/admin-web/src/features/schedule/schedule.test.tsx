@@ -456,7 +456,7 @@ describe("weekly classes", () => {
     const row = await screen.findByRole("row", { name: /פילאטיס מכשירים/ });
     expect(row).toHaveTextContent("רביעי 17:30 עד 18:20");
     expect(row).toHaveTextContent("דנה אלון");
-    await userEvent.click(within(row).getByRole("button", { name: "עריכת פילאטיס מכשירים ביום רביעי 17:30" }));
+    await userEvent.click(within(row).getByRole("button", { name: "עריכה: פילאטיס מכשירים ביום רביעי 17:30" }));
     const dialog = screen.getByRole("dialog", { name: "עריכת פילאטיס מכשירים" });
     const start = within(dialog).getByRole("combobox", { name: /שעת התחלה/ });
     await userEvent.clear(start);
@@ -517,7 +517,7 @@ describe("class types and rooms", () => {
       [`PATCH ${base}/rooms/${room.id}`]: () => json({ ...room, status: "archived", version: "2" }),
     });
     const row = await screen.findByRole("row", { name: /חדר המכשירים/ });
-    await userEvent.click(within(row).getByRole("button", { name: "העברת חדר המכשירים לארכיון" }));
+    await userEvent.click(within(row).getByRole("button", { name: "לארכיון: חדר המכשירים" }));
     expect(await screen.findByText("החדר עבר לארכיון")).toBeInTheDocument();
     expect(api.bodies[lastIndex(api, "PATCH", `/rooms/${room.id}`)]).toEqual({ status: "archived" });
 

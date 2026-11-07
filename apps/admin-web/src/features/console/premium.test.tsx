@@ -291,10 +291,10 @@ describe("the room during a class (docs/33 section 8)", () => {
     });
     const room = await screen.findByRole("region", { name: "החדר" });
     expect(await within(room).findByText("1 הגיעו מתוך 2 · 1 פנויים")).toBeInTheDocument();
-    expect(within(room).getByRole("button", { name: "מכשיר 1, מאיה כהן, הגיע.ה" })).toBeInTheDocument();
+    expect(within(room).getByRole("button", { name: "מכ 1, מכשיר 1, מאיה כהן, הגיע.ה" })).toBeInTheDocument();
     expect(within(room).getByRole("button", { name: "מכשיר 3, פנוי" })).toBeDisabled();
 
-    await userEvent.click(within(room).getByRole("button", { name: "מכשיר 2, רוני אבן, אין הצהרת בריאות" }));
+    await userEvent.click(within(room).getByRole("button", { name: "רא 2, מכשיר 2, רוני אבן, אין הצהרת בריאות" }));
     expect(within(room).getByText("אין הצהרת בריאות", { selector: ".tp-banner *, .tp-banner" })).toBeInTheDocument();
     await userEvent.click(within(room).getByRole("button", { name: "הגיע.ה" }));
     await waitFor(() =>
@@ -310,7 +310,7 @@ describe("the room during a class (docs/33 section 8)", () => {
       [`PUT ${base}/bookings/${id(52)}/spot`]: json({}),
     });
     const room = await screen.findByRole("region", { name: "החדר" });
-    await userEvent.click(await within(room).findByRole("button", { name: /^מכשיר 2, רוני אבן/ }));
+    await userEvent.click(await within(room).findByRole("button", { name: /^רא 2, מכשיר 2, רוני אבן/ }));
     await userEvent.click(within(room).getByRole("button", { name: "העברה למכשיר אחר" }));
     await userEvent.click(within(room).getByRole("button", { name: "מכשיר 3, פנוי" }));
     await waitFor(() => expect(api.requests.some((request) => request.url.endsWith("/spot"))).toBe(true));
@@ -357,7 +357,7 @@ describe("OwnerLive, the class on a screen of its own (LV-1, #378 item 2)", () =
       [`POST ${base}/bookings/${id(52)}/attendance`]: json({}),
     });
     const map = await screen.findByRole("region", { name: "מפת החדר" });
-    expect(within(map).getByRole("button", { name: "מכשיר 1, מאיה כהן, הגיע.ה" })).toBeInTheDocument();
+    expect(within(map).getByRole("button", { name: "מכ 1, מכשיר 1, מאיה כהן, הגיע.ה" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "רשימה" }));
     const list = screen.getByRole("region", { name: "רשימת המשתתפים" });
     const rows = within(list).getAllByRole("button");

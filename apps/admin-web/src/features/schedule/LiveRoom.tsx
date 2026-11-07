@@ -361,6 +361,8 @@ function StaffSpot({
     .filter(Boolean)
     .join(" ");
   const label = [
+    // Label in Name: a spot with initials shows them before its number, so the name opens with both.
+    person && !person.avatarUrl ? `${initials(person.displayName)} ${spot.label}` : null,
     `מכשיר ${spot.label}`,
     person ? person.displayName : spot.state === "maintenance" ? "בתחזוקה" : "פנוי",
     arrived ? "הגיע.ה" : spot.attendance === "no_show" ? "לא הגיע.ה" : null,

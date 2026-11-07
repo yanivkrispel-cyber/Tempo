@@ -298,14 +298,14 @@ describe("the console's publishing (MO3)", () => {
   it("downloads the six highlight covers one by one, with no link of their own (MO7, docs/37 section 8.7)", async () => {
     const api = renderPublish(owner);
     const covers = await screen.findByRole("region", { name: "כיסויי היילייטס" });
-    const buttons = within(covers).getAllByRole("button", { name: /^הורדת הכיסוי: / });
+    const buttons = within(covers).getAllByRole("button", { name: /^הורדה: הכיסוי / });
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      "הורדת הכיסוי: מערכת שעות",
-      "הורדת הכיסוי: מחירון",
-      "הורדת הכיסוי: עלינו",
-      "הורדת הכיסוי: הצוות",
-      "הורדת הכיסוי: איך מגיעים",
-      "הורדת הכיסוי: המלצות",
+      "הורדה: הכיסוי מערכת שעות",
+      "הורדה: הכיסוי מחירון",
+      "הורדה: הכיסוי עלינו",
+      "הורדה: הכיסוי הצוות",
+      "הורדה: הכיסוי איך מגיעים",
+      "הורדה: הכיסוי המלצות",
     ]);
     await userEvent.click(buttons[1]!);
     expect(await screen.findByText("הכיסוי ירד: מחירון")).toBeInTheDocument();

@@ -139,8 +139,8 @@ describe("person card", () => {
     const contacts = screen.getByRole("region", { name: "פרטי קשר" });
     expect(within(contacts).getByText("050-123-4567")).toBeInTheDocument();
     expect(within(contacts).getByText("03-123-4567")).toBeInTheDocument();
-    expect(within(contacts).queryByRole("button", { name: "מחיקת noa@example.com" })).not.toBeInTheDocument();
-    expect(within(contacts).getByRole("button", { name: "הפיכת +97231234567 לראשי" })).toBeInTheDocument();
+    expect(within(contacts).queryByRole("button", { name: "מחיקה: noa@example.com" })).not.toBeInTheDocument();
+    expect(within(contacts).getByRole("button", { name: "ראשי: +97231234567" })).toBeInTheDocument();
   });
 
   it("edits the names with If-Match and clears an emptied field", async () => {
@@ -196,13 +196,13 @@ describe("person card", () => {
       ).toEqual({ type: "phone", value: "052-1112222", isPrimary: false }),
     );
 
-    await userEvent.click(within(contacts).getByRole("button", { name: "הפיכת +97231234567 לראשי" }));
+    await userEvent.click(within(contacts).getByRole("button", { name: "ראשי: +97231234567" }));
     await waitFor(() =>
       expect(api.bodies[api.requests.findIndex((request) => request.method === "PATCH")]).toEqual({ isPrimary: true }),
     );
     expect(api.requests.find((request) => request.method === "PATCH")!.headers.get("If-Match")).toBe("3");
 
-    await userEvent.click(within(contacts).getByRole("button", { name: "מחיקת +97231234567" }));
+    await userEvent.click(within(contacts).getByRole("button", { name: "מחיקה: +97231234567" }));
     await waitFor(() => expect(api.requests.some((request) => request.method === "DELETE")).toBe(true));
   });
 

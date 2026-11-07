@@ -88,7 +88,9 @@ function SpotTile({
     .filter(Boolean)
     .join(" ");
   const buddy = spot.state === "buddy" ? spot.person : null;
-  const label = `${spot.kind === "reformer" ? "מכשיר" : "מקום"} ${spot.label}, ${buddy ? `${buddy.displayName} כאן` : stateText[spot.state]}${usual ? ", המקום הקבוע שלך" : ""}`;
+  // Label in Name: a buddy's spot shows their initials before its number, so the name opens with both.
+  const shown = buddy && !buddy.avatarUrl ? `${initials(buddy.displayName)} ${spot.label}, ` : "";
+  const label = `${shown}${spot.kind === "reformer" ? "מכשיר" : "מקום"} ${spot.label}, ${buddy ? `${buddy.displayName} כאן` : stateText[spot.state]}${usual ? ", המקום הקבוע שלך" : ""}`;
   return (
     <div style={{ gridRow: spot.row + 1, gridColumn: spot.col + 1, minWidth: 0 }}>
       <button

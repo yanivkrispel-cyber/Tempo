@@ -82,7 +82,7 @@ export function HighlightCovers({ slug, accent }: { slug: string; accent: string
               size="sm"
               variant="secondary"
               icon="arrow-down"
-              aria-label={`הורדת הכיסוי: ${cover.name}`}
+              aria-label={`הורדה: הכיסוי ${cover.name}`}
               loading={busy === cover.id}
               disabled={busy !== null && busy !== cover.id}
               onClick={() => void save(cover)}
