@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -220,6 +220,20 @@ describe("passes on the person card", () => {
     const summary = screen.getByRole("region", { name: "סיכום" });
     expect(await within(summary).findByText("כרטיסיית 10 כניסות")).toBeInTheDocument();
     expect(summary).toHaveTextContent("נותרו 6 מתוך 10 · עד 29.12.2026");
+  });
+
+  it("opens the grant from the home's card, and closing it clears the address", async () => {
+    renderAt(`/o/neshima/people/${personId}?grant=1`, personRoutes([]));
+    const dialog = await screen.findByRole("dialog", { name: "מתן כרטיסייה או מנוי לשירה כהן" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "ביטול" }));
+    // The dialog stays open for as long as the address asks for it.
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("does not open the grant from the address for someone who can't grant", async () => {
+    renderAt(`/o/neshima/people/${personId}?grant=1`, personRoutes([]), "staff");
+    await screen.findByRole("region", { name: "כרטיסיות ומנויים" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("grants a pass from today, with a note", async () => {
