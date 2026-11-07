@@ -87,6 +87,10 @@ describe("member home", () => {
     const week = await screen.findByRole("group", { name: "ימי השבוע" });
     expect(within(week).getAllByRole("button")).toHaveLength(7);
     expect(within(week).getByRole("button", { name: /13 באוקטובר, היום/ })).toHaveAttribute("aria-pressed", "true");
+    // Label in Name (WCAG 2.5.3): the name opens with what the button shows, so voice control finds it.
+    expect(within(week).getByRole("button", { name: /^ג׳ 13, יום שלישי, 13 באוקטובר/ })).toBeInTheDocument();
+    const me = screen.getByRole("link", { name: /הפרופיל שלי$/ });
+    expect(me.getAttribute("aria-label")).toContain(me.textContent);
 
     const thisWeek = screen.getByRole("region", { name: "השבוע שלך" });
     expect(within(thisWeek).getByRole("link", { name: "לכל המערכת" })).toHaveAttribute("href", "/book");
