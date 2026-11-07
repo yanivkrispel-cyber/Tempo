@@ -115,7 +115,7 @@ The run leaves one `e2e-p3-…` studio on dev for `tools/scripts/e2e-cleanup.mjs
 | P3 F5 | **A new room opens its map dialog at once (D20).** The owner has to take or leave it before anything else works (the scrim blocks the menu): one more click and a screen the owner did not ask for in a first run.                                                                                                                                                         | low      | app (admin-web)                                                   |
 | P3 F6 | **Toasts from earlier screens stack** (three at once on the invitations screen: class type, product, class) and follow the owner to the next screens.                                                                                                                                                                                                                      | low      | app (admin-web)                                                   |
 | P3 F7 | **The booking confirmation toast was not found** by the test (the member's list shows "נרשמת" inline). Not confirmed as a defect: check by hand on a phone that a toast shows.                                                                                                                                                                                             | low      | app (client-web), to confirm                                      |
-| P3 F8 | 19 clicks over seven screens to the first class is a lot for a first session; the join link and the first class are the natural first two steps of a guided setup (see F1). Brand, room map and the pass product are not needed to take the first booking.                                                                                                                 | medium   | app (admin-web)                                                   |
+| P3 F8 | 19 clicks over seven screens to the first class is a lot for a first session; the join link and the first class are the natural first two steps of a guided setup (see F1). Brand and room are not needed to take the first booking; the pass product is (docs/42).                                                                                                        | medium   | app (admin-web)                                                   |
 
 No blocker found: nothing in the path was impossible, and no API error was hit.
 
@@ -143,7 +143,7 @@ about 3.5 s before the first byte on a fully cold instance, under 1.3 s here bec
 | P3 F5 | A new room opens its map at once | kept: D20 is Ofir's decision |
 | P3 F6 | Toasts stack up | fix: #588 (three at most) |
 | P3 F7 | Booking toast not found by the test | to confirm on a phone (Kris's phone test) |
-| P3 F8 | 19 clicks to the first class | product question for Kris and Ofir |
+| P3 F8 | 19 clicks to the first class | product question for Kris and Ofir; options in `docs/42_First_Class_Clicks_Note.md` |
 
 ### P3 again on the final `main` (board #612, O6)
 
