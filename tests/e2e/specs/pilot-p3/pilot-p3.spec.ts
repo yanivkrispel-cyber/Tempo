@@ -310,6 +310,17 @@ test("2. the member opens the join link, signs in, joins, gets a pass and books"
   const sheet = memberPage.getByRole("dialog", { name: new RegExp(`הרשמה לשיעור.*${typeName}`) });
   await expectNoSeriousA11yViolations(memberPage, testInfo, "booking sheet", "[role=dialog]");
   await sheet.getByRole("button", { name: "אישור ההרשמה" }).click();
+  // P3 F7: the member should be told it worked, not only by the row's chip. In a room with a map no message shows
+  // (#640), so the run records it; with that fix this becomes a plain expect.
+  const told = await memberPage
+    .getByText(/נרשמת לשיעור/)
+    .waitFor({ timeout: 6_000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  if (!told) findings.push("#640: no booking confirmation on the timetable in a room with a map");
+  await shot(memberPage, "05b-member-after-booking");
   await expect(memberPage.getByRole("listitem").filter({ hasText: typeName }).first()).toContainText("נרשמת");
 });
 

@@ -142,7 +142,7 @@ about 3.5 s before the first byte on a fully cold instance, under 1.3 s here bec
 | P3 F4 | Nothing tells the owner that a member joined and needs a pass | API: #599 (`joined_without_pass` card; a used-up card counts as no pass); the console card is #625 |
 | P3 F5 | A new room opens its map at once | kept: D20 is Ofir's decision |
 | P3 F6 | Toasts stack up | fix: #588 (three at most) |
-| P3 F7 | Booking toast not found by the test | to confirm on a phone (Kris's phone test) |
+| P3 F7 | Booking toast not found by the test | confirmed by `pilot-p3`, no phone needed: no message on the timetable in a room with a map (#640) |
 | P3 F8 | 19 clicks to the first class | product question for Kris and Ofir; options in `docs/42_First_Class_Clicks_Note.md` |
 
 ### P3 again on the final `main` (board #612, O6)
